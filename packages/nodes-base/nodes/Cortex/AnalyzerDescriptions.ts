@@ -6,7 +6,7 @@ import {
 	TLP,
 } from './AnalyzerInterface';
 
-export const analyzersOperations = [
+export const analyzersOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,7 +29,7 @@ export const analyzersOperations = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
 
 export const analyzerFields: INodeProperties[] = [
 	{
@@ -129,7 +129,7 @@ export const analyzerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 	{
 		displayName: 'TLP',

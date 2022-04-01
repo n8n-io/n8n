@@ -4,8 +4,7 @@ import { Command, flags } from '@oclif/command';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { Db, GenericHelpers } from '../../src';
+import { Db } from '../../src';
 
 import { getLogger } from '../../src/Logger';
 

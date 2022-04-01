@@ -1,5 +1,7 @@
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
+import { DateTime, Duration, Interval } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -98,6 +100,30 @@ export class Expression {
 			selfData,
 		);
 		const data = dataProxy.getDataProxy();
+
+		// Support only a subset of process properties
+		// @ts-ignore
+		data.process = {
+			arch: process.arch,
+			env: process.env,
+			platform: process.platform,
+			pid: process.pid,
+			ppid: process.ppid,
+			release: process.release,
+			version: process.pid,
+			versions: process.versions,
+		};
+
+		// @ts-ignore
+		data.document = {};
+
+		// @ts-ignore
+		data.DateTime = DateTime;
+		data.Interval = Interval;
+		data.Duration = Duration;
+
+		// @ts-ignore
+		data.constructor = {};
 
 		// Execute the expression
 		try {

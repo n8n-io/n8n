@@ -38,7 +38,7 @@ export class MongoDb implements ICredentialType {
 			default: '',
 			placeholder: 'mongodb://<USERNAME>:<PASSWORD>@localhost:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false',
 			required: false,
-			description: `If provided, the value here will be used as a MongoDB connection string,<br />
+			description: `If provided, the value here will be used as a MongoDB connection string,
 						  and the MongoDB credentials will be ignored`,
 		},
 		{

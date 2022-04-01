@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const logOperations = [
+export const logOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const logOperations = [
 		default: 'getErroLogs',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const logFields = [
+export const logFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                log:getLogbookEntries                       */
 	/* -------------------------------------------------------------------------- */
@@ -75,4 +75,4 @@ export const logFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

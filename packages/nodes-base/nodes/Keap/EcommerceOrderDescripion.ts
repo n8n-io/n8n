@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const ecommerceOrderOperations = [
+export const ecommerceOrderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const ecommerceOrderOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ecommerceOrderFields = [
+export const ecommerceOrderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 ecommerceOrder:create                      */
@@ -155,8 +155,7 @@ export const ecommerceOrderFields = [
 				name: 'promoCodes',
 				type: 'string',
 				default: '',
-				description: `Uses multiple strings separated by comma as promo codes.</br>
-				The corresponding discount will be applied to the order.`,
+				description: `Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.`,
 			},
 			{
 				displayName: 'Sales Affiliate ID',
@@ -310,8 +309,7 @@ export const ecommerceOrderFields = [
 							minValue: 0,
 						},
 						default: 0,
-						description: `Overridable price of the product, if not specified,</br>
-						the default will be used.`,
+						description: `Overridable price of the product, if not specified, the default will be used.`,
 					},
 					{
 						displayName: 'Product ID',
@@ -483,4 +481,4 @@ export const ecommerceOrderFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

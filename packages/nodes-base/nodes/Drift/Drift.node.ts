@@ -28,8 +28,7 @@ export class Drift implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Drift API',
 		defaults: {
-			name: 'Drift ',
-			color: '#404040',
+			name: 'Drift',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

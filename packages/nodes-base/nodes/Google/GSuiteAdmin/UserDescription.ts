@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const userOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -640,8 +640,7 @@ export const userFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Free text search terms to find users that match these terms in any field, except for extended properties.</br>
-				For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
+				description: `Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
 			},
 			{
 				displayName: 'Show Deleted',
@@ -937,4 +936,4 @@ export const userFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

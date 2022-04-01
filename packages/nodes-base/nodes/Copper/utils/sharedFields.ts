@@ -1,5 +1,9 @@
+import {
+	INodeProperties
+} from 'n8n-workflow';
+
 // for companies, leads, persons
-export const addressFixedCollection = {
+export const addressFixedCollection: INodeProperties = {
 	displayName: 'Address',
 	name: 'address',
 	placeholder: 'Add Address Fields',
@@ -47,7 +51,7 @@ export const addressFixedCollection = {
 };
 
 // for companies, leads, persons
-export const phoneNumbersFixedCollection = {
+export const phoneNumbersFixedCollection: INodeProperties = {
 	displayName: 'Phone Numbers',
 	name: 'phone_numbers',
 	placeholder: 'Add Phone Number',
@@ -79,7 +83,7 @@ export const phoneNumbersFixedCollection = {
 };
 
 // for persons, multiple emails
-export const emailsFixedCollection = {
+export const emailsFixedCollection: INodeProperties = {
 	displayName: 'Emails',
 	name: 'emails',
 	placeholder: 'Add Email',
@@ -111,7 +115,7 @@ export const emailsFixedCollection = {
 };
 
 // for leads, single email
-export const emailFixedCollection = {
+export const emailFixedCollection: INodeProperties = {
 	displayName: 'Email',
 	name: 'email',
 	placeholder: 'Add Email',

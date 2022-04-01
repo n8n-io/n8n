@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const storyContentOperations = [
+export const storyContentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const storyContentOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const storyContentFields = [
+export const storyContentFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                story:get                                   */
@@ -140,4 +140,4 @@ export const storyContentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

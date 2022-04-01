@@ -5,7 +5,6 @@ tmp
 dist
 npm-debug.log*
 lerna-debug.log
-package-lock.json
 yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
@@ -13,5 +12,5 @@ _START_PACKAGE
 .vscode/*
 !.vscode/extensions.json
 .idea
-vetur.config.js
 nodelinter.config.json
+packages/*/package-lock.json

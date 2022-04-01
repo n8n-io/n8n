@@ -24,7 +24,6 @@ export class Brandfetch implements INodeType {
 		description: 'Consume Brandfetch API',
 		defaults: {
 			name: 'Brandfetch',
-			color: '#1f1f1f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,7 +94,7 @@ export class Brandfetch implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file.',
 			},
 			{
 				displayName: 'Image Type',

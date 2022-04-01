@@ -3,7 +3,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const activityOperations = [
+export const activityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,6 +47,11 @@ export const activityOperations = [
 				description: 'Get all activity laps',
 			},
 			{
+				name: 'Get Streams',
+				value: 'getStreams',
+				description: 'Get activity streams',
+			},
+			{
 				name: 'Get Zones',
 				value: 'getZones',
 				description: 'Get all activity zones',
@@ -60,9 +65,9 @@ export const activityOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const activityFields = [
+export const activityFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                activity:create                           */
@@ -107,6 +112,7 @@ export const activityFields = [
 		displayName: 'Start Date',
 		name: 'startDate',
 		type: 'dateTime',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -315,6 +321,7 @@ export const activityFields = [
 					'getLaps',
 					'getKudos',
 					'getZones',
+					'getStreams',
 				],
 			},
 		},
@@ -368,7 +375,70 @@ export const activityFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-
+	{
+		displayName: 'Keys',
+		name: 'keys',
+		type: 'multiOptions',
+		options: [
+			{
+				name: 'Altitude',
+				value: 'altitude',
+			},
+			{
+				name: 'Cadence',
+				value: 'cadence',
+			},
+			{
+				name: 'Distance',
+				value: 'distance',
+			},
+			{
+				name: 'Gradient',
+				value: 'grade_smooth',
+			},
+			{
+				name: 'Heartrate',
+				value: 'heartrate',
+			},
+			{
+				name: 'Latitude / Longitude',
+				value: 'latlng',
+			},
+			{
+				name: 'Moving',
+				value: 'moving',
+			},
+			{
+				name: 'Temperature',
+				value: 'temp',
+			},
+			{
+				name: 'Time',
+				value: 'time',
+			},
+			{
+				name: 'Velocity',
+				value: 'velocity_smooth',
+			},
+			{
+				name: 'Watts',
+				value: 'watts',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'activity',
+				],
+				operation: [
+					'getStreams',
+				],
+			},
+		},
+		required: true,
+		default: [],
+		description: 'Desired stream types to return',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  activity:getAll                           */
 	/* -------------------------------------------------------------------------- */
@@ -413,4 +483,4 @@ export const activityFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

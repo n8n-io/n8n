@@ -104,7 +104,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the json property in which the HTML to extract the data from can be found.<br />The property can either contain a string or an array of strings.',
+				description: 'Name of the json property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
 				displayName: 'Extraction Values',
@@ -185,7 +185,7 @@ export class HtmlExtract implements INodeType {
 								name: 'returnArray',
 								type: 'boolean',
 								default: false,
-								description: 'Returns the values as an array so if multiple ones get found they also get<br />returned separately.If not set all will be returned as a single string.',
+								description: 'Returns the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
 							},
 						],
 					},
@@ -204,7 +204,7 @@ export class HtmlExtract implements INodeType {
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,
-						description: 'Removes automatically all spaces and newlines from<br />the beginning and end of the values.',
+						description: 'Removes automatically all spaces and newlines from the beginning and end of the values.',
 					},
 				],
 			},
@@ -240,7 +240,9 @@ export class HtmlExtract implements INodeType {
 					if (item.binary[dataPropertyName] === undefined) {
 						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
 					}
-					htmlArray = Buffer.from(item.binary[dataPropertyName].data, 'base64').toString('utf8');
+
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+					htmlArray = binaryDataBuffer.toString('utf-8');
 				}
 
 				// Convert it always to array that it works with a string or an array of strings

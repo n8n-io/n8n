@@ -1,0 +1,1197 @@
+{
+	"about": {
+		"aboutN8n": "About n8n",
+		"close": "Close",
+		"license": "License",
+		"n8nVersion": "n8n Version",
+		"n8nLicense": "Sustainable Use License",
+		"sourceCode": "Source Code"
+	},
+	"binaryDataDisplay": {
+		"backToList": "Back to list",
+		"backToOverviewPage": "Back to overview page",
+		"noDataFoundToDisplay": "No data found to display",
+		"yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version."
+	},
+	"codeEdit": {
+		"edit": "Edit"
+	},
+	"collectionParameter": {
+		"choose": "Choose...",
+		"noProperties": "No properties"
+	},
+	"credentialEdit": {
+		"credentialConfig": {
+			"accountConnected": "Account connected",
+			"clickToCopy": "Click To Copy",
+			"connectionTestedSuccessfully": "Connection tested successfully",
+			"couldntConnectWithTheseSettings": "Couldn’t connect with these settings",
+			"needHelpFillingOutTheseFields": "Need help filling out these fields?",
+			"oAuthRedirectUrl": "OAuth Redirect URL",
+			"openDocs": "Open docs",
+			"pleaseCheckTheErrorsBelow": "Please check the errors below",
+			"reconnect": "reconnect",
+			"reconnectOAuth2Credential": "Reconnect OAuth2 Credential",
+			"redirectUrlCopiedToClipboard": "Redirect URL copied to clipboard",
+			"retry": "Retry",
+			"retryCredentialTest": "Retry credential test",
+			"retrying": "Retrying",
+			"subtitle": "In {appName}, use the URL above when prompted to enter an OAuth callback or redirect URL",
+			"theServiceYouReConnectingTo": "the service you're connecting to"
+		},
+		"credentialEdit": {
+			"confirmMessage": {
+				"beforeClose1": {
+					"cancelButtonText": "Keep Editing",
+					"confirmButtonText": "Close",
+					"headline": "Close without saving?",
+					"message": "Are you sure you want to throw away the changes you made to the {credentialDisplayName} credential?"
+				},
+				"beforeClose2": {
+					"cancelButtonText": "Keep Editing",
+					"confirmButtonText": "Close",
+					"headline": "Close without connecting?",
+					"message": "You need to connect your credential for it to work"
+				},
+				"deleteCredential": {
+					"cancelButtonText": "",
+					"confirmButtonText": "Yes, delete",
+					"headline": "Delete Credential?",
+					"message": "Are you sure you want to delete \"{savedCredentialName}\"?"
+				}
+			},
+			"connection": "Connection",
+			"couldNotFindCredentialOfType": "Could not find credential of type",
+			"couldNotFindCredentialWithId": "Could not find credential with ID",
+			"details": "Details",
+			"delete": "Delete",
+			"saving": "Saving",
+			"showError": {
+				"createCredential": {
+					"title": "Problem creating credential"
+				},
+				"deleteCredential": {
+					"title": "Problem deleting credential"
+				},
+				"generateAuthorizationUrl": {
+					"message": "There was a problem generating the authorization URL",
+					"title": "OAuth Authorization Error"
+				},
+				"loadCredential": {
+					"title": "Problem loading credential"
+				},
+				"updateCredential": {
+					"title": "Problem updating credential"
+				}
+			},
+			"showMessage": {
+				"title": "Credential deleted"
+			},
+			"testing": "Testing"
+		},
+		"credentialInfo": {
+			"allowUseBy": "Allow use by",
+			"created": "Created",
+			"id": "ID",
+			"lastModified": "Last modified"
+		},
+		"oAuthButton": {
+			"connectMyAccount": "Connect my account",
+			"signInWithGoogle": "Sign in with Google"
+		}
+	},
+	"credentialSelectModal": {
+		"addNewCredential": "Add new credential",
+		"continue": "Continue",
+		"searchForApp": "Search for app...",
+		"selectAnAppOrServiceToConnectTo": "Select an app or service to connect to"
+	},
+	"credentialsList": {
+		"addNew": "Add New",
+		"confirmMessage": {
+			"cancelButtonText": "",
+			"confirmButtonText": "Yes, delete",
+			"headline": "Delete Credential?",
+			"message": "Are you sure you want to delete {credentialName}?"
+		},
+		"createNewCredential": "Create New Credential",
+		"created": "Created",
+		"credentials": "Credentials",
+		"deleteCredential": "Delete Credential",
+		"editCredential": "Edit Credential",
+		"name": "@:reusableBaseText.name",
+		"operations": "Operations",
+		"showError": {
+			"deleteCredential": {
+				"title": "Problem deleting credential"
+			}
+		},
+		"showMessage": {
+			"title": "Credential deleted"
+		},
+		"type": "Type",
+		"updated": "Updated",
+		"yourSavedCredentials": "Your saved credentials",
+		"errorLoadingCredentials": "Error loading credentials"
+	},
+	"dataDisplay": {
+		"needHelp": "Need help?",
+		"nodeDocumentation": "Node Documentation",
+		"openDocumentationFor": "Open {nodeTypeDisplayName} documentation"
+	},
+	"displayWithChange": {
+		"cancelEdit": "Cancel Edit",
+		"clickToChange": "Click to Change",
+		"setValue": "Set Value"
+	},
+	"duplicateWorkflowDialog": {
+		"cancel": "@:reusableBaseText.cancel",
+		"chooseOrCreateATag": "Choose or create a tag",
+		"duplicateWorkflow": "Duplicate Workflow",
+		"enterWorkflowName": "Enter workflow name",
+		"save": "@:reusableBaseText.save",
+		"showMessage": {
+			"message": "Please enter a name.",
+			"title": "Name missing"
+		}
+	},
+	"executionDetails": {
+		"executionFailed": "Execution failed",
+		"executionId": "Execution ID",
+		"executionWaiting": "Execution waiting",
+		"executionWasSuccessful": "Execution was successful",
+		"openWorkflow": "Open Workflow",
+		"of": "of",
+		"workflow": "workflow",
+		"readOnly": {
+			"readOnly": "Read only",
+			"youreViewingTheLogOf": "You're viewing the log of a previous execution. You cannot<br />\n\t\tmake changes since this execution already occurred. Make changes<br />\n\t\tto this workflow by clicking on its name on the left."
+		}
+	},
+	"executionsList": {
+		"allWorkflows": "All Workflows",
+		"anyStatus": "Any Status",
+		"autoRefresh": "Auto refresh",
+		"confirmMessage": {
+			"cancelButtonText": "",
+			"confirmButtonText": "Yes, delete",
+			"headline": "Delete Executions?",
+			"message": "Are you sure that you want to delete the {numSelected} selected execution(s)?"
+		},
+		"deleteSelected": "Delete Selected",
+		"error": "Error",
+		"filters": "Filters",
+		"loadMore": "Load More",
+		"mode": "Mode",
+		"modes": {
+			"error": "error",
+			"integrated": "integrated",
+			"manual": "manual",
+			"retry": "retry",
+			"trigger": "trigger",
+			"webhook": "webhook"
+		},
+		"name": "@:reusableBaseText.name",
+		"openPastExecution": "Open Past Execution",
+		"retryExecution": "Retry execution",
+		"retryOf": "Retry of",
+		"retryWithCurrentlySavedWorkflow": "Retry with currently saved workflow",
+		"retryWithOriginalworkflow": "Retry with original workflow",
+		"running": "Running",
+		"runningTime": "Running Time",
+		"selectStatus": "Select Status",
+		"selectWorkflow": "Select Workflow",
+		"selected": "Selected",
+		"showError": {
+			"handleDeleteSelected": {
+				"title": "Problem deleting executions"
+			},
+			"loadMore": {
+				"title": "Problem loading workflows"
+			},
+			"loadWorkflows": {
+				"title": "Problem loading workflows"
+			},
+			"refreshData": {
+				"title": "Problem loading data"
+			},
+			"retryExecution": {
+				"title": "Problem with retry"
+			},
+			"stopExecution": {
+				"title": "Problem stopping execution"
+			}
+		},
+		"showMessage": {
+			"handleDeleteSelected": {
+				"title": "Execution deleted"
+			},
+			"retrySuccessfulFalse": {
+				"title": "Retry unsuccessful"
+			},
+			"retrySuccessfulTrue": {
+				"title": "Retry successful"
+			},
+			"stopExecution": {
+				"message": "Execution ID {activeExecutionId}",
+				"title": "Execution stopped"
+			}
+		},
+		"startedAtId": "Started At / ID",
+		"status": "Status",
+		"statusTooltipText": {
+			"theWorkflowExecutionFailed": "The workflow execution failed.",
+			"theWorkflowExecutionFailedButTheRetryWasSuccessful": "The workflow execution failed but the retry {entryRetrySuccessId} was successful.",
+			"theWorkflowExecutionIsProbablyStillRunning": "The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ",
+			"theWorkflowExecutionWasARetryOfAndFailed": "The workflow execution was a retry of {entryRetryOf} and failed.<br />New retries have to be started from the original execution.",
+			"theWorkflowExecutionWasARetryOfAndItWasSuccessful": "The workflow execution was a retry of {entryRetryOf} and it was successful.",
+			"theWorkflowExecutionWasSuccessful": "The worklow execution was successful.",
+			"theWorkflowIsCurrentlyExecuting": "The worklow is currently executing.",
+			"theWorkflowIsWaitingIndefinitely": "The workflow is waiting indefinitely for an incoming webhook call.",
+			"theWorkflowIsWaitingTill": "The worklow is waiting till {waitDateDate} {waitDateTime}."
+		},
+		"stopExecution": "Stop Execution",
+		"success": "Success",
+		"successRetry": "Success retry",
+		"unknown": "Unknown",
+		"unsavedWorkflow": "[UNSAVED WORKFLOW]",
+		"waiting": "Waiting",
+		"workflowExecutions": "Workflow Executions"
+	},
+	"expressionEdit": {
+		"editExpression": "Edit Expression",
+		"expression": "Expression",
+		"result": "Result",
+		"variableSelector": "Variable Selector"
+	},
+	"fixedCollectionParameter": {
+		"choose": "Choose...",
+		"currentlyNoItemsExist": "Currently no items exist",
+		"deleteItem": "Delete item",
+		"moveDown": "Move down",
+		"moveUp": "Move up"
+	},
+	"genericHelpers": {
+		"loading": "Loading",
+		"min": "min",
+		"sec": "sec",
+		"showMessage": {
+			"message": "This is a read-only version of the workflow. To make changes, either open the original workflow or save it under a new name.",
+			"title": "Workflow cannot be changed"
+		}
+	},
+	"mainSidebar": {
+		"aboutN8n": "About n8n",
+		"confirmMessage": {
+			"workflowDelete": {
+				"cancelButtonText": "",
+				"confirmButtonText": "Yes, delete",
+				"headline": "Delete Workflow?",
+				"message": "Are you sure that you want to delete '{workflowName}'?"
+			},
+			"workflowNew": {
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
+			}
+		},
+		"credentials": "Credentials",
+		"delete": "Delete",
+		"download": "Download",
+		"duplicate": "Duplicate",
+		"executions": "Executions",
+		"help": "Help",
+		"helpMenuItems": {
+			"course": "Course",
+			"documentation": "Documentation",
+			"forum": "Forum"
+		},
+		"importFromFile": "Import from File",
+		"importFromUrl": "Import from URL",
+		"new": "New",
+		"newTemplate": "New from template",
+		"open": "Open",
+		"prompt": {
+			"cancel": "@:reusableBaseText.cancel",
+			"import": "Import",
+			"importWorkflowFromUrl": "Import Workflow from URL",
+			"invalidUrl": "Invalid URL",
+			"workflowUrl": "Workflow URL"
+		},
+		"save": "@:reusableBaseText.save",
+		"settings": "Settings",
+		"showError": {
+			"stopExecution": {
+				"title": "Problem stopping execution"
+			}
+		},
+		"showMessage": {
+			"handleFileImport": {
+				"message": "The file does not contain valid JSON data",
+				"title": "Could not import file"
+			},
+			"handleSelect1": {
+				"title": "Workflow deleted"
+			},
+			"handleSelect2": {
+				"title": "Workflow created"
+			},
+			"handleSelect3": {
+				"title": "Workflow created"
+			},
+			"stopExecution": {
+				"title": "Execution stopped"
+			}
+		},
+		"templates": "Templates",
+		"workflows": "Workflows"
+	},
+	"multipleParameter": {
+		"addItem": "Add item",
+		"currentlyNoItemsExist": "Currently no items exist",
+		"deleteItem": "Delete item",
+		"moveDown": "Move down",
+		"moveUp": "Move up"
+	},
+	"noTagsView": {
+		"readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
+		"withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows"
+	},
+	"node": {
+		"activateDeactivateNode": "Activate/Deactivate Node",
+		"deleteNode": "Delete Node",
+		"disabled": "Disabled",
+		"duplicateNode": "Duplicate Node",
+		"editNode": "Edit Node",
+		"executeNode": "Execute Node",
+		"issues": "Issues",
+		"nodeIsExecuting": "Node is executing",
+		"nodeIsWaitingTill": "Node is waiting until {date} {time}",
+		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting for an incoming webhook call (indefinitely)",
+		"waitingForYouToCreateAnEventIn": "Waiting for you to create an event in {nodeType}"
+	},
+	"nodeCreator": {
+		"categoryNames": {
+			"analytics": "Analytics",
+			"communication": "Communication",
+			"coreNodes": "Core Nodes",
+			"customNodes": "Custom Nodes",
+			"dataStorage": "Data & Storage",
+			"development": "Development",
+			"financeAccounting": "Finance & Accounting",
+			"marketingContent": "Marketing & Content",
+			"miscellaneous": "Miscellaneous",
+			"productivity": "Productivity",
+			"sales": "Sales",
+			"suggestedNodes": "Suggested Nodes ✨",
+			"utility": "Utility"
+		},
+		"mainPanel": {
+			"all": "All",
+			"regular": "Regular",
+			"trigger": "Trigger"
+		},
+		"noResults": {
+			"dontWorryYouCanProbablyDoItWithThe": "Don’t worry, you can probably do it with the",
+			"httpRequest": "HTTP Request",
+			"node": "node",
+			"or": "or",
+			"requestTheNode": "Request the node",
+			"wantUsToMakeItFaster": "Want us to make it faster?",
+			"weDidntMakeThatYet": "We didn't make that... yet",
+			"webhook": "Webhook"
+		},
+		"searchBar": {
+			"searchNodes": "Search nodes..."
+		},
+		"subcategoryDescriptions": {
+			"dataTransformation": "Manipulate data fields, run code",
+			"files": "Work with CSV, XML, text, images etc.",
+			"flow": "Branches, core triggers, merge data",
+			"helpers": "HTTP Requests (API calls), date and time, scrape HTML"
+		},
+		"subcategoryNames": {
+			"dataTransformation": "Data Transformation",
+			"files": "Files",
+			"flow": "Flow",
+			"helpers": "Helpers"
+		}
+	},
+	"nodeCredentials": {
+		"createNew": "Create New",
+		"credentialFor": "Credential for {credentialType}",
+		"issues": "Issues",
+		"selectCredential": "Select Credential",
+		"showMessage": {
+			"message": "Nodes that used credential \"{oldCredentialName}\" have been updated to use \"{newCredentialName}\"",
+			"title": "Node credential updated"
+		},
+		"updateCredential": "Update Credential"
+	},
+	"nodeErrorView": {
+		"cause": "Cause",
+		"copyToClipboard": "Copy to Clipboard",
+		"dataBelowMayContain": "Data below may contain sensitive information. Proceed with caution when sharing.",
+		"details": "Details",
+		"error": "ERROR",
+		"httpCode": "HTTP Code",
+		"showMessage": {
+			"title": "Copied to clipboard"
+		},
+		"stack": "Stack",
+		"theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed",
+		"time": "Time"
+	},
+	"nodeBase": {
+		"clickToAddNodeOrDragToConnect": "Click to add node<br />or drag to connect"
+	},
+	"nodeSettings": {
+		"alwaysOutputData": {
+      "description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
+			"displayName": "Always Output Data"
+		},
+		"clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
+		"continueOnFail": {
+			"description": "If active, the workflow continues even if this node's execution fails. When this occurs, the node passes along input data from previous nodes - so your workflow should account for unexpected output data.",
+			"displayName": "Continue On Fail"
+		},
+		"executeOnce": {
+			"description": "If active, the node executes only once, with data from the first item it receives",
+			"displayName": "Execute Once"
+		},
+		"maxTries": {
+			"description": "Number of times to attempt to execute the node before failing the execution",
+			"displayName": "Max. Tries"
+		},
+		"noDescriptionFound": "No description found",
+		"nodeDescription": "Node Description",
+		"notes": {
+			"description": "Optional note to save with the node",
+			"displayName": "Notes"
+		},
+		"notesInFlow": {
+			"description": "If active, the note above will display in the flow as a subtitle",
+			"displayName": "Display note in flow?"
+		},
+		"parameters": "Parameters",
+		"retryOnFail": {
+			"description": "If active, the node tries to execute again when it fails",
+			"displayName": "Retry On Fail"
+		},
+		"settings": "Settings",
+		"theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type ({nodeType}) is unknown",
+		"thisNodeDoesNotHaveAnyParameters": "This node does not have any parameters",
+		"waitBetweenTries": {
+			"description": "How long to wait between each attempt (in milliseconds)",
+			"displayName": "Wait Between Tries (ms)"
+		}
+	},
+	"nodeView": {
+		"addNode": "Add node",
+		"confirmMessage": {
+			"beforeRouteLeave": {
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
+			},
+			"initView": {
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
+			},
+			"receivedCopyPasteData": {
+				"cancelButtonText": "",
+				"confirmButtonText": "Yes, import",
+				"headline": "Import Workflow?",
+				"message": "Workflow will be imported from<br /><i>{plainTextData}<i>"
+			}
+		},
+		"couldntImportWorkflow": "Could not import workflow",
+		"deletesTheCurrentExecutionData": "Deletes the current execution data",
+		"executesTheWorkflowFromTheStartOrWebhookNode": "Executes the workflow from the 'start' or 'webhook' node",
+		"itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes will be lost.",
+		"loadingTemplate": "Loading template",
+		"moreInfo": "More info",
+		"noNodesGivenToAdd": "No nodes to add specified",
+		"prompt": {
+			"cancel": "@:reusableBaseText.cancel",
+			"invalidName": "Invalid Name",
+			"newName": "New Name",
+			"rename": "Rename",
+			"renameNode": "Rename Node"
+		},
+		"redirecting": "Redirecting",
+		"refresh": "Refresh",
+		"resetZoom": "Reset Zoom",
+		"runButtonText": {
+			"executeWorkflow": "Execute Workflow",
+			"executingWorkflow": "Executing Workflow",
+			"waitingForTriggerEvent": "Waiting for Trigger Event"
+		},
+		"showError": {
+			"getWorkflowDataFromUrl": {
+				"title": "Problem loading workflow"
+			},
+			"importWorkflowData": {
+				"title": "Problem importing workflow"
+			},
+			"mounted1": {
+				"message": "There was a problem loading init data",
+				"title": "Init Problem"
+			},
+			"mounted2": {
+				"message": "There was a problem initializing the workflow",
+				"title": "Init Problem"
+			},
+			"openExecution": {
+				"title": "Problem loading execution"
+			},
+			"openWorkflow": {
+				"title": "Problem opening workflow"
+			},
+			"stopExecution": {
+				"title": "Problem stopping execution"
+			},
+			"stopWaitingForWebhook": {
+				"title": "Problem deleting test webhook"
+			}
+		},
+		"showMessage": {
+			"addNodeButton": {
+				"message": "'{nodeTypeName}' is an unknown node type",
+				"title": "Could not create node"
+			},
+			"keyDown": {
+				"title": "Workflow created"
+			},
+			"showMaxNodeTypeError": {
+				"message": {
+					"plural": "Only {maxNodes} '{nodeTypeDataDisplayName}' nodes are allowed in a workflow",
+					"singular": "Only {maxNodes} '{nodeTypeDataDisplayName}' node is allowed in a workflow"
+				},
+				"title": "Could not create node"
+			},
+			"stopExecutionCatch": {
+				"message": "It completed before it could be stopped",
+				"title": "Workflow finished executing"
+			},
+			"stopExecutionTry": {
+				"title": "Execution stopped"
+			},
+			"stopWaitingForWebhook": {
+				"title": "Webhook deleted"
+			}
+		},
+		"stopCurrentExecution": "Stop current execution",
+		"stopWaitingForWebhookCall": "Stop waiting for webhook call",
+		"stoppingCurrentExecution": "Stopping current execution",
+		"thereWasAProblemLoadingTheNodeParametersOfNode": "There was a problem loading the parameters of the node",
+		"thisExecutionHasntFinishedYet": "This execution hasn't finished yet",
+		"toSeeTheLatestStatus": "to see the latest status",
+		"workflowTemplateWithIdCouldNotBeFound": "Workflow template with ID \"{templateId}\" could not be found",
+		"workflowWithIdCouldNotBeFound": "Workflow with ID \"{workflowId}\" could not be found",
+		"zoomIn": "Zoom In",
+		"zoomOut": "Zoom Out",
+		"zoomToFit": "Zoom to Fit"
+	},
+	"nodeWebhooks": {
+		"clickToCopyWebhookUrls": "Click to copy webhook URLs",
+		"clickToDisplayWebhookUrls": "Click to display webhook URLs",
+		"clickToHideWebhookUrls": "Click to hide webhook URLs",
+		"invalidExpression": "[INVALID EXPRESSION]",
+		"productionUrl": "Production URL",
+		"showMessage": {
+			"title": "URL copied"
+		},
+		"testUrl": "Test URL",
+		"webhookUrls": "Webhook URLs"
+	},
+	"parameterInput": {
+		"addExpression": "Add Expression",
+		"error": "ERROR",
+		"issues": "Issues",
+		"loadingOptions": "Loading options...",
+		"openEditWindow": "Open Edit Window",
+		"parameter": "Parameter: \"{shortPath}\"",
+		"parameterHasExpression": "Parameter: \"{shortPath}\" has an expression",
+		"parameterHasIssues": "Parameter: \"{shortPath}\" has issues",
+		"parameterHasIssuesAndExpression": "Parameter: \"{shortPath}\" has issues and an expression",
+		"parameterOptions": "Parameter Options",
+		"refreshList": "Refresh List",
+		"removeExpression": "Remove Expression",
+		"resetValue": "Reset Value",
+		"selectDateAndTime": "Select date and time",
+		"select": "Select"
+	},
+	"parameterInputExpanded": {
+		"openDocs": "Open docs",
+		"thisFieldIsRequired": "This field is required"
+	},
+	"parameterInputList": {
+		"delete": "Delete",
+		"deleteParameter": "Delete Parameter",
+		"parameterOptions": "Parameter Options"
+	},
+	"personalizationModal": {
+		"automationConsulting": "Automation consulting",
+		"continue": "Continue",
+		"customizeN8n": "Customize n8n to you",
+		"eCommerce": "eCommerce",
+		"errorWhileSubmittingResults": "Error while submitting results",
+		"executiveTeam": "Executive team",
+		"financeOrInsurance": "Finance / Insurance",
+		"getStarted": "Get started",
+		"government": "Government",
+		"healthcare": "Healthcare",
+		"howAreYourCodingSkills": "How are your coding skills?",
+		"howBigIsYourCompany": "How big is your company?",
+		"hr": "HR",
+		"it": "IT",
+		"iCanCodeSomeUsefulThingsBut": "2. I can code some useful things, but I spend a lot of time stuck",
+		"iCanDoAlmostAnythingIWant": "5. I can do almost anything I want, easily (pro coder)",
+		"iCanFigureMostThingsOut": "4. I can figure most things out",
+		"iGetStuckTooQuicklyToAchieveMuch": "1. I get stuck too quickly to achieve much",
+		"iKnowEnoughToBeDangerousBut": "3. I know enough to be dangerous, but I'm no expert",
+		"imNotUsingN8nForWork": "I'm not using n8n for work",
+		"individualConsumers": "Customers are individual consumers",
+		"smallBusinesses": "Customers are small businesses (under 20 employees)",
+		"mediumBusinesses": "Customers are medium businesses (20-499 employees)",
+		"largeBusinesses": "Customers are large businesses (500+ employees)",
+		"whatKindOfCustomersDoYouServe": "What kind of customers do you serve?",
+		"cloudInfrastructure": "Cloud infrastructure",
+		"itSupport": "IT support",
+		"networkingOrCommunication": "Networking / Communication",
+		"itEngineering": "IT / Engineering",
+		"legal": "Legal",
+		"lessThan20People": "Less than 20 people",
+		"lookOutForThingsMarked": "Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.",
+		"marketing": "Marketing",
+		"media": "Media",
+		"manufacturing": "Manufacturing",
+		"managedServiceProvider": "Managed service provider",
+		"digitalAgencyOrConsultant": "Digital agency/consultant",
+		"automationAgencyOrConsultant": "Automation agency/consultant",
+		"neverCoded": "0. Never coded",
+		"operations": "Operations",
+		"otherPleaseSpecify": "Other (please specify)",
+		"other": "Other",
+		"people": "people",
+		"proCoder": "Pro coder",
+		"physicalRetailOrServices": "Physical retail or services",
+		"realEstateOrConstruction": "Real estate / Construction",
+		"saas": "SaaS",
+		"education": "Education",
+		"salesBizDev": "Sales / Bizdev",
+		"salesBusinessDevelopment": "Sales / Business Development",
+		"security": "Security",
+		"select": "Select...",
+		"specifyYourCompanysIndustry": "Specify your company's industry",
+		"specifyYourWorkArea": "Specify your work area",
+		"support": "Support",
+		"systemsIntegration": "Systems Integration",
+		"systemsIntegrator": "Systems Integrator",
+		"thanks": "Thanks!",
+		"telecoms": "Telecoms",
+		"theseQuestionsHelpUs": "These questions help us tailor n8n to you",
+		"whichIndustriesIsYourCompanyIn": "Which industries is your company in?",
+		"whatBestDescribesYourCompany": "What best describes your company?",
+		"whatDoesYourCompanyFocusOn": "Which services does your company focus on?",
+		"pleaseSpecifyYourCompanyFocus": "Please specify your company focus",
+		"whatAreYouLookingToAutomate": "What are you looking to automate?",
+		"customerIntegrations": "Customer integrations",
+		"customerSupport": "Customer support",
+		"financeOrAccounting": "Finance / Accounting",
+		"product": "Product (e.g. fast prototyping)",
+		"salesAndMarketing": "Sales and Marketing",
+		"notSureYet": "Not sure yet",
+		"specifyYourAutomationGoal": "Please specify your automation goal"
+	},
+	"pushConnection": {
+		"showMessage": {
+			"title": "Workflow executed successfully"
+		}
+	},
+	"pushConnectionTracker": {
+		"cannotConnectToServer": "You have a connection issue or the server is down. <br />n8n should reconnect automatically once the issue is resolved.",
+		"connectionLost": "Connection lost"
+	},
+	"reusableBaseText": {
+		"cancel": "Cancel",
+		"name": "Name",
+		"save": "Save"
+	},
+	"reusableDynamicText": {
+		"oauth2": {
+			"clientId": "Client ID",
+			"clientSecret": "Client Secret"
+		}
+	},
+	"runData": {
+		"binary": "Binary",
+		"copyItemPath": "Copy Item Path",
+		"copyParameterPath": "Copy Parameter Path",
+		"copyToClipboard": "Copy to Clipboard",
+		"copyValue": "Copy Value",
+		"dataOfExecution": "Data of Execution",
+		"dataReturnedByThisNodeWillDisplayHere": "Data returned by this node will display here",
+		"displayDataAnyway": "Display Data Anyway",
+		"entriesExistButThey": "Entries exist but they do not contain any JSON data",
+		"executeNode": "Execute Node",
+		"executesThisNodeAfterExecuting": "Executes this {nodeName} node after executing any previous nodes that have not yet returned data",
+		"executionTime": "Execution Time",
+		"fileExtension": "File Extension",
+		"fileName": "File Name",
+		"items": "Items",
+		"json": "JSON",
+		"mimeType": "Mime Type",
+		"ms": "ms",
+		"noBinaryDataFound": "No binary data found",
+		"noData": "No data",
+		"noTextDataFound": "No text data found",
+		"nodeReturnedALargeAmountOfData": "Node returned a large amount of data",
+		"output": "Output",
+		"downloadBinaryData": "Download",
+		"showBinaryData": "View",
+		"startTime": "Start Time",
+		"table": "Table",
+		"theNodeContains": "The node contains {numberOfKb} KB of data.<br />Displaying it could cause problems.<br /><br />If you do decide to display it, consider avoiding the JSON view."
+	},
+	"saveButton": {
+		"save": "@:reusableBaseText.save",
+		"saved": "Saved",
+		"saving": "Saving"
+	},
+	"showMessage": {
+		"cancel": "@:reusableBaseText.cancel",
+		"ok": "OK",
+		"showDetails": "Show Details"
+	},
+	"tagsDropdown": {
+		"createTag": "Create tag \"{filter}\"",
+		"manageTags": "Manage tags",
+		"noMatchingTagsExist": "No matching tags exist",
+		"noTagsExist": "No tags exist",
+		"showError": {
+			"message": "A problem occurred when trying to create the '{name}' tag",
+			"title": "Could not create tag"
+		},
+		"typeToCreateATag": "Type to create a tag"
+	},
+	"tagsManager": {
+		"couldNotDeleteTag": "Could not delete tag",
+		"done": "Done",
+		"manageTags": "Manage tags",
+		"showError": {
+			"onCreate": {
+				"message": "A problem occurred when trying to create the tag '{escapedName}'",
+				"title": "Could not create tag"
+			},
+			"onDelete": {
+				"message": "A problem occurred when trying to delete the tag '{escapedName}'",
+				"title": "Could not delete tag"
+			},
+			"onUpdate": {
+				"message": "A problem occurred when trying to update the tag '{escapedName}'",
+				"title": "Could not update tag"
+			}
+		},
+		"showMessage": {
+			"onDelete": {
+				"title": "Tag deleted"
+			},
+			"onUpdate": {
+				"title": "Tag updated"
+			}
+		},
+		"tagNameCannotBeEmpty": "Tag name cannot be empty"
+	},
+	"tagsTable": {
+		"areYouSureYouWantToDeleteThisTag": "Are you sure you want to delete this tag?",
+		"cancel": "@:reusableBaseText.cancel",
+		"createTag": "Create tag",
+		"deleteTag": "Delete tag",
+		"editTag": "Edit Tag",
+		"name": "@:reusableBaseText.name",
+		"noMatchingTagsExist": "No matching tags exist",
+		"saveChanges": "Save changes?",
+		"usage": "Usage"
+	},
+	"tagsTableHeader": {
+		"addNew": "Add new",
+		"searchTags": "Search Tags"
+	},
+	"tagsView": {
+		"inUse": {
+			"plural": "{count} workflows",
+			"singular": "{count} workflow"
+		},
+		"notBeingUsed": "Not being used"
+	},
+	"template": {
+		"buttons": {
+			"goBackButton": "Go back",
+			"useThisWorkflowButton": "Use this workflow"
+		},
+		"details": {
+			"appsInTheWorkflow": "Apps in this workflow",
+			"appsInTheCollection": "This collection features",
+			"by": "by",
+			"categories": "Categories",
+			"created": "Created",
+			"details": "Details",
+			"times": "times",
+			"viewed": "Viewed"
+		}
+	},
+	"templates": {
+		"allCategories": "All Categories",
+		"categoriesHeading": "Categories",
+		"collection": "Collection",
+		"collections": "Collections",
+		"collectionsNotFound": "Collection could not be found",
+		"endResult": "Share your own useful workflows through your <a href='https://n8n.io/dashboard' target='_blank'>n8n.io account</a>",
+		"heading": "Workflow templates",
+		"newButton": "New blank workflow",
+		"noSearchResults": "Nothing found. Try adjusting your search to see more.",
+		"searchPlaceholder": "Search workflows",
+		"workflow": "Workflow",
+		"workflows": "Workflows",
+		"workflowsNotFound": "Workflow could not be found",
+		"connectionWarning": "⚠️ There was a problem fetching workflow templates. Check your internet connection."
+	},
+	"textEdit": {
+		"edit": "Edit"
+	},
+	"timeAgo": {
+		"daysAgo": "%s days ago",
+		"hoursAgo": "%s hours ago",
+		"inDays": "in %s days",
+		"inHours": "in %s hours",
+		"inMinutes": "in %s minutes",
+		"inMonths": "in %s months",
+		"inOneDay": "in 1 day",
+		"inOneHour": "in 1 hour",
+		"inOneMinute": "in 1 minute",
+		"inOneMonth": "in 1 month",
+		"inOneWeek": "in 1 week",
+		"inOneYear": "in 1 year",
+		"inWeeks": "in %s weeks",
+		"inYears": "in %s years",
+		"justNow": "Just now",
+		"minutesAgo": "%s minutes ago",
+		"monthsAgo": "%s months ago",
+		"oneDayAgo": "1 day ago",
+		"oneHourAgo": "1 hour ago",
+		"oneMinuteAgo": "1 minute ago",
+		"oneMonthAgo": "1 month ago",
+		"oneWeekAgo": "1 week ago",
+		"oneYearAgo": "1 year ago",
+		"rightNow": "Right now",
+		"weeksAgo": "%s weeks ago",
+		"yearsAgo": "%s years ago"
+	},
+	"updatesPanel": {
+		"andIs": "and is",
+		"behindTheLatest": "behind the latest and greatest n8n",
+		"howToUpdateYourN8nVersion": "How to update your n8n version",
+		"version": "{numberOfVersions} version{howManySuffix}",
+		"weVeBeenBusy": "We’ve been busy ✨",
+		"youReOnVersion": "You’re on {currentVersionName}, which was released"
+	},
+	"variableSelector": {
+		"context": "Context",
+		"currentNode": "Current Node",
+		"nodes": "Nodes",
+		"outputData": "Output Data",
+		"parameters": "Parameters",
+		"variableFilter": "Variable filter..."
+	},
+	"variableSelectorItem": {
+		"empty": "--- EMPTY ---",
+		"selectItem": "Select Item"
+	},
+	"versionCard": {
+		"breakingChanges": "Breaking changes",
+		"released": "Released",
+		"securityUpdate": "Security update",
+		"thisVersionHasASecurityIssue": "This version has a security issue.<br />It is listed here for completeness.",
+		"unknown": "unknown",
+		"version": "Version"
+	},
+	"workflowActivator": {
+		"activateWorkflow": "Activate workflow",
+		"deactivateWorkflow": "Deactivate workflow",
+		"showError": {
+			"title": "Workflow could not be {newStateName}"
+		},
+		"showMessage": {
+			"activeChangedNodesIssuesExistTrue": {
+				"message": "Please resolve outstanding issues before you activate it",
+				"title": "Problem activating workflow"
+			},
+			"activeChangedWorkflowIdUndefined": {
+				"message": "Please save it before activating",
+				"title": "Problem activating workflow"
+			},
+			"displayActivationError": {
+				"message": {
+					"catchBlock": "Sorry there was a problem requesting the error",
+					"errorDataNotUndefined": "The following error occurred on workflow activation:<br /><i>{message}</i>",
+					"errorDataUndefined": "Unknown error"
+				},
+				"title": "Problem activating workflow"
+			}
+		},
+		"theWorkflowIsSetToBeActiveBut": "The workflow is activated but could not be started.<br />Click to display error message.",
+		"thisWorkflowHasNoTriggerNodes": "This workflow has no trigger nodes that require activation"
+	},
+	"workflowDetails": {
+		"active": "Active",
+		"addTag": "Add tag",
+		"showMessage": {
+			"message": "Please enter a name, or press 'esc' to go back to the old one",
+			"title": "Name missing"
+		},
+		"chooseOrCreateATag": "Choose or create a tag"
+	},
+	"workflowHelpers": {
+		"showMessage": {
+			"title": "Problem saving workflow"
+		}
+	},
+	"workflowOpen": {
+		"active": "Active",
+		"confirmMessage": {
+			"cancelButtonText": "Leave without saving",
+			"confirmButtonText": "Save",
+			"headline": "Save changes before leaving?",
+			"message": "If you don't save, you will lose your changes."
+		},
+		"created": "Created",
+		"name": "@:reusableBaseText.name",
+		"openWorkflow": "Open Workflow",
+		"filterWorkflows": "Filter by tags",
+		"searchWorkflows": "Search workflows...",
+		"showError": {
+			"title": "Problem loading workflows"
+		},
+		"showMessage": {
+			"message": "This is the current workflow",
+			"title": "Workflow already open"
+		},
+		"updated": "Updated",
+		"couldNotLoadActiveWorkflows": "Could not load active workflows"
+	},
+	"workflowRun": {
+		"noActiveConnectionToTheServer": "Lost connection to the server",
+		"showError": {
+			"title": "Problem running workflow"
+		},
+		"showMessage": {
+			"message": "Please fix them before executing",
+			"title": "Workflow has issues"
+		}
+	},
+	"workflowSettings": {
+		"defaultTimezone": "Default - {defaultTimezoneValue}",
+		"defaultTimezoneNotValid": "Default Timezone not valid",
+		"errorWorkflow": "Error Workflow",
+		"helpTexts": {
+			"errorWorkflow": "A second workflow to run if the current one fails.<br />The second workflow should an 'Error Trigger' node.",
+			"executionTimeout": "How long the workflow should wait before timing out",
+			"executionTimeoutToggle": "Whether to cancel workflow execution after a defined time",
+			"saveDataErrorExecution": "Whether to save data of executions that fail",
+			"saveDataSuccessExecution": "Whether to save data of executions that finish successfully",
+			"saveExecutionProgress": "Whether to save data after each node execution. This allows you to resume from where execution stopped if there is an error, but may increase latency.",
+			"saveManualExecutions": "Whether to save data of executions that are started manually from the editor",
+			"timezone": "The timezone in which the workflow should run. Used by 'cron' node, for example."
+		},
+		"hours": "hours",
+		"minutes": "minutes",
+		"noWorkflow": "- No Workflow -",
+		"save": "@:reusableBaseText.save",
+		"saveDataErrorExecution": "Save failed executions",
+		"saveDataErrorExecutionOptions": {
+			"defaultSave": "Default - {defaultValue}",
+			"doNotSave": "Do not save",
+			"save": "@:reusableBaseText.save"
+		},
+		"saveDataSuccessExecution": "Save successful executions",
+		"saveDataSuccessExecutionOptions": {
+			"defaultSave": "Default - {defaultValue}",
+			"doNotSave": "Do not save",
+			"save": "@:reusableBaseText.save"
+		},
+		"saveExecutionProgress": "Save execution progress",
+		"saveExecutionProgressOptions": {
+			"defaultSave": "Default - {defaultValue}",
+			"no": "No",
+			"yes": "Yes"
+		},
+		"saveManualExecutions": "Save manual executions",
+		"saveManualOptions": {
+			"defaultSave": "Default - {defaultValue}",
+			"no": "No",
+			"yes": "Yes"
+		},
+		"seconds": "seconds",
+		"selectOption": "Select Option",
+		"settingsFor": "Settings for {workflowName} (#{workflowId})",
+		"showError": {
+			"saveSettings1": {
+				"errorMessage": "Timeout is activated but set to 0",
+				"message": "There was a problem saving the settings",
+				"title": "Problem saving settings"
+			},
+			"saveSettings2": {
+				"errorMessage": "Maximum Timeout is: {hours} hours, {minutes} minutes, {seconds} seconds",
+				"message": "The timeout is longer than allowed",
+				"title": "Problem saving settings"
+			},
+			"saveSettings3": {
+				"title": "Problem saving settings"
+			}
+		},
+		"showMessage": {
+			"saveSettings": {
+				"title": "Workflow settings saved"
+			}
+		},
+		"timeoutAfter": "Timeout After",
+		"timeoutWorkflow": "Timeout Workflow",
+		"timezone": "Timezone"
+	},
+	"activationModal": {
+		"workflowActivated": "Workflow activated",
+		"theseExecutionsWillNotShowUp": "These executions will not show up immediately in the editor,",
+		"butYouCanSeeThem": "but you can see them in the",
+		"executionList": "execution list",
+		"ifYouChooseTo": "if you choose to",
+		"saveExecutions": "save executions.",
+		"dontShowAgain": "Don't show again",
+		"yourTriggersWillNowFire": "Your triggers will now fire production executions automatically.",
+		"yourTriggerWillNowFire": "Your trigger will now fire production executions automatically.",
+		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
+		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
+		"gotIt": "Got it"
+	},
+	"workflowPreview": {
+		"showError": {
+			"previewError": {
+				"message": "Unable to preview workflow",
+				"title": "Preview error"
+			},
+			"missingWorkflow": "Missing workflow",
+			"arrayEmpty": "Must have an array of nodes"
+		}
+	},
+	"auth.changePassword": "Change Password",
+	"auth.changePassword.currentPassword": "Current Password",
+	"auth.changePassword.error": "Problem changing the password",
+	"auth.changePassword.missingTokenError": "Missing token",
+	"auth.changePassword.missingUserIdError": "Missing user ID",
+	"auth.changePassword.passwordUpdated": "Password updated",
+	"auth.changePassword.passwordUpdatedMessage": "You can now sign in with your new password",
+	"auth.changePassword.passwordsMustMatchError": "Passwords must match",
+	"auth.changePassword.reenterNewPassword": "Re-enter New Password",
+	"auth.changePassword.tokenValidationError": "Issue validating invite token",
+	"auth.defaultPasswordRequirements": "8+ characters, at least 1 number and 1 capital letter",
+	"auth.email": "Email",
+	"auth.firstName": "First Name",
+	"auth.lastName": "Last Name",
+	"auth.newPassword": "New Password",
+	"auth.password": "Password",
+	"auth.role": "Role",
+	"auth.roles.member": "Member",
+	"auth.roles.owner": "Owner",
+	"auth.setup.setupOwner": "Set up owner account",
+	"auth.setup.skipOwnerSetupQuestion": "Skip owner account setup?",
+	"auth.setup.skipSetup": "Skip setup",
+	"auth.setup.goBack": "Go back",
+	"auth.setup.confirmOwnerSetup": "Set up owner account?",
+	"auth.setup.setupConfirmation.oneWorkflowCount": "{count} existing workflow",
+	"auth.setup.setupConfirmation.oneCredentialCount": "{count} credential",
+	"auth.setup.setupConfirmation.workflowsCount": "{count} existing workflows",
+	"auth.setup.setupConfirmation.credentialsCount": "{count} credentials",
+	"auth.setup.setupConfirmation.concatEntities": "{workflows} and {credentials}",
+	"auth.setup.confirmOwnerSetupMessage": "To give others access to your <b>{entities}</b>, you’ll need to share these account details with them. Or you can continue as before with no account, by going back and skipping this setup. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a>",
+	"auth.setup.createAccount": "Create account",
+	"auth.setup.skipSetupTemporarily": "Skip setup for now",
+	"auth.setup.next": "Next",
+	"auth.setup.ownerAccountBenefits": "Setting up an owner account allows you to invite others, and prevents people using n8n without an account",
+	"auth.setup.settingUpOwnerError": "Problem setting up owner",
+	"auth.signin": "Sign in",
+	"auth.signin.error": "Problem logging in",
+	"auth.signout": "Sign out",
+	"auth.signout.error": "Could not sign out",
+	"auth.signup.finishAccountSetup": "Finish account setup",
+	"auth.signup.missingTokenError": "Missing token",
+	"auth.signup.setupYourAccount": "Set up your account",
+	"auth.signup.setupYourAccountError": "Problem setting up your account",
+	"auth.signup.tokenValidationError": "Issue validating invite token",
+	"error": "Error",
+	"error.goBack": "Go back",
+	"error.pageNotFound": "Oops, couldn’t find that",
+	"forgotPassword": "Forgot my password",
+	"forgotPassword.emailSentIfExists": "We’ve emailed {email} (if there’s a matching account)",
+	"forgotPassword.getRecoveryLink": "Email me a recovery link",
+	"forgotPassword.noSMTPToSendEmailWarning": "Please contact your admin. n8n isn’t set up to send email right now.",
+	"forgotPassword.recoverPassword": "Recover password",
+	"forgotPassword.recoveryEmailSent": "Recovery email sent",
+	"forgotPassword.returnToSignIn": "Back to sign in",
+	"forgotPassword.sendingEmailError": "Problem sending email",
+	"forgotPassword.smtpErrorContactAdministrator": "Please contact your administrator (problem with your SMTP setup)",
+	"openWorkflow.workflowImportError": "Could not import workflow",
+	"openWorkflow.workflowNotFoundError": "Could not find workflow",
+	"settings": "Settings",
+	"settings.goBack": "Go back",
+	"settings.personal": "Personal",
+	"settings.personal.basicInformation": "Basic Information",
+	"settings.personal.personalSettings": "Personal Settings",
+	"settings.personal.personalSettingsUpdated": "Personal details updated",
+	"settings.personal.personalSettingsUpdatedError": "Problem updating your details",
+	"settings.personal.save": "Save",
+	"settings.personal.security": "Security",
+	"settings.signup.signUpInviterInfo": "{firstName} {lastName} has invited you to n8n",
+	"settings.users": "Users",
+	"settings.users.confirmDataHandlingAfterDeletion": "What should we do with their data?",
+	"settings.users.confirmUserDeletion": "Are you sure you want to delete this invited user?",
+	"settings.users.delete": "Delete",
+	"settings.users.deleteConfirmationMessage": "Type “delete all data” to confirm",
+	"settings.users.deleteConfirmationText": "delete all data",
+	"settings.users.deleteUser": "Delete {user}",
+	"settings.users.deleteWorkflowsAndCredentials": "Delete their workflows and credentials",
+	"settings.users.emailInvitesSent": "An invite email was sent to {emails}",
+	"settings.users.emailInvitesSentError": "Could not invite {emails}",
+	"settings.users.emailSentTo": "Email sent to {email}",
+	"settings.users.invalidEmailError": "{email} is not a valid email",
+	"settings.users.invite": "Invite",
+	"settings.users.inviteNewUsers": "Invite new users",
+	"settings.users.inviteResent": "Invite resent",
+	"settings.users.inviteUser": "Invite user",
+	"settings.users.inviteXUser": "Invite {count} users",
+	"settings.users.newEmailsToInvite": "New User Email Addresses",
+	"settings.users.noUsersToInvite": "No users to invite",
+	"settings.users.setupMyAccount": "Set up my owner account",
+	"settings.users.setupSMTPToInviteUsers": "Set up SMTP to invite users. <a href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\" target=\"_blank\">Instructions</a>",
+	"settings.users.setupToInviteUsers": "To invite users, set up your own account",
+	"settings.users.setupToInviteUsersInfo": "Invited users won’t be able to see workflows and credentials of other users. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a> <br /> <br /> You will need details of an <a href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\" target=\"_blank\">SMTP server</a> to complete the setup.",
+	"settings.users.smtpToAddUsersWarning": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\">Instructions</a>",
+	"settings.users.transferWorkflowsAndCredentials": "Transfer their workflows and credentials to another user",
+	"settings.users.transferredToUser": "Data transferred to {user}",
+	"settings.users.userDeleted": "User deleted",
+	"settings.users.userDeletedError": "Problem while deleting user",
+	"settings.users.userInvited": "User invited",
+	"settings.users.userInvitedError": "User could not be invited",
+	"settings.users.userReinviteError": "Could not reinvite user",
+	"settings.users.userToTransferTo": "User to transfer to",
+	"settings.users.usersInvited": "Users invited",
+	"settings.users.usersInvitedError": "Could not invite users",
+	"settings.users.usersEmailedError": "Couldn't send invite email",
+	"settings.version": "Version",
+	"startupError": "Error connecting to n8n",
+	"startupError.message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again"
+}

@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 import { LANGUAGES } from '../constants';
 
-export const requesterOperations = [
+export const requesterOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const requesterOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const requesterFields = [
+export const requesterFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            requester: create
 	// ----------------------------------------
@@ -119,9 +119,7 @@ export const requesterFields = [
 				default: [],
 				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -150,9 +148,7 @@ export const requesterFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getLocations',
-					],
+					loadOptionsMethod: 'getLocations',
 				},
 			},
 			{
@@ -304,9 +300,7 @@ export const requesterFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -341,9 +335,7 @@ export const requesterFields = [
 				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getLocations',
-					],
+					loadOptionsMethod: 'getLocations',
 				},
 			},
 			{
@@ -424,9 +416,7 @@ export const requesterFields = [
 				default: [],
 				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -461,9 +451,7 @@ export const requesterFields = [
 				default: '',
 				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getLocations',
-					],
+					loadOptionsMethod: 'getLocations',
 				},
 			},
 			{
@@ -509,4 +497,4 @@ export const requesterFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

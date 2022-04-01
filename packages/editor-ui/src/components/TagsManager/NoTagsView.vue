@@ -3,10 +3,9 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">Ready to organize your workflows?</div>
+				<div class="headline">{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}</div>
 				<div class="description">
-					With workflow tags, you're free to create the perfect tagging system for
-					your flows
+					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
 			</div>
 			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />
@@ -30,7 +29,6 @@ $--footer-spacing: 45px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	min-height: $--tags-manager-min-height - $--footer-spacing;
 	margin-top: $--footer-spacing;
 }
 

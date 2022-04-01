@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const textOperations = [
+export const textOperations: INodeProperties[] = [
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -122,4 +122,4 @@ export const textOperations = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

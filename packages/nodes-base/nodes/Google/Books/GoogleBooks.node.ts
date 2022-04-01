@@ -31,7 +31,6 @@ export class GoogleBooks implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Books',
-			color: '#4198e6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -323,7 +322,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Volume Position',
 				name: 'volumePosition',
 				type: 'string',
-				description: 'Position on shelf to move the item (0 puts the item before the<br />current first item, 1 puts it between the first and the second and so on).',
+				description: 'Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on).',
 				default: '',
 				required: true,
 				displayOptions: {

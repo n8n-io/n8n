@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const workItemOperations = [
+export const workItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const workItemOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const workItemFields = [
+export const workItemFields: INodeProperties[] = [
 	// ----------------------------------
 	//         workItem: create
 	// ----------------------------------
@@ -60,10 +60,32 @@ export const workItemFields = [
 		},
 	},
 	{
+		displayName: 'Space ID',
+		name: 'spaceId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getSpaces',
+		},
+		default: [],
+		required: true,
+		description: 'ID of the space to retrieve the work items from.',
+		displayOptions: {
+			show: {
+				resource: [
+					'workItem',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Status ID',
 		name: 'statusId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: ['spaceId'],
 			loadOptionsMethod: 'getStatuses',
 		},
 		default: [],
@@ -369,4 +391,4 @@ export const workItemFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

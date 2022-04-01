@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const buildOperations = [
+export const buildOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const buildOperations = [
 		default: 'cancel',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const buildFields = [
+export const buildFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                               build:cancel                                 */
@@ -353,4 +353,4 @@ export const buildFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

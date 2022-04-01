@@ -1,5 +1,6 @@
 // The Vue build version to load with the `import` command
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
+import './public_path';
 import Vue from 'vue';
 
 import './plugins';
@@ -9,10 +10,16 @@ import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
 import './n8n-theme.scss';
 
+import "@fontsource/open-sans/latin-400.css";
+import "@fontsource/open-sans/latin-600.css";
+import "@fontsource/open-sans/latin-700.css";
+
 import App from '@/App.vue';
 import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
+import { TelemetryPlugin } from './plugins/telemetry';
+import { I18nPlugin } from './plugins/i18n';
 
 import { store } from './store';
 
@@ -20,6 +27,9 @@ Vue.config.productionTip = false;
 router.afterEach((to, from) => {
 	runExternalHook('main.routeChange', store, { from, to });
 });
+
+Vue.use(TelemetryPlugin);
+Vue.use((vue) => I18nPlugin(vue, store));
 
 new Vue({
 	router,

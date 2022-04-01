@@ -31,7 +31,6 @@ export class Contentful implements INodeType {
 		description: 'Consume Contenful API',
 		defaults: {
 			name: 'Contentful',
-			color: '#2E75D4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

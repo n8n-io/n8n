@@ -1,6 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const emailOperations = [
+export const emailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -25,11 +27,10 @@ export const emailOperations = [
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const emailFields = [
+export const emailFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                email:send                                  */
@@ -57,6 +58,7 @@ export const emailFields = [
 		displayName: 'To Email',
 		name: 'toEmail',
 		type: 'string',
+		default: '',
 		required: true,
 		placeholder: 'info@example.com',
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
@@ -118,6 +120,22 @@ export const emailFields = [
 		},
 		default: '',
 		description: 'HTML text message of email.',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -226,6 +244,29 @@ export const emailFields = [
 		],
 	},
 	{
+		displayName: 'Variables (JSON)',
+		name: 'variablesJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'HTML text message of email.',
+	},
+	{
 		displayName: 'Variables',
 		name: 'variablesUi',
 		type: 'fixedCollection',
@@ -239,6 +280,9 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
+				],
+				jsonParameters: [
+					false,
 				],
 			},
 		},
@@ -291,6 +335,7 @@ export const emailFields = [
 		displayName: 'To Email',
 		name: 'toEmail',
 		type: 'string',
+		default: '',
 		required: true,
 		placeholder: 'info@example.com',
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
@@ -314,6 +359,22 @@ export const emailFields = [
 		},
 		required: true,
 		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -418,6 +479,9 @@ export const emailFields = [
 				operation: [
 					'sendTemplate',
 				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -443,4 +507,27 @@ export const emailFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+	{
+		displayName: 'Variables (JSON)',
+		name: 'variablesJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'HTML text message of email.',
+	},
+];

@@ -9,7 +9,7 @@ module.exports = [
 		logging: true,
 		entities: Object.values(entities),
 		database: path.join(UserSettings.getUserN8nFolderPath(), 'database.sqlite'),
-		migrations: ['./src/databases/sqlite/migrations/*.ts'],
+		migrations: ['./src/databases/sqlite/migrations/index.ts'],
 		subscribers: ['./src/databases/sqlite/subscribers/*.ts'],
 		cli: {
 			entitiesDir: './src/databases/entities',
@@ -28,7 +28,7 @@ module.exports = [
 		database: 'n8n',
 		schema: 'public',
 		entities: Object.values(entities),
-		migrations: ['./src/databases/postgresdb/migrations/*.ts'],
+		migrations: ['./src/databases/postgresdb/migrations/index.ts'],
 		subscribers: ['src/subscriber/**/*.ts'],
 		cli: {
 			entitiesDir: './src/databases/entities',
@@ -46,7 +46,7 @@ module.exports = [
 		port: '3306',
 		logging: false,
 		entities: Object.values(entities),
-		migrations: ['./src/databases/mysqldb/migrations/*.ts'],
+		migrations: ['./src/databases/mysqldb/migrations/index.ts'],
 		subscribers: ['src/subscriber/**/*.ts'],
 		cli: {
 			entitiesDir: './src/databases/entities',

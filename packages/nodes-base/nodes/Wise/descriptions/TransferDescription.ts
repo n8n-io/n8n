@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const transferOperations = [
+export const transferOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const transferOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const transferFields = [
+export const transferFields: INodeProperties[] = [
 	// ----------------------------------
 	//         transfer: create
 	// ----------------------------------
@@ -227,7 +227,7 @@ export const transferFields = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the transfer receipt as a PDF file.<br>Only for executed transfers, having status \'Outgoing Payment Sent\'.',
+		description: `Download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'.`,
 		displayOptions: {
 			show: {
 				resource: [
@@ -457,4 +457,4 @@ export const transferFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

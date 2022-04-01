@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
@@ -23,6 +26,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodeType,
+	INodeVersionedType,
 	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
@@ -41,7 +45,7 @@ import { Workflow } from './Workflow';
  * @param {INodeType} nodeType
  * @returns
  */
-export function getSpecialNodeParameters(nodeType: INodeType) {
+export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
 	if (nodeType.description.polling === true) {
 		return [
 			{
@@ -52,8 +56,8 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Poll Time',
 				},
-				default: {},
-				description: 'Time at which polling should occur.',
+				default: { item: [{ mode: 'everyMinute' }] },
+				description: 'Time at which polling should occur',
 				placeholder: 'Add Poll Time',
 				options: [
 					{
@@ -111,7 +115,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 									},
 								},
 								default: 14,
-								description: 'The hour of the day to trigger (24h format).',
+								description: 'The hour of the day to trigger (24h format)',
 							},
 							{
 								displayName: 'Minute',
@@ -127,7 +131,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 									},
 								},
 								default: 0,
-								description: 'The minute of the day to trigger.',
+								description: 'The minute of the day to trigger',
 							},
 							{
 								displayName: 'Day of Month',
@@ -143,7 +147,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 									maxValue: 31,
 								},
 								default: 1,
-								description: 'The day of the month to trigger.',
+								description: 'The day of the month to trigger',
 							},
 							{
 								displayName: 'Weekday',
@@ -185,7 +189,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 									},
 								],
 								default: '1',
-								description: 'The weekday to trigger.',
+								description: 'The weekday to trigger',
 							},
 							{
 								displayName: 'Cron Expression',
@@ -214,7 +218,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 									},
 								},
 								default: 2,
-								description: 'All how many X minutes/hours it should trigger.',
+								description: 'All how many X minutes/hours it should trigger',
 							},
 							{
 								displayName: 'Unit',
@@ -236,7 +240,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 									},
 								],
 								default: 'hours',
-								description: 'If it should trigger all X minutes or hours.',
+								description: 'If it should trigger all X minutes or hours',
 							},
 						],
 					},
@@ -296,7 +300,7 @@ export function displayParameter(
 
 			if (
 				values.length === 0 ||
-				!parameter.displayOptions.show[propertyName].some((v) => values.includes(v))
+				!parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v))
 			) {
 				return false;
 			}
@@ -323,7 +327,7 @@ export function displayParameter(
 
 			if (
 				values.length !== 0 &&
-				parameter.displayOptions.hide[propertyName].some((v) => values.includes(v))
+				parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v))
 			) {
 				return false;
 			}
@@ -778,7 +782,6 @@ export function getNodeParameters(
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
 				// Set only if value got found
-
 				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
@@ -844,7 +847,7 @@ export function getNodeWebhooks(
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -940,7 +943,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -1384,4 +1387,28 @@ export function mergeNodeProperties(
 			mainProperties[existingIndex] = property;
 		}
 	}
+}
+
+export function getVersionedNodeType(
+	object: INodeVersionedType | INodeType,
+	version?: number,
+): INodeType {
+	if (isNodeTypeVersioned(object)) {
+		return (object as INodeVersionedType).getNodeType(version);
+	}
+	return object as INodeType;
+}
+
+export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
+	if (isNodeTypeVersioned(object)) {
+		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
+			element.description.name = object.description.name;
+			return element;
+		});
+	}
+	return [object as INodeType];
+}
+
+export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
+	return !!('getNodeType' in object);
 }

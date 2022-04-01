@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const reportOperations = [
+export const reportOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const reportOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const reportFields = [
+export const reportFields: INodeProperties[] = [
 	{
 		displayName: 'View ID',
 		name: 'viewId',
@@ -310,11 +310,7 @@ export const reportFields = [
 								name: 'expression',
 								type: 'string',
 								default: 'ga:newUsers',
-								description: `A metric expression in the request. An expression is constructed from one or more metrics and numbers.<br>
-								Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis,<br>
-								Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters. Example ga:totalRefunds/ga:users,<br>
-								in most cases the metric expression is just a single metric name like ga:users. Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE)<br>
-								metrics will result in unexpected results.`,
+								description: `<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>`,
 							},
 							{
 								displayName: 'Formatting Type',
@@ -358,4 +354,4 @@ export const reportFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
