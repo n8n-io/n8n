@@ -6,10 +6,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
