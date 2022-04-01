@@ -12,6 +12,8 @@ import {
 	randomInvalidPassword,
 } from './shared/random';
 
+jest.mock('../../src/telemetry');
+
 let app: express.Application;
 let testDbName = '';
 
@@ -103,7 +105,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 
 test('POST /owner should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
 		const response = await authOwnerAgent.post('/owner').send(invalidPayload);
@@ -113,7 +115,7 @@ test('POST /owner should fail with invalid inputs', async () => {
 
 test('POST /owner/skip-setup should persist skipping setup to the DB', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/owner/skip-setup').send();
 

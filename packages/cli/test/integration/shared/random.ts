@@ -17,7 +17,7 @@ const randomDigit = () => Math.floor(Math.random() * 10);
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
 export const randomValidPassword = () =>
-	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH) + randomUppercaseLetter() + randomDigit();
+	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH - 2) + randomUppercaseLetter() + randomDigit();
 
 export const randomInvalidPassword = () =>
 	chooseRandomly([
