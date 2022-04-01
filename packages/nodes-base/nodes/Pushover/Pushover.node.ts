@@ -284,6 +284,13 @@ export class Pushover implements INodeType {
 						default: '',
 						description: `A title for your supplementary URL, otherwise just the URL is shown`,
 					},
+					{
+						displayName: 'HTML',
+						name: 'html',
+						type: 'string',
+						default: '',
+						description: `Set to 1 to enable HTML parsing`,
+					},
 				],
 			},
 		],
