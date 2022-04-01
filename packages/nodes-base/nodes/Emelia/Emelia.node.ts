@@ -337,7 +337,7 @@ export class Emelia implements INodeType {
 							variables,
 						});
 
-						returnData.push({ duplicateCampaign });
+						returnData.push({ _id: duplicateCampaign });
 					}
 
 				} else if (resource === 'contactList') {
