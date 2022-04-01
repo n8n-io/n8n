@@ -15,6 +15,8 @@ import {
 
 import {
 	ExecutionError,
+	ICredentialType,
+	ICredentialTypeData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
@@ -50,6 +52,7 @@ import { getLogger } from './Logger';
 
 import * as config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -86,6 +89,7 @@ export class WorkflowRunnerProcess {
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
+		const { userId } = inputData;
 
 		logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
@@ -94,10 +98,12 @@ export class WorkflowRunnerProcess {
 
 		let className: string;
 		let tempNode: INodeType;
+		let tempCredential: ICredentialType;
 		let filePath: string;
 
 		this.startedAt = new Date();
 
+		// Load the required nodes
 		const nodeTypesData: INodeTypeData = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
@@ -131,9 +137,32 @@ export class WorkflowRunnerProcess {
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(nodeTypesData);
 
+		// Load the required credentials
+		const credentialsTypeData: ICredentialTypeData = {};
+		// eslint-disable-next-line no-restricted-syntax
+		for (const credentialTypeName of Object.keys(this.data.credentialsTypeData)) {
+			className = this.data.credentialsTypeData[credentialTypeName].className;
+
+			filePath = this.data.credentialsTypeData[credentialTypeName].sourcePath;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
+			const tempModule = require(filePath);
+
+			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				tempCredential = new tempModule[className]() as ICredentialType;
+			} catch (error) {
+				throw new Error(`Error loading credential "${credentialTypeName}" from: "${filePath}"`);
+			}
+
+			credentialsTypeData[credentialTypeName] = {
+				type: tempCredential,
+				sourcePath: filePath,
+			};
+		}
+
 		// Init credential types the workflow uses (is needed to apply default values to credentials)
 		const credentialTypes = CredentialTypes();
-		await credentialTypes.init(inputData.credentialsTypeData);
+		await credentialTypes.init(credentialsTypeData);
 
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
@@ -145,7 +174,7 @@ export class WorkflowRunnerProcess {
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		await BinaryDataManager.init(binaryDataConfig);
@@ -208,7 +237,9 @@ export class WorkflowRunnerProcess {
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
 		});
+		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -246,8 +277,15 @@ export class WorkflowRunnerProcess {
 			additionalData: IWorkflowExecuteAdditionalData,
 			inputData?: INodeExecutionData[] | undefined,
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
-			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
-			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
+				workflowInfo,
+				userId,
+			);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(
+				workflowData,
+				additionalData.userId,
+				inputData,
+			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
 				this.executionIdCallback = (executionId: string) => {
@@ -273,6 +311,7 @@ export class WorkflowRunnerProcess {
 					executionId,
 					workflowData,
 					result,
+					additionalData.userId,
 				);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
@@ -286,6 +325,13 @@ export class WorkflowRunnerProcess {
 			await sendToParentProcess('finishExecution', { executionId, result });
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
+
+			if (returnData!.error) {
+				const error = new Error(returnData!.error.message);
+				error.stack = returnData!.error.stack;
+				throw error;
+			}
+
 			return returnData!.data!.main;
 		};
 

@@ -31,16 +31,19 @@ export async function gristApiRequest(
 		apiKey,
 		planType,
 		customSubdomain,
+		selfHostedUrl,
 	} = await this.getCredentials('gristApi') as GristCredentials;
 
-	const subdomain = planType === 'free' ? 'docs' : customSubdomain;
+	const gristapiurl = (planType === 'free') ? `https://docs.getgrist.com/api${endpoint}` :
+	(planType === 'paid') ? `https://${customSubdomain}.getgrist.com/api${endpoint}` :
+		`${selfHostedUrl}/api${endpoint}`;
 
 	const options: OptionsWithUri = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 		},
 		method,
-		uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+		uri: gristapiurl,
 		qs,
 		body,
 		json: true,
@@ -106,4 +109,3 @@ export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristD
 		);
 	}
 }
-

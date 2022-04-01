@@ -4,52 +4,105 @@
 			<n8n-text size="small">{{ $locale.baseText('fixedCollectionParameter.currentlyNoItemsExist') }}</n8n-text>
 		</div>
 
-		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
+		<div
+			v-for="property in getProperties"
+			:key="property.name"
+			class="fixed-collection-parameter-property"
+		>
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().topParameterDisplayName(property)"
+				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				:labelHoverableOnly="true"
 				size="small"
 			>
 				<div v-if="multipleValues === true">
-					<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
+					<div
+						v-for="(value, index) in values[property.name]"
+						:key="property.name + index"
+						class="parameter-item"
+					>
 						<div class="parameter-item-wrapper">
 							<div class="delete-option" v-if="!isReadOnly">
-								<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$locale.baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name, index)" />
+								<font-awesome-icon
+									icon="trash"
+									class="reset-icon clickable"
+									:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+									@click="deleteOption(property.name, index)"
+								/>
 								<div v-if="sortable" class="sort-icon">
-									<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$locale.baseText('fixedCollectionParameter.moveUp')" @click="moveOptionUp(property.name, index)" />
-									<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" :title="$locale.baseText('fixedCollectionParameter.moveDown')" @click="moveOptionDown(property.name, index)" />
+									<font-awesome-icon
+										v-if="index !== 0"
+										icon="angle-up"
+										class="clickable"
+										:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+										@click="moveOptionUp(property.name, index)"
+									/>
+									<font-awesome-icon
+										v-if="index !== (values[property.name].length - 1)"
+										icon="angle-down"
+										class="clickable"
+										:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+										@click="moveOptionDown(property.name, index)"
+									/>
 								</div>
 							</div>
-							<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
+							<parameter-input-list
+								:parameters="property.values"
+								:nodeValues="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hideDelete="true"
+								@valueChanged="valueChanged"
+							/>
 						</div>
 					</div>
 				</div>
 				<div v-else class="parameter-item">
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$locale.baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name)" />
+							<font-awesome-icon
+								icon="trash"
+								class="reset-icon clickable"
+								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+								@click="deleteOption(property.name)"
+							/>
 						</div>
-						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
+						<parameter-input-list
+							:parameters="property.values"
+							:nodeValues="nodeValues"
+							:path="getPropertyPath(property.name)"
+							class="parameter-item"
+							@valueChanged="valueChanged"
+							:hideDelete="true"
+						/>
 					</div>
 				</div>
 			</n8n-input-label>
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
-			<n8n-button v-if="parameter.options.length === 1" fullWidth @click="optionSelected(parameter.options[0].name)" :label="getPlaceholderText" />
+			<n8n-button
+				v-if="parameter.options.length === 1"
+				fullWidth
+				@click="optionSelected(parameter.options[0].name)"
+				:label="getPlaceholderText"
+			/>
 			<div v-else class="add-option">
-				<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small" @change="optionSelected" filterable>
+				<n8n-select
+					v-model="selectedOption"
+					:placeholder="getPlaceholderText"
+					size="small"
+					@change="optionSelected"
+					filterable
+				>
 					<n8n-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item)"
-						:value="item.name">
-					</n8n-option>
+						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
+						:value="item.name"
+					></n8n-option>
 				</n8n-select>
 			</div>
 		</div>
-
 	</div>
 </template>
 
@@ -78,17 +131,18 @@ export default mixins(genericHelpers)
 			'path', // string
 			'values', // INodeParameters
 		],
-		data () {
+		data() {
 			return {
 				selectedOption: undefined,
 			};
 		},
+
 		computed: {
-			getPlaceholderText (): string {
-				const placeholder = this.$locale.nodeText().placeholder(this.parameter);
+			getPlaceholderText(): string {
+				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
 				return placeholder ? placeholder : this.$locale.baseText('fixedCollectionParameter.choose');
 			},
-			getProperties (): INodePropertyCollection[] {
+			getProperties(): INodePropertyCollection[] {
 				const returnProperties = [];
 				let tempProperties;
 				for (const name of this.propertyNames) {
@@ -99,14 +153,14 @@ export default mixins(genericHelpers)
 				}
 				return returnProperties;
 			},
-			multipleValues (): boolean {
+			multipleValues(): boolean {
 				if (this.parameter.typeOptions !== undefined && this.parameter.typeOptions.multipleValues === true) {
 					return true;
 				}
 				return false;
 			},
 
-			parameterOptions (): INodePropertyCollection[] {
+			parameterOptions(): INodePropertyCollection[] {
 				if (this.multipleValues === true) {
 					return this.parameter.options;
 				}
@@ -115,29 +169,37 @@ export default mixins(genericHelpers)
 					return !this.propertyNames.includes(option.name);
 				});
 			},
-			propertyNames (): string[] {
+			propertyNames(): string[] {
 				if (this.values) {
 					return Object.keys(this.values);
 				}
 				return [];
 			},
-			sortable (): string {
+			sortable(): string {
 				return this.parameter.typeOptions && this.parameter.typeOptions.sortable;
 			},
 		},
 		methods: {
-			deleteOption (optionName: string, index?: number) {
-				const parameterData = {
-					name: this.getPropertyPath(optionName, index),
-					value: undefined,
-				};
-
-				this.$emit('valueChanged', parameterData);
+			deleteOption(optionName: string, index?: number) {
+				const currentOptionsOfSameType = this.values[optionName];
+				if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
+					// it's not the only option of this type, so just remove it.
+					this.$emit('valueChanged', {
+						name: this.getPropertyPath(optionName, index),
+						value: undefined,
+					});
+				} else {
+					// it's the only option, so remove the whole type
+					this.$emit('valueChanged', {
+						name: this.getPropertyPath(optionName),
+						value: undefined,
+					});
+				}
 			},
-			getPropertyPath (name: string, index?: number) {
+			getPropertyPath(name: string, index?: number) {
 				return `${this.path}.${name}` + (index !== undefined ? `[${index}]` : '');
 			},
-			getOptionProperties (optionName: string): INodePropertyCollection | undefined {
+			getOptionProperties(optionName: string): INodePropertyCollection | undefined {
 				for (const option of this.parameter.options) {
 					if (option.name === optionName) {
 						return option;
@@ -146,7 +208,7 @@ export default mixins(genericHelpers)
 
 				return undefined;
 			},
-			moveOptionDown (optionName: string, index: number) {
+			moveOptionDown(optionName: string, index: number) {
 				this.values[optionName].splice(index + 1, 0, this.values[optionName].splice(index, 1)[0]);
 
 				const parameterData = {
@@ -156,7 +218,7 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			moveOptionUp (optionName: string, index: number) {
+			moveOptionUp(optionName: string, index: number) {
 				this.values[optionName].splice(index - 1, 0, this.values[optionName].splice(index, 1)[0]);
 
 				const parameterData = {
@@ -166,7 +228,7 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			optionSelected (optionName: string) {
+			optionSelected(optionName: string) {
 				const option = this.getOptionProperties(optionName);
 				if (option === undefined) {
 					return;
@@ -211,7 +273,7 @@ export default mixins(genericHelpers)
 				this.$emit('valueChanged', parameterData);
 				this.selectedOption = undefined;
 			},
-			valueChanged (parameterData: IUpdateInformation) {
+			valueChanged(parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
 		},
@@ -224,7 +286,6 @@ export default mixins(genericHelpers)
 </script>
 
 <style scoped lang="scss">
-
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 }
@@ -239,7 +300,7 @@ export default mixins(genericHelpers)
 	z-index: 999;
 	color: #f56c6c;
 	left: 0;
-	top: .5em;
+	top: 0.5em;
 	width: 15px;
 	height: 100%;
 }
@@ -271,6 +332,6 @@ export default mixins(genericHelpers)
 	display: flex;
 	flex-direction: column;
 	margin-left: 1px;
-	margin-top: .5em;
+	margin-top: 0.5em;
 }
 </style>

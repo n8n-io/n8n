@@ -394,18 +394,23 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				const encoding = (options.encoding as string) || 'utf8';
-				let convertedValue = value.data;
+
+				const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, sourceKey);
+
+				let convertedValue: string;
 
 				if (setAllData === true) {
 					// Set the full data
-					convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, { stripBOM: options.stripBOM as boolean });
+					convertedValue = iconv.decode(buffer, encoding, { stripBOM: options.stripBOM as boolean });
 					newItem.json = JSON.parse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
 					newItem.json = JSON.parse(JSON.stringify(item.json));
 
 					if (options.keepAsBase64 !== true) {
-						convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, { stripBOM: options.stripBOM as boolean });
+						convertedValue = iconv.decode(buffer, encoding, { stripBOM: options.stripBOM as boolean });
+					} else {
+						convertedValue = Buffer.from(buffer).toString(BINARY_ENCODING);
 					}
 
 					if (options.jsonParse) {

@@ -114,7 +114,7 @@ export default mixins(
 					const newOptions = this.removeEmptyEntries(inputData.options);
 					if (Array.isArray(newOptions) && newOptions.length) {
 						// Has still options left so return
-						inputData.options = this.sortOptions(newOptions);
+						inputData.options = newOptions;
 						return inputData;
 					} else if (Array.isArray(newOptions) && newOptions.length === 0) {
 						delete inputData.options;
@@ -546,7 +546,14 @@ export default mixins(
 				let nodeOptions: IVariableSelectorOption[];
 				const upstreamNodes = this.workflow.getParentNodes(activeNode.name, inputName);
 
-				for (const [nodeName, node] of Object.entries(this.workflow.nodes)) {
+				const workflowNodes = Object.entries(this.workflow.nodes);
+
+				// Sort the nodes according to their position relative to the current node
+				workflowNodes.sort((a, b) => {
+					return upstreamNodes.indexOf(b[0]) - upstreamNodes.indexOf(a[0]);
+				});
+
+				for (const [nodeName, node] of workflowNodes) {
 					// Add the parameters of all nodes
 					// TODO: Later have to make sure that no parameters can be referenced which have expression which use input-data (for nodes which are not parent nodes)
 
@@ -606,7 +613,7 @@ export default mixins(
 				returnData.push(
 					{
 						name: this.$locale.baseText('variableSelector.nodes'),
-						options: this.sortOptions(allNodesData),
+						options: allNodesData,
 					},
 				);
 

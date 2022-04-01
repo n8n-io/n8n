@@ -1956,6 +1956,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.shippingCity !== undefined) {
 							body.ShippingCity = additionalFields.shippingCity as string;
 						}
+						if (additionalFields.accountNumber !== undefined) {
+							body.AccountNumber = additionalFields.accountNumber as string;
+						}
 						if (additionalFields.accountSource !== undefined) {
 							body.AccountSource = additionalFields.accountSource as string;
 						}
@@ -2063,6 +2066,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.shippingCity !== undefined) {
 							body.ShippingCity = updateFields.shippingCity as string;
+						}
+						if (updateFields.accountNumber !== undefined) {
+							body.AccountNumber = updateFields.accountNumber as string;
 						}
 						if (updateFields.accountSource !== undefined) {
 							body.AccountSource = updateFields.accountSource as string;

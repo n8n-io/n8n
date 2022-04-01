@@ -37,6 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+// Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;
@@ -57,6 +58,21 @@ return item;`,
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
+
+		const cleanupData = (inputData: IDataObject): IDataObject => {
+			Object.keys(inputData).map(key => {
+				if (inputData[key] !== null && typeof inputData[key] === 'object') {
+					if (inputData[key]!.constructor.name === 'Object') {
+						// Is regular node.js object so check its data
+						inputData[key] = cleanupData(inputData[key] as IDataObject);
+					} else {
+						// Is some special object like a Date so stringify
+						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+					}
+				}
+			});
+			return inputData;
+		};
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
@@ -123,7 +139,8 @@ return item;`,
 						// Try to find the line number which contains the error and attach to error message
 						const stackLines = error.stack.split('\n');
 						if (stackLines.length > 0) {
-							const lineParts = stackLines[1].split(':');
+							stackLines.shift();
+							const lineParts = stackLines.find((line: string) => line.includes('FunctionItem')).split(':');
 							if (lineParts.length > 2) {
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber)) {
@@ -145,7 +162,7 @@ return item;`,
 				}
 
 				const returnItem: INodeExecutionData = {
-					json: jsonData,
+					json: cleanupData(jsonData),
 				};
 
 				if (item.binary) {

@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -35,6 +36,7 @@ export class Function implements INodeType {
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
+// Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
 for (item of items) {
@@ -57,6 +59,21 @@ return items;`,
 
 		// Copy the items as they may get changed in the functions
 		items = JSON.parse(JSON.stringify(items));
+
+		const cleanupData = (inputData: IDataObject): IDataObject => {
+			Object.keys(inputData).map(key => {
+				if (inputData[key] !== null && typeof inputData[key] === 'object') {
+					if (inputData[key]!.constructor.name === 'Object') {
+						// Is regular node.js object so check its data
+						inputData[key] = cleanupData(inputData[key] as IDataObject);
+					} else {
+						// Is some special object like a Date so stringify
+						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+					}
+				}
+			});
+			return inputData;
+		};
 
 		// Define the global objects for the custom function
 		const sandbox = {
@@ -103,6 +120,8 @@ return items;`,
 		try {
 			// Execute the function code
 			items = (await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname));
+			items = this.helpers.normalizeItems(items);
+
 			// Do very basic validation of the data
 			if (items === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
@@ -117,6 +136,9 @@ return items;`,
 				if (typeof item.json !== 'object') {
 					throw new NodeOperationError(this.getNode(), 'The json-property has to be an object!');
 				}
+
+				item.json = cleanupData(item.json);
+
 				if (item.binary !== undefined) {
 					if (Array.isArray(item.binary) || typeof item.binary !== 'object') {
 						throw new NodeOperationError(this.getNode(), 'The binary-property has to be an object!');
@@ -130,7 +152,8 @@ return items;`,
 				// Try to find the line number which contains the error and attach to error message
 				const stackLines = error.stack.split('\n');
 				if (stackLines.length > 0) {
-					const lineParts = stackLines[1].split(':');
+					stackLines.shift();
+					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
 					if (lineParts.length > 2) {
 						const lineNumber = lineParts.splice(-2, 1);
 						if (!isNaN(lineNumber)) {
@@ -142,9 +165,6 @@ return items;`,
 				return Promise.reject(error);
 			}
 		}
-
-
-
 
 		return this.prepareOutputData(items);
 	}

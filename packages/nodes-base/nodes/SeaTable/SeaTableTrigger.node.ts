@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -108,13 +109,12 @@ export class SeaTableTrigger implements INodeType {
 		const simple = this.getNodeParameter('simple') as boolean;
 		const event = this.getNodeParameter('event') as string;
 		const ctx: ICtx = {};
+		const credentials = await this.getCredentials('seaTableApi') as IDataObject;
 
+		const timezone = credentials.timezone as string || 'Europe/Berlin';
 		const now = moment().utc().format();
-
 		const startDate = webhookData.lastTimeChecked as string || now;
-
 		const endDate = now;
-
 		webhookData.lastTimeChecked = endDate;
 
 		let rows;
@@ -126,8 +126,15 @@ export class SeaTableTrigger implements INodeType {
 		if (this.getMode() === 'manual') {
 			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, { sql: `SELECT * FROM ${tableName} LIMIT 1` }) as IRowResponse;
 		} else {
-			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint,
-				{ sql: `SELECT * FROM ${tableName} WHERE ${filterField} BETWEEN "${moment(startDate).utc().format('YYYY-MM-D HH:mm:ss')}" AND "${moment(endDate).utc().format('YYYY-MM-D HH:mm:ss')}"` }) as IRowResponse;
+			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
+				sql: `SELECT * FROM ${tableName}
+					WHERE ${filterField} BETWEEN "${moment(startDate)
+					.tz(timezone)
+					.format('YYYY-MM-D HH:mm:ss')}"
+					AND "${moment(endDate)
+					.tz(timezone)
+					.format('YYYY-MM-D HH:mm:ss')}"`,
+			})) as IRowResponse;
 		}
 
 		let response;

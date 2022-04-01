@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
@@ -74,6 +73,12 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/users/me',
+					},
+				},
 			},
 			{
 				name: 'pipedriveOAuth2Api',
@@ -87,6 +92,10 @@ export class Pipedrive implements INodeType {
 				},
 			},
 		],
+		requestDefaults: {
+			baseURL: 'https://api.pipedrive.com/v1',
+			url: '',
+		},
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -3139,6 +3148,31 @@ export class Pipedrive implements INodeType {
 						default: '',
 					},
 					{
+						displayName: 'Marketing Status',
+						name: 'marketing_status',
+						type: 'options',
+						options: [
+							{
+								name: 'No Consent',
+								value: 'no_consent',
+							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
+							},
+							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
+								name: 'Archived',
+								value: 'archived',
+							},
+						],
+						default: 'subscribed',
+						description: 'Please be aware that it is only allowed once to change the marketing status from an old status to a new one.',
+					},
+					{
 						displayName: 'Organization ID',
 						name: 'org_id',
 						type: 'options',
@@ -3174,6 +3208,16 @@ export class Pipedrive implements INodeType {
 						],
 						default: '3',
 						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+					},
+					{
+						displayName: 'User ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the User this deal will be associated with.',
 					},
 				],
 			},
@@ -3317,6 +3361,31 @@ export class Pipedrive implements INodeType {
 						default: '',
 					},
 					{
+						displayName: 'Marketing Status',
+						name: 'marketing_status',
+						type: 'options',
+						options: [
+							{
+								name: 'No Consent',
+								value: 'no_consent',
+							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
+							},
+							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
+								name: 'Archived',
+								value: 'archived',
+							},
+						],
+						default: 'subscribed',
+						description: 'Please be aware that it is only allowed once to change the marketing status from an old status to a new one.',
+					},
+					{
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
@@ -3342,6 +3411,16 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description: 'Phone number of the person.',
+					},
+					{
+						displayName: 'User ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the User this person will be associated with.',
 					},
 					{
 						displayName: 'Visible to',
@@ -4500,7 +4579,7 @@ export class Pipedrive implements INodeType {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
-						const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+						const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						formData.file = {
 							value: fileBufferData,
