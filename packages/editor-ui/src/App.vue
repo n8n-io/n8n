@@ -28,11 +28,13 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
+import { addHeaders, loadLanguage } from './plugins/i18n';
+import { restApi } from '@/components/mixins/restApi';
 
 export default mixins(
 	showMessage,
 	userHelpers,
+	restApi,
 ).extend({
 	name: 'App',
 	components: {
@@ -41,8 +43,11 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['defaultLocale', 'isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
+		defaultLocale (): string {
+			return this.$store.getters.defaultLocale;
+		},
 	},
 	data() {
 		return {
@@ -153,6 +158,11 @@ export default mixins(
 
 		this.trackPage();
 		this.$externalHooks().run('app.mount');
+
+		if (this.defaultLocale !== 'en') {
+			const headers = await this.restApi().getNodeTranslationHeaders();
+			if (headers) addHeaders(headers, this.defaultLocale);
+		}
 	},
 	watch: {
 		$route(route) {
@@ -161,7 +171,7 @@ export default mixins(
 
 			this.trackPage();
 		},
-		'$store.getters.defaultLocale'(newLocale) {
+		defaultLocale(newLocale) {
 			loadLanguage(newLocale);
 		},
 	},
