@@ -1138,6 +1138,7 @@
 	"node.execute.executeNode": "Execute node",
 	"node.execute.executing": "Executing",
 	"node.input": "Input",
+	"node.input.immediate": "Immediate",
 	"node.output": "Output",
 	"node.output.runNodeHint": "Execute this node to output data",
 	"node.output.executing": "Executing node...",

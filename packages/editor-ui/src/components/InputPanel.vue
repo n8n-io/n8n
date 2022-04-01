@@ -6,6 +6,7 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('node.input') }}</span>
 					</template>
+					<n8n-option :label="$locale.baseText('node.input.immediate')" :value="IMMEDIATE_KEY" :key="IMMEDIATE_KEY"></n8n-option>
 					<n8n-option v-for="node in workflowNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 			</div>
@@ -15,10 +16,17 @@
 
 <script lang="ts">
 import { INodeUi } from '@/Interface';
-import Vue from 'vue';
+import { Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+const IMMEDIATE_KEY = '__IMMEDIATE__';
+
+export default mixins(
+	workflowHelpers,
+).extend({
 	name: 'InputPanel',
 	components: { RunData },
 	props: {
@@ -28,14 +36,27 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			selectedNode: '',
+			selectedNode: IMMEDIATE_KEY,
+			IMMEDIATE_KEY,
 		};
 	},
 	computed: {
-		node (): INodeUi | null {
-			if (!this.selectedNode) {
-				return null;
+		workflow (): Workflow {
+			return this.getWorkflow();
+		},
+		parentNodes (): string[] {
+			const activeNode = this.$store.getters.activeNode;
+			if (activeNode === null) {
+				return [];
 			}
+
+			return this.workflow.getParentNodes(activeNode.name, 'main', 1);
+		},
+		node (): INodeUi | null {
+			if (this.selectedNode === IMMEDIATE_KEY) {
+				return this.$store.getters.getNodeByName(this.parentNodes[0]);
+			}
+
 			return this.$store.getters.getNodeByName(this.selectedNode);
 		},
 		workflowNodes (): INodeUi[] {
