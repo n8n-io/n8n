@@ -56,6 +56,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	}, {
 		accessKeyId: credentials.accessKeyId,
 		secretAccessKey: credentials.secretAccessKey,
+		sessionToken: credentials.sessionToken ? credentials.sessionToken : undefined,
 	});
 
 	try {

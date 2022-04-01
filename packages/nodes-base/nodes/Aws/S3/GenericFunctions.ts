@@ -27,7 +27,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, JsonObject, NodeApiError, NodeOperationError,
  } from 'n8n-workflow';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
@@ -41,10 +41,10 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	// Sign AWS API request with the user credentials
 	const signOpts = {headers: headers || {}, host: endpoint.host, method, path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`, body} as Request;
 
-	const securityHeaders = { 
+	const securityHeaders = {
 		accessKeyId: `${credentials.accessKeyId}`.trim(),
 		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined
+		sessionToken: credentials.sessionToken ? `${credentials.sessionToken}`.trim() : undefined,
 	};
 
 	sign(signOpts, securityHeaders);
@@ -63,7 +63,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), (error as JsonObject));
 	}
 }
 

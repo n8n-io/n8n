@@ -52,8 +52,14 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 	// Sign AWS API request with the user credentials
 	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.sessionToken ? `${credentials.sessionToken}`.trim() : undefined,
+	};
+
+	sign(signOpts, securityHeaders);
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
@@ -69,7 +75,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			const errorMessage = error?.response?.data || error?.response?.body;
 			if (errorMessage.includes('AccessDeniedException')) {
 				const user = JSON.parse(errorMessage).Message.split(' ')[1];
-				throw new NodeApiError(this.getNode(), error, { 
+				throw new NodeApiError(this.getNode(), error, {
 					message: 'Unauthorized — please check your AWS policy configuration',
 					description: `Make sure an identity-based policy allows user ${user} to perform textract:AnalyzeExpense` });
 			}
