@@ -102,7 +102,7 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}
