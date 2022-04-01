@@ -9,6 +9,7 @@
 		@opened="showDocumentHelp = true"
 	>
 		<div class="data-display" v-if="node" >
+			<InputPanel :runIndex="runIndex" @runChange="onRunIndexChange" @openSettings="openSettings" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
 			<OuputPanel :runIndex="runIndex" @runChange="onRunIndexChange" @openSettings="openSettings" />
 		</div>
@@ -33,11 +34,13 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import OuputPanel from './OuputPanel.vue';
+import InputPanel from './InputPanel.vue';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
+		InputPanel,
 		OuputPanel,
 	},
 	data () {

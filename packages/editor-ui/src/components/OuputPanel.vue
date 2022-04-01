@@ -27,6 +27,7 @@ import Vue from 'vue';
 import RunData from './RunData.vue';
 
 export default Vue.extend({
+	name: 'OutputPanel',
 	components: { RunData },
 	props: {
 		runIndex: {

@@ -1137,6 +1137,7 @@
 	"node.execute.hint": "Executes this {nodeName} node after executing any previous nodes that have not yet returned data",
 	"node.execute.executeNode": "Execute node",
 	"node.execute.executing": "Executing",
+	"node.input": "Input",
 	"node.output": "Output",
 	"node.output.runNodeHint": "Execute this node to output data",
 	"node.output.executing": "Executing node...",
