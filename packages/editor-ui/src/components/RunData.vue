@@ -19,7 +19,7 @@
 			</n8n-select>
 		</div>
 
-		<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
+		<n8n-tabs v-model="currentOutputIndex" v-if="maxOutputIndex > 0 && overrideOutputIndex === undefined" :options="branches" />
 		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
@@ -216,7 +216,6 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import Vue from 'vue/types/umd';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -241,6 +240,9 @@ export default mixins(
 			runIndex: {
 				type: Number,
 			},
+			overrideOutputIndex: {
+				type: Number,
+			},
 		},
 		data () {
 			return {
@@ -253,7 +255,7 @@ export default mixins(
 					path: deselectedPlaceholder,
 				},
 				showData: false,
-				outputIndex: 0,
+				currentOutputIndex: 0,
 				binaryDataDisplayVisible: false,
 				binaryDataDisplayData: null as IBinaryDisplayData | null,
 
@@ -267,6 +269,9 @@ export default mixins(
 			this.init();
 		},
 		computed: {
+			outputIndex(): number {
+				return this.overrideOutputIndex !== undefined ? this.overrideOutputIndex : this.currentOutputIndex;
+			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
 			},
@@ -439,7 +444,7 @@ export default mixins(
 			},
 			init() {
 				// Reset the selected output index every time another node gets selected
-				this.outputIndex = 0;
+				this.currentOutputIndex = 0;
 				this.refreshDataSize();
 				if (this.displayMode === 'binary') {
 					this.closeBinaryDataDisplay();

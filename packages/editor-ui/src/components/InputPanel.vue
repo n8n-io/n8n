@@ -1,8 +1,13 @@
 <template>
-	<RunData :nodeUi="node" :runIndex="runIndex" @openSettings="openSettings" @runChange="onRunIndexChange">
+	<RunData
+		:nodeUi="node"
+		:runIndex="runIndex"
+		:overrideOutputIndex="overrideOutputIndex"
+		@openSettings="openSettings"
+		@runChange="onRunIndexChange">
 		<template name="header">
 			<div :class="$style.titleSection">
-				<n8n-select size="small" v-model="selectedNode" @click.stop>
+				<n8n-select size="small" v-model="selectedNode">
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('node.input') }}</span>
 					</template>
@@ -41,28 +46,45 @@ export default mixins(
 		};
 	},
 	computed: {
+		activeNode (): INodeUi | null {
+			return this.$store.getters.activeNode;
+		},
 		workflow (): Workflow {
 			return this.getWorkflow();
 		},
-		parentNodes (): string[] {
-			const activeNode = this.$store.getters.activeNode;
-			if (activeNode === null) {
-				return [];
+		parentNode (): string | undefined {
+			if (!this.activeNode) {
+				return undefined;
 			}
 
-			return this.workflow.getParentNodes(activeNode.name, 'main', 1);
+			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1)[0];
+		},
+		parentNodeOutputIndex (): number | undefined {
+			if (!this.parentNode || !this.activeNode) {
+				return undefined;
+			}
+			return this.workflow.getNodeConnectionOutputIndex(this.activeNode.name, this.parentNode, 'main', 1);
 		},
 		node (): INodeUi | null {
 			if (this.selectedNode === IMMEDIATE_KEY) {
-				return this.$store.getters.getNodeByName(this.parentNodes[0]);
+				if (this.parentNode) {
+					return this.$store.getters.getNodeByName(this.parentNode);
+				}
+
+				return null;
 			}
 
 			return this.$store.getters.getNodeByName(this.selectedNode);
 		},
+		overrideOutputIndex (): number | undefined {
+			return this.selectedNode === IMMEDIATE_KEY ? this.parentNodeOutputIndex : undefined;
+		},
 		workflowNodes (): INodeUi[] {
-			const activeNode = this.$store.getters.activeNode;
+			if (!this.activeNode) {
+				return [];
+			}
 			const nodes: INodeUi[] = this.$store.getters.allNodes;
-			return nodes.filter((node) => node.name !== activeNode.name);
+			return nodes.filter((node) => this.activeNode && (node.name !== this.activeNode.name));
 		},
 	},
 	methods: {
