@@ -2184,6 +2184,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.reason !== undefined) {
 							body.Reason = additionalFields.reason as string;
 						}
+						if (additionalFields.status !== undefined) {
+							body.Status = additionalFields.status as string;
+						}
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
 						}
@@ -2247,6 +2250,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.reason !== undefined) {
 							body.Reason = updateFields.reason as string;
+						}
+						if (updateFields.status !== undefined) {
+							body.Status = updateFields.status as string;
 						}
 						if (updateFields.owner !== undefined) {
 							body.OwnerId = updateFields.owner as string;
