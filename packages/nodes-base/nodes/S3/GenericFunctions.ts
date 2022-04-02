@@ -68,7 +68,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	const securityHeaders = {
 		accessKeyId: `${credentials.accessKeyId}`.trim(),
 		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined
+		sessionToken: credentials.sessionToken ? `${credentials.sessionToken}`.trim() : undefined
 	};
 
 	sign(signOpts, securityHeaders);

@@ -32,23 +32,10 @@ export class Aws implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'Temporary Credentials',
-			name: 'temporaryCredentials',
-			description: 'Support for temporary credentials from AWS STS',
-			type: 'boolean',
-			default: false,
-		},
-		{
 			displayName: 'Session Token',
 			name: 'sessionToken',
+			description: '(Optional) Temporary credentials from AWS STS',
 			type: 'string',
-			displayOptions: {
-				show: {
-					temporaryCredentials: [
-						true,
-					],
-				},
-			},
 			default: '',
 			typeOptions: {
 				password: true,
