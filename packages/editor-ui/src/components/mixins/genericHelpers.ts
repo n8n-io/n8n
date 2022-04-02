@@ -1,4 +1,5 @@
 import { showMessage } from '@/components/mixins/showMessage';
+import { VIEWS } from '@/constants';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -12,26 +13,24 @@ export const genericHelpers = mixins(showMessage).extend({
 	},
 	computed: {
 		isReadOnly (): boolean {
-			if (['NodeViewExisting', 'NodeViewNew'].includes(this.$route.name as string)) {
-				return false;
-			}
-			return true;
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.$route.name as VIEWS);
 		},
 	},
 	methods: {
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${this.$locale.number(Math.floor(msPassed / 1000), 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
+					return `${Math.floor(msPassed / 1000)} ${this.$locale.baseText('genericHelpers.sec')}`;
 				}
 
-				return `${this.$locale.number(msPassed / 1000, 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
+				return `${msPassed / 1000} ${this.$locale.baseText('genericHelpers.sec')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
 			const minutesPassed = Math.floor(secondsPassed / 60);
+			const secondsLeft = (secondsPassed - (minutesPassed * 60)).toString().padStart(2, '0');
 
-			return `${this.$locale.number(minutesPassed, 'decimal')}:${this.$locale.number(secondsPassed, 'decimal')} ${this.$locale.baseText('genericHelpers.min')}`;
+			return `${minutesPassed}:${secondsLeft} ${this.$locale.baseText('genericHelpers.min')}`;
 		},
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
@@ -75,12 +74,12 @@ export const genericHelpers = mixins(showMessage).extend({
 
 		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
 			const functionName = inputParameters.shift() as string;
-			const debounceTime = inputParameters.shift() as number;
+			const { trailing, debounceTime }  = inputParameters.shift();
 
 			// @ts-ignore
 			if (this.debouncedFunctions[functionName] === undefined) {
 				// @ts-ignore
-				this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, { leading: true });
+				this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, trailing ? { trailing } : { leading: true } );
 			}
 			// @ts-ignore
 			await this.debouncedFunctions[functionName].apply(this, inputParameters);

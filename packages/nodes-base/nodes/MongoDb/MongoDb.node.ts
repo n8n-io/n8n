@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError
 } from 'n8n-workflow';
 
@@ -46,7 +47,33 @@ export class MongoDb implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		if (operation === 'delete') {
+		if (operation === 'aggregate') {
+			// ----------------------------------
+			//         aggregate
+			// ----------------------------------
+
+			try {
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+
+				if (queryParameter._id && typeof queryParameter._id === 'string') {
+					queryParameter._id = new ObjectID(queryParameter._id);
+				}
+
+				const query = mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.aggregate(queryParameter);
+
+				const queryResult = await query.toArray();
+
+				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
+				} else {
+					throw error;
+				}
+			}
+		} else if (operation === 'delete') {
 			// ----------------------------------
 			//         delete
 			// ----------------------------------
@@ -59,7 +86,7 @@ export class MongoDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -99,7 +126,7 @@ export class MongoDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message } );
+					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
 				} else {
 					throw error;
 				}
@@ -137,7 +164,7 @@ export class MongoDb implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
+					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -188,7 +215,7 @@ export class MongoDb implements INodeType {
 						.updateOne(filter, { $set: item }, updateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						item.json = { error: error.message };
+						item.json = { error: (error as JsonObject).message };
 						continue;
 					}
 					throw error;

@@ -6,10 +6,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -39,7 +39,6 @@ export class UrlScanIo implements INodeType {
 		description: 'Provides various utilities for monitoring websites like health checks or screenshots',
 		defaults: {
 			name: 'urlscan.io',
-			color: '#f3d337',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -74,7 +73,7 @@ export class UrlScanIo implements INodeType {
 			async urlScanIoApiTest(
 				this: ICredentialTestFunctions,
 				credentials: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const { apiKey } = credentials.data as { apiKey: string };
 
 				const options: OptionsWithUri = {

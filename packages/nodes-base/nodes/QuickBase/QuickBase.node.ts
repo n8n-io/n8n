@@ -49,7 +49,6 @@ export class QuickBase implements INodeType {
 		description: 'Integrate with the Quick Base RESTful API',
 		defaults: {
 			name: 'Quick Base',
-			color: '#73489d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

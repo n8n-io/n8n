@@ -36,7 +36,6 @@ export class Ghost implements INodeType {
 		description: 'Consume Ghost API',
 		defaults: {
 			name: 'Ghost',
-			color: '#15212a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

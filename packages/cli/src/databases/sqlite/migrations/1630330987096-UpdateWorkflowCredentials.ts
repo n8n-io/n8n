@@ -1,6 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import config = require('../../../../config');
 import { MigrationHelpers } from '../../MigrationHelpers';
+import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
@@ -9,8 +10,8 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 	name = 'UpdateWorkflowCredentials1630330987096';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		console.log('Start migration', this.name);
-		console.time(this.name);
+		logMigrationStart(this.name);
+
 		const tablePrefix = config.get('database.tablePrefix');
 		const helpers = new MigrationHelpers(queryRunner);
 
@@ -146,7 +147,8 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 				queryRunner.query(updateQuery, updateParams);
 			}
 		});
-		console.timeEnd(this.name);
+
+		logMigrationEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

@@ -7,10 +7,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -32,7 +32,6 @@ export class Telegram implements INodeType {
 		description: 'Sends data to Telegram',
 		defaults: {
 			name: 'Telegram',
-			color: '#0088cc',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1816,7 +1815,7 @@ export class Telegram implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async telegramBotTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async telegramBotTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const options = {
 					uri: `https://api.telegram.org/bot${credentials!.accessToken}/getMe`,
@@ -2172,6 +2171,8 @@ export class Telegram implements INodeType {
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
+
+					body.disable_notification = body.disable_notification?.toString() || 'false';
 
 					const formData = {
 						...body,

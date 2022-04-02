@@ -23,7 +23,6 @@ export class CalendlyTrigger implements INodeType {
 		description: 'Starts the workflow when Calendly events occur',
 		defaults: {
 			name: 'Calendly Trigger',
-			color: '#374252',
 		},
 		inputs: [],
 		outputs: ['main'],

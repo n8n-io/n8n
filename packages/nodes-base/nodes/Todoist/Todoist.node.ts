@@ -43,7 +43,6 @@ export class Todoist implements INodeType {
 		description: 'Consume Todoist API',
 		defaults: {
 			name: 'Todoist',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -289,7 +288,6 @@ export class Todoist implements INodeType {
 						name: 'priority',
 						type: 'number',
 						typeOptions: {
-							numberStepSize: 1,
 							maxValue: 4,
 							minValue: 1,
 						},
@@ -480,7 +478,6 @@ export class Todoist implements INodeType {
 						name: 'priority',
 						type: 'number',
 						typeOptions: {
-							numberStepSize: 1,
 							maxValue: 4,
 							minValue: 1,
 						},

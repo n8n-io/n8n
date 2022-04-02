@@ -13,8 +13,8 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
@@ -94,7 +94,6 @@
 			:max="getArgument('maxValue')"
 			:min="getArgument('minValue')"
 			:precision="getArgument('numberPrecision')"
-			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
 			@input="onTextInputChange"
@@ -114,7 +113,6 @@
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
-			:popper-append-to-body="true"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
@@ -144,11 +142,12 @@
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
+			:title="displayTitle"
+			:placeholder="$locale.baseText('parameterInput.select')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
 			@blur="onBlur"
-			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
 				<div class="list-option">
@@ -184,7 +183,7 @@
 				<el-dropdown-menu slot="dropdown">
 					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $locale.baseText('parameterInput.addExpression') }}</el-dropdown-item>
 					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $locale.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="hasRemoteMethod">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
@@ -201,6 +200,8 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
+	IHttpRequestOptions,
+	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
@@ -301,6 +302,12 @@ export default mixins(
 			},
 		},
 		computed: {
+			areExpressionsDisabled(): boolean {
+				return this.$store.getters['ui/areExpressionsDisabled'];
+			},
+			codeAutocomplete (): string | undefined {
+				return this.getArgument('codeAutocomplete') as string | undefined;
+			},
 			showExpressionAsTextInput(): boolean {
 				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
 
@@ -415,6 +422,10 @@ export default mixins(
 				return false;
 			},
 			expressionValueComputed (): NodeParameterValue | null {
+				if (this.areExpressionsDisabled) {
+					return this.value;
+				}
+
 				if (this.node === null) {
 					return null;
 				}
@@ -500,7 +511,7 @@ export default mixins(
 				return this.parameter.default === this.value;
 			},
 			isEditor (): boolean {
-				return this.getArgument('editor') === 'code';
+				return ['code', 'json'].includes(this.editorType);
 			},
 			isValueExpression () {
 				if (this.parameter.noDataExpression === true) {
@@ -511,8 +522,11 @@ export default mixins(
 				}
 				return false;
 			},
+			editorType (): string {
+				return this.getArgument('editor') as string;
+			},
 			parameterOptions (): INodePropertyOptions[] {
-				if (this.remoteMethod === undefined) {
+				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
 				}
@@ -555,8 +569,8 @@ export default mixins(
 
 				return styles;
 			},
-			remoteMethod (): string | undefined {
-				return this.getArgument('loadOptionsMethod') as string | undefined;
+			hasRemoteMethod (): boolean {
+				return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 			},
 			shortPath (): string {
 				const shortPath = this.path.split('.');
@@ -571,21 +585,21 @@ export default mixins(
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
-					: this.$locale.nodeText().placeholder(this.parameter);
+					: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
-					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option);
+					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 			},
 			getOptionsOptionDescription(option: { value: string; description: string }): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
-					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option);
+					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
 			},
 
 			async loadRemoteParameterOptions () {
-				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
+				if (this.node === null || this.hasRemoteMethod === false || this.remoteParameterOptionsLoading) {
 					return;
 				}
 				this.remoteParameterOptionsLoadingIssues = null;
@@ -597,7 +611,10 @@ export default mixins(
 				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
+					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
+
+					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -651,6 +668,10 @@ export default mixins(
 				this.valueChanged(value);
 			},
 			openExpressionEdit() {
+				if (this.areExpressionsDisabled) {
+					return;
+				}
+
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
@@ -766,7 +787,7 @@ export default mixins(
 				}
 			}
 
-			if (this.remoteMethod !== undefined && this.node !== null) {
+			if (this.hasRemoteMethod === true && this.node !== null) {
 				// Make sure to load the parameter options
 				// directly and whenever the credentials change
 				this.$watch(() => this.node!.credentials, () => {
@@ -912,18 +933,6 @@ export default mixins(
 	display: flex;
 	height: 100%;
 	align-items: center;
-}
-
-.errors {
-	margin-top: var(--spacing-2xs);
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-
-	a {
-		color: var(--color-danger);
-		text-decoration: underline;
-	}
 }
 
 </style>
