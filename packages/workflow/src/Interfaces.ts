@@ -683,6 +683,7 @@ export interface ITriggerFunctions {
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void;
+	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
