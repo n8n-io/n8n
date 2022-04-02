@@ -24,10 +24,7 @@ export class ServiceNowBasicApi implements ICredentialType {
 	];
 	authenticate: IAuthenticateBasicAuth = {
 		type: 'basicAuth',
-		properties: {
-			userPropertyName: '={{$credentials.user}}',
-			passwordPropertyName: '={{$credentials.password}}',
-		},
+		properties: {},
 	};
 	test: ICredentialTestRequest = {
 		request: {
