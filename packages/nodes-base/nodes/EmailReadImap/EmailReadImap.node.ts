@@ -429,7 +429,7 @@ export class EmailReadImap implements INodeType {
 							// if it receives an error before the workflow got activated
 							returnedPromise.promise().then(() => {
 								this.emitError(error as Error);
-							})
+							});
 						}
 					}
 				},
