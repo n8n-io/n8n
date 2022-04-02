@@ -682,6 +682,15 @@ export class ActiveWorkflowRunner {
 					(error) => console.error(error),
 				);
 			};
+			returnFunctions.emitError = async (error: Error): Promise<void> => {
+				await this.activeWorkflows?.remove(workflowData.id.toString());
+				this.activationErrors[workflowData.id.toString()] = {
+					time: new Date().getTime(),
+					error: {
+						message: error.message,
+					},
+				};
+			};
 			return returnFunctions;
 		};
 	}
