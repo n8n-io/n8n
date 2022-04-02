@@ -258,6 +258,7 @@
       "dist/credentials/SentryIoOAuth2Api.credentials.js",
       "dist/credentials/SentryIoServerApi.credentials.js",
       "dist/credentials/ServiceNowOAuth2Api.credentials.js",
+      "dist/credentials/ServiceNowBasicApi.credentials.js",
       "dist/credentials/Sftp.credentials.js",
       "dist/credentials/ShopifyApi.credentials.js",
       "dist/credentials/Signl4Api.credentials.js",
