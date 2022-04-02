@@ -12,7 +12,6 @@ import {
 	INodePropertyOptions,
 	JsonObject,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -24,10 +23,6 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 
 	if (authenticationMethod === 'basicAuth') {
 		credentials = await this.getCredentials('serviceNowBasicApi');
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-		headers.Authorization = `Basic ${Buffer.from(`${credentials.user}:${credentials.password}`).toString('base64')}`;
 	} else {
 		credentials = await this.getCredentials('serviceNowOAuth2Api');
 	}
@@ -53,7 +48,7 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 
 	try {
-		const credentialType = authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'basicAuth';
+		const credentialType = authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'serviceNowBasicApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {

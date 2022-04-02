@@ -31,7 +31,7 @@ export class ServiceNowBasicApi implements ICredentialType {
 	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://${credentials?.subdomain}.service-now.com',
+			baseURL: '=https://{{$credentials?.subdomain}}.service-now.com',
 			url: '/api/now/table/sys_user_role',
 		}
 	}
