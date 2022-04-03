@@ -451,7 +451,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	expect(storedMember.firstName).not.toBe(newMemberData.firstName);
 	expect(storedMember.lastName).not.toBe(newMemberData.lastName);
 
-	const comparisonResult = await compareHash(member.password, newMemberData.password);
+	const comparisonResult = await compareHash(member.password, storedMember.password);
 	expect(comparisonResult).toBe(false);
 	expect(storedMember.password).not.toBe(newMemberData.password);
 });
