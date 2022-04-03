@@ -724,7 +724,7 @@ export const schema = {
 	logs: {
 		level: {
 			doc: 'Log output level',
-			format: ['error', 'warn', 'info', 'verbose', 'debug'] as const,
+			format: ['error', 'warn', 'info', 'verbose', 'debug', 'silent'] as const,
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
