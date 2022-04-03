@@ -93,13 +93,15 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 		[{ email: randomName() }],
 	];
 
-	for (const invalidPayload of invalidPayloads) {
-		const response = await authlessAgent.post('/forgot-password').send(invalidPayload);
-		expect(response.statusCode).toBe(400);
+	await Promise.all(
+		invalidPayloads.map(async (invalidPayload) => {
+			const response = await authlessAgent.post('/forgot-password').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-		const storedOwner = await Db.collections.User!.findOneOrFail({ email: owner.email });
-		expect(storedOwner.resetPasswordToken).toBeNull();
-	}
+			const storedOwner = await Db.collections.User!.findOneOrFail({ email: owner.email });
+			expect(storedOwner.resetPasswordToken).toBeNull();
+		}),
+	);
 });
 
 test('POST /forgot-password should fail if user is not found', async () => {
@@ -249,13 +251,15 @@ test('POST /change-password should fail with invalid inputs', async () => {
 		},
 	];
 
-	for (const invalidPayload of invalidPayloads) {
-		const response = await authlessAgent.post('/change-password').query(invalidPayload);
-		expect(response.statusCode).toBe(400);
+	await Promise.all(
+		invalidPayloads.map(async (invalidPayload) => {
+			const response = await authlessAgent.post('/change-password').query(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-		const { password: storedPassword } = await Db.collections.User!.findOneOrFail();
-		expect(owner.password).toBe(storedPassword);
-	}
+			const { password: storedPassword } = await Db.collections.User!.findOneOrFail();
+			expect(owner.password).toBe(storedPassword);
+		}),
+	);
 });
 
 test('POST /change-password should fail when token has expired', async () => {
