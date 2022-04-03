@@ -23,9 +23,7 @@ import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/U
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
-
 import type { User } from '../../../src/databases/entities/User';
-import { Telemetry } from '../../../src/telemetry';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
