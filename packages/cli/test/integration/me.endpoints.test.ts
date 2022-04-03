@@ -133,22 +133,24 @@ describe('Owner shell', () => {
 			newPassword: randomValidPassword(),
 		};
 
-		const payloads = [validPasswordPayload, ...INVALID_PASSWORD_PAYLOADS];
+		const validPayloads = [validPasswordPayload, ...INVALID_PASSWORD_PAYLOADS];
 
-		for (const payload of payloads) {
-			const response = await authOwnerShellAgent.patch('/me/password').send(payload);
-			expect([400, 500].includes(response.statusCode)).toBe(true);
+		await Promise.all(
+			validPayloads.map(async (payload) => {
+				const response = await authOwnerShellAgent.patch('/me/password').send(payload);
+				expect([400, 500].includes(response.statusCode)).toBe(true);
 
-			const storedMember = await Db.collections.User!.findOneOrFail();
+				const storedMember = await Db.collections.User!.findOneOrFail();
 
-			if (payload.newPassword) {
-				expect(storedMember.password).not.toBe(payload.newPassword);
-			}
+				if (payload.newPassword) {
+					expect(storedMember.password).not.toBe(payload.newPassword);
+				}
 
-			if (payload.currentPassword) {
-				expect(storedMember.password).not.toBe(payload.currentPassword);
-			}
-		}
+				if (payload.currentPassword) {
+					expect(storedMember.password).not.toBe(payload.currentPassword);
+				}
+			}),
+		);
 
 		const storedOwnerShell = await Db.collections.User!.findOneOrFail();
 		expect(storedOwnerShell.password).toBeNull();
