@@ -87,10 +87,12 @@ test('POST /owner should fail with invalid inputs', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
-		const response = await authOwnerAgent.post('/owner').send(invalidPayload);
-		expect(response.statusCode).toBe(400);
-	}
+	await Promise.all(
+		INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
+			const response = await authOwnerAgent.post('/owner').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}),
+	);
 });
 
 test('POST /owner/skip-setup should persist skipping setup to the DB', async () => {
