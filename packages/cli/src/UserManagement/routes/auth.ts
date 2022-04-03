@@ -74,7 +74,7 @@ export function authenticationMethods(this: N8nApp): void {
 					user = await resolveJwt(cookieContents);
 
 					if (!config.get('userManagement.isInstanceOwnerSetUp')) {
-						await issueCookie(res, user);
+						res.cookie(AUTH_COOKIE_NAME, cookieContents);
 					}
 
 					return sanitizeUser(user);
