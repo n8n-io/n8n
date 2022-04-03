@@ -16,7 +16,9 @@ import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntit
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { compareHash, hashPassword } from '../../src/UserManagement/UserManagementHelper';
+import { compareHash } from '../../src/UserManagement/UserManagementHelper';
+
+jest.mock('../../src/telemetry');
 
 jest.mock('../../src/telemetry');
 

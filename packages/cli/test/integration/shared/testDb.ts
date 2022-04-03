@@ -17,6 +17,7 @@ import { categorize } from './utils';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload } from './types';
+import { genSaltSync, hashSync } from 'bcryptjs';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.

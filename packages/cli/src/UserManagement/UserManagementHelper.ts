@@ -226,11 +226,8 @@ export async function compareHash(plaintext: string, hash: string): Promise<bool
 		return await compare(plaintext, hash);
 	} catch (error) {
 		if (error instanceof Error && error.message.includes('Invalid salt version')) {
-			error.message = [
-				error.message,
-				'Comparison against unhashed string',
-				'Please hash the value to compare against',
-			].join('. ');
+			error.message +=
+				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
 		}
 
 		throw new Error(error);
