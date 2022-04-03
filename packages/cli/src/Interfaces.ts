@@ -458,7 +458,7 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	workflowTagsDisabled: boolean;
-	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;
