@@ -1,14 +1,14 @@
 import {
 	IAuthenticateBasicAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
-	ICredentialTestRequest,
 } from 'n8n-workflow';
 
 export class ServiceNowBasicApi implements ICredentialType {
 	name = 'serviceNowBasicApi';
 	extends = [
-		'httpBasicAuth'
+		'httpBasicAuth',
 	];
 	displayName = 'ServiceNow Basic Auth API';
 	documentationUrl = 'serviceNow';
@@ -30,6 +30,6 @@ export class ServiceNowBasicApi implements ICredentialType {
 		request: {
 			baseURL: '=https://{{$credentials?.subdomain}}.service-now.com',
 			url: '/api/now/table/sys_user_role',
-		}
-	}
+		},
+	};
 }
