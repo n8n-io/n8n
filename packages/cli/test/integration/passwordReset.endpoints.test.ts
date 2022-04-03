@@ -16,8 +16,6 @@ import type { Role } from '../../src/databases/entities/Role';
 
 jest.mock('../../src/telemetry');
 
-jest.mock('../../src/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;

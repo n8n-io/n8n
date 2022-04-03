@@ -21,8 +21,6 @@ import { User } from '../../src/databases/entities/User';
 
 jest.mock('../../src/telemetry');
 
-jest.mock('../../src/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalMemberRole: Role;
