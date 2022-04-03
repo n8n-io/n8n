@@ -5,7 +5,6 @@ import { v4 as uuid } from 'uuid';
 import { Db } from '../../src';
 import config = require('../../config');
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { Role } from '../../src/databases/entities/Role';
 import {
 	randomEmail,
 	randomValidPassword,
@@ -14,10 +13,11 @@ import {
 } from './shared/random';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+import type { Role } from '../../src/databases/entities/Role';
+import type { User } from '../../src/databases/entities/User';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { compareHash } from '../../src/UserManagement/UserManagementHelper';
-import { User } from '../../src/databases/entities/User';
 
 jest.mock('../../src/telemetry');
 
