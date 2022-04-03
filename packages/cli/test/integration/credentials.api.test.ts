@@ -7,6 +7,7 @@ import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
 import type { User } from '../../src/databases/entities/User';
 import * as testDb from './shared/testDb';
+import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 
 jest.mock('../../src/telemetry');
 
@@ -80,10 +81,12 @@ test('POST /credentials should fail with invalid inputs', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	for (const invalidPayload of INVALID_PAYLOADS) {
-		const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
-		expect(response.statusCode).toBe(400);
-	}
+	await Promise.all(
+		INVALID_PAYLOADS.map(async (invalidPayload) => {
+			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}),
+	);
 });
 
 test('POST /credentials should fail with missing encryption key', async () => {
@@ -329,13 +332,15 @@ test('PATCH /credentials/:id should fail with invalid inputs', async () => {
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
-	for (const invalidPayload of INVALID_PAYLOADS) {
-		const response = await authOwnerAgent
-			.patch(`/credentials/${savedCredential.id}`)
-			.send(invalidPayload);
+	await Promise.all(
+		INVALID_PAYLOADS.map(async (invalidPayload) => {
+			const response = await authOwnerAgent
+				.patch(`/credentials/${savedCredential.id}`)
+				.send(invalidPayload);
 
-		expect(response.statusCode).toBe(400);
-	}
+			expect(response.statusCode).toBe(400);
+		}),
+	);
 });
 
 test('PATCH /credentials/:id should fail if cred not found', async () => {
@@ -378,14 +383,16 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(4); // 3 owner + 1 member
 
-	for (const credential of response.body.data) {
-		const { name, type, nodesAccess, data: encryptedData } = credential;
+	await Promise.all(
+		response.body.data.map(async (credential: CredentialsEntity) => {
+			const { name, type, nodesAccess, data: encryptedData } = credential;
 
-		expect(typeof name).toBe('string');
-		expect(typeof type).toBe('string');
-		expect(typeof nodesAccess[0].nodeType).toBe('string');
-		expect(encryptedData).toBeUndefined();
-	}
+			expect(typeof name).toBe('string');
+			expect(typeof type).toBe('string');
+			expect(typeof nodesAccess[0].nodeType).toBe('string');
+			expect(encryptedData).toBeUndefined();
+		}),
+	);
 });
 
 test('GET /credentials should retrieve owned creds for member', async () => {
@@ -401,14 +408,16 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(3);
 
-	for (const credential of response.body.data) {
-		const { name, type, nodesAccess, data: encryptedData } = credential;
+	await Promise.all(
+		response.body.data.map(async (credential: CredentialsEntity) => {
+			const { name, type, nodesAccess, data: encryptedData } = credential;
 
-		expect(typeof name).toBe('string');
-		expect(typeof type).toBe('string');
-		expect(typeof nodesAccess[0].nodeType).toBe('string');
-		expect(encryptedData).toBeUndefined();
-	}
+			expect(typeof name).toBe('string');
+			expect(typeof type).toBe('string');
+			expect(typeof nodesAccess[0].nodeType).toBe('string');
+			expect(encryptedData).toBeUndefined();
+		}),
+	);
 });
 
 test('GET /credentials should not retrieve non-owned creds for member', async () => {
