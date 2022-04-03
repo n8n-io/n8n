@@ -17,6 +17,7 @@ import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { compareHash } from '../../src/UserManagement/UserManagementHelper';
+import { User } from '../../src/databases/entities/User';
 
 jest.mock('../../src/telemetry');
 
@@ -80,29 +81,31 @@ test('GET /users should return all users', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(2);
 
-	for (const user of response.body.data) {
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			personalizationAnswers,
-			globalRole,
-			password,
-			resetPasswordToken,
-			isPending,
-		} = user;
+	await Promise.all(
+		response.body.data.map(async (user: User) => {
+			const {
+				id,
+				email,
+				firstName,
+				lastName,
+				personalizationAnswers,
+				globalRole,
+				password,
+				resetPasswordToken,
+				isPending,
+			} = user;
 
-		expect(validator.isUUID(id)).toBe(true);
-		expect(email).toBeDefined();
-		expect(firstName).toBeDefined();
-		expect(lastName).toBeDefined();
-		expect(personalizationAnswers).toBeUndefined();
-		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
-		expect(isPending).toBe(false);
-		expect(globalRole).toBeDefined();
-	}
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBeDefined();
+			expect(firstName).toBeDefined();
+			expect(lastName).toBeDefined();
+			expect(personalizationAnswers).toBeUndefined();
+			expect(password).toBeUndefined();
+			expect(resetPasswordToken).toBeUndefined();
+			expect(isPending).toBe(false);
+			expect(globalRole).toBeDefined();
+		}),
+	);
 });
 
 test('DELETE /users/:id should delete the user', async () => {
@@ -417,17 +420,19 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 		},
 	];
 
-	for (const invalidPayload of invalidPayloads) {
-		const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
-		expect(response.statusCode).toBe(400);
+	await Promise.all(
+		invalidPayloads.map(async (invalidPayload) => {
+			const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-		const storedUser = await Db.collections.User!.findOneOrFail({
-			where: { email: memberShellEmail },
-		});
-		expect(storedUser.firstName).toBeNull();
-		expect(storedUser.lastName).toBeNull();
-		expect(storedUser.password).toBeNull();
-	}
+			const storedUser = await Db.collections.User!.findOneOrFail({
+				where: { email: memberShellEmail },
+			});
+			expect(storedUser.firstName).toBeNull();
+			expect(storedUser.lastName).toBeNull();
+			expect(storedUser.password).toBeNull();
+		}),
+	);
 });
 
 test('POST /users/:id should fail with already accepted invite', async () => {
@@ -492,25 +497,27 @@ test('POST /users should email invites and create user shells', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	for (const {
-		user: { id, email: receivedEmail },
-		error,
-	} of response.body.data) {
-		expect(validator.isUUID(id)).toBe(true);
-		expect(testEmails.some((e) => e === receivedEmail)).toBe(true);
-		if (error) {
-			expect(error).toBe('Email could not be sent');
-		}
+	await Promise.all(
+		response.body.data.map(async ({ user, error }: { user: User; error: Error }) => {
+			const { id, email: receivedEmail } = user;
 
-		const user = await Db.collections.User!.findOneOrFail(id);
-		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } = user;
+			expect(validator.isUUID(id)).toBe(true);
+			expect(testEmails.some((e) => e === receivedEmail)).toBe(true);
+			if (error) {
+				expect(error).toBe('Email could not be sent');
+			}
 
-		expect(firstName).toBeNull();
-		expect(lastName).toBeNull();
-		expect(personalizationAnswers).toBeNull();
-		expect(password).toBeNull();
-		expect(resetPasswordToken).toBeNull();
-	}
+			const storedUser = await Db.collections.User!.findOneOrFail(id);
+			const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
+				storedUser;
+
+			expect(firstName).toBeNull();
+			expect(lastName).toBeNull();
+			expect(personalizationAnswers).toBeNull();
+			expect(password).toBeNull();
+			expect(resetPasswordToken).toBeNull();
+		}),
+	);
 });
 
 test('POST /users should fail with invalid inputs', async () => {
@@ -527,13 +534,15 @@ test('POST /users should fail with invalid inputs', async () => {
 		[{ email: randomName() }],
 	];
 
-	for (const invalidPayload of invalidPayloads) {
-		const response = await authOwnerAgent.post('/users').send(invalidPayload);
-		expect(response.statusCode).toBe(400);
+	await Promise.all(
+		invalidPayloads.map(async (invalidPayload) => {
+			const response = await authOwnerAgent.post('/users').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-		const users = await Db.collections.User!.find();
-		expect(users.length).toBe(1); // DB unaffected
-	}
+			const users = await Db.collections.User!.find();
+			expect(users.length).toBe(1); // DB unaffected
+		}),
+	);
 });
 
 test('POST /users should ignore an empty payload', async () => {
