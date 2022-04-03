@@ -1,5 +1,6 @@
 import express = require('express');
 import validator from 'validator';
+import { IsNull } from 'typeorm';
 
 import config = require('../../config');
 import * as utils from './shared/utils';
@@ -166,7 +167,7 @@ describe('Owner shell', () => {
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 			const storedShellOwner = await Db.collections.User!.findOneOrFail({
-				where: { email: null },
+				where: { email: IsNull() },
 			});
 
 			expect(storedShellOwner.personalizationAnswers).toEqual(validPayload);
