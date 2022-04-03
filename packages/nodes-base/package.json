@@ -766,7 +766,7 @@
     "request": "^2.88.2",
     "rhea": "^1.0.11",
     "rss-parser": "^3.7.0",
-    "simple-git": "^2.36.2",
+    "simple-git": "^3.5.0",
     "snowflake-sdk": "^1.5.3",
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
