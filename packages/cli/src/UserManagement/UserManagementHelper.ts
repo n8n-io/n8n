@@ -4,8 +4,10 @@
 import { Workflow } from 'n8n-workflow';
 import { In, IsNull, Not } from 'typeorm';
 import express = require('express');
+import { compare } from 'bcryptjs';
+
 import { PublicUser } from './Interfaces';
-import { Db, GenericHelpers, ResponseHelper } from '..';
+import { Db, ResponseHelper } from '..';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
@@ -215,4 +217,21 @@ export function isPostUsersId(req: express.Request, restEndpoint: string): boole
 
 export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
 	return request.user !== undefined;
+}
+
+// ----------------------------------
+//            hashing
+// ----------------------------------
+
+export async function compareHash(str: string, hash: string): Promise<boolean | undefined> {
+	try {
+		return await compare(str, hash);
+	} catch (error) {
+		if (error instanceof Error && error.message.includes('Invalid salt version')) {
+			error.message +=
+				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
+		}
+
+		throw new Error(error);
+	}
 }

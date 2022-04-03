@@ -7,6 +7,7 @@ export const incidentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -85,19 +86,21 @@ export const incidentFields: INodeProperties[] = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getUsers',
 					loadOptionsDependsOn: [
 						'additionalFields.assignment_group',
 					],
 				},
 				default: '',
-				description: 'Which user is the incident assigned to. Requires the selection of an assignment group',
+				description: 'Which user is the incident assigned to. Requires the selection of an assignment group.',
 			},
 			{
 				displayName: 'Assignment Group',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getAssignmentGroups',
 				},
 				default: '',
@@ -108,6 +111,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'business_service',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getBusinessServices',
 				},
 				default: '',
@@ -125,6 +129,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'category',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentCategories',
 				},
 				default: '',
@@ -142,9 +147,10 @@ export const incidentFields: INodeProperties[] = [
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getConfigurationItems',
 				},
-				default: '',
+				default: [],
 				description: 'Configuration Items, \'cmdb_ci\' in metadata',
 			},
 			{
@@ -197,7 +203,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 1,
 					},
 				],
-				default: '',
+				default: 1,
 				description: 'The impact of the incident',
 			},
 			{
@@ -205,16 +211,18 @@ export const incidentFields: INodeProperties[] = [
 				name: 'close_code',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentResolutionCodes',
 				},
 				default: '',
-				description: 'The resolution code of the incident. \'close_code\' in metadata',
+				description: 'The resolution code of the incident, \'close_code\' in metadata',
 			},
 			{
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentStates',
 				},
 				default: '',
@@ -225,6 +233,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentSubcategories',
 					loadOptionsDependsOn: [
 						'additionalFields.category',
@@ -251,7 +260,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 1,
 					},
 				],
-				default: '',
+				default: 1,
 				description: 'The urgency of the incident',
 			},
 		],
@@ -275,7 +284,7 @@ export const incidentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -330,17 +339,19 @@ export const incidentFields: INodeProperties[] = [
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getColumns',
 				},
-				default: '',
+				default: [],
 				description: 'A list of fields to return',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Filter',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',
@@ -417,10 +428,12 @@ export const incidentFields: INodeProperties[] = [
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getColumns',
 				},
-				default: '',
+				default: [],
 				description: 'A list of fields to return',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Return Values',
@@ -489,19 +502,21 @@ export const incidentFields: INodeProperties[] = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getUsers',
 					loadOptionsDependsOn: [
 						'additionalFields.assignment_group',
 					],
 				},
 				default: '',
-				description: 'Which user is the incident assigned to. Requires the selection of an assignment group',
+				description: 'Which user is the incident assigned to. Requires the selection of an assignment group.',
 			},
 			{
 				displayName: 'Assignment Group',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getAssignmentGroups',
 				},
 				default: '',
@@ -512,6 +527,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'business_service',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getBusinessServices',
 				},
 				default: '',
@@ -529,6 +545,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'category',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentCategories',
 				},
 				default: '',
@@ -546,9 +563,10 @@ export const incidentFields: INodeProperties[] = [
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getConfigurationItems',
 				},
-				default: '',
+				default: [],
 				description: 'Configuration Items, \'cmdb_ci\' in metadata',
 			},
 			{
@@ -601,7 +619,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 1,
 					},
 				],
-				default: '',
+				default: 1,
 				description: 'The impact of the incident',
 			},
 			{
@@ -609,9 +627,11 @@ export const incidentFields: INodeProperties[] = [
 				name: 'close_code',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentResolutionCodes',
 				},
 				default: '',
+				// nodelinter-ignore-next-line
 				description: 'The resolution code of the incident. \'close_code\' in metadata',
 			},
 			{
@@ -619,6 +639,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'hold_reason',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentHoldReasons',
 				},
 				default: '',
@@ -629,6 +650,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'state',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentStates',
 				},
 				default: '',
@@ -639,6 +661,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getIncidentSubcategories',
 					loadOptionsDependsOn: [
 						'additionalFields.category',
@@ -665,7 +688,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 1,
 					},
 				],
-				default: '',
+				default: 1,
 				description: 'The urgency of the incident',
 			},
 		],

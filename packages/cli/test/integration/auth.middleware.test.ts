@@ -1,13 +1,15 @@
 import express = require('express');
+
 import * as request from 'supertest';
 import {
 	REST_PATH_SEGMENT,
 	ROUTES_REQUIRING_AUTHORIZATION,
 	ROUTES_REQUIRING_AUTHENTICATION,
 } from './shared/constants';
-
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
+
+jest.mock('../../src/telemetry');
 
 let app: express.Application;
 let testDbName = '';

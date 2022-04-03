@@ -22,6 +22,7 @@ class Logger implements ILogger {
 		this.logger = winston.createLogger({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			level,
+			silent: level === 'silent',
 		});
 
 		if (output.includes('console')) {
