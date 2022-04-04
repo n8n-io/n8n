@@ -1750,6 +1750,9 @@ export function getExecuteTriggerFunctions(
 			emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
+			emitError: (error: Error): void => {
+				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
+			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
