@@ -110,7 +110,7 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 		(str: keyof IDatabaseCollections) => str.toLowerCase().startsWith('shared'),
 	);
 
-	const sortedEntities = [...isShared, ...isNotShared]; // shared tables must be cleared first
+	const sortedEntities = isShared.concat(isNotShared); // shared tables must be cleared first
 
 	if (dbType === 'sqlite') {
 		const testDb = getConnection(testDbName);
