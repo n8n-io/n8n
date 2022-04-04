@@ -174,11 +174,13 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 			// look for the question name linked to this attachment
 			const filename = attachment.filename;
 			let relatedQuestion = null;
-			Object.keys(submission).forEach(question => {
-				if (filename.endsWith('/' + _.toString(submission[question]).replace(/\s/g, '_'))) {
-					relatedQuestion = question;
-				}
-			});
+			if('question' === options.binaryNamingScheme) {
+				Object.keys(submission).forEach(question => {
+					if (filename.endsWith('/' + _.toString(submission[question]).replace(/\s/g, '_'))) {
+						relatedQuestion = question;
+					}
+				});
+			}
 
 			// Download attachment
 			// NOTE: this needs to follow redirects (possibly across domains), while keeping Authorization headers
@@ -211,11 +213,17 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 				}
 			}
 
-			// Use the provided prefix if any, otherwise try to use the original question name
-			const binaryName = options.dataPropertyAttachmentsPrefixName ? `${options.dataPropertyAttachmentsPrefixName}${index}` : relatedQuestion || `attachment_${index}`;
-			const fileName = filename.split('/').pop();
-
 			if (response && response.body) {
+				// Use the provided prefix if any, otherwise try to use the original question name
+				let binaryName;
+				if('question' === options.binaryNamingScheme && relatedQuestion) {
+					binaryName = relatedQuestion;
+				}
+				else {
+					binaryName = `${options.dataPropertyAttachmentsPrefixName || 'attachment_'}${index}`;
+				}
+				const fileName = filename.split('/').pop();
+
 				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(response.body, fileName);
 			}
 		}

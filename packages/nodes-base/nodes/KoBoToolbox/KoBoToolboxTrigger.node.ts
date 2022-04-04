@@ -16,7 +16,7 @@ import {
 } from './GenericFunctions';
 
 import {
-	 options,
+	options,
 } from './Options';
 
 export class KoBoToolboxTrigger implements INodeType {
