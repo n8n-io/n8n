@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -8,14 +9,18 @@ import * as express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
 import { IDataObject } from 'n8n-workflow';
+import { validate } from 'class-validator';
 import * as config from '../config';
 
 // eslint-disable-next-line import/no-cycle
-import { Db, ICredentialsDb, IPackageVersions } from '.';
+import { Db, ICredentialsDb, IPackageVersions, ResponseHelper } from '.';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import { TagEntity } from './databases/entities/TagEntity';
+import { User } from './databases/entities/User';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -188,3 +193,23 @@ export async function generateUniqueName(
 
 	return { name: `${requestedName} ${maxSuffix + 1}` };
 }
+
+export async function validateEntity(
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
+): Promise<void> {
+	const errors = await validate(entity);
+
+	const errorMessages = errors
+		.reduce<string[]>((acc, cur) => {
+			if (!cur.constraints) return acc;
+			acc.push(...Object.values(cur.constraints));
+			return acc;
+		}, [])
+		.join(' | ');
+
+	if (errorMessages) {
+		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
+	}
+}
+
+export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

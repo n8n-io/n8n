@@ -6,6 +6,7 @@
 </template>
 
 <script lang="ts">
+import { VIEWS } from '@/constants';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -18,7 +19,7 @@ export default Vue.extend({
 	methods: {
 		navigateTo() {
 			if (this.routeHasHistory) this.$router.go(-1);
-			else this.$router.push({ name: 'TemplatesSearchView' });
+			else this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 	},
 	mounted() {

@@ -357,16 +357,6 @@ export const eventFields: INodeProperties[] = [
 				description: 'Whether the event blocks time on the calendar',
 			},
 			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.',
-			},
-			{
 				displayName: 'Visibility',
 				name: 'visibility',
 				type: 'options',
@@ -985,16 +975,6 @@ export const eventFields: INodeProperties[] = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on n8n timezone',
 			},
 			{
 				displayName: 'Visibility',

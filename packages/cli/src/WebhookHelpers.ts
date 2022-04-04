@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
@@ -53,6 +54,9 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
+import { User } from './databases/entities/User';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -223,8 +227,22 @@ export async function executeWebhook(
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
+	let user: User;
+	if (
+		(workflowData as WorkflowEntity).shared?.length &&
+		(workflowData as WorkflowEntity).shared[0].user
+	) {
+		user = (workflowData as WorkflowEntity).shared[0].user;
+	} else {
+		try {
+			user = await getWorkflowOwner(workflowData.id.toString());
+		} catch (error) {
+			throw new ResponseHelper.ResponseError('Cannot find workflow', undefined, 404);
+		}
+	}
+
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -404,6 +422,7 @@ export async function executeWebhook(
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			userId: user.id,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -532,6 +551,7 @@ export async function executeWebhook(
 						if (returnData.data!.main[0]![0] === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						data = returnData.data!.main[0]![0].json;
@@ -583,11 +603,13 @@ export async function executeWebhook(
 						if (data === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						if (data.binary === undefined) {
 							responseCallback(new Error('No binary data to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
