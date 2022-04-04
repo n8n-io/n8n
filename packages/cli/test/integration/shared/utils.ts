@@ -89,12 +89,13 @@ export function initTestServer({
 	return testServer.app;
 }
 
+/**
+ * Pre-requisite: Mock the telemetry module before calling.
+ */
 export function initTestTelemetry() {
 	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
 
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
-
-	jest.spyOn(Telemetry.prototype, 'track').mockResolvedValue();
 }
 
 /**
@@ -117,10 +118,9 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 // ----------------------------------
 
 /**
- * Initialize a silent logger for test runs.
+ * Initialize a logger for test runs.
  */
 export function initTestLogger() {
-	config.set('logs.output', 'file'); // declutter console output
 	LoggerProxy.init(getLogger());
 }
 
