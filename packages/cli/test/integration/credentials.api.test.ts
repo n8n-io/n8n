@@ -45,7 +45,7 @@ afterAll(async () => {
 });
 
 test('POST /credentials should create cred', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const payload = credentialPayload();
@@ -78,7 +78,7 @@ test('POST /credentials should create cred', async () => {
 });
 
 test('POST /credentials should fail with invalid inputs', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	await Promise.all(
@@ -93,7 +93,7 @@ test('POST /credentials should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockResolvedValue(undefined);
 
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
@@ -104,7 +104,7 @@ test('POST /credentials should fail with missing encryption key', async () => {
 });
 
 test('POST /credentials should ignore ID in payload', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const firstResponse = await authOwnerAgent
@@ -121,7 +121,7 @@ test('POST /credentials should ignore ID in payload', async () => {
 });
 
 test('DELETE /credentials/:id should delete owned cred for owner', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
@@ -140,7 +140,7 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 });
 
 test('DELETE /credentials/:id should delete non-owned cred for owner', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
@@ -179,7 +179,7 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 });
 
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
@@ -198,7 +198,7 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 });
 
 test('DELETE /credentials/:id should fail if cred not found', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authOwnerAgent.delete('/credentials/123');
@@ -207,7 +207,7 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 });
 
 test('PATCH /credentials/:id should update owned cred for owner', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 	const patchPayload = credentialPayload();
@@ -241,7 +241,7 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 });
 
 test('PATCH /credentials/:id should update non-owned cred for owner', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
@@ -310,7 +310,7 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 });
 
 test('PATCH /credentials/:id should not update non-owned cred for member', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
@@ -328,7 +328,7 @@ test('PATCH /credentials/:id should not update non-owned cred for member', async
 });
 
 test('PATCH /credentials/:id should fail with invalid inputs', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
@@ -344,7 +344,7 @@ test('PATCH /credentials/:id should fail with invalid inputs', async () => {
 });
 
 test('PATCH /credentials/:id should fail if cred not found', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authOwnerAgent.patch('/credentials/123').send(credentialPayload());
@@ -356,7 +356,7 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockResolvedValue(undefined);
 
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
@@ -367,7 +367,7 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 });
 
 test('GET /credentials should retrieve all creds for owner', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	for (let i = 0; i < 3; i++) {
@@ -421,7 +421,7 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 });
 
 test('GET /credentials should not retrieve non-owned creds for member', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
@@ -436,7 +436,7 @@ test('GET /credentials should not retrieve non-owned creds for member', async ()
 });
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
@@ -487,7 +487,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 });
 
 test('GET /credentials/:id should not retrieve non-owned cred for member', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
@@ -499,7 +499,7 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 });
 
 test('GET /credentials/:id should fail with missing encryption key', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
@@ -516,7 +516,7 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 });
 
 test('GET /credentials/:id should return 404 if cred not found', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authMemberAgent.get('/credentials/789');

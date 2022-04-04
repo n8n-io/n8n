@@ -98,7 +98,7 @@ test('GET /login should return 401 Unauthorized if no cookie', async () => {
 });
 
 test('GET /login should return cookie if UM is disabled', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
@@ -130,7 +130,7 @@ test('GET /login should return 401 Unauthorized if invalid cookie', async () => 
 });
 
 test('GET /login should return logged-in owner shell', async () => {
-	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authMemberAgent.get('/login');
@@ -165,7 +165,7 @@ test('GET /login should return logged-in owner shell', async () => {
 });
 
 test('GET /login should return logged-in member shell', async () => {
-	const memberShell = await testDb.createMemberShell(globalMemberRole);
+	const memberShell = await testDb.createUserShell(globalMemberRole);
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: memberShell });
 
 	const response = await authMemberAgent.get('/login');

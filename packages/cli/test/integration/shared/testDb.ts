@@ -96,8 +96,6 @@ export async function terminate(testDbName: string) {
 	}
 }
 
-
-
 /**
  * Truncate DB tables for specified entities.
  *
@@ -191,9 +189,7 @@ export async function saveCredential(
 //           user creation
 // ----------------------------------
 
-export async function createUser(
-	attributes: Partial<User> & { globalRole: Role },
-): Promise<User> {
+export async function createUser(attributes: Partial<User> & { globalRole: Role }): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 
 	const user = {
@@ -208,20 +204,12 @@ export async function createUser(
 	return Db.collections.User!.save(user);
 }
 
-export async function createMemberShell(globalMemberRole: Role): Promise<User> {
-	if (globalMemberRole.scope !== 'global' || globalMemberRole.name !== 'member') {
-		throw new Error(`Invalid role received: ${JSON.stringify(globalMemberRole)}`);
+export async function createUserShell(globalRole: Role): Promise<User> {
+	if (globalRole.scope !== 'global' || !['member', 'owner'].includes(globalRole.name)) {
+		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
 	}
 
-	return Db.collections.User!.save({ globalRole: globalMemberRole });
-}
-
-export async function createOwnerShell(globalOwnerRole: Role): Promise<User> {
-	if (globalOwnerRole.scope !== 'global' || globalOwnerRole.name !== 'owner') {
-		throw new Error(`Invalid role received: ${JSON.stringify(globalOwnerRole)}`);
-	}
-
-	return Db.collections.User!.save({ globalRole: globalOwnerRole });
+	return Db.collections.User!.save({ globalRole: globalRole });
 }
 
 // ----------------------------------

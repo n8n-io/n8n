@@ -38,7 +38,7 @@ describe('Owner shell', () => {
 	});
 
 	test('GET /me should return sanitized owner shell', async () => {
-		const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const response = await authOwnerShellAgent.get('/me');
@@ -70,7 +70,7 @@ describe('Owner shell', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -110,7 +110,7 @@ describe('Owner shell', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
@@ -125,7 +125,7 @@ describe('Owner shell', () => {
 	});
 
 	test('PATCH /me/password should fail for shell', async () => {
-		const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const validPasswordPayload = {
@@ -157,7 +157,7 @@ describe('Owner shell', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const validPayloads = [SURVEY, {}];
