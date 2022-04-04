@@ -48,7 +48,7 @@ beforeAll(async () => {
 	utils.initTestTelemetry();
 	utils.initTestLogger();
 
-	jest.setTimeout(10000); // fake SMTP service might be slow
+	jest.setTimeout(30000); // fake SMTP service might be slow
 });
 
 beforeEach(async () => {

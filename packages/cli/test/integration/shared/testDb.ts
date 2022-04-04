@@ -204,44 +204,47 @@ export async function createUser(attributes: Partial<User> & { globalRole: Role 
 	return Db.collections.User!.save(user);
 }
 
-export async function createUserShell(globalRole: Role): Promise<User> {
-	if (globalRole.scope !== 'global' || !['member', 'owner'].includes(globalRole.name)) {
+export function createUserShell(globalRole: Role): Promise<User> {
+	if (globalRole.scope !== 'global') {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
 	}
 
-	return Db.collections.User!.save({
-		globalRole,
-		...(globalRole.name === 'member' ? { email: randomEmail() } : {}),
-	});
+	const shell: Partial<User> = { globalRole };
+
+	if (globalRole.name !== 'owner') {
+		shell.email = randomEmail();
+	}
+
+	return Db.collections.User!.save(shell);
 }
 
 // ----------------------------------
 //          role fetchers
 // ----------------------------------
 
-export async function getGlobalOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getGlobalOwnerRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
-export async function getGlobalMemberRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getGlobalMemberRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
-export async function getWorkflowOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getWorkflowOwnerRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
-export async function getCredentialOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getCredentialOwnerRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});

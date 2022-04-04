@@ -39,7 +39,7 @@ beforeEach(async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 
-	jest.setTimeout(10000); // fake SMTP service might be slow
+	jest.setTimeout(30000); // fake SMTP service might be slow
 });
 
 afterAll(async () => {
