@@ -29,7 +29,8 @@
       v-else
       @mouseover="onMouseHover"
       @mouseout="onMouseHoverEnd"
-      class="textarea"  
+      class="sticky-textarea"
+      :class="{'full-height': !shouldShowFooter}"
     >
       <n8n-input
         v-model="tempContent"
@@ -231,7 +232,7 @@ export default {
 </style>
 
 <style lang="scss">
-.textarea {
+.sticky-textarea {
   height: calc(100% - var(--spacing-l));
   
   .el-textarea {
@@ -242,5 +243,9 @@ export default {
       resize: unset;
     }
   }
+}
+
+.full-height {
+  height: calc(100% - var(--spacing-2xs));
 }
 </style>
