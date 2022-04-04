@@ -349,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			invitee.firstName = firstName;
 			invitee.lastName = lastName;
-			invitee.password = hashPassword(validPassword);
+			invitee.password = await hashPassword(validPassword);
 
 			const updatedUser = await Db.collections.User!.save(invitee);
 

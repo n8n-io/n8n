@@ -194,7 +194,7 @@ export async function createUser(attributes: Partial<User> & { globalRole: Role 
 
 	const user = {
 		email: email ?? randomEmail(),
-		password: hashPassword(password ?? randomValidPassword()),
+		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole,

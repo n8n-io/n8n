@@ -205,7 +205,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			await Db.collections.User!.update(userId, {
-				password: hashPassword(validPassword),
+				password: await hashPassword(validPassword),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,
 			});

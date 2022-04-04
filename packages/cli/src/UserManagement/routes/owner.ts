@@ -73,7 +73,7 @@ export function ownerNamespace(this: N8nApp): void {
 				email,
 				firstName,
 				lastName,
-				password: hashPassword(validPassword),
+				password: await hashPassword(validPassword),
 			});
 
 			await validateEntity(owner);

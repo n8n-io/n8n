@@ -97,7 +97,7 @@ export function meNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(newPassword);
 
-			req.user.password = hashPassword(validPassword);
+			req.user.password = await hashPassword(validPassword);
 
 			const user = await Db.collections.User!.save(req.user);
 			Logger.info('Password updated successfully', { userId: user.id });
