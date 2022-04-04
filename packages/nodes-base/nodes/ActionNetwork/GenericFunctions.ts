@@ -3,6 +3,8 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	NodeApiError,
@@ -102,6 +104,27 @@ export async function handleListing(
 	} while (responseData._links && responseData._links.next);
 
 	return returnData;
+}
+
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		apiKey,
+	} = credentials as {
+		apiKey: string,
+	};
+
+	const options: OptionsWithUri = {
+		method: 'GET',
+		headers: {
+			'OSDI-API-Token': apiKey,
+		},
+		uri: `https://actionnetwork.org/api/v2/events?per_page=1`,
+		json: true,
+	};
+
+	return await this.helpers.request(options);
 }
 
 
