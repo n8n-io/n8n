@@ -190,7 +190,7 @@ export const personFields: INodeProperties[] = [
 		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
-			maxValue: 25
+			maxValue: 25,
 		},
 		displayOptions: {
 			show: {
