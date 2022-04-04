@@ -34,7 +34,7 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'Session Token',
 			name: 'sessionToken',
-			description: '(Optional) Temporary credentials from AWS STS',
+			description: 'This is an optional field. If you are not using temporary credentials, leave it blank.',
 			type: 'string',
 			default: '',
 			typeOptions: {
