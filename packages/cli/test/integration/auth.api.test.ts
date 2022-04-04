@@ -45,7 +45,7 @@ afterAll(async () => {
 
 test('POST /login should log user in', async () => {
 	const ownerPassword = randomValidPassword();
-	const owner = await testDb.createFullUser({
+	const owner = await testDb.createUser({
 		password: ownerPassword,
 		globalRole: globalOwnerRole,
 	});
@@ -200,7 +200,7 @@ test('GET /login should return logged-in member shell', async () => {
 });
 
 test('GET /login should return logged-in owner', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.get('/login');
@@ -235,7 +235,7 @@ test('GET /login should return logged-in owner', async () => {
 });
 
 test('GET /login should return logged-in member', async () => {
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 	const response = await authMemberAgent.get('/login');
@@ -270,7 +270,7 @@ test('GET /login should return logged-in member', async () => {
 });
 
 test('POST /logout should log user out', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/logout');

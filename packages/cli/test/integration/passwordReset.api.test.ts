@@ -47,7 +47,7 @@ afterAll(async () => {
 });
 
 test('POST /forgot-password should send password reset email', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -64,7 +64,7 @@ test('POST /forgot-password should send password reset email', async () => {
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -77,7 +77,7 @@ test('POST /forgot-password should fail if emailing is not set up', async () => 
 });
 
 test('POST /forgot-password should fail with invalid inputs', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -113,7 +113,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 });
 
 test('GET /resolve-password-token should succeed with valid inputs', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -133,7 +133,7 @@ test('GET /resolve-password-token should succeed with valid inputs', async () =>
 });
 
 test('GET /resolve-password-token should fail with invalid inputs', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -149,7 +149,7 @@ test('GET /resolve-password-token should fail with invalid inputs', async () => 
 });
 
 test('GET /resolve-password-token should fail if user is not found', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -163,7 +163,7 @@ test('GET /resolve-password-token should fail if user is not found', async () =>
 });
 
 test('GET /resolve-password-token should fail if token is expired', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -185,7 +185,7 @@ test('GET /resolve-password-token should fail if token is expired', async () => 
 });
 
 test('POST /change-password should succeed with valid inputs', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -218,7 +218,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 });
 
 test('POST /change-password should fail with invalid inputs', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -261,7 +261,7 @@ test('POST /change-password should fail with invalid inputs', async () => {
 });
 
 test('POST /change-password should fail when token has expired', async () => {
-	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 

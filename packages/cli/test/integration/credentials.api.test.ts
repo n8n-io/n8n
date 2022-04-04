@@ -142,7 +142,7 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 test('DELETE /credentials/:id should delete non-owned cred for owner', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
 	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
@@ -160,7 +160,7 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 });
 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
@@ -180,7 +180,7 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
@@ -243,7 +243,7 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 test('PATCH /credentials/:id should update non-owned cred for owner', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 	const patchPayload = credentialPayload();
 
@@ -276,7 +276,7 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 });
 
 test('PATCH /credentials/:id should update owned cred for member', async () => {
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 	const patchPayload = credentialPayload();
@@ -311,7 +311,7 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 
 test('PATCH /credentials/:id should not update non-owned cred for member', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 	const patchPayload = credentialPayload();
@@ -374,7 +374,7 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 		await saveCredential(credentialPayload(), { user: ownerShell });
 	}
 
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 	await saveCredential(credentialPayload(), { user: member });
 
@@ -396,7 +396,7 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 });
 
 test('GET /credentials should retrieve owned creds for member', async () => {
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 	for (let i = 0; i < 3; i++) {
@@ -422,7 +422,7 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 
 test('GET /credentials should not retrieve non-owned creds for member', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 	for (let i = 0; i < 3; i++) {
@@ -461,7 +461,7 @@ test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 });
 
 test('GET /credentials/:id should retrieve owned cred for member', async () => {
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
@@ -488,7 +488,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 
 test('GET /credentials/:id should not retrieve non-owned cred for member', async () => {
 	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
-	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 

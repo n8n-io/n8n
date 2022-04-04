@@ -48,7 +48,7 @@ ROUTES_REQUIRING_AUTHORIZATION.forEach(async (route) => {
 	const [method, endpoint] = getMethodAndEndpoint(route);
 
 	test(`${route} should return 403 Forbidden for member`, async () => {
-		const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 		const response = await authMemberAgent[method](endpoint);
 

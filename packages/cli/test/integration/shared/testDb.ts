@@ -191,7 +191,7 @@ export async function saveCredential(
 //           user creation
 // ----------------------------------
 
-export async function createFullUser(
+export async function createUser(
 	attributes: Partial<User> & { globalRole: Role },
 ): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
