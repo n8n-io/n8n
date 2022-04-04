@@ -149,7 +149,7 @@ test('GET /login should return logged-in owner shell', async () => {
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBeNull();
+	expect(email).toBeDefined();
 	expect(firstName).toBeNull();
 	expect(lastName).toBeNull();
 	expect(password).toBeUndefined();
@@ -184,7 +184,7 @@ test('GET /login should return logged-in member shell', async () => {
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBeNull();
+	expect(email).toBeDefined();
 	expect(firstName).toBeNull();
 	expect(lastName).toBeNull();
 	expect(password).toBeUndefined();

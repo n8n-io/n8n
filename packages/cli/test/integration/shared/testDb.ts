@@ -209,7 +209,10 @@ export async function createUserShell(globalRole: Role): Promise<User> {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
 	}
 
-	return Db.collections.User!.save({ globalRole: globalRole });
+	return Db.collections.User!.save({
+		globalRole,
+		...(globalRole.name === 'member' ? { email: randomEmail() } : {}),
+	});
 }
 
 // ----------------------------------
