@@ -727,6 +727,26 @@ export default mixins(
 						this.$store.commit('setActiveNode', null);
 					}
 
+					if (this.lastSelectedNode) {
+						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
+							const nodeParameters = {
+								content: this.lastSelectedNode.parameters.content,
+								height: this.lastSelectedNode.parameters.height,
+								isEditable: false,
+								totalSize: this.lastSelectedNode.parameters.totalSize,
+								width: this.lastSelectedNode.parameters.width,
+								zIndex: this.lastSelectedNode.parameters.zIndex,
+							};
+
+							const updateInformation = {
+								name: this.lastSelectedNode.name,
+								value: nodeParameters,
+							};
+
+							this.$store.commit('setNodeParameters', updateInformation);
+						}
+					}
+
 					return;
 				}
 
@@ -827,6 +847,27 @@ export default mixins(
 
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
+					}
+					
+
+					if (this.lastSelectedNode) {
+						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
+							const nodeParameters = {
+								content: this.lastSelectedNode.parameters.content,
+								height: this.lastSelectedNode.parameters.height,
+								isEditable: true,
+								totalSize: this.lastSelectedNode.parameters.totalSize,
+								width: this.lastSelectedNode.parameters.width,
+								zIndex: this.lastSelectedNode.parameters.zIndex,
+							};
+
+							const updateInformation = {
+								name: this.lastSelectedNode.name,
+								value: nodeParameters,
+							};
+
+							this.$store.commit('setNodeParameters', updateInformation);
+						}
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
 					// Select all downstream nodes

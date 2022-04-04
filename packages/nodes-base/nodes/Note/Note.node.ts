@@ -41,6 +41,14 @@ export class Note implements INodeType {
 				description: 'Height',
 			},
 			{
+				displayName: 'Is Sticky Editable',
+				name: 'isStickyEditable',
+				type: 'boolean',
+				required: true,
+				default: false,
+				description: 'Is Sticky Editable',
+			},
+			{
 				displayName: 'Total Size',
 				name: 'totalSize',
 				type: 'number',

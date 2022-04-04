@@ -276,6 +276,16 @@ export default {
   pre > code,li > code, p > code {
     color: #5C4EC2;
   }
+
+	a {
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	img {
+		object-fit: contain;
+	}
 }
 
 .spacer {

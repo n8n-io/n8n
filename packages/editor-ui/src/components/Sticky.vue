@@ -19,6 +19,7 @@
           :content.sync="node.parameters.content"
           :height="node.parameters.height"
           :id="nodeIndex"
+					:isEditable="node.parameters.isEditable"
           :width="node.parameters.width"
           :zIndex="node.parameters.zIndex"
           @input="onInputChange"
@@ -178,6 +179,24 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			});
 		},
 		onChangeMode(isStickyInEditMode: boolean) {
+			if (this.node) {
+
+				const nodeParameters = {
+					content: this.node.parameters.content,
+					height: this.stickyProp.height,
+					isEditable: isStickyInEditMode,
+					width: this.stickyProp.width,
+					totalSize: this.stickyProp.height + this.stickyProp.width,
+					zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
+				};
+
+				const updateInformation = {
+					name: this.node.name,
+					value: nodeParameters,
+				};
+
+				this.$store.commit('setNodeParameters', updateInformation);
+			}
 			this.$emit('onChangeMode', isStickyInEditMode);
 		},
 		onMouseHover(isMouseHoverActive: boolean) {
@@ -190,6 +209,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					content,
 					width: this.node.parameters.width,
 					height: this.node.parameters.height,
+					isEditable: true,
 					totalSize: this.stickyProp.height + this.stickyProp.width,
 					zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
 				};
@@ -234,6 +254,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				const nodeParameters = {
 					content: this.node.parameters.content,
 					height,
+					isEditable: true,
 					width,
 					totalSize: height + width,
 					zIndex: (height + width) * -1,
@@ -287,7 +308,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.sticky-options {
 			display: none;
-			justify-content: flex-end;
+			justify-content: flex-start;
 			position: absolute;
 			top: -25px;
 			height: 26px;

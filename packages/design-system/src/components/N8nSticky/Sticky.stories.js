@@ -65,6 +65,7 @@ export const Sticky = Template.bind({});
 Sticky.args = {
   content: '### I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](n8n.io/)',
   height: 160,
+  isEditable: false,
   minHeight: 80,
   minWidth: 150,
   readOnly: false,

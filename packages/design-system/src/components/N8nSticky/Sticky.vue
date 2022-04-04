@@ -1,11 +1,11 @@
 <template>
   <div
     :id="`sticky-${id}`"
-    :class="[$style.sticky, isEditable ? $style.editMode : '']"
+    :class="[$style.sticky, isStickyEditable ? $style.editMode : '']"
     :style="styles"
   >
     <n8n-resize 
-      v-if="!isEditable"
+      v-if="!isStickyEditable"
       :minHeight="minHeight"
       :minWidth="minWidth"
       :resizer="resizer"
@@ -75,6 +75,10 @@ export default {
       type: String,
       default: '0',
     },
+    isEditable: {
+      type: Boolean,
+      default: false,
+    },
     minHeight: {
       type: Number,
       default: 80,
@@ -105,6 +109,7 @@ export default {
       this.tempContent = content;
     },
     isEditable(isEditable) {
+      this.isStickyEditable = isEditable;
       this.$emit('onChangeMode', this.isEditable);
     }
   },
@@ -129,7 +134,7 @@ export default {
   },
   data() {
     return {
-      isEditable: false,
+      isStickyEditable: false,
       tempContent: this.content,
       resizer: null,
     }
@@ -144,15 +149,17 @@ export default {
           }
         }, 100);
 
-        if (this.isEditable) {
-          this.$emit('unfocus', this.isEditable);
+        if (this.isStickyEditable) {
+          this.$emit('unfocus', this.isStickyEditable);
         }
 
-        this.isEditable =! this.isEditable;  
+        this.isStickyEditable =! this.isStickyEditable; 
+        this.$emit('onChangeMode', this.isStickyEditable); 
       }  
     },
     onBlur(value) {
-      this.isEditable = false;
+      this.isStickyEditable = false;
+      this.$emit('onChangeMode', this.isStickyEditable); 
       this.$emit('blur', value);
     },
     onChange(value: string) {
