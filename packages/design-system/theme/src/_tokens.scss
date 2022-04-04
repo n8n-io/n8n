@@ -43,6 +43,24 @@
 		var(--color-primary-shade-2-l)
 	);
 
+	--color-avatar-accent-1-h: 40;
+	--color-avatar-accent-1-s: 15.3%;
+	--color-avatar-accent-1-l: 88.4%;
+	--color-avatar-accent-1: hsl(
+		var(--color-avatar-accent-1-h),
+		var(--color-avatar-accent-1-s),
+		var(--color-avatar-accent-1-l)
+	);
+
+	--color-avatar-accent-2-h: 212;
+	--color-avatar-accent-2-s: 71%;
+	--color-avatar-accent-2-l: 48.6%;
+	--color-avatar-accent-2: hsl(
+		var(--color-avatar-accent-2-h),
+		var(--color-avatar-accent-2-s),
+		var(--color-avatar-accent-2-l)
+	);
+
 	--color-secondary-h: 247;
 	--color-secondary-s: 49%;
 	--color-secondary-l: 53%;
@@ -50,6 +68,13 @@
 		var(--color-secondary-h),
 		var(--color-secondary-s),
 		var(--color-secondary-l)
+	);
+
+	--color-secondary-tint-1-l: 92%;
+	--color-secondary-tint-1: hsl(
+		var(--color-secondary-h),
+		var(--color-secondary-s),
+		var(--color-secondary-tint-1-l)
 	);
 
 	--color-success-h: 150.4;
@@ -331,7 +356,6 @@
 	--font-line-height-xloose: 1.5;
 
 	--font-weight-regular: 400;
-	--font-weight-semi-bold: 500;
 	--font-weight-bold: 600;
 	--font-family: 'Open Sans', sans-serif;
 
