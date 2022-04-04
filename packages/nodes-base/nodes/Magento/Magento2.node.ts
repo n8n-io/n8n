@@ -8,11 +8,11 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-  ICredentialsDecrypted,
-  ICredentialTestFunctions,
-  INodeCredentialTestResult,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -82,7 +82,7 @@ export class Magento2 implements INodeType {
 			{
 				name: 'magento2Api',
 				required: true,
-        testedBy: 'magento2ApiTest'
+				testedBy: 'magento2ApiTest',
 			},
 		],
 		properties: [
@@ -123,26 +123,26 @@ export class Magento2 implements INodeType {
 	};
 
 	methods = {
-    credentialTest: {
+		credentialTest: {
 			async magento2ApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-        const accessToken = credential!.data!.accessToken;
-        const host = credential!.data!.host;
+				const accessToken = credential!.data!.accessToken;
+				const host = credential!.data!.host;
 
-        if (!host || !accessToken) {
-          return {
-            status: 'Error',
-            message: 'Connection details not valid: missing credentials',
-          }
-        }
+				if (!host || !accessToken) {
+					return {
+						status: 'Error',
+						message: 'Connection details not valid: missing credentials',
+					};
+				}
 
-        // Calls some API to test Acess Token 
+				// Calls some API to test Acess Token
 				const options: OptionsWithUri = {
 					headers: {
 						'Content-Type': 'application/json',
 						'Authorization': `Bearer ${accessToken}`,
 					},
 					method: 'GET',
-					uri: `${host}/rest/default/V1/directory/countries`,
+					uri: `${host}/rest/default/V1/modules`,
 					qs: {
 						recent: 0,
 					},
@@ -158,12 +158,12 @@ export class Magento2 implements INodeType {
 						message: `Connection details not valid: ${error.message}`,
 					};
 				}
-        return {
-          status: 'OK',
-          message: 'Authentication successful!',
-        };
-      }
-    },
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				//https://magento.redoc.ly/2.3.7-admin/tag/directorycountries
