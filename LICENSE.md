@@ -12,7 +12,7 @@ The licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensa
 
 ## Limitations
 
-You may use or modify the software only for your own internal business purposes or for non-commercial or personal use
+You may use or modify the software only for your own internal business purposes or for non-commercial or personal use.
 You may distribute the software or provide it to others only if you do so free of charge for non-commercial purposes.
 You may not alter, remove, or obscure any licensing, copyright, or other notices of the licensor in the software. Any use of the licensor’s trademarks is subject to applicable law.
 
