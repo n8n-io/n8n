@@ -1,18 +1,21 @@
+/* eslint-disable import/no-cycle */
 import * as querystring from 'querystring';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
 import express = require('express');
 import * as SwaggerParser from '@apidevtools/swagger-parser';
 import { In } from 'typeorm';
-// eslint-disable-next-line import/no-cycle
+import { validate as uuidValidate } from 'uuid';
+import { Workflow } from 'n8n-workflow';
+import { worker } from 'cluster';
 import { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
-// eslint-disable-next-line import/no-cycle
-import { Db, InternalHooksManager } from '..';
-// eslint-disable-next-line import/no-cycle
+import { ActiveWorkflowRunner, Db, InternalHooksManager, ITelemetryUserDeletionData } from '..';
 import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
-// eslint-disable-next-line import/no-cycle
 import * as UserManagementMailer from '../UserManagement/email';
+import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
+import { SharedCredentials } from '../databases/entities/SharedCredentials';
+import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 
 interface IPaginationOffsetDecoded {
 	offset: number;
@@ -68,9 +71,9 @@ export const connectionName = (): string => {
 	return 'default';
 };
 
-export const clean = (users: User[], keepRole = false): Array<Partial<User>> => {
+export const clean = (users: User[], options?: { includeRole: boolean }): Array<Partial<User>> => {
 	return users.map((user) =>
-		pick(user, getSelectableProperties('user').concat(keepRole ? ['globalRole'] : [])),
+		pick(user, getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : [])),
 	);
 };
 
@@ -225,4 +228,119 @@ export async function inviteUsers(
 			});
 		}
 	});
+}
+
+export async function getUserByIdentifier(
+	identifier: string,
+	options?: { includeRole: boolean },
+): Promise<User | undefined> {
+	return Db.collections.User?.findOneOrFail({
+		where: {
+			...(uuidValidate(identifier) && { id: identifier }),
+			...(!uuidValidate(identifier) && { email: identifier }),
+		},
+		relations: options?.includeRole ? ['globalRole'] : undefined,
+	});
+}
+
+export async function getUsers(data: {
+	includeRole?: boolean;
+	withIdentifiers: string[];
+}): Promise<User[] | undefined> {
+	return Db.collections.User?.find({
+		where: {
+			...(uuidValidate(data.withIdentifiers[0]) && { id: In(data.withIdentifiers) }),
+			...(!uuidValidate(data.withIdentifiers[0]) && { email: In(data.withIdentifiers) }),
+		},
+		relations: data?.includeRole ? ['globalRole'] : undefined,
+	});
+}
+
+export async function transferWorkflowsAndCredentials(data: {
+	fromUser: User;
+	toUser: User;
+}): Promise<void> {
+	return Db.transaction(async (transactionManager) => {
+		await transactionManager.update(SharedWorkflow, { user: data.fromUser }, { user: data.toUser });
+		await transactionManager.update(
+			SharedCredentials,
+			{ user: data.fromUser },
+			{ user: data.toUser },
+		);
+		await transactionManager.delete(User, { id: data.fromUser });
+	});
+}
+
+async function getSharedWorkflows(data: { fromUser: User }): Promise<SharedWorkflow[] | undefined> {
+	return Db.collections.SharedWorkflow?.find({
+		relations: ['workflow'],
+		where: { user: data.fromUser },
+	});
+}
+
+async function getSharedCredentials(data: {
+	fromUser: User;
+}): Promise<SharedCredentials[] | undefined> {
+	return Db.collections.SharedCredentials?.find({
+		relations: ['credentials'],
+		where: { user: data.fromUser },
+	});
+}
+
+export async function getSharedWorkflowsAndCredentials(data: { fromUser: User }): Promise<{
+	workflows: SharedWorkflow[] | undefined;
+	credentials: SharedCredentials[] | undefined;
+}> {
+	return {
+		workflows: await getSharedWorkflows(data),
+		credentials: await getSharedCredentials(data),
+	};
+}
+
+async function desactiveWorkflow(data: { workflow: WorkflowEntity }) {
+	if (data.workflow.active) {
+		const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+		void activeWorkflowRunner.remove(data.workflow?.id.toString());
+	}
+	return data.workflow;
+}
+
+async function deleteWorkflowsAndCredentials(data: { fromUser: User }): Promise<void> {
+	const { credentials: sharedCredentials = [], workflows: sharedWorkflows = [] } =
+		await getSharedWorkflowsAndCredentials(data);
+	await Db.transaction(async (transactionManager) => {
+		const ownedWorkflows = await Promise.all(sharedWorkflows.map(desactiveWorkflow));
+		await transactionManager.remove(ownedWorkflows);
+		await transactionManager.remove(sharedCredentials.map(({ credentials }) => credentials));
+		await transactionManager.delete(User, { id: data.fromUser });
+	});
+}
+
+export async function sendUserDeleteTelemetry(data: {
+	apiKeyOwnerUser: User;
+	fromUser: User;
+	transferId: string | undefined;
+}): Promise<void> {
+	const telemetryData: ITelemetryUserDeletionData = {
+		user_id: data.apiKeyOwnerUser.id,
+		target_user_old_status: data.fromUser.isPending ? 'invited' : 'active',
+		target_user_id: data.fromUser.id,
+	};
+
+	telemetryData.migration_strategy = data.transferId ? 'transfer_data' : 'delete_data';
+
+	if (data.transferId) {
+		telemetryData.migration_user_id = data.transferId;
+	}
+
+	void InternalHooksManager.getInstance().onUserDeletion(data.apiKeyOwnerUser.id, telemetryData);
+}
+
+export async function deleteDataAndSendTelemetry(data: {
+	fromUser: User;
+	apiKeyOwnerUser: User;
+	transferId: string | undefined;
+}): Promise<void> {
+	await deleteWorkflowsAndCredentials(data);
+	await sendUserDeleteTelemetry(data);
 }

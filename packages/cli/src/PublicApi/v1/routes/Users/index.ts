@@ -12,25 +12,20 @@ import {
 	clean,
 	connectionName,
 	decodeCursor,
+	deleteDataAndSendTelemetry,
 	getGlobalMemberRole,
 	getNextCursor,
 	getSelectableProperties,
+	getUsers,
 	getUsersToSaveAndInvite,
 	inviteUsers,
 	saveUsersWithRole,
+	transferWorkflowsAndCredentials,
 } from '../../../helpers';
 
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
 
-import {
-	Db,
-	ResponseHelper,
-	InternalHooksManager,
-	ActiveWorkflowRunner,
-	ITelemetryUserDeletionData,
-} from '../../../..';
-import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
-import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
+import { Db, ResponseHelper } from '../../../..';
 
 export = {
 	createUsers: ResponseHelper.send(async (req: UserRequest.Invite, res: express.Response) => {
@@ -81,97 +76,40 @@ export = {
 	// eslint-disable-next-line consistent-return
 	deleteUser: async (req: UserRequest.Delete, res: express.Response): Promise<any> => {
 		const { identifier: idToDelete } = req.params;
-
+		const { transferId } = req.query;
+		const apiKeyUserOwner = req.user;
 		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
 
-		if (req.user.id === idToDelete) {
-			return res.status(400).json({
-				message: `Cannot delete your own user`,
-			});
-		}
-
-		const { transferId } = req.query;
-
-		if (transferId === idToDelete) {
-			return res.status(400).json({
-				message: `Request to delete a user failed because the user to delete and the transferee are the same user`,
-			});
-		}
-
-		const users = await Db.collections.User?.find({
-			where: { id: In([transferId, idToDelete]) },
-			relations: includeRole ? ['globalRole'] : undefined,
-		});
+		const users = await getUsers({ withIdentifiers: [idToDelete, transferId ?? ''], includeRole });
 
 		if (!users?.length || (transferId && users.length !== 2)) {
-			return res.status(400).json({
-				message: `Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB`,
-			});
+			throw new ResponseHelper.ResponseError(
+				'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
+				undefined,
+				400,
+			);
 		}
 
 		const userToDelete = users?.find((user) => user.id === req.params.identifier) as User;
 
 		if (transferId) {
-			const transferee = users?.find((user) => user.id === transferId);
-			await Db.transaction(async (transactionManager) => {
-				await transactionManager.update(
-					SharedWorkflow,
-					{ user: userToDelete },
-					{ user: transferee },
-				);
-				await transactionManager.update(
-					SharedCredentials,
-					{ user: userToDelete },
-					{ user: transferee },
-				);
-				await transactionManager.delete(User, { id: userToDelete.id });
+			const transferee = users?.find((user) => user.id === transferId) as User;
+
+			await transferWorkflowsAndCredentials({
+				fromUser: userToDelete,
+				toUser: transferee,
 			});
 
-			res.json(clean([userToDelete], true)[0]);
+			return clean([userToDelete]).pop();
 		}
 
-		const [ownedSharedWorkflows = [], ownedSharedCredentials = []] = await Promise.all([
-			Db.collections.SharedWorkflow?.find({
-				relations: ['workflow'],
-				where: { user: userToDelete },
-			}),
-			Db.collections.SharedCredentials?.find({
-				relations: ['credentials'],
-				where: { user: userToDelete },
-			}),
-		]);
-
-		await Db.transaction(async (transactionManager) => {
-			const ownedWorkflows = await Promise.all(
-				ownedSharedWorkflows.map(async ({ workflow }) => {
-					if (workflow.active) {
-						const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-						// deactivate before deleting
-						void activeWorkflowRunner.remove(workflow.id.toString());
-					}
-					return workflow;
-				}),
-			);
-			await transactionManager.remove(ownedWorkflows);
-			await transactionManager.remove(ownedSharedCredentials.map(({ credentials }) => credentials));
-			await transactionManager.delete(User, { id: userToDelete.id });
+		await deleteDataAndSendTelemetry({
+			fromUser: userToDelete,
+			apiKeyOwnerUser: apiKeyUserOwner,
+			transferId,
 		});
 
-		const telemetryData: ITelemetryUserDeletionData = {
-			user_id: req.user.id,
-			target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
-			target_user_id: idToDelete,
-		};
-
-		telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
-
-		if (transferId) {
-			telemetryData.migration_user_id = transferId;
-		}
-
-		void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
-
-		res.json(clean([userToDelete], true)[0]);
+		return clean([userToDelete], { includeRole }).pop();
 	},
 	// eslint-disable-next-line consistent-return
 	getUser: async (req: UserRequest.Get, res: express.Response): Promise<any> => {

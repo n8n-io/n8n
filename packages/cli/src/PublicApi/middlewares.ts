@@ -58,8 +58,40 @@ const validEmail = (
 	next();
 };
 
+const deletingOwnUser = (
+	req: UserRequest.Delete,
+	res: express.Response,
+	next: express.NextFunction,
+): any => {
+	if (req.user.id === req.params.identifier) {
+		return res.status(400).json({
+			message: `Cannot delete your own user`,
+		});
+	}
+	next();
+};
+
+const transferingToDeletedUser = (
+	req: UserRequest.Delete,
+	res: express.Response,
+	next: express.NextFunction,
+): any => {
+	if (req.query.transferId === req.params.identifier) {
+		return res.status(400).json({
+			message: `Request to delete a user failed because the user to delete and the transferee are the same user`,
+		});
+	}
+	next();
+};
+
 export const middlewares = {
 	createUsers: [instanceOwnerSetup, emailSetup, validEmail, authorize(['owner'])],
+	deleteUsers: [
+		instanceOwnerSetup,
+		deletingOwnUser,
+		transferingToDeletedUser,
+		authorize(['owner']),
+	],
 	getUsers: [instanceOwnerSetup, authorize(['owner'])],
 	getUser: [instanceOwnerSetup, authorize(['owner'])],
 };
