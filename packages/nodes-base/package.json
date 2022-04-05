@@ -333,6 +333,7 @@
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AcuityScheduling/AcuitySchedulingTrigger.node.js",
+      "dist/nodes/Adalo/Adalo.node.js",
       "dist/nodes/Affinity/Affinity.node.js",
       "dist/nodes/Affinity/AffinityTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
