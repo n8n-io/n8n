@@ -254,7 +254,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				const nodeParameters = {
 					content: this.node.parameters.content,
 					height,
-					isEditable: true,
+					isEditable: false,
 					width,
 					totalSize: height + width,
 					zIndex: (height + width) * -1,
