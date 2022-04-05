@@ -132,7 +132,6 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		// @ts-ignore
 		response.stack = error.stack;
 	}
-	console.log('se esta llmando al error');
 	res.status(httpStatusCode).json(response);
 }
 

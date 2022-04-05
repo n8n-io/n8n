@@ -580,7 +580,7 @@ class App {
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
-		this.app.use(`/${this.publicApiEndpoint}/v1`, publicApiControllerV1);
+		this.app.use(`/${this.publicApiEndpoint}/v1`, await publicApiControllerV1);
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());

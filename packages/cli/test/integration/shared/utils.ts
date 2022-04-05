@@ -66,7 +66,7 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router> = {
 			credentials: credentialsController,
-			publicApi: publicApiController,
+			//publicApi: publicApiController,
 		};
 
 		for (const group of routerEndpoints) {

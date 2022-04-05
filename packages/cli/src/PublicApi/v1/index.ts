@@ -1,110 +1,72 @@
-import { Application, Response } from 'express';
-
 import * as OpenApiValidator from 'express-openapi-validator';
 
 import path = require('path');
 
 import express = require('express');
 
-import { HttpError, OpenAPIV3 } from 'express-openapi-validator/dist/framework/types';
-import * as bodyParser from 'body-parser';
-import * as SwaggerParser from '@apidevtools/swagger-parser';
+import { HttpError } from 'express-openapi-validator/dist/framework/types';
+import passport = require('passport');
+import { Strategy } from 'passport-http-header-strategy';
+import { VerifiedCallback } from 'passport-jwt';
 // eslint-disable-next-line import/no-cycle
 import { Db } from '../..';
-import config = require('../../../config');
-
 import { middlewares } from '../middlewares';
+// eslint-disable-next-line import/no-cycle
+import { addCustomMiddlewares, IMiddlewares } from '../helpers';
 
-export interface N8nApp {
-	app: Application;
-}
+export const publicApiController = (async (): Promise<express.Router> => {
+	const openApiSpec = path.join(__dirname, 'openapi.yml');
 
-type OperationID = 'getUsers' | 'getUser' | undefined;
+	const apiController = express.Router();
 
-export const publicApiController = express.Router();
+	apiController.use(express.json());
 
-publicApiController.use(bodyParser.json());
+	passport.use(
+		new Strategy(
+			{ header: 'X-N8N-API-KEY', passReqToCallback: false },
+			async (token: string, done: VerifiedCallback) => {
+				const user = await Db.collections.User?.findOne({
+					where: {
+						apiKey: token,
+					},
+					relations: ['globalRole'],
+				});
 
-void (async () => {
-	const { paths = {} } = await SwaggerParser.parse(path.join(__dirname, 'openapi.yml'));
-	Object.entries(paths).forEach(([routePath, methods]) => {
-		Object.entries(methods).forEach(([method, data]) => {
-			const operationId: OperationID = (
-				data as {
-					'x-eov-operation-id': OperationID;
+				if (!user) {
+					return done(null, false);
 				}
-			)['x-eov-operation-id'];
-			if (operationId) {
-				if (method === 'get') {
-					publicApiController.get(
-						routePath.replace(/\{([^}]+)}/g, ':$1'),
-						...middlewares[operationId],
-					);
-				}
-			}
-		});
-	});
 
-	publicApiController.use(
-		'/',
+				return done(null, user);
+			},
+		),
+	);
+
+	// add authentication middlewlares
+	apiController.use('/', passport.authenticate('header', { session: false }));
+
+	await addCustomMiddlewares(apiController, openApiSpec, middlewares as unknown as IMiddlewares);
+
+	apiController.use(
 		OpenApiValidator.middleware({
-			apiSpec: path.join(__dirname, 'openapi.yml'),
+			apiSpec: openApiSpec,
 			operationHandlers: path.join(__dirname),
 			validateRequests: true,
 			validateApiSpec: true,
-			validateSecurity: {
-				handlers: {
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					ApiKeyAuth: async (req, scopes, schema: OpenAPIV3.ApiKeySecurityScheme) => {
-						const apiKey = req.headers[schema.name.toLowerCase()];
-
-						const user = await Db.collections.User?.find({
-							where: {
-								apiKey,
-							},
-							relations: ['globalRole'],
-						});
-
-						if (!user?.length) {
-							return false;
-						}
-
-						if (!config.get('userManagement.isInstanceOwnerSetUp')) {
-							// eslint-disable-next-line @typescript-eslint/no-throw-literal
-							throw {
-								status: 400,
-							};
-						}
-
-						if (config.get('userManagement.disabled')) {
-							// eslint-disable-next-line @typescript-eslint/no-throw-literal
-							throw {
-								status: 400,
-							};
-						}
-
-						if (user[0].globalRole.name !== 'owner') {
-							// eslint-disable-next-line @typescript-eslint/no-throw-literal
-							throw {
-								status: 403,
-							};
-						}
-
-						[req.user] = user;
-
-						return true;
-					},
-				},
-			},
+			validateSecurity: false,
 		}),
 	);
 
 	// add error handler
 	// @ts-ignore
-	publicApiController.use((error: HttpError, req, res: Response) => {
-		res.status(error.status || 500).json({
-			message: error.message,
-			errors: error.errors,
-		});
-	});
+	apiController.use(
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		(error: HttpError, req: express.Request, res: express.Response, next: express.NextFunction) => {
+			return res.status(error.status || 500).json({
+				message: error.message,
+				errors: error.errors,
+			});
+		},
+	);
+
+	return apiController;
 })();

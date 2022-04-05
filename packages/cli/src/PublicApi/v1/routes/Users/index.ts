@@ -1,21 +1,24 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import express = require('express');
 import { getConnection, In } from 'typeorm';
 
 import { validate as uuidValidate } from 'uuid';
-import validator from 'validator';
 import { UserRequest } from '../../../../requests';
 
 import { User } from '../../../../databases/entities/User';
+import { Role } from '../../../../databases/entities/Role';
 
 import {
 	clean,
 	connectionName,
 	decodeCursor,
+	getGlobalMemberRole,
 	getNextCursor,
 	getSelectableProperties,
+	getUsersToSaveAndInvite,
+	inviteUsers,
+	saveUsersWithRole,
 } from '../../../helpers';
-
-import config = require('../../../../../config');
 
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
 
@@ -26,137 +29,55 @@ import {
 	ActiveWorkflowRunner,
 	ITelemetryUserDeletionData,
 } from '../../../..';
-import { Role } from '../../../../databases/entities/Role';
-import { getInstanceBaseUrl } from '../../../../UserManagement/UserManagementHelper';
 import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 
 export = {
-	// eslint-disable-next-line consistent-return
-	createUsers: async (req: UserRequest.Invite, res: express.Response): Promise<any> => {
-		if (config.get('userManagement.emails.mode') === '') {
-			return res.status(500).json({
-				message: 'Email sending must be set up in order to request a password reset email',
-			});
-		}
+	createUsers: ResponseHelper.send(async (req: UserRequest.Invite, res: express.Response) => {
+		const tokenOwnerId = req.user.id;
+		const emailsInBody = req.body.map((data) => data.email);
 
 		let mailer: UserManagementMailer.UserManagementMailer | undefined;
 		try {
 			mailer = await UserManagementMailer.getInstance();
 		} catch (error) {
 			if (error instanceof Error) {
-				return res.status(500).json({
-					message: `There is a problem with your SMTP setup! ${error.message}`,
-				});
-			}
-		}
-
-		const createUsers: { [key: string]: string | null } = {};
-		// Validate payload
-		// @ts-ignore
-		// eslint-disable-next-line consistent-return
-		req.body.forEach((invite) => {
-			if (typeof invite !== 'object' || !invite.email) {
-				return res.status(400).json({
-					message:
-						'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
-				});
-			}
-
-			if (!validator.isEmail(invite.email)) {
-				return res.status(400).json({
-					message: `Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
-				});
-			}
-			createUsers[invite.email] = null;
-		});
-
-		const role = (await Db.collections.Role?.findOne({ scope: 'global', name: 'member' })) as Role;
-
-		if (!role) {
-			return res.status(500).json({
-				message: `Members role not found in database - inconsistent state`,
-			});
-		}
-
-		// remove/exclude existing users from creation
-		const existingUsers = await Db.collections.User?.find({
-			where: { email: In(Object.keys(createUsers)) },
-		});
-
-		existingUsers?.forEach((user) => {
-			if (user.password) {
-				delete createUsers[user.email];
-				return;
-			}
-			createUsers[user.email] = user.id;
-		});
-
-		const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
-
-		let savedUsers = [];
-		try {
-			savedUsers = await Db.transaction(async (transactionManager) => {
-				return Promise.all(
-					usersToSetUp.map(async (email) => {
-						const newUser = Object.assign(new User(), {
-							email,
-							globalRole: role,
-						});
-						const savedUser = await transactionManager.save<User>(newUser);
-						createUsers[savedUser.email] = savedUser.id;
-						return savedUser;
-					}),
+				throw new ResponseHelper.ResponseError(
+					'Email sending must be set up in order to request a password reset email',
+					undefined,
+					500,
 				);
-			});
+			}
+		}
 
-			void InternalHooksManager.getInstance().onUserInvite({
-				user_id: req.user.id,
-				target_user_id: Object.values(createUsers) as string[],
-			});
+		let role: Role | undefined;
+
+		try {
+			role = await getGlobalMemberRole();
+		} catch (error) {
+			throw new ResponseHelper.ResponseError(
+				'Members role not found in database - inconsistent state',
+				undefined,
+				500,
+			);
+		}
+
+		const { usersToSave, pendingUsers } = await getUsersToSaveAndInvite(emailsInBody);
+
+		let savedUsers;
+
+		try {
+			savedUsers = await saveUsersWithRole(usersToSave, role!, tokenOwnerId);
 		} catch (error) {
 			throw new ResponseHelper.ResponseError('An error occurred during user creation');
 		}
 
-		const baseUrl = getInstanceBaseUrl();
+		const userstoInvite = [...savedUsers, ...pendingUsers];
 
-		const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
+		await inviteUsers(userstoInvite, mailer, tokenOwnerId);
 
-		// send invite email to new or not yet setup users
-
-		await Promise.all(
-			usersPendingSetup.map(async ([email, id]) => {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
-				const result = await mailer?.invite({
-					email,
-					inviteAcceptUrl,
-					domain: baseUrl,
-				});
-				const resp: { user: { id: string | null; email: string }; error?: string } = {
-					user: {
-						id,
-						email,
-					},
-				};
-				if (result?.success) {
-					void InternalHooksManager.getInstance().onUserTransactionalEmail({
-						user_id: id!,
-						message_type: 'New user invite',
-					});
-				} else {
-					void InternalHooksManager.getInstance().onEmailFailed({
-						user_id: req.user.id,
-						message_type: 'New user invite',
-					});
-					resp.error = `Email could not be sent`;
-				}
-				return resp;
-			}),
-		);
-
-		res.json([...clean(existingUsers ?? []), ...clean(savedUsers)]);
-	},
+		return clean(userstoInvite);
+	}),
 	// eslint-disable-next-line consistent-return
 	deleteUser: async (req: UserRequest.Delete, res: express.Response): Promise<any> => {
 		const { identifier: idToDelete } = req.params;
@@ -282,7 +203,13 @@ export = {
 		res.json(user);
 	},
 	// eslint-disable-next-line consistent-return
-	getUsers: async (req: UserRequest.Get, res: express.Response): Promise<any> => {
+	getUsers: async (
+		req: UserRequest.Get,
+		res: express.Response,
+		// eslint-disable-next-line @typescript-eslint/no-shadow
+		next: express.NextFunction,
+		// eslint-disable-next-line consistent-return
+	): Promise<any> => {
 		let offset = 0;
 		let limit = parseInt(req.query.limit, 10) || 10;
 		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
