@@ -388,9 +388,9 @@ export class Markdown implements INodeType {
 					Object.keys(options).filter(key => key !== 'flavor').forEach( key => converter.setOption(key, options[key]));
 
 					const html = this.getNodeParameter('html', i) as string;
-					const dom = new JSDOM(html);
+					const dom = new JSDOM();
 
-					const markdownFromHTML = converter.makeMarkdown(dom.window.document.body.outerHTML, dom.window.document	);
+					const markdownFromHTML = converter.makeMarkdown(html, dom.window.document	);
 
 					const newItem = JSON.parse(JSON.stringify(items[i].json));
 					set(newItem, destinationKey, markdownFromHTML);
