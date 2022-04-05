@@ -409,7 +409,7 @@ export class Markdown implements INodeType {
 					const newItem = JSON.parse(JSON.stringify(items[i].json));
 					set(newItem, destinationKey, htmlFromMarkdown);
 
-					returnData.push(newItem)
+					returnData.push(newItem);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
