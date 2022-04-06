@@ -792,6 +792,12 @@ export default mixins(
 					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
+					if (this.lastSelectedNode) {
+						if (this.lastSelectedNode.type === 'n8n-nodes-base.note' && this.isStickyInEditMode) {
+							return;
+						}
+					}
+
 					e.stopPropagation();
 					e.preventDefault();
 
@@ -799,6 +805,11 @@ export default mixins(
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
 					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
+					if (this.lastSelectedNode) {
+						if (this.lastSelectedNode.type === 'n8n-nodes-base.note' && this.isStickyInEditMode) {
+							return;
+						}
+					}
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
