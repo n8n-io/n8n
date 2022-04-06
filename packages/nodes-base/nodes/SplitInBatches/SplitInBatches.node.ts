@@ -76,12 +76,13 @@ export class SplitInBatches implements INodeType {
 			nodeContext.items = items;
 			
 			// Return this first batch of items
-			if(batchSize == 1) return this.prepareOutputData([items[0]]);
+			if(batchSize === 1) return this.prepareOutputData([items[0]]);
 			else return this.prepareOutputData(items.slice(0, batchSize));
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
-			if(batchSize == 1) {
+			nodeContext.noItemsLeft = nodeContext.items.length === 0;
+			if(batchSize === 1) {
 				const pos = nodeContext.currentRunIndex;
 				if(pos < nodeContext.items.length) return this.prepareOutputData([nodeContext.items[pos]]);
 			} else {
