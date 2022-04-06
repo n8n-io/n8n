@@ -147,6 +147,7 @@ export default {
           const textArea = document.querySelector('.el-textarea__inner');
           if (textArea) {
             textArea.focus();
+            textArea.select();
           }
         }, 100);
 
