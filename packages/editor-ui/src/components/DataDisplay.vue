@@ -6,12 +6,14 @@
 		custom-class="data-display-wrapper"
 		width="85%"
 		append-to-body
-		@opened="showDocumentHelp = true"
 	>
-		<div :class="$style.backToCanvas">
-			<n8n-icon icon="arrow-left" color="text-xlight" size="small" />
-			<n8n-text color="text-xlight" size="small">{{ $locale.baseText('node.backToCanvas') }}</n8n-text>
-		</div>
+		<n8n-tooltip placement="bottom-start" :disabled="!triggerWaitingWarningEnabled">
+			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('node.backToCanvas.waitingForTriggerWarning') }}</div>
+			<div :class="$style.backToCanvas" @click="close">
+				<n8n-icon icon="arrow-left" color="text-xlight" size="small" />
+				<n8n-text color="text-xlight" size="small">{{ $locale.baseText('node.backToCanvas') }}</n8n-text>
+			</div>
+		</n8n-tooltip>
 
 		<div class="data-display" v-if="node" >
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
@@ -47,9 +49,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	data () {
 		return {
-			basePath: this.$store.getters.getBaseUrl,
-			showDocumentHelp: false,
 			settingsEventBus: new Vue(),
+			triggerWaitingWarningEnabled: false,
 		};
 	},
 	computed: {
@@ -86,7 +87,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		close () {
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-			this.showDocumentHelp = false;
+			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
 		},
 	},
@@ -130,10 +131,17 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 </style>
 
 <style lang="scss" module>
+.triggerWarning {
+	max-width: 180px;
+}
+
 .backToCanvas {
 	position: absolute;
 	top: -24px;
-	pointer-events: none;
+
+	&:hover {
+		cursor: pointer;
+	}
 
 	> * {
 		margin-right: var(--spacing-3xs);
