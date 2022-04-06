@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<el-popover placement="right" width="200" :value="editName">
+		<el-popover placement="right" width="200" :value="editName" :disabled="readOnly">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
@@ -22,7 +22,7 @@
 						{{ shortenedName }}
 					</template>
 				</ShortenName>
-				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" />
+				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
 			</span>
 		</el-popover>
 	</span>
@@ -40,6 +40,10 @@ export default Vue.extend({
 			type: String,
 		},
 		nodeType: {},
+		readOnly: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
