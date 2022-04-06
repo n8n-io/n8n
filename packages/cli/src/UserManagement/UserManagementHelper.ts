@@ -201,7 +201,7 @@ export async function checkPermissionsForExecution(
 export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
 	return !!ignoredEndpoints
 		.filter(Boolean) // skip empty paths
-		.find((ignoredEndpoint) => url.includes(ignoredEndpoint));
+		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
 }
 
 /**
