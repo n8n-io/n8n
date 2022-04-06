@@ -957,43 +957,43 @@ export default mixins(
 
 <style lang="scss">
 .vjs-tree {
-	color: #5045A1;
+	color: var(--color-json-default);
 }
 
 .vjs-tree.is-highlight-selected {
-	background-color: #EBEDF3;
+	background-color: var(--color-json-highlight);
 }
 
 .vjs-tree .vjs-value__null {
-	color: var(--color-danger);
+	color: var(--color-json-null);
 }
 
 .vjs-tree .vjs-value__boolean {
-	color: #1d8ce0;
+	color: var(--color-json-boolean);
 }
 
 .vjs-tree .vjs-value__number {
-	color: #1d8ce0;
+	color: var(--color-json-number);
 }
 
 .vjs-tree .vjs-value__string {
-	color: #5045A1;
+	color: var(--color-json-string);
 }
 
 .vjs-tree .vjs-key {
-	color: var(--color-text-dark);
+	color: var(--color-json-key);
 }
 
 .vjs-tree .vjs-tree__brackets {
-	color: var(--color-text-dark);
+	color: var(--color-json-brackets);
 }
 
 .vjs-tree .vjs-tree__brackets:hover {
-	color: #1890ff
+	color: var(--color-json-brackets-hover);
 }
 
 .vjs-tree .vjs-tree__content.has-line {
-	border-left: 1px dotted #bfcbd9
+	border-left: 1px dotted var(--color-json-line);
 }
 
 </style>
