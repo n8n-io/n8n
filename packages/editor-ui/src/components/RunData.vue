@@ -957,7 +957,7 @@ export default mixins(
 
 <style lang="scss">
 .vjs-tree {
-	color: #5045A1; // todo
+	color: #5045A1;
 }
 
 .vjs-tree.is-highlight-selected {
@@ -968,16 +968,32 @@ export default mixins(
 	color: var(--color-danger);
 }
 
-.vjs-tree .vjs-value__boolean,
+.vjs-tree .vjs-value__boolean {
+	color: #1d8ce0;
+}
+
 .vjs-tree .vjs-value__number {
-	color: #1d8ce0; // todo
+	color: #1d8ce0;
 }
 
 .vjs-tree .vjs-value__string {
-	color: #5045A1; // todo
+	color: #5045A1;
 }
 
-.vjs-tree .vjs-key, .vjs-tree__brackets {
+.vjs-tree .vjs-key {
 	color: var(--color-text-dark);
 }
+
+.vjs-tree .vjs-tree__brackets {
+	color: var(--color-text-dark);
+}
+
+.vjs-tree .vjs-tree__brackets:hover {
+	color: #1890ff
+}
+
+.vjs-tree .vjs-tree__content.has-line {
+	border-left: 1px dotted #bfcbd9
+}
+
 </style>
