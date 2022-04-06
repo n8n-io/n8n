@@ -748,7 +748,7 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
-};
+}
 
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
@@ -967,7 +967,7 @@ export type IFormBoxConfig = {
 export interface ITab {
 	value: string | number;
 	label?: string;
-	href?: string,
+	href?: string;
 	icon?: string;
 	align?: 'right';
 };
