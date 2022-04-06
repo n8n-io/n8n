@@ -1,8 +1,12 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['estimate'];
+const resource = [
+	'estimate',
+];
 
-export const estimateOperations = [
+export const estimateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,12 +47,12 @@ export const estimateOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const estimateFields = [
+export const estimateFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:getAll                            */
+	/*                                estimate:getAll                             */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -152,7 +156,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:get                            */
+	/*                                estimate:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Estimate Id',
@@ -172,7 +176,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:delete                            */
+	/*                                estimate:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Estimate Id',
@@ -192,7 +196,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:create                           */
+	/*                                estimate:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -292,7 +296,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:update                           */
+	/*                                estimate:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice Id',
@@ -398,4 +402,4 @@ export const estimateFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

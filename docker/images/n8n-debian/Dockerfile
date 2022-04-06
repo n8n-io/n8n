@@ -1,4 +1,4 @@
-FROM node:14.15
+FROM node:16
 
 ARG N8N_VERSION
 
@@ -6,7 +6,7 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 
 RUN \
 	apt-get update && \
-	apt-get -y install graphicsmagick gosu
+	apt-get -y install graphicsmagick gosu git
 
 # Set a custom user to not have n8n run as root
 USER root

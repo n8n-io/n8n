@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -8,18 +8,18 @@ export class Imap implements ICredentialType {
 	name = 'imap';
 	displayName = 'IMAP';
 	documentationUrl = 'imap';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'User',
 			name: 'user',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -28,19 +28,19 @@ export class Imap implements ICredentialType {
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 993,
 		},
 		{
 			displayName: 'SSL/TLS',
 			name: 'secure',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: true,
 		},
 	];

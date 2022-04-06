@@ -22,14 +22,13 @@ export class ShopifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify Trigger',
 		name: 'shopifyTrigger',
-		icon: 'file:shopify.png',
+		icon: 'file:shopify.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
 		description: 'Handle Shopify events via webhooks',
 		defaults: {
 			name: 'Shopify Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -304,7 +303,7 @@ export class ShopifyTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const endpoint = `/webhooks`;
-				
+
 				const { webhooks }  = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl) {
@@ -328,7 +327,7 @@ export class ShopifyTrigger implements INodeType {
 				};
 
 				let responseData;
-				
+
 				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
@@ -345,7 +344,7 @@ export class ShopifyTrigger implements INodeType {
 					const endpoint = `/webhooks/${webhookData.webhookId}.json`;
 					try {
 						await shopifyApiRequest.call(this, 'DELETE', endpoint, {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;
@@ -358,7 +357,7 @@ export class ShopifyTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
-		const credentials = this.getCredentials('shopifyApi') as IDataObject;
+		const credentials = await this.getCredentials('shopifyApi') as IDataObject;
 		const topic = this.getNodeParameter('topic') as string;
 		if (headerData['x-shopify-topic'] !== undefined
 			&& headerData['x-shopify-hmac-sha256'] !== undefined

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,11 +44,11 @@ export const eventOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 event:ALL                               */
+	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar ID',
@@ -258,8 +258,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -299,6 +298,13 @@ export const eventFields = [
 					minValue: 1,
 				},
 				default: 1,
+			},
+			{
+				displayName: 'RRULE',
+				name: 'rrule',
+				type: 'string',
+				default: '',
+				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',
@@ -349,16 +355,6 @@ export const eventFields = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.',
 			},
 			{
 				displayName: 'Visibility',
@@ -556,8 +552,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Timezone',
@@ -645,8 +640,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Order By',
@@ -693,18 +687,17 @@ export const eventFields = [
 				name: 'singleEvents',
 				type: 'boolean',
 				default: false,
-				description: `Whether to expand recurring events into instances and only return single one-off</br>
-				events and instances of recurring events, but not the underlying recurring events themselves.`,
+				description: `Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves.`,
 			},
 			{
-				displayName: 'End Time',
+				displayName: 'Start Time',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
 				description: `Upper bound (exclusive) for an event's start time to filter by`,
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'End Time',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
@@ -878,8 +871,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -919,6 +911,13 @@ export const eventFields = [
 					minValue: 1,
 				},
 				default: 1,
+			},
+			{
+				displayName: 'RRULE',
+				name: 'rrule',
+				type: 'string',
+				default: '',
+				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Start',
@@ -976,16 +975,6 @@ export const eventFields = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on n8n timezone',
 			},
 			{
 				displayName: 'Visibility',
@@ -1077,4 +1066,4 @@ export const eventFields = [
 		],
 		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
 	},
-] as INodeProperties[];
+];

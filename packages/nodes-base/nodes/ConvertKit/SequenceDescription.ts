@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const sequenceOperations = [
+export const sequenceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const sequenceOperations = [
 		default: 'addSubscriber',
 		description: 'The operations to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const sequenceFields = [
+export const sequenceFields: INodeProperties[] = [
 	{
 		displayName: 'Sequence ID',
 		name: 'id',
@@ -227,4 +227,4 @@ export const sequenceFields = [
 		],
 		description: 'Receive only active subscribers or cancelled subscribers.',
 	},
-] as INodeProperties[];
+];

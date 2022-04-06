@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const leadOpeations = [
+export const leadOpeations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -19,6 +19,11 @@ export const leadOpeations = [
 				description: 'Create a new lead',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a lead',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a lead',
@@ -33,23 +38,17 @@ export const leadOpeations = [
 				value: 'update',
 				description: 'Update new lead',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a lead',
-			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 lead:delete                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Delete By',
 		name: 'deleteBy',
@@ -83,6 +82,7 @@ export const leadFields = [
 		displayName: 'Value',
 		name: 'value',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -97,10 +97,9 @@ export const leadFields = [
 		description: 'Delete by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  lead:get                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  lead:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Select By',
 		name: 'selectBy',
@@ -159,10 +158,9 @@ export const leadFields = [
 		description: 'View by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  lead:getAll                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  lead:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -238,10 +236,9 @@ export const leadFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 lead:update                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update By',
 		name: 'updateBy',
@@ -290,10 +287,9 @@ export const leadFields = [
 		description: 'Value of the property to identify the lead to update',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 lead:create                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -356,34 +352,6 @@ export const leadFields = [
 				description: 'An avatar image URL. note: the image url needs to be https.',
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Name of the user',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'The phone number of the user',
-			},
-			{
-				displayName: 'Unsubscribed From Emails',
-				name: 'unsubscribedFromEmails',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the Lead is unsubscribed from emails',
-			},
-			{
-				displayName: 'Update Last Request At',
-				name: 'updateLastRequestAt',
-				type: 'boolean',
-				default: false,
-				description: 'A boolean value, which if true, instructs Intercom to update the<br />users last_request_at value to the current API service time in<br />UTC. default value if not sent is false.',
-			},
-			{
 				displayName: 'Companies',
 				name: 'companies',
 				type: 'multiOptions',
@@ -411,18 +379,32 @@ export const leadFields = [
 				description: 'The email of the user.',
 			},
 			{
-				displayName: 'UTM Source',
-				name: 'utmSource',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: 'Name of the user',
 			},
 			{
-				displayName: 'UTM Medium',
-				name: 'utmMedium',
+				displayName: 'Phone',
+				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Identifies what type of link was used',
+				description: 'The phone number of the user',
+			},
+			{
+				displayName: 'Unsubscribed From Emails',
+				name: 'unsubscribedFromEmails',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the Lead is unsubscribed from emails',
+			},
+			{
+				displayName: 'Update Last Request At',
+				name: 'updateLastRequestAt',
+				type: 'boolean',
+				default: false,
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -432,18 +414,32 @@ export const leadFields = [
 				description: 'Identifies a specific product promotion or strategic campaign',
 			},
 			{
-				displayName: 'UTM Term',
-				name: 'utmTerm',
-				type: 'string',
-				default: '',
-				description: 'Identifies search terms',
-			},
-			{
 				displayName: 'UTM Content',
 				name: 'utmContent',
 				type: 'string',
 				default: '',
 				description: 'Identifies what specifically was clicked to bring the user to the site',
+			},
+			{
+				displayName: 'UTM Medium',
+				name: 'utmMedium',
+				type: 'string',
+				default: '',
+				description: 'Identifies what type of link was used',
+			},
+			{
+				displayName: 'UTM Source',
+				name: 'utmSource',
+				type: 'string',
+				default: '',
+				description: 'An avatar image URL. note: the image url needs to be https.',
+			},
+			{
+				displayName: 'UTM Term',
+				name: 'utmTerm',
+				type: 'string',
+				default: '',
+				description: 'Identifies search terms',
 			},
 		],
 	},
@@ -518,4 +514,4 @@ export const leadFields = [
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-] as INodeProperties[];
+];

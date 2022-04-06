@@ -42,7 +42,6 @@ export class Cockpit implements INodeType {
 		description: 'Consume Cockpit API',
 		defaults: {
 			name: 'Cockpit',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -120,48 +119,56 @@ export class Cockpit implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'collection') {
-				const collectionName = this.getNodeParameter('collection', i) as string;
+			try {
+				if (resource === 'collection') {
+					const collectionName = this.getNodeParameter('collection', i) as string;
 
-				if (operation === 'create') {
-					const data = createDataFromParameters.call(this, i);
+					if (operation === 'create') {
+						const data = createDataFromParameters.call(this, i);
 
-					responseData = await createCollectionEntry.call(this, collectionName, data);
-				} else if (operation === 'getAll') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						responseData = await createCollectionEntry.call(this, collectionName, data);
+					} else if (operation === 'getAll') {
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					if (!returnAll) {
-						options.limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							options.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						responseData = await getAllCollectionEntries.call(this, collectionName, options);
+					} else if (operation === 'update') {
+						const id = this.getNodeParameter('id', i) as string;
+						const data = createDataFromParameters.call(this, i);
+
+						responseData = await createCollectionEntry.call(this, collectionName, data, id);
 					}
+				} else if (resource === 'form') {
+					const formName = this.getNodeParameter('form', i) as string;
 
-					responseData = await getAllCollectionEntries.call(this, collectionName, options);
-				} else if (operation === 'update') {
-					const id = this.getNodeParameter('id', i) as string;
-					const data = createDataFromParameters.call(this, i);
+					if (operation === 'submit') {
+						const form = createDataFromParameters.call(this, i);
 
-					responseData = await createCollectionEntry.call(this, collectionName, data, id);
+						responseData = await submitForm.call(this, formName, form);
+					}
+				} else if (resource === 'singleton') {
+					const singletonName = this.getNodeParameter('singleton', i) as string;
+
+					if (operation === 'get') {
+						responseData = await getSingleton.call(this, singletonName);
+					}
 				}
-			} else if (resource === 'form') {
-				const formName = this.getNodeParameter('form', i) as string;
 
-				if (operation === 'submit') {
-					const form = createDataFromParameters.call(this, i);
-
-					responseData = await submitForm.call(this, formName, form);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-			} else if (resource === 'singleton') {
-				const singletonName = this.getNodeParameter('singleton', i) as string;
-
-				if (operation === 'get') {
-					responseData = await getSingleton.call(this, singletonName);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 

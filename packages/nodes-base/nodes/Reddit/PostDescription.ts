@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const postOperations = [
+export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -30,6 +30,11 @@ export const postOperations = [
 				value: 'getAll',
 				description: 'Get all posts from a subreddit',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search posts in a subreddit or in all of Reddit.',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -39,9 +44,9 @@ export const postOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const postFields = [
+export const postFields: INodeProperties[] = [
 	// ----------------------------------
 	//         post: create
 	// ----------------------------------
@@ -160,7 +165,7 @@ export const postFields = [
 		name: 'resubmit',
 		type: 'boolean',
 		default: false,
-		description: 'If toggled on, the URL will be posted even if<br>it was already posted to the subreddit before.<br>Otherwise, the re-posting will trigger an error.',
+		description: 'If toggled on, the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -186,7 +191,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to delete. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description: 'ID of the post to delete. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'gla7fmt',
 		displayOptions: {
 			show: {
@@ -227,7 +232,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to retrieve. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description: 'ID of the post to retrieve. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
@@ -348,4 +353,166 @@ export const postFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+
+	// ----------------------------------
+	//         post: search
+	// ----------------------------------
+	{
+		displayName: 'Location',
+		name: 'location',
+		type: 'options',
+		default: 'subreddit',
+		description: 'Location where to search for posts.',
+		options: [
+			{
+				name: 'All Reddit',
+				value: 'allReddit',
+				description: 'Search for posts in all of Reddit.',
+			},
+			{
+				name: 'Subreddit',
+				value: 'subreddit',
+				description: 'Search for posts in a specific subreddit.',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Subreddit',
+		name: 'subreddit',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The name of subreddit to search in.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+				location: [
+					'subreddit',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Keyword',
+		name: 'keyword',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The keyword for the search.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 100,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: '',
+				type: 'options',
+				default: 'relevance',
+				description: 'The category to sort results by.',
+				options: [
+					{
+						name: 'Comments',
+						value: 'comments',
+					},
+					{
+						name: 'Hot',
+						value: 'hot',
+					},
+					{
+						name: 'New',
+						value: 'new',
+					},
+					{
+						name: 'Top',
+						value: 'top',
+					},
+					{
+						name: 'Relevance',
+						value: 'relevance',
+					},
+				],
+			},
+		],
+	},
+];

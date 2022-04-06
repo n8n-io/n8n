@@ -1,0 +1,156 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs';
+import ColorCircles from './ColorCircles.vue';
+
+<Meta
+	title="Styleguide/Colors"
+	parameters={{
+		design: {
+			type: 'figma',
+			url: 'https://www.figma.com/file/DxLbnIyMK8X0uLkUguFV4n/n8n-design-system_v1?node-id=2%3A23',
+		},
+	}}
+/>
+
+# Colors
+
+## Primary
+
+<Canvas>
+	<Story name="primary">
+		{{
+			template: `<color-circles :colors="['--color-primary-shade-1', '--color-primary', '--color-primary-tint-1', '--color-primary-tint-2', '--color-primary-tint-3']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Outline
+
+<Canvas>
+	<Story name="secondary">
+		{{
+			template: `<color-circles :colors="['--color-secondary']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Success
+
+<Canvas>
+	<Story name="success">
+		{{
+			template: `<color-circles :colors="['--color-success', '--color-success-tint-1', '--color-success-tint-2', '--color-success-light']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Warning
+
+<Canvas>
+	<Story name="warning">
+		{{
+			template: `<color-circles :colors="['--color-warning', '--color-warning-tint-1', '--color-warning-tint-2']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Danger
+
+<Canvas>
+	<Story name="danger">
+		{{
+			template: `<color-circles :colors="['--color-danger', '--color-danger-tint-1', '--color-danger-tint-2']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Info
+
+<Canvas>
+	<Story name="info">
+		{{
+			template: `<color-circles :colors="['--color-info', '--color-info-tint-1', '--color-info-tint-2']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Text
+
+<Canvas>
+	<Story name="text">
+		{{
+			template: `<color-circles :colors="['--color-text-dark', '--color-text-base', '--color-text-light', '--color-text-lighter', '--color-text-xlight']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Foreground
+
+<Canvas>
+	<Story name="foreground">
+		{{
+			template: `<color-circles :colors="['--color-foreground-xdark', '--color-foreground-dark', '--color-foreground-base', '--color-foreground-light', '--color-foreground-xlight']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Background
+
+<Canvas>
+	<Story name="background">
+		{{
+			template: `<color-circles :colors="['--color-background-dark', '--color-background-base', '--color-background-light', '--color-background-lighter', '--color-background-xlight']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Canvas
+
+<Canvas>
+	<Story name="canvas">
+		{{
+			template: `<color-circles :colors="['--color-canvas-background', '--color-canvas-dot']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+
+<Canvas>
+	<Story name="avatar">
+		{{
+			template: `<color-circles :colors="['--color-avatar-accent-1', '--color-avatar-accent-2']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>

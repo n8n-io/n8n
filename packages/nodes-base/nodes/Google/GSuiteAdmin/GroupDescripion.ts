@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const groupOperations = [
+export const groupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const groupOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const groupFields = [
+export const groupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -90,9 +90,7 @@ export const groupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `An extended description to help users determine the purpose of a group.<br>
-				For example, you can include information about who should join the group,<br>
-				the types of messages to send to the group, links to FAQs about the group, or related groups`,
+				description: `An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups`,
 			},
 			{
 				displayName: 'Name',
@@ -238,7 +236,7 @@ export const groupFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups" target="_blank">at</a>`,
+				description: `Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>`,
 			},
 			{
 				displayName: 'Sort Order',
@@ -309,9 +307,7 @@ export const groupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `An extended description to help users determine the purpose of a group.<br>
-				For example, you can include information about who should join the group,<br>
-				the types of messages to send to the group, links to FAQs about the group, or related groups`,
+				description: `An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups`,
 			},
 			{
 				displayName: 'Email',
@@ -329,4 +325,4 @@ export const groupFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

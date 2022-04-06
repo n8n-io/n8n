@@ -7,9 +7,11 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    timeout-minutes: 30
+
     strategy:
       matrix:
-        node-version: [10.x, 12.x, 14.x]
+        node-version: [16.x]
 
     steps:
     - uses: actions/checkout@v1
@@ -23,6 +25,6 @@ jobs:
         npm run bootstrap
         npm run build --if-present
         npm test
-        npm run tslint
+        npm run lint
       env:
         CI: true

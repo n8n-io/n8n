@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -33,28 +33,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'youTubeOAuth2Api', options);
 	} catch (error) {
-
-		let errors;
-
-		if (error.response && error.response.body) {
-
-			if (resource === '/upload/youtube/v3/videos') {
-				error.response.body = JSON.parse(error.response.body);
-			}
-
-			if (error.response.body.error) {
-
-				errors = error.response.body.error.errors;
-
-				errors = errors.map((e: IDataObject) => e.message);
-			}
-
-			// Try to return the error prettier
-			throw new Error(
-				`YouTube error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

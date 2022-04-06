@@ -9,12 +9,19 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
+
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
@@ -37,13 +44,13 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = this.getCredentials('googleApi');
+			const credentials = await this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -53,11 +60,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			return await this.helpers.requestOAuth2.call(this, 'googleTranslateOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Google Translate error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -80,7 +83,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -89,6 +92,9 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	];
 
 	const now = moment().unix();
+
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
@@ -99,11 +105,11 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey as string,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey as string,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},

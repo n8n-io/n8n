@@ -14,13 +14,12 @@ export class TheHiveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive Trigger',
 		name: 'theHiveTrigger',
-		icon: 'file:thehive.png',
+		icon: 'file:thehive.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a TheHive event occurs.',
+		description: 'Starts the workflow when TheHive events occur',
 		defaults: {
 			name: 'TheHive Trigger',
-			color: '#f3d02f',
 		},
 		inputs: [],
 		outputs: ['main'],

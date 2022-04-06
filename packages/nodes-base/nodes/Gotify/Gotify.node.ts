@@ -22,10 +22,9 @@ export class Gotify implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Gotify API.',
+		description: 'Consume Gotify API',
 		defaults: {
 			name: 'Gotify',
-			color: '#71c8ec',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -194,67 +193,75 @@ export class Gotify implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'message') {
-				if (operation === 'create') {
+			try {
+				if (resource === 'message') {
+					if (operation === 'create') {
 
-					const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const body: IDataObject = {
-						message,
-					};
+						const body: IDataObject = {
+							message,
+						};
 
-					Object.assign(body, additionalFields);
+						Object.assign(body, additionalFields);
 
-					responseData = await gotifyApiRequest.call(
-						this,
-						'POST',
-						`/message`,
-						body,
-					);
-				}
-				if (operation === 'delete') {
-					const messageId = this.getNodeParameter('messageId', i) as string;
-
-					responseData = await gotifyApiRequest.call(
-						this,
-						'DELETE',
-						`/message/${messageId}`,
-					);
-					responseData = { success: true };
-				}
-
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					if (returnAll) {
-						responseData = await gotifyApiRequestAllItems.call(
-							this,
-							'messages',
-							'GET',
-							'/message',
-							{},
-							qs,
-						);
-
-					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await gotifyApiRequest.call(
 							this,
-							'GET',
+							'POST',
 							`/message`,
-							{},
-							qs,
+							body,
 						);
-						responseData = responseData.messages;
+					}
+					if (operation === 'delete') {
+						const messageId = this.getNodeParameter('messageId', i) as string;
+
+						responseData = await gotifyApiRequest.call(
+							this,
+							'DELETE',
+							`/message/${messageId}`,
+						);
+						responseData = { success: true };
+					}
+
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll) {
+							responseData = await gotifyApiRequestAllItems.call(
+								this,
+								'messages',
+								'GET',
+								'/message',
+								{},
+								qs,
+							);
+
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await gotifyApiRequest.call(
+								this,
+								'GET',
+								`/message`,
+								{},
+								qs,
+							);
+							responseData = responseData.messages;
+						}
 					}
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

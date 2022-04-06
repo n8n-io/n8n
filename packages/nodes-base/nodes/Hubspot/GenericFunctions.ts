@@ -10,8 +10,14 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
+
+import * as moment from 'moment';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
@@ -24,6 +30,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
+		headers: {},
 		uri: uri || `https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
@@ -32,42 +39,30 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('hubspotApi');
+			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
+			return await this.helpers.request!(options);
+		} else if (authenticationMethod === 'appToken') {
+			const credentials = await this.getCredentials('hubspotAppToken');
 
+			options.headers!['Authorization'] = `Bearer ${credentials!.appToken}`;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
-			const credentials = this.getCredentials('hubspotDeveloperApi');
+			if (endpoint.includes('webhooks')) {
 
-			options.qs.hapikey = credentials!.apiKey as string;
-			return await this.helpers.request!(options);
+				const credentials = await this.getCredentials('hubspotDeveloperApi');
+				options.qs.hapikey = credentials!.apiKey as string;
+				return await this.helpers.request!(options);
+
+			} else {
+				return await this.helpers.requestOAuth2!.call(this, 'hubspotDeveloperApi', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
+			}
 		} else {
-			// @ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer' });
+			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {
-		let errorMessages;
-
-		if (error.response && error.response.body) {
-
-			if (error.response.body.message) {
-
-				errorMessages = [error.response.body.message];
-
-			} else if (error.response.body.errors) {
-				// Try to return the error prettier
-				errorMessages = error.response.body.errors;
-
-				if (errorMessages[0].message) {
-					// @ts-ignore
-					errorMessages = errorMessages.map(errorItem => errorItem.message);
-				}
-			}
-			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join('|')}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -95,9 +90,7 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 			return returnData;
 		}
 	} while (
-		responseData['has-more'] !== undefined &&
-		responseData['has-more'] !== null &&
-		responseData['has-more'] !== false
+		responseData['hasMore'] || responseData['has-more']
 	);
 	return returnData;
 }
@@ -110,6 +103,17 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+
+// tslint:disable-next-line: no-any
+export function clean(obj: any) {
+	for (const propName in obj) {
+		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {
+			delete obj[propName];
+		}
+	}
+	return obj;
 }
 
 export const propertyEvents = [
@@ -1898,3 +1902,103 @@ export const dealFields = [
 		'label': 'Closed Won Reason',
 	},
 ];
+
+const reduceMetadatFields = (data: string[]) => {
+	return data.reduce((a, v) => {
+		//@ts-ignore
+		a.push(...v.split(','));
+		return a;
+	}, []).map(email => ({ email }));
+};
+
+export const getEmailMetadata = (meta: IDataObject) => {
+	return {
+		from: {
+			...(meta.fromEmail && { email: meta.fromEmail }),
+			...(meta.firstName && { firstName: meta.firstName }),
+			...(meta.lastName && { lastName: meta.lastName }),
+		},
+		cc: reduceMetadatFields(meta.cc as string[] || []),
+		bcc: reduceMetadatFields(meta.bcc as string[] || []),
+		...(meta.subject && { subject: meta.subject }),
+		...(meta.html && { html: meta.html }),
+		...(meta.text && { text: meta.text }),
+	};
+};
+
+export const getTaskMetadata = (meta: IDataObject) => {
+	return {
+		...(meta.body && { body: meta.body }),
+		...(meta.subject && { subject: meta.subject }),
+		...(meta.status && { status: meta.status }),
+		...(meta.forObjectType && { forObjectType: meta.forObjectType }),
+	};
+};
+
+export const getMeetingMetadata = (meta: IDataObject) => {
+	return {
+		...(meta.body && { body: meta.body }),
+		...(meta.startTime && { startTime: moment(meta.startTime as string).unix() }),
+		...(meta.endTime && { endTime: moment(meta.endTime as string).unix() }),
+		...(meta.title && { title: meta.title }),
+		...(meta.internalMeetingNotes && { internalMeetingNotes: meta.internalMeetingNotes }),
+	};
+};
+
+export const getCallMetadata = (meta: IDataObject) => {
+	return {
+		...(meta.toNumber && { toNumber: meta.toNumber }),
+		...(meta.fromNumber && { fromNumber: meta.fromNumber }),
+		...(meta.status && { status: meta.status }),
+		...(meta.durationMilliseconds && { durationMilliseconds: meta.durationMilliseconds }),
+		...(meta.recordingUrl && { recordingUrl: meta.recordingUrl }),
+		...(meta.body && { body: meta.body }),
+	};
+};
+
+
+export const getAssociations = (associations: {
+	companyIds: string,
+	dealIds: string,
+	ownerIds: string,
+	contactIds: string,
+	ticketIds: string;
+}) => {
+	return {
+		...(associations.companyIds && { companyIds: associations.companyIds.toString().split(',') }),
+		...(associations.contactIds && { contactIds: associations.contactIds.toString().split(',') }),
+		...(associations.dealIds && { dealIds: associations.dealIds.toString().split(',') }),
+		...(associations.ownerIds && { ownerIds: associations.ownerIds.toString().split(',') }),
+		...(associations.ticketIds && { ticketIds: associations.ticketIds.toString().split(',') }),
+	};
+};
+
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		apiKey,
+		appToken,
+	} = credentials as {
+		appToken: string,
+		apiKey: string,
+	};
+
+	const options: OptionsWithUri = {
+		method: 'GET',
+		headers: {},
+		uri: `https://api.hubapi.com/deals/v1/deal/paged`,
+		json: true,
+	};
+
+	if (apiKey) {
+		options.qs = { hapikey: apiKey };
+	} else {
+		options.headers = { Authorization: `Bearer ${appToken}` };
+	}
+
+	return await this.helpers.request(options);
+}

@@ -22,10 +22,9 @@ export class PostmarkTrigger implements INodeType {
 		icon: 'file:postmark.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Postmark events occur.',
+		description: 'Starts the workflow when Postmark events occur',
 		defaults: {
 			name: 'Postmark Trigger',
-			color: '#fedd00',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -236,7 +235,7 @@ export class PostmarkTrigger implements INodeType {
 
 					try {
 						await postmarkApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

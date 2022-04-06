@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const folderOperations = [
+export const folderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -19,6 +19,11 @@ export const folderOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a folder',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a folder',
 			},
 			{
 				name: 'Get Children',
@@ -39,9 +44,9 @@ export const folderOperations = [
 		default: 'getChildren',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const folderFields = [
+export const folderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 folder:create                              */
@@ -51,6 +56,7 @@ export const folderFields = [
 		name: 'name',
 		required: true,
 		type: 'string',
+		placeholder: '/Pictures/2021',
 		displayOptions: {
 			show: {
 				operation: [
@@ -62,7 +68,7 @@ export const folderFields = [
 			},
 		},
 		default: '',
-		description: `Folder's name`,
+		description: 'The name or path of the folder',
 	},
 	{
 		displayName: 'Options',
@@ -91,7 +97,7 @@ export const folderFields = [
 		],
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 folder:getChildren                         */
+/*                                 folder:getChildren/delete                  */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Folder ID',
@@ -100,6 +106,7 @@ export const folderFields = [
 		displayOptions: {
 			show: {
 				operation: [
+					'delete',
 					'getChildren',
 				],
 				resource: [
@@ -209,4 +216,4 @@ export const folderFields = [
 		default: '',
 		description: 'The type of sharing link to create',
 	},
-] as INodeProperties[];
+];

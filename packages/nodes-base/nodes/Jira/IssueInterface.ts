@@ -11,6 +11,8 @@ export interface IFields {
 	priority?: IDataObject;
 	project?: IDataObject;
 	summary?: string;
+	reporter?: IDataObject;
+	components?: IDataObject[];
 }
 
 export interface IIssue {

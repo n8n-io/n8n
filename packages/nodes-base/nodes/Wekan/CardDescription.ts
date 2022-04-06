@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const cardOperations = [
+export const cardOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         card
 	// ----------------------------------
@@ -47,9 +47,9 @@ export const cardOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const cardFields = [
+export const cardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         card:create
 	// ----------------------------------
@@ -796,6 +796,13 @@ export const cardFields = [
 				description: 'The new received at field of the card.',
 			},
 			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'number',
+				default: 0,
+				description: 'The internally used sort value of a card.',
+			},
+			{
 				displayName: 'Spent Time',
 				name: 'spentTime',
 				type: 'number',
@@ -834,4 +841,4 @@ export const cardFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

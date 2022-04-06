@@ -1,8 +1,8 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const goalKeyResultOperations = [
+export const goalKeyResultOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,13 +34,13 @@ export const goalKeyResultOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const goalKeyResultFields = [
+export const goalKeyResultFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                goalKeyResult:create                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                goalKeyResult:create                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
 		name: 'goal',
@@ -178,9 +178,10 @@ export const goalKeyResultFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                goalKeyResult:delete                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                goalKeyResult:delete                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Key Result ID',
 		name: 'keyResult',
@@ -198,9 +199,10 @@ export const goalKeyResultFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                goalKeyResult:update                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                goalKeyResult:update                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Key Result ID',
 		name: 'keyResult',
@@ -286,4 +288,4 @@ export const goalKeyResultFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

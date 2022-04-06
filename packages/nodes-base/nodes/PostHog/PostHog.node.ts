@@ -47,10 +47,9 @@ export class PostHog implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume PostHog API.',
+		description: 'Consume PostHog API',
 		defaults: {
 			name: 'PostHog',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -109,99 +108,123 @@ export class PostHog implements INodeType {
 		if (resource === 'alias') {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
-					const distinctId = this.getNodeParameter('distinctId', i) as string;
+					try {
+						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-					const alias = this.getNodeParameter('alias', i) as string;
+						const alias = this.getNodeParameter('alias', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const context = (additionalFields.contextUi as IDataObject || {}).contextValues as IDataObject[] || [];
+						const context = (additionalFields.contextUi as IDataObject || {}).contextValues as IDataObject[] || [];
 
-					const event: IAlias = {
-						type: 'alias',
-						event: '$create_alias',
-						context: context.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
-						properties: {
-							distinct_id: distinctId,
-							alias,
-						},
-					};
+						const event: IAlias = {
+							type: 'alias',
+							event: '$create_alias',
+							context: context.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
+							properties: {
+								distinct_id: distinctId,
+								alias,
+							},
+						};
 
-					Object.assign(event, additionalFields);
+						Object.assign(event, additionalFields);
 
-					if (additionalFields.timestamp) {
-						additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						if (additionalFields.timestamp) {
+							additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						}
+
+						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
+
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
-
-					responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
-
-					returnData.push(responseData);
 				}
 			}
 		}
 
 		if (resource === 'event') {
 			if (operation === 'create') {
-				const events: IEvent[] = [];
-				for (let i = 0; i < length; i++) {
-					const eventName = this.getNodeParameter('eventName', i) as string;
+				try {
+					const events: IEvent[] = [];
+					for (let i = 0; i < length; i++) {
+						const eventName = this.getNodeParameter('eventName', i) as string;
 
-					const distinctId = this.getNodeParameter('distinctId', i) as string;
+						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
+						const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
 
-					const event: IEvent = {
-						event: eventName,
-						properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
-					};
+						const event: IEvent = {
+							event: eventName,
+							properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
+						};
 
-					event.properties['distinct_id'] = distinctId;
+						event.properties['distinct_id'] = distinctId;
 
-					Object.assign(event, additionalFields);
+						Object.assign(event, additionalFields);
 
-					if (additionalFields.timestamp) {
-						additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						if (additionalFields.timestamp) {
+							additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						}
+						//@ts-ignore
+						delete event.propertiesUi;
+
+						events.push(event);
 					}
-					//@ts-ignore
-					delete event.propertiesUi;
 
-					events.push(event);
+					responseData = await posthogApiRequest.call(this, 'POST', '/capture', { batch: events });
+
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+					} else {
+						throw error;
+					}
 				}
-
-				responseData = await posthogApiRequest.call(this, 'POST', '/capture', { batch: events });
-
-				returnData.push(responseData);
 			}
 		}
 
 		if (resource === 'identity') {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
-					const distinctId = this.getNodeParameter('distinctId', i) as string;
+					try {
+						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
+						const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
 
-					const event: IIdentity = {
-						event: '$identify',
-						properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
-						distinct_id: distinctId,
-					};
+						const event: IIdentity = {
+							event: '$identify',
+							properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
+							distinct_id: distinctId,
+						};
 
-					Object.assign(event, additionalFields);
+						Object.assign(event, additionalFields);
 
-					if (additionalFields.timestamp) {
-						additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						if (additionalFields.timestamp) {
+							additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						}
+						//@ts-ignore
+						delete event.propertiesUi;
+
+						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
+
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
-					//@ts-ignore
-					delete event.propertiesUi;
-
-					responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
-
-					returnData.push(responseData);
 				}
 			}
 		}
@@ -209,36 +232,44 @@ export class PostHog implements INodeType {
 		if (resource === 'track') {
 			if (operation === 'page' || operation === 'screen') {
 				for (let i = 0; i < length; i++) {
-					const distinctId = this.getNodeParameter('distinctId', i) as string;
+					try {
+						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-					const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const context = (additionalFields.contextUi as IDataObject || {}).contextValues as IDataObject[] || [];
+						const context = (additionalFields.contextUi as IDataObject || {}).contextValues as IDataObject[] || [];
 
-					const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
+						const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
 
-					const event: ITrack = {
-						name,
-						type: operation,
-						event: `$${operation}`,
-						context: context.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
-						distinct_id: distinctId,
-						properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
-					};
+						const event: ITrack = {
+							name,
+							type: operation,
+							event: `$${operation}`,
+							context: context.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
+							distinct_id: distinctId,
+							properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}),
+						};
 
-					Object.assign(event, additionalFields);
+						Object.assign(event, additionalFields);
 
-					if (additionalFields.timestamp) {
-						additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						if (additionalFields.timestamp) {
+							additionalFields.timestamp = moment(additionalFields.timestamp as string).toISOString();
+						}
+						//@ts-ignore
+						delete event.propertiesUi;
+
+						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
+
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
-					//@ts-ignore
-					delete event.propertiesUi;
-
-					responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
-
-					returnData.push(responseData);
 				}
 			}
 		}

@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 const scopes = [
@@ -15,11 +15,11 @@ export class ZendeskOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Zendesk OAuth2 API';
 	documentationUrl = 'zendesk';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'n8n',
 			description: 'The subdomain of your Zendesk work environment.',
@@ -28,7 +28,7 @@ export class ZendeskOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '=https://{{$self["subdomain"]}}.zendesk.com/oauth/authorizations/new',
 			description: 'URL to get authorization code. Replace {SUBDOMAIN_HERE} with your subdomain.',
 			required: true,
@@ -36,7 +36,7 @@ export class ZendeskOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '=https://{{$self["subdomain"]}}.zendesk.com/oauth/tokens',
 			description: 'URL to get access token. Replace {SUBDOMAIN_HERE} with your subdomain.',
 			required: true,
@@ -44,27 +44,27 @@ export class ZendeskOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			required: true,
 		},
 		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			required: true,
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 			description: 'For some services additional query parameters have to be set which can be defined here.',
 			placeholder: '',
@@ -72,7 +72,7 @@ export class ZendeskOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'body',
 			description: 'Resource to consume.',
 		},

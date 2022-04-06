@@ -29,10 +29,9 @@ export class MailerLite implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Mailer Lite API.',
+		description: 'Consume Mailer Lite API',
 		defaults: {
 			name: 'MailerLite',
-			color: '#58be72',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -88,90 +87,97 @@ export class MailerLite implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'subscriber') {
+					//https://developers.mailerlite.com/reference#create-a-subscriber
+					if (operation === 'create') {
+						const email = this.getNodeParameter('email', i) as string;
 
-			if (resource === 'subscriber') {
-				//https://developers.mailerlite.com/reference#create-a-subscriber
-				if (operation === 'create') {
-					const email = this.getNodeParameter('email', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {
+							email,
+							fields: [],
+						};
 
-					const body: IDataObject = {
-						email,
-						fields: [],
-					};
+						Object.assign(body, additionalFields);
 
-					Object.assign(body, additionalFields);
+						if (additionalFields.customFieldsUi) {
+							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 
-					if (additionalFields.customFieldsUi) {
-						const customFieldsValues = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							if (customFieldsValues) {
+								const fields = {};
 
-						if (customFieldsValues) {
-							const fields = {};
+								for (const customFieldValue of customFieldsValues) {
+									//@ts-ignore
+									fields[customFieldValue.fieldId] = customFieldValue.value;
+								}
 
-							for (const customFieldValue of customFieldsValues) {
-								//@ts-ignore
-								fields[customFieldValue.fieldId] = customFieldValue.value;
+								body.fields = fields;
+								delete body.customFieldsUi;
 							}
+						}
 
-							body.fields = fields;
-							delete body.customFieldsUi;
+						responseData = await mailerliteApiRequest.call(this, 'POST', '/subscribers', body);
+					}
+					//https://developers.mailerlite.com/reference#single-subscriber
+					if (operation === 'get') {
+						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
+
+						responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers/${subscriberId}`);
+					}
+					//https://developers.mailerlite.com/reference#subscribers
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						Object.assign(qs, filters);
+
+						if (returnAll) {
+
+							responseData = await mailerliteApiRequestAllItems.call(this, 'GET', `/subscribers`, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
 						}
 					}
+					//https://developers.mailerlite.com/reference#update-subscriber
+					if (operation === 'update') {
+						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
-					responseData = await mailerliteApiRequest.call(this, 'POST', '/subscribers', body);
-				}
-				//https://developers.mailerlite.com/reference#single-subscriber
-				if (operation === 'get') {
-					const subscriberId = this.getNodeParameter('subscriberId', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers/${subscriberId}`);
-				}
-				//https://developers.mailerlite.com/reference#subscribers
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const body: IDataObject = {};
 
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+						Object.assign(body, updateFields);
 
-					Object.assign(qs, filters);
+						if (updateFields.customFieldsUi) {
+							const customFieldsValues = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 
-					if (returnAll) {
+							if (customFieldsValues) {
+								const fields = {};
 
-						responseData = await mailerliteApiRequestAllItems.call(this, 'GET', `/subscribers`, {}, qs);
-					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+								for (const customFieldValue of customFieldsValues) {
+									//@ts-ignore
+									fields[customFieldValue.fieldId] = customFieldValue.value;
+								}
 
-						responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
-					}
-				}
-				//https://developers.mailerlite.com/reference#update-subscriber
-				if (operation === 'update') {
-					const subscriberId = this.getNodeParameter('subscriberId', i) as string;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					const body: IDataObject = {};
-
-					Object.assign(body, updateFields);
-
-					if (updateFields.customFieldsUi) {
-						const customFieldsValues = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
-
-						if (customFieldsValues) {
-							const fields = {};
-
-							for (const customFieldValue of customFieldsValues) {
-								//@ts-ignore
-								fields[customFieldValue.fieldId] = customFieldValue.value;
+								body.fields = fields;
+								delete body.customFieldsUi;
 							}
-
-							body.fields = fields;
-							delete body.customFieldsUi;
 						}
-					}
 
-					responseData = await mailerliteApiRequest.call(this, 'PUT', `/subscribers/${subscriberId}`, body);
+						responseData = await mailerliteApiRequest.call(this, 'PUT', `/subscribers/${subscriberId}`, body);
+					}
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		if (Array.isArray(responseData)) {

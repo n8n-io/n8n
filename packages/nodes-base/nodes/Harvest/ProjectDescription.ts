@@ -1,8 +1,12 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['project'];
+const resource = [
+	'project',
+];
 
-export const projectOperations = [
+export const projectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,12 +47,12 @@ export const projectOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const projectFields = [
+export const projectFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                projects:getAll                            */
+	/*                                projects:getAll                             */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -138,7 +142,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:get                            */
+	/*                                project:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
@@ -158,7 +162,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:delete                            */
+	/*                                project:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
@@ -178,7 +182,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:create                           */
+	/*                                project:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -399,7 +403,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:update                           */
+	/*                                project:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
@@ -576,7 +580,6 @@ export const projectFields = [
 				default: false,
 				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
-
 			{
 				displayName: 'Starts On',
 				name: 'starts_on',
@@ -587,4 +590,4 @@ export const projectFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

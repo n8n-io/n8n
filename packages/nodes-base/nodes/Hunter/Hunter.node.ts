@@ -23,7 +23,6 @@ export class Hunter implements INodeType {
 		description: 'Consume Hunter API',
 		defaults: {
 			name: 'Hunter',
-			color: '#ff3807',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -292,85 +291,93 @@ export class Hunter implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const operation = this.getNodeParameter('operation', 0) as string;
-			//https://hunter.io/api-documentation/v2#domain-search
-			if (operation === 'domainSearch') {
-				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-				const filters = this.getNodeParameter('filters', i) as IDataObject;
-				const domain = this.getNodeParameter('domain', i) as string;
-				const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;
+			try {
+				const operation = this.getNodeParameter('operation', 0) as string;
+				//https://hunter.io/api-documentation/v2#domain-search
+				if (operation === 'domainSearch') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const domain = this.getNodeParameter('domain', i) as string;
+					const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;
 
-				qs.domain = domain;
-				if (filters.type){
-					qs.type = filters.type;
-				}
-				if (filters.seniority){
-					qs.seniority = (filters.seniority as string[]).join(',');
-				}
-				if (filters.department){
-					qs.department = (filters.department as string[]).join(',');
-				}
-				if (returnAll) {
-					responseData = await hunterApiRequestAllItems.call(this, 'data', 'GET', '/domain-search', {}, qs);
+					qs.domain = domain;
+					if (filters.type){
+						qs.type = filters.type;
+					}
+					if (filters.seniority){
+						qs.seniority = (filters.seniority as string[]).join(',');
+					}
+					if (filters.department){
+						qs.department = (filters.department as string[]).join(',');
+					}
+					if (returnAll) {
+						responseData = await hunterApiRequestAllItems.call(this, 'data', 'GET', '/domain-search', {}, qs);
 
-					// Make sure that the company information is there only once and
-					// the emails are combined underneath it.
-					if (onlyEmails === false) {
-						let tempReturnData: IDataObject = {};
+						// Make sure that the company information is there only once and
+						// the emails are combined underneath it.
+						if (onlyEmails === false) {
+							let tempReturnData: IDataObject = {};
 
-						for (let i = 0; i < responseData.length; i++) {
-							if (i === 0) {
-								tempReturnData = responseData[i];
-								continue;
+							for (let i = 0; i < responseData.length; i++) {
+								if (i === 0) {
+									tempReturnData = responseData[i];
+									continue;
+								}
+								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(tempReturnData.emails, responseData[i].emails);
 							}
-							((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(tempReturnData.emails, responseData[i].emails);
+
+							responseData = tempReturnData;
+						}
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+						responseData = await hunterApiRequest.call(this, 'GET', '/domain-search', {}, qs);
+						responseData = responseData.data;
+					}
+
+					if (onlyEmails === true) {
+						let tempReturnData: IDataObject[] = [];
+
+						if (Array.isArray(responseData)) {
+							for (const data of responseData) {
+								tempReturnData.push.apply(tempReturnData, data.emails);
+							}
+						} else {
+							tempReturnData = responseData.emails;
 						}
 
 						responseData = tempReturnData;
 					}
-				} else {
-					const limit = this.getNodeParameter('limit', i) as number;
-					qs.limit = limit;
-					responseData = await hunterApiRequest.call(this, 'GET', '/domain-search', {}, qs);
+				}
+				//https://hunter.io/api-documentation/v2#email-finder
+				if (operation === 'emailFinder') {
+					const domain = this.getNodeParameter('domain', i) as string;
+					const firstname = this.getNodeParameter('firstname', i) as string;
+					const lastname = this.getNodeParameter('lastname', i) as string;
+					qs.first_name = firstname;
+					qs.last_name = lastname;
+					qs.domain = domain;
+					responseData = await hunterApiRequest.call(this, 'GET', '/email-finder', {}, qs);
 					responseData = responseData.data;
 				}
-
-				if (onlyEmails === true) {
-					let tempReturnData: IDataObject[] = [];
-
-					if (Array.isArray(responseData)) {
-						for (const data of responseData) {
-							tempReturnData.push.apply(tempReturnData, data.emails);
-						}
-					} else {
-						tempReturnData = responseData.emails;
-					}
-
-					responseData = tempReturnData;
+				//https://hunter.io/api-documentation/v2#email-verifier
+				if (operation === 'emailVerifier') {
+					const email = this.getNodeParameter('email', i) as string;
+					qs.email = email;
+					responseData = await hunterApiRequest.call(this, 'GET', '/email-verifier', {}, qs);
+					responseData = responseData.data;
 				}
-			}
-			//https://hunter.io/api-documentation/v2#email-finder
-			if (operation === 'emailFinder') {
-				const domain = this.getNodeParameter('domain', i) as string;
-				const firstname = this.getNodeParameter('firstname', i) as string;
-				const lastname = this.getNodeParameter('lastname', i) as string;
-				qs.first_name = firstname;
-				qs.last_name = lastname;
-				qs.domain = domain;
-				responseData = await hunterApiRequest.call(this, 'GET', '/email-finder', {}, qs);
-				responseData = responseData.data;
-			}
-			//https://hunter.io/api-documentation/v2#email-verifier
-			if (operation === 'emailVerifier') {
-				const email = this.getNodeParameter('email', i) as string;
-				qs.email = email;
-				responseData = await hunterApiRequest.call(this, 'GET', '/email-verifier', {}, qs);
-				responseData = responseData.data;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
