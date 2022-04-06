@@ -905,7 +905,14 @@ export default mixins(
 
 .binaryButtonContainer {
 	margin-top: 1.5em;
-	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+
+	> * {
+		flex-grow: 0;
+		margin-bottom: var(--spacing-3xs);
+	}
 }
 
 .binaryValue {
