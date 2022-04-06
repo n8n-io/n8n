@@ -6,8 +6,6 @@ import express = require('express');
 import * as SwaggerParser from '@apidevtools/swagger-parser';
 import { In } from 'typeorm';
 import { validate as uuidValidate } from 'uuid';
-import { Workflow } from 'n8n-workflow';
-import { worker } from 'cluster';
 import { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
 import { ActiveWorkflowRunner, Db, InternalHooksManager, ITelemetryUserDeletionData } from '..';
@@ -69,12 +67,6 @@ export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
 
 export const connectionName = (): string => {
 	return 'default';
-};
-
-export const clean = (users: User[], options?: { includeRole: boolean }): Array<Partial<User>> => {
-	return users.map((user) =>
-		pick(user, getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : [])),
-	);
 };
 
 const middlewareDefined = (operationId: OperationID, middlewares: IMiddlewares) =>
@@ -343,4 +335,25 @@ export async function deleteDataAndSendTelemetry(data: {
 }): Promise<void> {
 	await deleteWorkflowsAndCredentials(data);
 	await sendUserDeleteTelemetry(data);
+}
+
+export function clean(user: User, options?: { includeRole: boolean }): Partial<User>;
+export function clean(users: User[], options?: { includeRole: boolean }): Array<Partial<User>>;
+
+export function clean(
+	users: User[] | User,
+	options?: { includeRole: boolean },
+): Array<Partial<User>> | Partial<User> {
+	if (Array.isArray(users)) {
+		return users.map((user) =>
+			pick(
+				user,
+				getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : []),
+			),
+		);
+	}
+	return pick(
+		users,
+		getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : []),
+	);
 }

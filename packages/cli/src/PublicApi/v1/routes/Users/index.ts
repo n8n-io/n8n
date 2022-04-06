@@ -100,7 +100,7 @@ export = {
 				toUser: transferee,
 			});
 
-			return clean([userToDelete]).pop();
+			return clean(userToDelete);
 		}
 
 		await deleteDataAndSendTelemetry({
@@ -109,7 +109,7 @@ export = {
 			transferId,
 		});
 
-		return clean([userToDelete], { includeRole }).pop();
+		return clean(userToDelete);
 	},
 	// eslint-disable-next-line consistent-return
 	getUser: async (req: UserRequest.Get, res: express.Response): Promise<any> => {
