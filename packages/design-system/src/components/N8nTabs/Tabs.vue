@@ -1,7 +1,11 @@
 <template>
 	<div :class="$style.container">
-		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft"><</div>
-		<div :class="$style.next" v-if="canScrollRight" @click="scrollRight">></div>
+		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
+			<n8n-icon icon="chevron-left" size="small" />
+		</div>
+		<div :class="$style.next" v-if="canScrollRight" @click="scrollRight">
+			<n8n-icon icon="chevron-right" size="small" />
+		</div>
 		<div ref="tabs" :class="$style.tabs">
 			<div  v-for="option in options" :key="option.value" :class="{ [$style.alignRight]: option.align === 'right' }">
 				<a
