@@ -4,7 +4,7 @@
 
 		<div :class="$style.header">
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('node.output') }}</span>
+				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
 				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
 					<div>
 						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
@@ -14,7 +14,7 @@
 
 				<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasNodeRun && staleData">
 					<template>
-						<span v-html="$locale.baseText('node.output.staleDataWarning')"></span>
+						<span v-html="$locale.baseText('ndv.output.staleDataWarning')"></span>
 					</template>
 				</n8n-info-tip>
 			</div>
@@ -29,7 +29,7 @@
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
 			<n8n-select size="small" v-model="runIndex" @click.stop>
-				<template slot="prepend">{{ $locale.baseText('node.output.run') }}</template>
+				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
 		</div>
@@ -37,7 +37,7 @@
 		<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
 		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
 			<n8n-text>
-				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
+				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'ndv.output.item' : 'ndv.output.items') }}
 			</n8n-text>
 		</div>
 
@@ -64,11 +64,11 @@
 			<div v-if="!hasNodeRun" :class="$style.center">
 				<div v-if="workflowRunning">
 					<div :class="$style.spinner"><n8n-spinner /></div>
-					<n8n-text>{{ $locale.baseText('node.output.executing') }}</n8n-text>
+					<n8n-text>{{ $locale.baseText('ndv.output.executing') }}</n8n-text>
 				</div>
-				<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('node.output.pollEventNodeHint') }}</n8n-text>
-				<n8n-text v-else-if="isTriggerNode">{{ $locale.baseText('node.output.triggerEventNodeHint') }}</n8n-text>
-				<n8n-text v-else>{{ $locale.baseText('node.output.runNodeHint') }}</n8n-text>
+				<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
+				<n8n-text v-else-if="isTriggerNode">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
+				<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">
@@ -76,21 +76,21 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('node.output.noOutputData.title') }}</n8n-text>
+				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
 				<n8n-text>
-					{{ $locale.baseText('node.output.noOutputData.message') }}
-					<a @click="openSettings">{{ $locale.baseText('node.output.noOutputData.message.settings') }}</a>
-					{{ $locale.baseText('node.output.noOutputData.message.settingsOption') }}
+					{{ $locale.baseText('ndv.output.noOutputData.message') }}
+					<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
+					{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
 				</n8n-text>
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('node.output.tooMuchData.title') }}</n8n-text>
-				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('node.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
+				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.tooMuchData.title') }}</n8n-text>
+				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('ndv.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
 
 				<n8n-button
 					type="outline"
-					:label="$locale.baseText('node.output.tooMuchData.showDataAnyway')"
+					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showData = true"
 				/>
 			</div>
@@ -102,7 +102,7 @@
 					</tr>
 					<tr v-for="(row, index1) in tableData.data" :key="index1">
 						<td>
-							<n8n-text>{{ $locale.baseText('node.output.emptyOutput') }}</n8n-text>
+							<n8n-text>{{ $locale.baseText('ndv.output.emptyOutput') }}</n8n-text>
 						</td>
 					</tr>
 				</table>
@@ -193,7 +193,7 @@
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select size="mini" v-model="pageSize">
-					<template slot="prepend">{{ $locale.baseText('node.output.items') }}</template>
+					<template slot="prepend">{{ $locale.baseText('ndv.output.items') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
 						:key="size"
@@ -454,13 +454,13 @@ export default mixins(
 				const branches: ITab[] = [];
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
 					const itemsCount = this.getDataCount(this.runIndex, i);
-					const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
+					const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
 					let outputName = this.getOutputName(i);
 					if (`${outputName}` === `${i}`) {
-						outputName = `${this.$locale.baseText('node.output')} ${outputName}`;
+						outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 					}
 					else {
-						outputName = capitalize(`${this.getOutputName(i)} ${this.$locale.baseText('node.output.branch')}`);
+						outputName = capitalize(`${this.getOutputName(i)} ${this.$locale.baseText('ndv.output.branch')}`);
 					}
 					branches.push({
 						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
@@ -476,9 +476,9 @@ export default mixins(
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
 					itemsCount += this.getDataCount(option - 1, i);
 				}
-				const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
+				const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
 				const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
-				return option + this.$locale.baseText('node.output.of') + (this.maxRunIndex+1) + itemsLabel;
+				return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex+1) + itemsLabel;
 			},
 			getDataCount(runIndex: number, outputIndex: number) {
 				if (this.node === null) {

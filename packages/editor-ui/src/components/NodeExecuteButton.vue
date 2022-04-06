@@ -41,14 +41,14 @@ export default mixins(
 		},
 		label(): string {
 			if (this.isPollingTypeNode) {
-				return this.$locale.baseText('node.execute.fetchEvent');
+				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
 			if (this.isTriggerNode) {
-				return this.$locale.baseText('node.execute.listenForEvent');
+				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
-			return this.$locale.baseText('node.execute.executeNode');
+			return this.$locale.baseText('ndv.execute.executeNode');
 		},
 	},
 	methods: {

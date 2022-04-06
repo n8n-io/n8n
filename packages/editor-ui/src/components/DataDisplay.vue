@@ -8,10 +8,10 @@
 		append-to-body
 	>
 		<n8n-tooltip placement="bottom-start" :value="showTriggerWaitingWarning" :disabled="!showTriggerWaitingWarning" :manual="true">
-			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('node.backToCanvas.waitingForTriggerWarning') }}</div>
+			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}</div>
 			<div :class="$style.backToCanvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="small" />
-				<n8n-text color="text-xlight" size="small">{{ $locale.baseText('node.backToCanvas') }}</n8n-text>
+				<n8n-text color="text-xlight" size="small">{{ $locale.baseText('ndv.backToCanvas') }}</n8n-text>
 			</div>
 		</n8n-tooltip>
 
