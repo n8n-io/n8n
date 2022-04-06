@@ -1,6 +1,5 @@
 <template>
 	<n8n-button
-		:title="$locale.baseText('node.execute.hint', { interpolate: { nodeName } })"
 		:loading="workflowRunning"
 		:label="label"
 		@click="onClick"

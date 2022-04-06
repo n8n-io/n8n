@@ -1139,7 +1139,6 @@
 	"node.title.rename": "Rename",
 	"node.title.cancel": "Cancel",
 	"node.title.renameNode": "Rename node",
-	"node.execute.hint": "Executes this {nodeName} node after executing any previous nodes that have not yet returned data",
 	"node.execute.executeNode": "Execute node",
 	"node.execute.executing": "Executing",
 	"node.execute.fetchEvent": "Fetch Event",
