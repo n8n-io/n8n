@@ -75,6 +75,30 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			},
 			immediate: true,
 		},
+		isSelected: {
+			handler(isSelected) {
+				if (!isSelected) {
+					if (this.node) {
+						const nodeParameters = {
+							content: this.node.parameters.content,
+							height: this.stickyProp.height,
+							isEditable: false,
+							width: this.stickyProp.width,
+							totalSize: this.stickyProp.height + this.stickyProp.width,
+							zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
+						};
+
+						const updateInformation = {
+							name: this.node.name,
+							value: nodeParameters,
+						};
+
+						this.$store.commit('setNodeParameters', updateInformation);
+					}
+					this.$emit('onChangeMode', false);
+				}
+			},	
+		},
 	},
 	computed: {
 		isSelected (): boolean {
