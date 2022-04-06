@@ -1160,6 +1160,7 @@
 	"node.output.emptyOutput": "This output item is empty.",
 	"node.output.emptyInput": "This input item is empty. {name} will still execute when it recieves an empty item.",
 	"node.output.staleDataWarning": "Node parameters have changed. <br /> Execute node again to refresh output.",
+	"node.backToCanvas": "Back to canvas",
 	"openWorkflow.workflowImportError": "Could not import workflow",
 	"openWorkflow.workflowNotFoundError": "Could not find workflow",
 	"settings": "Settings",

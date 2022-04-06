@@ -85,7 +85,7 @@ Vue.use(N8nAvatar);
 Vue.use(N8nButton);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
-Vue.use('n8n-icon', N8nIcon);
+Vue.component('n8n-icon', N8nIcon);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);

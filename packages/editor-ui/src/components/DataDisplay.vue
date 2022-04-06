@@ -8,6 +8,11 @@
 		append-to-body
 		@opened="showDocumentHelp = true"
 	>
+		<div :class="$style.backToCanvas">
+			<n8n-icon icon="arrow-left" color="text-xlight" size="small" />
+			<n8n-text color="text-xlight" size="small">{{ $locale.baseText('node.backToCanvas') }}</n8n-text>
+		</div>
+
 		<div class="data-display" v-if="node" >
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
 			<RunData @openSettings="openSettings" />
@@ -92,6 +97,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 <style lang="scss">
 .data-display-wrapper {
 	height: 85%;
+	margin-top: 32px !important;
 
 	.el-dialog__header {
 		padding: 0 !important;
@@ -120,5 +126,25 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
 	opacity: 0;
+}
+</style>
+
+<style lang="scss" module>
+.backToCanvas {
+	position: absolute;
+	top: -24px;
+	pointer-events: none;
+
+	> * {
+		margin-right: var(--spacing-3xs);
+	}
+}
+
+@media (min-width: $--breakpoint-lg) {
+	.backToCanvas {
+		position: fixed;
+		top: 10px;
+		left: 10px;
+	}
 }
 </style>
