@@ -180,7 +180,7 @@
 				</div>
 			</div>
 		</div>
-		<div :class="$style.pagination">
+		<div :class="$style.pagination" v-if="hasNodeRun && !hasRunError && dataCount > pageSize">
 			<el-pagination
 				background
 				:hide-on-single-page="true"
