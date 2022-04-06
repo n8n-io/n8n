@@ -3,12 +3,9 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -37,16 +34,7 @@ export async function actionNetworkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('actionNetworkApi') as { apiKey: string } | undefined;
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
-		headers: {
-			'OSDI-API-Token': credentials.apiKey,
-		},
 		method,
 		body,
 		qs,
@@ -63,7 +51,7 @@ export async function actionNetworkApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -105,28 +93,6 @@ export async function handleListing(
 
 	return returnData;
 }
-
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = decryptedCredentials;
-
-	const {
-		apiKey,
-	} = credentials as {
-		apiKey: string,
-	};
-
-	const options: OptionsWithUri = {
-		method: 'GET',
-		headers: {
-			'OSDI-API-Token': apiKey,
-		},
-		uri: `https://actionnetwork.org/api/v2/events?per_page=1`,
-		json: true,
-	};
-
-	return await this.helpers.request(options);
-}
-
 
 // ----------------------------------------
 //              helpers

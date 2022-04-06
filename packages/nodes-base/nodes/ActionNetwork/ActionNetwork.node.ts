@@ -3,11 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -23,7 +19,6 @@ import {
 	makeOsdiLink,
 	resourceLoaders,
 	simplifyResponse,
-	validateCredentials,
 } from './GenericFunctions';
 
 import {
@@ -70,7 +65,6 @@ export class ActionNetwork implements INodeType {
 			{
 				name: 'actionNetworkApi',
 				required: true,
-				testedBy: 'actionNetworkCredentialTest',
 			},
 		],
 		properties: [
@@ -129,22 +123,6 @@ export class ActionNetwork implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async actionNetworkCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-					return {
-						status: 'OK',
-						message: 'Authentication successful!',
-					};
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'Invalid credentials',
-					};
-				}
-			},
-		},
 		loadOptions: resourceLoaders,
 	};
 
