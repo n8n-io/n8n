@@ -11,14 +11,15 @@ class Logger implements ILogger {
 	private logger: winston.Logger;
 
 	constructor() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const level = config.get('logs.level');
+		const level = config.get('logs.level') as string;
+
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const output = (config.get('logs.output') as string).split(',').map((output) => output.trim());
 
 		this.logger = winston.createLogger({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			level,
+			silent: level === 'silent',
 		});
 
 		if (output.includes('console')) {

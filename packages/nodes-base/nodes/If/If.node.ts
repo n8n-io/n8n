@@ -133,7 +133,7 @@ export class If implements INodeType {
 										value: 'smaller',
 									},
 									{
-										name: 'Smaller Equal',
+										name: 'Smaller or Equal',
 										value: 'smallerEqual',
 									},
 									{
@@ -149,7 +149,7 @@ export class If implements INodeType {
 										value: 'larger',
 									},
 									{
-										name: 'Larger Equal',
+										name: 'Larger or Equal',
 										value: 'largerEqual',
 									},
 									{

@@ -8,6 +8,8 @@ import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
 import * as testDb from './shared/testDb';
 
+jest.mock('../../src/telemetry');
+
 let app: express.Application;
 let testDbName = '';
 let saveCredential: SaveCredentialFunction;

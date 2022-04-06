@@ -742,7 +742,12 @@
 		"mimeType": "Mime Type",
 		"ms": "ms",
 		"noBinaryDataFound": "No binary data found",
-		"showBinaryData": "Show Binary Data",
+		"noData": "No data",
+		"noTextDataFound": "No text data found",
+		"nodeReturnedALargeAmountOfData": "Node returned a large amount of data",
+		"output": "Output",
+		"downloadBinaryData": "Download",
+		"showBinaryData": "View",
 		"startTime": "Start Time",
 		"table": "Table"
 	},
