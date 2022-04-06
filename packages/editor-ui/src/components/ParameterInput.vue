@@ -391,6 +391,10 @@ export default mixins(
 					}
 				}
 
+				if (this.parameter.type === 'multiOptions' && typeof returnValue === 'string' && !this.isValueExpression) {
+					returnValue = (returnValue || '').split(',');
+				}
+
 				return returnValue;
 			},
 			expressionDisplayValue (): string {
