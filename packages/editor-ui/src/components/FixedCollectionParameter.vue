@@ -294,6 +294,29 @@ export default mixins(genericHelpers)
 	margin: var(--spacing-xs) 0;
 }
 
+.add-option {
+	i.el-select__caret {
+		color: var(--color-foreground-xlight);
+	}
+	.el-input .el-input__inner {
+		&,
+		&:hover,
+		&:focus {
+			border-radius: 20px;
+			color: var(--color-foreground-xlight);
+			font-weight: 600;
+			background-color: var(--color-primary);
+			border-color: var(--color-primary);
+			text-align: center;
+		}
+
+		&::placeholder {
+			color: var(--color-foreground-xlight);
+			opacity: 1; /** Firefox */
+		}
+	}
+}
+
 .delete-option {
 	display: none;
 	position: absolute;
