@@ -190,6 +190,18 @@
 				layout="prev, pager, next"
 				:total="dataCount">
 			</el-pagination>
+
+			<div :class="$style.pageSizeSelector">
+				<n8n-select size="mini" v-model="pageSize">
+					<template slot="prepend">{{ $locale.baseText('node.output.items') }}</template>
+					<n8n-option
+						v-for="size in pageSizes"
+						:key="size"
+						:label="size"
+						:value="size">
+					</n8n-option>
+				</n8n-select>
+			</div>
 		</div>
 
 	</div>
@@ -274,6 +286,7 @@ export default mixins(
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 				currentPage: 1,
 				pageSize: 10,
+				pageSizes: [10, 25, 50, 100],
 			};
 		},
 		mounted() {
@@ -868,6 +881,7 @@ export default mixins(
 	width: 100%;
 	display: flex;
 	justify-content: center;
+	align-items: center;
 	bottom: 0;
 	padding: 5px;
 }
@@ -932,6 +946,11 @@ export default mixins(
 .binaryValue {
 	white-space: initial;
 	word-wrap: break-word;
+}
+
+.pageSizeSelector {
+	text-transform: capitalize;
+	max-width: 120px;
 }
 
 </style>
