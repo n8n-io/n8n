@@ -2,7 +2,9 @@
 	"node": "n8n-nodes-base.adalo",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Data & Storage"],
+	"categories": [
+		"Data & Storage"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,7 +15,6 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.adalo/"
 			}
-		],
-		"generic": []
+		]
 	}
 }

@@ -1,45 +1,34 @@
 import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
+import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
 
-import {
-	adaloApiRequest,
-	adaloApiRequestAllItems,
-	getJwtToken,
-	TableFieldMapper,
-	toOptions,
-} from './GenericFunctions';
+import {FieldsUiValues, Operation} from './types';
+import {adaloApiRequest} from './GenericFunctions';
+import {operationFields} from './OperationDescription';
 
-import {
-	operationFields
-} from './OperationDescription';
-
-import {
-	AdaloCredentials,
-	FieldsUiValues,
-	GetAllAdditionalOptions,
-	LoadedResource,
-	Operation,
-	Row,
-} from './types';
+/**
+ * The Adalo API Key is available on a per-app basis, providing a CRUD REST API
+ * to interact with any collection defined in the application
+ *
+ * @docs https://help.adalo.com/integrations/the-adalo-api/collections
+ */
 
 export class Adalo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Adalo',
 		name: 'adalo',
-		icon: 'file:adalo.svg',
-		group: ['output'],
+		icon: 'file:adalo.png',
+		group: ['transform'],
 		version: 1,
 		description: 'Consume the Adalo API',
-		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Adalo',
 		},
@@ -53,29 +42,17 @@ export class Adalo implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [
-					{
-						name: 'Row',
-						value: 'row',
-					},
-				],
-				default: 'row',
-				description: 'Operation to perform',
+				displayName: 'Collection ID',
+				name: 'collectionId',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'Your Adalo collection ID',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'row',
-						],
-					},
-				},
 				options: [
 					{
 						name: 'Create',
@@ -110,203 +87,98 @@ export class Adalo implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			async getDatabaseIds(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('adaloApi') as AdaloCredentials;
-				const jwtToken = await getJwtToken.call(this, credentials);
-				const endpoint = '/api/applications/';
-				const databases = await adaloApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
-				return toOptions(databases);
-			},
-
-			async getTableIds(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('adaloApi') as AdaloCredentials;
-				const jwtToken = await getJwtToken.call(this, credentials);
-				const databaseId = this.getNodeParameter('databaseId', 0) as string;
-				const endpoint = `/api/database/tables/database/${databaseId}`;
-				const tables = await adaloApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
-				return toOptions(tables);
-			},
-
-			async getTableFields(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('adaloApi') as AdaloCredentials;
-				const jwtToken = await getJwtToken.call(this, credentials);
-				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const endpoint = `/api/database/fields/table/${tableId}/`;
-				const fields = await adaloApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
-				return toOptions(fields);
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const mapper = new TableFieldMapper();
+		const body: IDataObject = {};
+		const qs: IDataObject = {};
 		const returnData: IDataObject[] = [];
-		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		const tableId = this.getNodeParameter('tableId', 0) as string;
-		const credentials = await this.getCredentials('adaloApi') as AdaloCredentials;
-		const jwtToken = await getJwtToken.call(this, credentials);
-		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
-		mapper.createMappings(fields);
+		const collectionId = this.getNodeParameter('collectionId', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as Operation;
+		let endpoint = `/collections/${collectionId}`;
 
 		for (let i = 0; i < items.length; i++) {
+			if (['get', 'update', 'delete'].includes(operation)) {
+				const elementId = this.getNodeParameter('elementId', i) as string;
+				endpoint += `/${elementId}`;
+			}
 
 			try {
-
 				if (operation === 'getAll') {
 
-					// ----------------------------------
-					//             getAll
-					// ----------------------------------
+					/**
+					 * getAll
+					 */
 
-					// https://api.adalo.io/api/redoc/#operation/list_database_table_rows
+					const limit = this.getNodeParameter('limit', 0) as number;
+					const offset = this.getNodeParameter('offset', 0) as number;
 
-					const { order, filters, filterType, search } = this.getNodeParameter('additionalOptions', 0) as GetAllAdditionalOptions;
-
-					const qs: IDataObject = {};
-
-					if (order?.fields) {
-						qs['order_by'] = order.fields
-							.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
-							.join(',');
+					if (limit) {
+						qs.limit = limit;
 					}
 
-					if (filters?.fields) {
-						filters.fields.forEach(({ field, operator, value }) => {
-							qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
-						});
+					if (offset) {
+						qs.offset = offset;
 					}
 
-					if (filterType) {
-						qs.filter_type = filterType;
-					}
+					const { records } = await adaloApiRequest.call(this, 'GET', endpoint, body, qs);
 
-					if (search) {
-						qs.search = search;
-					}
-
-					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const rows = await adaloApiRequestAllItems.call(this, 'GET', endpoint, {}, qs, jwtToken) as Row[];
-
-					rows.forEach(row => mapper.idsToNames(row));
-
-					returnData.push(...rows);
-
+					returnData.push(...records);
 				} else if (operation === 'get') {
 
-					// ----------------------------------
-					//             get
-					// ----------------------------------
+					/**
+					 * get
+					 */
 
-					// https://api.adalo.io/api/redoc/#operation/get_database_table_row
+					const record = await adaloApiRequest.call(this, 'GET', endpoint, body, qs);
 
-					const rowId = this.getNodeParameter('rowId', i) as string;
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const row = await adaloApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
+					returnData.push(record);
+				} else if (operation === 'create' || operation === 'update') {
 
-					mapper.idsToNames(row);
-
-					returnData.push(row);
-
-				} else if (operation === 'create') {
-
-					// ----------------------------------
-					//             create
-					// ----------------------------------
-
-					// https://api.adalo.io/api/redoc/#operation/create_database_table_row
-
-					const body: IDataObject = {};
+					/**
+					 * create / update
+					 */
 
 					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
-
-					if (dataToSend === 'autoMapInputData') {
-						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
-
-						for (const key of incomingKeys) {
-							if (inputDataToIgnore.includes(key)) continue;
-							body[key] = items[i].json[key];
-							mapper.namesToIds(body);
-						}
-					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fields) {
-							body[`field_${field.fieldId}`] = field.fieldValue;
-						}
-					}
-
-					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const createdRow = await adaloApiRequest.call(this, 'POST', endpoint, body, {}, jwtToken);
-
-					mapper.idsToNames(createdRow);
-
-					returnData.push(createdRow);
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//             update
-					// ----------------------------------
-
-					// https://api.adalo.io/api/redoc/#operation/update_database_table_row
-
-					const rowId = this.getNodeParameter('rowId', i) as string;
-
+					const method = operation === 'create' ? 'POST' : 'PUT';
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
-
 					if (dataToSend === 'autoMapInputData') {
-
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputsToIgnore.includes(key)) continue;
+
 							body[key] = items[i].json[key];
-							mapper.namesToIds(body);
 						}
 					} else {
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 						for (const field of fields) {
-							body[`field_${field.fieldId}`] = field.fieldValue;
+							body[field.fieldId] = field.fieldValue;
 						}
 					}
 
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const updatedRow = await adaloApiRequest.call(this, 'PATCH', endpoint, body, {}, jwtToken);
+					const updatedRecord = await adaloApiRequest.call(this, method, endpoint, body, qs);
 
-					mapper.idsToNames(updatedRow);
-
-					returnData.push(updatedRow);
-
+					returnData.push(updatedRecord);
 				} else if (operation === 'delete') {
 
-					// ----------------------------------
-					//             delete
-					// ----------------------------------
+					/**
+					 * delete
+					 */
 
-					// https://api.adalo.io/api/redoc/#operation/delete_database_table_row
-
-					const rowId = this.getNodeParameter('rowId', i) as string;
-
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					await adaloApiRequest.call(this, 'DELETE', endpoint, {}, {}, jwtToken);
+					await adaloApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 					returnData.push({ success: true });
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}
+
 				throw error;
 			}
 		}
