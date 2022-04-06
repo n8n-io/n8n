@@ -3,7 +3,7 @@
 		:title="$locale.baseText('node.execute.hint', { interpolate: { nodeName } })"
 		:loading="workflowRunning"
 		:label="workflowRunning? $locale.baseText('node.execute.executing') : $locale.baseText('node.execute.executeNode')"
-		@click.stop="runWorkflow(nodeName, 'RunData.ExecuteNodeButton')"
+		@click="onClick"
 	/>
 </template>
 
@@ -22,6 +22,12 @@ export default mixins(
 	computed: {
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
+		},
+	},
+	methods: {
+		onClick() {
+			this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+			this.$emit('execute');
 		},
 	},
 });

@@ -6,7 +6,7 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
 				</div>
 			</div>
 			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
@@ -270,7 +270,9 @@ export default mixins(
 			},
 		},
 		methods: {
-			noOp () {},
+			onNodeExecute () {
+				this.$emit('execute');
+			},
 			setValue (name: string, value: NodeParameterValue) {
 				const nameParts = name.split('.');
 				let lastNamePart: string | undefined = nameParts.pop();

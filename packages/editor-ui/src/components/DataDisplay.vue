@@ -7,7 +7,7 @@
 		width="85%"
 		append-to-body
 	>
-		<n8n-tooltip placement="bottom-start" :disabled="!triggerWaitingWarningEnabled">
+		<n8n-tooltip placement="bottom-start" :value="showTriggerWaitingWarning" :disabled="!showTriggerWaitingWarning" :manual="true">
 			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('node.backToCanvas.waitingForTriggerWarning') }}</div>
 			<div :class="$style.backToCanvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="small" />
@@ -16,7 +16,7 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="node" >
-			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
+			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
 			<RunData @openSettings="openSettings" />
 		</div>
 	</el-dialog>
@@ -40,6 +40,7 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
+import { mapGetters } from 'vuex';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -54,6 +55,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		};
 	},
 	computed: {
+		...mapGetters(['executionWaitingForWebhook']),
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		showTriggerWaitingWarning(): boolean {
+			return this.triggerWaitingWarningEnabled && !!this.nodeType && !this.nodeType.group.includes('trigger') && this.workflowRunning && this.executionWaitingForWebhook;
+		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
 		},
@@ -67,6 +75,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	watch: {
 		node (node, oldNode) {
 			if(node && !oldNode) {
+				this.triggerWaitingWarningEnabled = false;
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
@@ -76,6 +85,14 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onNodeExecute() {
+			setTimeout(() => {
+				if (!this.node || !this.workflowRunning) {
+					return;
+				}
+				this.triggerWaitingWarningEnabled = true;
+			}, 1000);
+		},
 		openSettings() {
 			this.settingsEventBus.$emit('openSettings');
 		},
