@@ -9,7 +9,9 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -37,7 +39,7 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'xeroOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

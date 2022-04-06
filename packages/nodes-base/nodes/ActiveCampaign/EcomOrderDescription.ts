@@ -10,7 +10,7 @@ import {
 	activeCampaignDefaultGetAllProperties,
 } from './GenericFunctions';
 
-export const ecomOrderOperations = [
+export const ecomOrderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const ecomOrderOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ecomOrderFields = [
+export const ecomOrderFields: INodeProperties[] = [
 	// ----------------------------------
 	//         ecommerceOrder:create
 	// ----------------------------------
@@ -682,4 +682,4 @@ export const ecomOrderFields = [
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('ecommerceOrder', 'getAll'),
 
-] as INodeProperties[];
+];

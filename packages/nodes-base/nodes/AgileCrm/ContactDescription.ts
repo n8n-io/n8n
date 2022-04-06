@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const contactOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -71,25 +71,7 @@ export const contactFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:get all                           */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 20,
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-	},
+
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -106,6 +88,296 @@ export const contactFields = [
 		},
 		default: false,
 		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		default: 20,
+		description: 'Number of results to fetch.',
+	},
+
+	{
+		displayName: 'Filter',
+		name: 'filterType',
+		type: 'options',
+		options: [
+			{
+				name: 'None',
+				value: 'none',
+			},
+			{
+				name: 'Build Manually',
+				value: 'manual',
+			},
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: 'none',
+	},
+	{
+		displayName: 'Must Match',
+		name: 'matchType',
+		type: 'options',
+		options: [
+			{
+				name: 'Any filter',
+				value: 'anyFilter',
+			},
+			{
+				name: 'All Filters',
+				value: 'allFilters',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'manual',
+				],
+			},
+		},
+		default: 'anyFilter',
+	},
+	{
+		displayName: 'Simplify Response',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Return a simplified version of the response instead of the raw data.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'manual',
+				],
+			},
+		},
+		default: '',
+		placeholder: 'Add Condition',
+		options: [
+			{
+				displayName: 'Conditions',
+				name: 'conditions',
+				values: [
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+						description: 'Any searchable field.',
+					},
+					{
+						displayName: 'Condition Type',
+						name: 'condition_type',
+						type: 'options',
+						options: [
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'On',
+								value: 'ON',
+							},
+							{
+								name: 'Before',
+								value: 'BEFORE',
+							},
+							{
+								name: 'After',
+								value: 'AFTER',
+							},
+						],
+						default: 'EQUALS',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value 2',
+						name: 'value2',
+						type: 'string',
+						displayOptions: {
+							show: {
+								condition_type: [
+									'BETWEEN',
+								],
+							},
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
+		name: 'jsonNotice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Filters (JSON)',
+		name: 'filterJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+		description: '',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'fixedCollection',
+				placeholder: 'Add Sort',
+				default: [],
+				options: [
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						values: [
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'ASC',
+									},
+									{
+										name: 'Descending',
+										value: 'DESC',
+									},
+								],
+								default: 'ASC',
+								description: 'The sorting direction',
+							},
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'string',
+								default: '',
+								description: `The sorting field`,
+							},
+						],
+					},
+				],
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -178,6 +450,7 @@ export const contactFields = [
 				displayName: 'Address',
 				name: 'addressOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts address.',
 				typeOptions: {
 					multipleValues: true,
@@ -232,6 +505,7 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contact email.',
 				typeOptions: {
 					multipleValues: true,
@@ -332,6 +606,7 @@ export const contactFields = [
 				displayName: 'Phone',
 				name: 'phoneOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts phone.',
 				typeOptions: {
 					multipleValues: true,
@@ -413,6 +688,7 @@ export const contactFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -492,6 +768,7 @@ export const contactFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -637,6 +914,7 @@ export const contactFields = [
 				displayName: 'Address',
 				name: 'addressOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts address.',
 				typeOptions: {
 					multipleValues: true,
@@ -691,6 +969,7 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contact email.',
 				typeOptions: {
 					multipleValues: true,
@@ -791,6 +1070,7 @@ export const contactFields = [
 				displayName: 'Phone',
 				name: 'phoneOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts phone.',
 				typeOptions: {
 					multipleValues: true,
@@ -872,6 +1152,7 @@ export const contactFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -951,6 +1232,7 @@ export const contactFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -988,4 +1270,5 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+
+];

@@ -12,6 +12,7 @@ export interface IFields {
 	project?: IDataObject;
 	summary?: string;
 	reporter?: IDataObject;
+	components?: IDataObject[];
 }
 
 export interface IIssue {

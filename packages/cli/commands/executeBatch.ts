@@ -9,10 +9,10 @@
 import * as fs from 'fs';
 import { Command, flags } from '@oclif/command';
 
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { INode, INodeExecutionData, ITaskData, LoggerProxy } from 'n8n-workflow';
+import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
 
 import { sep } from 'path';
 
@@ -28,16 +28,17 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
+	GenericHelpers,
+	InternalHooksManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowRunner,
 } from '../src';
+import config = require('../config');
+import { User } from '../src/databases/entities/User';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -58,13 +59,15 @@ export class ExecuteBatch extends Command {
 
 	static executionTimeout = 3 * 60 * 1000;
 
+	static instanceOwner: User;
+
 	static examples = [
-		`$ n8n executeAll`,
-		`$ n8n executeAll --concurrency=10 --skipList=/data/skipList.txt`,
-		`$ n8n executeAll --debug --output=/data/output.json`,
-		`$ n8n executeAll --ids=10,13,15 --shortOutput`,
-		`$ n8n executeAll --snapshot=/data/snapshots --shallow`,
-		`$ n8n executeAll --compare=/data/previousExecutionData --retries=2`,
+		`$ n8n executeBatch`,
+		`$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt`,
+		`$ n8n executeBatch --debug --output=/data/output.json`,
+		`$ n8n executeBatch --ids=10,13,15 --shortOutput`,
+		`$ n8n executeBatch --snapshot=/data/snapshots --shallow`,
+		`$ n8n executeBatch --compare=/data/previousExecutionData --retries=2`,
 	];
 
 	static flags = {
@@ -73,7 +76,8 @@ export class ExecuteBatch extends Command {
 			description: 'Toggles on displaying all errors and debug messages.',
 		}),
 		ids: flags.string({
-			description: 'Specifies workflow IDs to get executed, separated by a comma.',
+			description:
+				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
 		}),
 		concurrency: flags.integer({
 			default: 1,
@@ -192,6 +196,8 @@ export class ExecuteBatch extends Command {
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
@@ -239,16 +245,25 @@ export class ExecuteBatch extends Command {
 		}
 
 		if (flags.ids !== undefined) {
-			const paramIds = flags.ids.split(',');
-			const re = /\d+/;
-			const matchedIds = paramIds.filter((id) => re.exec(id)).map((id) => parseInt(id.trim(), 10));
+			if (fs.existsSync(flags.ids)) {
+				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
+				ids.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+			} else {
+				const paramIds = flags.ids.split(',');
+				const re = /\d+/;
+				const matchedIds = paramIds
+					.filter((id) => re.exec(id))
+					.map((id) => parseInt(id.trim(), 10));
 
-			if (matchedIds.length === 0) {
-				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
-				return;
+				if (matchedIds.length === 0) {
+					console.log(
+						`The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.`,
+					);
+					return;
+				}
+
+				ids.push(...matchedIds);
 			}
-
-			ids.push(...matchedIds);
 		}
 
 		if (flags.skipList !== undefined) {
@@ -277,6 +292,8 @@ export class ExecuteBatch extends Command {
 
 		// Wait till the database is ready
 		await startDbInitPromise;
+
+		ExecuteBatch.instanceOwner = await getInstanceOwner();
 
 		let allWorkflows;
 
@@ -312,6 +329,10 @@ export class ExecuteBatch extends Command {
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);
@@ -661,6 +682,7 @@ export class ExecuteBatch extends Command {
 					executionMode: 'cli',
 					startNodes: [startNode!.name],
 					workflowData,
+					userId: ExecuteBatch.instanceOwner.id,
 				};
 
 				const workflowRunner = new WorkflowRunner();
@@ -817,10 +839,22 @@ export class ExecuteBatch extends Command {
 								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
 
 								if (changes !== undefined) {
-									// we have structural changes. Report them.
-									executionResult.error = `Workflow may contain breaking changes`;
-									executionResult.changes = changes;
-									executionResult.executionStatus = 'error';
+									// If we had only additions with no removals
+									// Then we treat as a warning and not an error.
+									// To find this, we convert the object to JSON
+									// and search for the `__deleted` string
+									const changesJson = JSON.stringify(changes);
+									if (changesJson.includes('__deleted')) {
+										// we have structural changes. Report them.
+										executionResult.error = 'Workflow may contain breaking changes';
+										executionResult.changes = changes;
+										executionResult.executionStatus = 'error';
+									} else {
+										executionResult.error =
+											'Workflow contains new data that previously did not exist.';
+										executionResult.changes = changes;
+										executionResult.executionStatus = 'warning';
+									}
 								} else {
 									executionResult.executionStatus = 'success';
 								}
@@ -842,7 +876,8 @@ export class ExecuteBatch extends Command {
 					}
 				}
 			} catch (e) {
-				executionResult.error = 'Workflow failed to execute.';
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+				executionResult.error = `Workflow failed to execute: ${e.message}`;
 				executionResult.executionStatus = 'error';
 			}
 			clearTimeout(timeoutTimer);

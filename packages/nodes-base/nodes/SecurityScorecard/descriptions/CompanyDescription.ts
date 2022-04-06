@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const companyOperations = [
 		],
 		default: 'getFactor',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Scorecard Identifier',
 		name: 'scorecardIdentifier',
@@ -250,4 +250,4 @@ export const companyFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

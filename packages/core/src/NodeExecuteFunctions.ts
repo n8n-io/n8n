@@ -15,6 +15,7 @@
 /* eslint-disable no-param-reassign */
 import {
 	GenericValue,
+	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
 	IContextObject,
@@ -22,12 +23,15 @@ import {
 	ICredentialsExpressionResolveValues,
 	IDataObject,
 	IExecuteFunctions,
+	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INode,
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -43,6 +47,7 @@ import {
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
+	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
 	NodeParameterValue,
@@ -58,6 +63,8 @@ import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
+import * as crypto from 'crypto';
+import * as url from 'url';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -70,11 +77,17 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
-import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
-import { URLSearchParams } from 'url';
+import axios, {
+	AxiosPromise,
+	AxiosProxyConfig,
+	AxiosRequestConfig,
+	AxiosResponse,
+	Method,
+} from 'axios';
+import { URL, URLSearchParams } from 'url';
+import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
-	BINARY_ENCODING,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -86,10 +99,77 @@ import {
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
+axios.defaults.headers.put = {};
+axios.defaults.headers.patch = {};
+axios.defaults.paramsSerializer = (params) => {
+	if (params instanceof URLSearchParams) {
+		return params.toString();
+	}
+	return stringify(params, { arrayFormat: 'indices' });
+};
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
+
+const pushFormDataValue = (form: FormData, key: string, value: any) => {
+	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
+		// @ts-ignore
+		form.append(key, value.value, value.options);
+	} else {
+		form.append(key, value);
+	}
+};
+
+const createFormDataObject = (data: object) => {
+	const formData = new FormData();
+	const keys = Object.keys(data);
+	keys.forEach((key) => {
+		// @ts-ignore
+		const formField = data[key];
+
+		if (formField instanceof Array) {
+			formField.forEach((item) => {
+				pushFormDataValue(formData, key, item);
+			});
+		} else {
+			pushFormDataValue(formData, key, formField);
+		}
+	});
+	return formData;
+};
+
+function searchForHeader(headers: IDataObject, headerName: string) {
+	if (headers === undefined) {
+		return undefined;
+	}
+
+	const headerNames = Object.keys(headers);
+	headerName = headerName.toLowerCase();
+	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
+async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
+	if (!formData || !formData.getLength) {
+		return;
+	}
+	try {
+		const length = await new Promise((res, rej) => {
+			formData.getLength((error: Error | null, length: number) => {
+				if (error) {
+					rej(error);
+					return;
+				}
+				res(length);
+			});
+		});
+		headers = Object.assign(headers, {
+			'content-length': length,
+		});
+	} catch (error) {
+		Logger.error('Unable to calculate form data length', { error });
+	}
+}
 
 async function parseRequestObject(requestObject: IDataObject) {
 	// This function is a temporary implementation
@@ -125,42 +205,29 @@ async function parseRequestObject(requestObject: IDataObject) {
 		// and also using formData. Request lib takes precedence for the formData.
 		// We will do the same.
 		// Merge body and form properties.
-		// @ts-ignore
-		axiosConfig.data =
-			typeof requestObject.body === 'string'
-				? requestObject.body
-				: new URLSearchParams(
-						Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
-							string,
-							string
-						>,
-				  );
+		if (typeof requestObject.body === 'string') {
+			axiosConfig.data = requestObject.body;
+		} else {
+			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
+				string,
+				string
+			>;
+			if (requestObject.useQuerystring === true) {
+				axiosConfig.data = stringify(allData, { arrayFormat: 'repeat' });
+			} else {
+				axiosConfig.data = stringify(allData);
+			}
+		}
 	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
 			axiosConfig.data = requestObject.formData;
 		} else {
-			const allData = Object.assign(requestObject.body || {}, requestObject.formData || {});
+			const allData = {
+				...(requestObject.body as object | undefined),
+				...(requestObject.formData as object | undefined),
+			};
 
-			const objectKeys = Object.keys(allData);
-			if (objectKeys.length > 0) {
-				// Should be a standard object. We must convert to formdata
-				const form = new FormData();
-
-				objectKeys.forEach((key) => {
-					const formField = (allData as IDataObject)[key] as IDataObject;
-					if (formField.hasOwnProperty('value') && formField.value instanceof Buffer) {
-						let filename;
-						// @ts-ignore
-						if (!!formField.options && formField.options.filename !== undefined) {
-							filename = (formField.options as IDataObject).filename as string;
-						}
-						form.append(key, formField.value, filename);
-					} else {
-						form.append(key, formField);
-					}
-				});
-				axiosConfig.data = form;
-			}
+			axiosConfig.data = createFormDataObject(allData);
 		}
 		// replace the existing header with a new one that
 		// contains the boundary property.
@@ -168,17 +235,20 @@ async function parseRequestObject(requestObject: IDataObject) {
 		delete axiosConfig.headers[contentTypeHeaderKeyName];
 		const headers = axiosConfig.data.getHeaders();
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+		await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
 	} else {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
 			// If we have only form
-			axiosConfig.data = new URLSearchParams(requestObject.form as Record<string, string>);
+			axiosConfig.data =
+				typeof requestObject.form === 'string'
+					? stringify(requestObject.form, { format: 'RFC3986' })
+					: stringify(requestObject.form).toString();
 			if (axiosConfig.headers !== undefined) {
-				// remove possibly existing content-type headers
-				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) =>
-					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
-				);
+				const headerName = searchForHeader(axiosConfig.headers, 'content-type');
+				if (headerName) {
+					delete axiosConfig.headers[headerName];
+				}
 				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			} else {
 				axiosConfig.headers = {
@@ -197,30 +267,12 @@ async function parseRequestObject(requestObject: IDataObject) {
 			if (requestObject.formData instanceof FormData) {
 				axiosConfig.data = requestObject.formData;
 			} else {
-				const objectKeys = Object.keys(requestObject.formData as object);
-				if (objectKeys.length > 0) {
-					// Should be a standard object. We must convert to formdata
-					const form = new FormData();
-
-					objectKeys.forEach((key) => {
-						const formField = (requestObject.formData as IDataObject)[key] as IDataObject;
-						if (formField.hasOwnProperty('value') && formField.value instanceof Buffer) {
-							let filename;
-							// @ts-ignore
-							if (!!formField.options && formField.options.filename !== undefined) {
-								filename = (formField.options as IDataObject).filename as string;
-							}
-							form.append(key, formField.value, filename);
-						} else {
-							form.append(key, formField);
-						}
-					});
-					axiosConfig.data = form;
-				}
+				axiosConfig.data = createFormDataObject(requestObject.formData as object);
 			}
 			// Mix in headers as FormData creates the boundary.
 			const headers = axiosConfig.data.getHeaders();
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+			await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined) {
@@ -232,11 +284,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri as string;
+		axiosConfig.url = requestObject.uri?.toString() as string;
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url as string;
+		axiosConfig.url = requestObject.url?.toString() as string;
+	}
+
+	if (requestObject.baseURL !== undefined) {
+		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
 	}
 
 	if (requestObject.method !== undefined) {
@@ -247,9 +303,24 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.params = requestObject.qs as IDataObject;
 	}
 
-	if (requestObject.useQuerystring === true) {
+	if (
+		requestObject.useQuerystring === true ||
+		// @ts-ignore
+		requestObject.qsStringifyOptions?.arrayFormat === 'repeat'
+	) {
 		axiosConfig.paramsSerializer = (params) => {
 			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	} else if (requestObject.useQuerystring === false) {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'indices' });
+		};
+	}
+
+	// @ts-ignore
+	if (requestObject.qsStringifyOptions?.arrayFormat === 'brackets') {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'brackets' });
 		};
 	}
 
@@ -286,7 +357,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			});
 		}
 	}
-	if (requestObject.json === false) {
+	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
 		axiosConfig.transformResponse = (res) => res;
 	}
@@ -299,7 +370,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 	if (
-		requestObject.followAllRedirect === false &&
+		requestObject.followAllRedirects === false &&
 		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
 	) {
 		axiosConfig.maxRedirects = 0;
@@ -316,7 +387,63 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.proxy !== undefined) {
-		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		// try our best to parse the url provided.
+		if (typeof requestObject.proxy === 'string') {
+			try {
+				const url = new URL(requestObject.proxy);
+				axiosConfig.proxy = {
+					host: url.hostname,
+					port: parseInt(url.port, 10),
+					protocol: url.protocol,
+				};
+				if (!url.port) {
+					// Sets port to a default if not informed
+					if (url.protocol === 'http') {
+						axiosConfig.proxy.port = 80;
+					} else if (url.protocol === 'https') {
+						axiosConfig.proxy.port = 443;
+					}
+				}
+				if (url.username || url.password) {
+					axiosConfig.proxy.auth = {
+						username: url.username,
+						password: url.password,
+					};
+				}
+			} catch (error) {
+				// Not a valid URL. We will try to simply parse stuff
+				// such as user:pass@host:port without protocol (we'll assume http)
+				if (requestObject.proxy.includes('@')) {
+					const [userpass, hostport] = requestObject.proxy.split('@');
+					const [username, password] = userpass.split(':');
+					const [hostname, port] = hostport.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+						auth: {
+							username,
+							password,
+						},
+					};
+				} else if (requestObject.proxy.includes(':')) {
+					const [hostname, port] = requestObject.proxy.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+					};
+				} else {
+					axiosConfig.proxy = {
+						host: requestObject.proxy,
+						port: 80,
+						protocol: 'http',
+					};
+				}
+			}
+		} else {
+			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		}
 	}
 
 	if (requestObject.encoding === null) {
@@ -333,7 +460,9 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
 	}
 	if (
+		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
+		axiosConfig.data !== '' &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
 	) {
@@ -357,6 +486,52 @@ async function parseRequestObject(requestObject: IDataObject) {
 	return axiosConfig;
 }
 
+function digestAuthAxiosConfig(
+	axiosConfig: AxiosRequestConfig,
+	response: AxiosResponse,
+	auth: AxiosRequestConfig['auth'],
+): AxiosRequestConfig {
+	const authDetails = response.headers['www-authenticate']
+		.split(',')
+		.map((v: string) => v.split('='));
+	if (authDetails) {
+		const nonceCount = `000000001`;
+		const cnonce = crypto.randomBytes(24).toString('hex');
+		const realm: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
+			.replace(/"/g, '');
+		const opaque: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1)[1]
+			.replace(/"/g, '');
+		const nonce: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
+			.replace(/"/g, '');
+		const ha1 = crypto
+			.createHash('md5')
+			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
+			.digest('hex');
+		const path = new url.URL(axiosConfig.url!).pathname;
+		const ha2 = crypto
+			.createHash('md5')
+			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
+			.digest('hex');
+		const response = crypto
+			.createHash('md5')
+			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
+			.digest('hex');
+		const authorization =
+			`Digest username="${auth?.username as string}",realm="${realm}",` +
+			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}",opaque="${opaque}"`;
+		if (axiosConfig.headers) {
+			axiosConfig.headers.authorization = authorization;
+		} else {
+			axiosConfig.headers = { authorization };
+		}
+	}
+	return axiosConfig;
+}
+
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
@@ -370,8 +545,13 @@ async function proxyRequestToAxios(
 	}
 
 	let axiosConfig: AxiosRequestConfig = {};
-
-	let configObject: IDataObject;
+	let axiosPromise: AxiosPromise;
+	type ConfigObject = {
+		auth?: { sendImmediately: boolean };
+		resolveWithFullResponse?: boolean;
+		simple?: boolean;
+	};
+	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -383,8 +563,41 @@ async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
+	Logger.debug(
+		'Proxying request to axios',
+		// {
+		// 	originalConfig: configObject,
+		// 	parsedConfig: axiosConfig,
+		// }
+	);
+
+	if (configObject.auth?.sendImmediately === false) {
+		// for digest-auth
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
+		// eslint-disable-next-line no-async-promise-executor
+		axiosPromise = new Promise(async (resolve, reject) => {
+			try {
+				const result = await axios(axiosConfig);
+				resolve(result);
+			} catch (resp: any) {
+				if (
+					resp.response === undefined ||
+					resp.response.status !== 401 ||
+					!resp.response.headers['www-authenticate']?.includes('nonce')
+				) {
+					reject(resp);
+				}
+				axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
+				resolve(axios(axiosConfig));
+			}
+		});
+	} else {
+		axiosPromise = axios(axiosConfig);
+	}
+
 	return new Promise((resolve, reject) => {
-		axios(axiosConfig)
+		axiosPromise
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
@@ -415,23 +628,48 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				// The error-data was made available with request library via "error" but now on
-				// axios via "response.data" so copy information over to keep it compatible
-				error.error = error.response.data;
-				error.statusCode = error.response.status;
+				if (configObject.simple === false && error.response) {
+					if (configObject.resolveWithFullResponse) {
+						resolve({
+							body: error.response.data,
+							headers: error.response.headers,
+							statusCode: error.response.status,
+							statusMessage: error.response.statusText,
+						});
+					} else {
+						resolve(error.response.data);
+					}
+					return;
+				}
+
+				Logger.debug('Request proxied to Axios failed', { error });
+
+				// Axios hydrates the original error with more data. We extract them.
+				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+				// Note: `code` is ignored as it's an expected part of the errorData.
+				const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
+				if (response) {
+					error.message = `${response.status as number} - ${JSON.stringify(response.data)}`;
+				}
+
+				error.cause = errorData;
+				error.error = error.response?.data || errorData;
+				error.statusCode = error.response?.status;
+				error.options = config || {};
+
+				// Remove not needed data and so also remove circular references
+				error.request = undefined;
+				error.config = undefined;
+				error.options.adapter = undefined;
+				error.options.httpsAgent = undefined;
+				error.options.paramsSerializer = undefined;
+				error.options.transformRequest = undefined;
+				error.options.transformResponse = undefined;
+				error.options.validateStatus = undefined;
+
 				reject(error);
 			});
 	});
-}
-
-function searchForHeader(headers: IDataObject, headerName: string) {
-	if (headers === undefined) {
-		return undefined;
-	}
-
-	const headerNames = Object.keys(headers);
-	headerName = headerName.toLowerCase();
-	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
 }
 
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
@@ -448,6 +686,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
+
+	if (n8nRequest.baseURL !== undefined) {
+		axiosRequest.baseURL = n8nRequest.baseURL;
+	}
 
 	if (n8nRequest.disableFollowRedirect === true) {
 		axiosRequest.maxRedirects = 0;
@@ -502,16 +744,19 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		axiosRequest.headers['User-Agent'] = 'n8n';
 	}
 
+	if (n8nRequest.ignoreHttpStatusErrors) {
+		axiosRequest.validateStatus = () => true;
+	}
+
 	return axiosRequest;
 }
 
 async function httpRequest(
-	requestParams: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-	// tslint:disable-line:no-any
-	const axiosRequest = convertN8nRequestToAxios(requestParams);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions);
 	const result = await axios(axiosRequest);
-	if (requestParams.returnFullResponse) {
+	if (requestOptions.returnFullResponse) {
 		return {
 			body: result.data,
 			headers: result.headers,
@@ -539,7 +784,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Buffer.from(binaryData.data, BINARY_ENCODING);
+	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
 }
 
 /**
@@ -554,6 +799,7 @@ export async function getBinaryDataBuffer(
  */
 export async function prepareBinaryData(
 	binaryData: Buffer,
+	executionId: string,
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
@@ -584,10 +830,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
-		// TODO: Should program it in a way that it does not have to converted to base64
-		//       It should only convert to and from base64 when saved in database because
-		//       of for example an error or when there is a wait node.
-		data: binaryData.toString(BINARY_ENCODING),
+		data: '',
 	};
 
 	if (filePath) {
@@ -610,7 +853,7 @@ export async function prepareBinaryData(
 		}
 	}
 
-	return returnData;
+	return BinaryDataManager.getInstance().storeBinaryData(returnData, binaryData, executionId);
 }
 
 /**
@@ -628,10 +871,11 @@ export async function prepareBinaryData(
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions | IHttpRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
+	isN8nRequest = false,
 ) {
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -706,16 +950,20 @@ export async function requestOAuth2(
 
 			credentials.oauthTokenData = newToken.data;
 
-			// Find the name of the credentials
+			// Find the credentials
 			if (!node.credentials || !node.credentials[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
 			}
-			const name = node.credentials[credentialsType];
+			const nodeCredentials = node.credentials[credentialsType];
 
 			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+			await additionalData.credentialsHelper.updateCredentials(
+				nodeCredentials,
+				credentialsType,
+				credentials,
+			);
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
@@ -723,7 +971,9 @@ export async function requestOAuth2(
 
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-
+			if (isN8nRequest) {
+				return this.helpers.httpRequest(newRequestOptions);
+			}
 			return this.helpers.request!(newRequestOptions);
 		}
 
@@ -743,7 +993,12 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions:
+		| OptionsWithUrl
+		| OptionsWithUri
+		| requestPromise.RequestPromiseOptions
+		| IHttpRequestOptions,
+	isN8nRequest = false,
 ) {
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -791,10 +1046,69 @@ export async function requestOAuth1(
 	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 
+	if (isN8nRequest) {
+		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
+	}
+
 	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
 		// Unknown error so simply throw it
 		throw error;
 	});
+}
+
+export async function httpRequestWithAuthentication(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: IHttpRequestOptions,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+) {
+	try {
+		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (parentTypes.includes('oAuth1Api')) {
+			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
+		}
+		if (parentTypes.includes('oAuth2Api')) {
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				additionalCredentialOptions?.oauth2,
+				true,
+			);
+		}
+
+		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+		if (additionalCredentialOptions?.credentialsDecrypted) {
+			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
+		} else {
+			credentialsDecrypted = await this.getCredentials(credentialsType);
+		}
+
+		if (credentialsDecrypted === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+			);
+		}
+
+		requestOptions = await additionalData.credentialsHelper.authenticate(
+			credentialsDecrypted,
+			credentialsType,
+			requestOptions,
+			workflow,
+			node,
+		);
+
+		return await httpRequest(requestOptions);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
 
 /**
@@ -816,6 +1130,107 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	});
 
 	return returnData;
+}
+
+/**
+ * Automatically put the objects under a 'json' key and don't error,
+ * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
+ *
+ * @export
+ * @param {INodeExecutionData | INodeExecutionData[]} executionData
+ * @returns {INodeExecutionData[]}
+ */
+export function normalizeItems(
+	executionData: INodeExecutionData | INodeExecutionData[],
+): INodeExecutionData[] {
+	if (typeof executionData === 'object' && !Array.isArray(executionData))
+		executionData = [{ json: executionData as IDataObject }];
+	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
+		return executionData;
+
+	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
+		throw new Error('Inconsistent item format');
+	}
+
+	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
+		const normalizedItems: INodeExecutionData[] = [];
+		executionData.forEach((item) => {
+			const json = Object.keys(item).reduce((acc, key) => {
+				if (key === 'binary') return acc;
+				return { ...acc, [key]: item[key] };
+			}, {});
+
+			normalizedItems.push({
+				json,
+				binary: item.binary,
+			});
+		});
+		return normalizedItems;
+	}
+
+	if (executionData.some((item) => typeof item === 'object' && 'binary' in item)) {
+		throw new Error('Inconsistent item format');
+	}
+
+	return executionData.map((item) => {
+		return { json: item };
+	});
+}
+
+// TODO: Move up later
+export async function requestWithAuthentication(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+) {
+	try {
+		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (parentTypes.includes('oAuth1Api')) {
+			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
+		}
+		if (parentTypes.includes('oAuth2Api')) {
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				additionalCredentialOptions?.oauth2,
+				false,
+			);
+		}
+
+		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+		if (additionalCredentialOptions?.credentialsDecrypted) {
+			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
+		} else {
+			credentialsDecrypted = await this.getCredentials(credentialsType);
+		}
+
+		if (credentialsDecrypted === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+			);
+		}
+
+		requestOptions = await additionalData.credentialsHelper.authenticate(
+			credentialsDecrypted,
+			credentialsType,
+			requestOptions as IHttpRequestOptions,
+			workflow,
+			node,
+		);
+
+		return await proxyRequestToAxios(requestOptions as IDataObject);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
 
 /**
@@ -865,39 +1280,46 @@ export async function getCredentials(
 		);
 	}
 
-	if (nodeType.description.credentials === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" does not have any credentials defined!`,
-		);
-	}
+	// Hardcode for now for security reasons that only a single node can access
+	// all credentials
+	const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
 
-	const nodeCredentialDescription = nodeType.description.credentials.find(
-		(credentialTypeDescription) => credentialTypeDescription.name === type,
-	);
-	if (nodeCredentialDescription === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
-		);
-	}
+	let nodeCredentialDescription: INodeCredentialDescription | undefined;
+	if (!fullAccess) {
+		if (nodeType.description.credentials === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials defined!`,
+			);
+		}
 
-	if (
-		!NodeHelpers.displayParameter(
-			additionalData.currentNodeParameters || node.parameters,
-			nodeCredentialDescription,
-			node.parameters,
-		)
-	) {
-		// Credentials should not be displayed so return undefined even if they would be defined
-		return undefined;
+		nodeCredentialDescription = nodeType.description.credentials.find(
+			(credentialTypeDescription) => credentialTypeDescription.name === type,
+		);
+		if (nodeCredentialDescription === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+			);
+		}
+
+		if (
+			!NodeHelpers.displayParameter(
+				additionalData.currentNodeParameters || node.parameters,
+				nodeCredentialDescription,
+				node.parameters,
+			)
+		) {
+			// Credentials should not be displayed so return undefined even if they would be defined
+			return undefined;
+		}
 	}
 
 	// Check if node has any credentials defined
-	if (!node.credentials || !node.credentials[type]) {
+	if (!fullAccess && (!node.credentials || !node.credentials[type])) {
 		// If none are defined check if the credentials are required or not
 
-		if (nodeCredentialDescription.required === true) {
+		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
 				throw new NodeOperationError(node, 'Node does not have any credentials set!');
@@ -909,6 +1331,12 @@ export async function getCredentials(
 			// Credentials are not required so resolve with undefined
 			return undefined;
 		}
+	}
+
+	if (fullAccess && (!node.credentials || !node.credentials[type])) {
+		// Make sure that fullAccess nodes still behave like before that if they
+		// request access to credentials that are currently not set it returns undefined
+		return undefined;
 	}
 
 	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
@@ -923,25 +1351,28 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	let name = node.credentials[type];
+	const nodeCredentials = node.credentials
+		? node.credentials[type]
+		: ({} as INodeCredentialsDetails);
 
-	if (name.charAt(0) === '=') {
-		// If the credential name is an expression resolve it
-		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(
-			name,
-			runExecutionData || null,
-			runIndex || 0,
-			itemIndex || 0,
-			node.name,
-			connectionInputData || [],
-			mode,
-			additionalKeys,
-		) as string;
-	}
+	// TODO: solve using credentials via expression
+	// if (name.charAt(0) === '=') {
+	// 	// If the credential name is an expression resolve it
+	// 	const additionalKeys = getAdditionalKeys(additionalData);
+	// 	name = workflow.expression.getParameterValue(
+	// 		name,
+	// 		runExecutionData || null,
+	// 		runIndex || 0,
+	// 		itemIndex || 0,
+	// 		node.name,
+	// 		connectionInputData || [],
+	// 		mode,
+	// 		additionalKeys,
+	// 	) as string;
+	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-		name,
+		nodeCredentials,
 		type,
 		mode,
 		false,
@@ -1222,8 +1653,36 @@ export function getExecutePollFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1245,6 +1704,22 @@ export function getExecutePollFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},
@@ -1273,6 +1748,9 @@ export function getExecuteTriggerFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			emit: (data: INodeExecutionData[][]): void => {
+				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
+			},
+			emitError: (error: Error): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
@@ -1328,8 +1806,35 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
-
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1352,6 +1857,22 @@ export function getExecuteTriggerFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},
@@ -1405,7 +1926,14 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData
+					.executeWorkflow(workflowInfo, additionalData, inputData)
+					.then(async (result) =>
+						BinaryDataManager.getInstance().duplicateBinaryData(
+							result,
+							additionalData.executionId!,
+						),
+					);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -1506,22 +2034,53 @@ export function getExecuteFunctions(
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 			},
-			sendMessageToUI(message: any): void {
+			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
 				}
 				try {
 					if (additionalData.sendMessageToUI) {
-						additionalData.sendMessageToUI(node.name, message);
+						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
 			},
+			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
+				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				async getBinaryDataBuffer(
 					itemIndex: number,
 					propertyName: string,
@@ -1552,7 +2111,24 @@ export function getExecuteFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				returnJsonArray,
+				normalizeItems,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
@@ -1702,7 +2278,35 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1725,6 +2329,22 @@ export function getExecuteSingleFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 			},
 		};
@@ -1817,6 +2437,22 @@ export function getLoadOptionsFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1839,6 +2475,22 @@ export function getLoadOptionsFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 			},
 		};
@@ -1937,6 +2589,22 @@ export function getExecuteHookFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1959,6 +2627,22 @@ export function getExecuteHookFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 			},
 		};
@@ -2083,7 +2767,35 @@ export function getExecuteWebhookFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2106,6 +2818,22 @@ export function getExecuteWebhookFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},

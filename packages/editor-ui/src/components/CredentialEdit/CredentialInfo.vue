@@ -2,7 +2,9 @@
 	<div :class="$style.container">
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
-				<span>Allow use by</span>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.allowUseBy') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16">
 				<div
@@ -11,7 +13,10 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
-						:label="node.displayName"
+						:label="$locale.headerText({
+							key: `headers.${shortNodeType(node)}.displayName`,
+							fallback: node.displayName,
+						})"
 						:value="!!nodeAccess[node.name]"
 						@change="(val) => onNodeAccessChange(node.name, val)"
 					/>
@@ -20,26 +25,32 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<span>Created</span>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.created') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<TimeAgo :date="currentCredential.createdAt" :capitalize="true" />
+				<n8n-text :compact="true"><TimeAgo :date="currentCredential.createdAt" :capitalize="true" /></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<span>Last modified</span>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.lastModified') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<TimeAgo :date="currentCredential.updatedAt" :capitalize="true" />
+				<n8n-text :compact="true"><TimeAgo :date="currentCredential.updatedAt" :capitalize="true" /></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<span>ID</span>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.id') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<span>{{currentCredential.id}}</span>
+				<n8n-text :compact="true">{{ currentCredential.id }}</n8n-text>
 			</el-col>
 		</el-row>
 	</div>
@@ -49,6 +60,7 @@
 import Vue from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'CredentialInfo',
@@ -62,6 +74,9 @@ export default Vue.extend({
 				name,
 				value,
 			});
+		},
+		shortNodeType(nodeType: INodeTypeDescription) {
+			return this.$locale.shortNodeType(nodeType.name);
 		},
 	},
 });

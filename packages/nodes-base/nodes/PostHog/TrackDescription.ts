@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const trackOperations = [
+export const trackOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const trackOperations = [
 		default: 'page',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const trackFields = [
+export const trackFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 track:page                                 */
@@ -172,4 +172,4 @@ export const trackFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

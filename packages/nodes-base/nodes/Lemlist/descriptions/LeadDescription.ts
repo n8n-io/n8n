@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const leadOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 	// ----------------------------------
 	//        lead: create
 	// ----------------------------------
@@ -123,6 +123,34 @@ export const leadFields = [
 				type: 'string',
 				default: '',
 				description: 'Last name of the lead to create.',
+			},
+			{
+				displayName: 'Icebreaker',
+				name: 'icebreaker',
+				type: 'string',
+				default: '',
+				description: 'Icebreaker of the lead to create.',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'Phone number of the lead to create.',
+			},
+			{
+				displayName: 'Picture URL',
+				name: 'picture',
+				type: 'string',
+				default: '',
+				description: 'Picture url of the lead to create.',
+			},
+			{
+				displayName: 'LinkedIn URL',
+				name: 'linkedinUrl',
+				type: 'string',
+				default: '',
+				description: 'LinkedIn url of the lead to create.',
 			},
 		],
 	},
@@ -231,4 +259,4 @@ export const leadFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

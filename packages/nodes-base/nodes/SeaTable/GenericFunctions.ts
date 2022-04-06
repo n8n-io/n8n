@@ -129,7 +129,7 @@ export async function getBaseAccessToken(this: IExecuteFunctions | ILoadOptionsF
 
 export function resolveBaseUri(ctx: ICtx) {
 	return (ctx?.credentials?.environment === 'cloudHosted')
-		? 'https://cloud.seatable.io' : ctx?.credentials?.domain;
+		? 'https://cloud.seatable.io' : userBaseUri(ctx?.credentials?.domain);
 }
 
 export function simplify(data: { results: IRow[] }, metadata: IDataObject) {
@@ -292,3 +292,15 @@ export const split = (subject: string): string[] =>
 		.filter(s => s.length)
 		.map(s => s.replace(/\\([\s\S])/gm, ($0, $1) => $1))
 	;
+
+const userBaseUri = (uri?: string) => {
+	if (uri === undefined) {
+		return uri;
+	}
+
+	if (uri.endsWith('/')) {
+		return uri.slice(0, -1);
+	}
+
+	return uri;
+};

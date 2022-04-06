@@ -6,7 +6,7 @@ import {
 	estimateAdditionalFieldsOptions,
 } from './EstimateAdditionalFieldsOptions';
 
-export const estimateOperations = [
+export const estimateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const estimateOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const estimateFields = [
+export const estimateFields: INodeProperties[] = [
 	// ----------------------------------
 	//         estimate: create
 	// ----------------------------------
@@ -422,4 +422,4 @@ export const estimateFields = [
 		// filter out fields that cannot be updated
 		options: estimateAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'TotalTax'),
 	},
-] as INodeProperties[];
+];

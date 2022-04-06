@@ -1,22 +1,31 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IBinaryData,
 	IBinaryKeyData,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
+	simplifyIssueOutput,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -59,7 +68,6 @@ export class Jira implements INodeType {
 		description: 'Consume Jira Software API',
 		defaults: {
 			name: 'Jira',
-			color: '#4185f7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -74,6 +82,7 @@ export class Jira implements INodeType {
 						],
 					},
 				},
+				testedBy: 'jiraSoftwareApiTest',
 			},
 			{
 				name: 'jiraSoftwareServerApi',
@@ -85,6 +94,7 @@ export class Jira implements INodeType {
 						],
 					},
 				},
+				testedBy: 'jiraSoftwareApiTest',
 			},
 		],
 		properties: [
@@ -145,6 +155,40 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+				const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Basic ${data}`,
+						Accept: 'application/json',
+						'Content-Type': 'application/json',
+						'X-Atlassian-Token': 'no-check',
+					},
+					method: 'GET',
+					uri: `${credentials!.domain}/rest/api/2/project`,
+					qs: {
+						recent: 0,
+					},
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					await this.helpers.request!(options);
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${(err as JsonObject).message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the projects to display them to user so that he can
 			// select them easily
@@ -261,45 +305,29 @@ export class Jira implements INodeType {
 			// Get all the users to display them to user so that he can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				const query: IDataObject = {};
+				let endpoint = '/api/2/users/search';
+
 				if (jiraVersion === 'server') {
-					// the interface call must bring username
-					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/user/search', 'GET', {},
-						{
-							username: '\'',
-						},
-					);
-					for (const user of users) {
-						const userName = user.displayName;
-						const userId = user.name;
-
-						returnData.push({
-							name: userName,
-							value: userId,
-						});
-					}
-				} else {
-					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/users/search', 'GET');
-
-					for (const user of users) {
-						const userName = user.displayName;
-						const userId = user.accountId;
-
-						returnData.push({
-							name: userName,
-							value: userId,
-						});
-					}
+					endpoint = '/api/2/user/search';
+					query.username = '\'';
 				}
 
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
+				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
+
+				return users.reduce((activeUsers: INodePropertyOptions[], user: IDataObject) => {
+					if (user.active) {
+						activeUsers.push({
+							name: user.displayName as string,
+							value: (user.accountId || user.name) as string,
+						});
+					}
+					return activeUsers;
+				}, []).sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
+					return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
 				});
 
-				return returnData;
 			},
 
 			// Get all the groups to display them to user so that he can
@@ -370,18 +398,42 @@ export class Jira implements INodeType {
 				}
 
 				const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`, 'GET');
-				
+
 				// tslint:disable-next-line: no-any
 				const fields = res.projects.find((o: any) => o.id === projectId).issuetypes.find((o: any) => o.id === issueTypeId).fields;
 				for (const key of Object.keys(fields)) {
 					const field = fields[key];
 					if (field.schema && Object.keys(field.schema).includes('customId')) {
-							returnData.push({
-								name: field.name,
-								value: field.key,
-							});
+						returnData.push({
+							name: field.name,
+							value: field.key || field.fieldId,
+						});
 					}
 				}
+				return returnData;
+			},
+
+			// Get all the components to display them to user so that he can
+			// select them easily
+			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const project = this.getCurrentNodeParameter('project');
+				const { values: components } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/project/${project}/component`, 'GET');
+
+				for (const component of components) {
+					returnData.push({
+						name: component.name,
+						value: component.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		},
@@ -439,15 +491,24 @@ export class Jira implements INodeType {
 						}
 					}
 					if (additionalFields.reporter) {
-						fields.reporter = {
-							id: additionalFields.reporter as string,
-						};
+						if (jiraVersion === 'server') {
+							fields.reporter = {
+								name: additionalFields.reporter as string,
+							};
+						} else {
+							fields.reporter = {
+								id: additionalFields.reporter as string,
+							};
+						}
 					}
 					if (additionalFields.description) {
 						fields.description = additionalFields.description as string;
 					}
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as boolean;
+					}
+					if (additionalFields.componentIds) {
+						fields.components = (additionalFields.componentIds as string[]).map(id => ({ id }));
 					}
 					if (additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -516,9 +577,15 @@ export class Jira implements INodeType {
 						}
 					}
 					if (updateFields.reporter) {
-						fields.reporter = {
-							id: updateFields.reporter as string,
-						};
+						if (jiraVersion === 'server') {
+							fields.reporter = {
+								name: updateFields.reporter as string,
+							};
+						} else {
+							fields.reporter = {
+								id: updateFields.reporter as string,
+							};
+						}
 					}
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;
@@ -561,6 +628,7 @@ export class Jira implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.fields) {
 						qs.fields = additionalFields.fields as string;
@@ -571,6 +639,9 @@ export class Jira implements INodeType {
 					if (additionalFields.expand) {
 						qs.expand = additionalFields.expand as string;
 					}
+					if (simplifyOutput) {
+						qs.expand = `${qs.expand || ''},names`;
+					}
 					if (additionalFields.properties) {
 						qs.properties = additionalFields.properties as string;
 					}
@@ -578,7 +649,12 @@ export class Jira implements INodeType {
 						qs.updateHistory = additionalFields.updateHistory as string;
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
-					returnData.push(responseData);
+
+					if (simplifyOutput) {
+						returnData.push(simplifyIssueOutput(responseData));
+					} else {
+						returnData.push(responseData);
+					}
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
@@ -594,7 +670,11 @@ export class Jira implements INodeType {
 						body.jql = options.jql as string;
 					}
 					if (options.expand) {
-						body.expand = options.expand as string;
+						if (typeof options.expand === 'string') {
+							body.expand = options.expand.split(',');
+						} else {
+							body.expand = options.expand;
+						}
 					}
 					if (returnAll) {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/api/2/search`, 'POST', body);
@@ -604,7 +684,7 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/search`, 'POST', body);
 						responseData = responseData.issues;
 					}
-					returnData.push.apply(returnData, responseData);
+					returnData.push(...responseData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get

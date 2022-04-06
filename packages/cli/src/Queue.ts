@@ -1,12 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as Bull from 'bull';
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
-import { IBullJobData } from './Interfaces';
+import { IBullJobData, IBullWebhookResponse } from './Interfaces';
+// eslint-disable-next-line import/no-cycle
+import * as ActiveExecutions from './ActiveExecutions';
+// eslint-disable-next-line import/no-cycle
+import * as WebhookHelpers from './WebhookHelpers';
 
 export class Queue {
+	private activeExecutions: ActiveExecutions.ActiveExecutions;
+
 	private jobQueue: Bull.Queue;
 
 	constructor() {
+		this.activeExecutions = ActiveExecutions.getInstance();
+
 		const prefix = config.get('queue.bull.prefix') as string;
 		const redisOptions = config.get('queue.bull.redis') as object;
 		// Disabling ready check is necessary as it allows worker to
@@ -16,6 +25,14 @@ export class Queue {
 		// More here: https://github.com/OptimalBits/bull/issues/890
 		// @ts-ignore
 		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+
+		this.jobQueue.on('global:progress', (jobId, progress: IBullWebhookResponse) => {
+			this.activeExecutions.resolveResponsePromise(
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				progress.executionId,
+				WebhookHelpers.decodeWebhookResponse(progress.response),
+			);
+		});
 	}
 
 	async add(jobData: IBullJobData, jobOptions: object): Promise<Bull.Job> {

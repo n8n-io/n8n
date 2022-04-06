@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,12 +8,21 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
-import { IContactUpdate } from './ContactInterface';
 
+import { 
+	IContactUpdate,
+} from './ContactInterface';
 
-export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+import {
+	IFilterRules,
+	ISearchConditions,
+} from './FilterInterface';
+
+export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string, sendAsForm?: boolean): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
@@ -27,12 +34,18 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 			username: credentials!.email as string,
 			password: credentials!.apiKey as string,
 		},
+		qs: query,
 		uri: uri || `https://${credentials!.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,
 	};
 
+	// To send the request as 'content-type': 'application/x-www-form-urlencoded' add form to options instead of body
+	if(sendAsForm) {
+		options.form = body;
+	}
 	// Only add Body property if method not GET or DELETE to avoid 400 response
-	if (method !== 'GET' && method !== 'DELETE') {
+	// And when not sending a form
+	else if (method !== 'GET' && method !== 'DELETE') {
 		options.body = body;
 	}
 
@@ -41,7 +54,30 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
 
+export async function agileCrmApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, sendAsForm?: boolean): Promise<any> { // tslint:disable-line:no-any
+	// https://github.com/agilecrm/rest-api#11-listing-contacts-
+
+	const returnData: IDataObject[] = [];
+	let responseData;
+	do {
+		responseData = await agileCrmApiRequest.call(this, method, resource, body, query, uri, sendAsForm);
+		if (responseData.length !== 0) {
+			returnData.push.apply(returnData, responseData);
+			if (sendAsForm) {
+				body.cursor = responseData[responseData.length-1].cursor;
+			} else {
+				query.cursor = responseData[responseData.length-1].cursor;
+			}
+		}
+	} while (
+			responseData.length !== 0 &&
+			responseData[responseData.length-1].hasOwnProperty('cursor')
+		);
+
+	return returnData;
 }
 
 export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -130,4 +166,40 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = undefined;
 	}
 	return result;
+}
+
+export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject { // tslint:disable-line:no-any
+	const rules = [];
+
+	for (const key in conditions) {
+		if (conditions.hasOwnProperty(key)) {
+			const searchConditions: ISearchConditions = conditions[key] as ISearchConditions;
+			const rule: IFilterRules = {
+				LHS: searchConditions.field,
+				CONDITION: searchConditions.condition_type,
+				RHS: searchConditions.value as string,
+				RHS_NEW: searchConditions.value2 as string,
+			};
+		rules.push(rule);
+		}
+	}
+
+	if (matchType === 'anyFilter') {
+		return {
+			or_rules: rules,
+		};
+	}
+	else {
+		return {
+			rules,
+		};
+	}
+}
+
+export function simplifyResponse(records: [{ id: string, properties: [{ name: string, value: string }] } ]) {
+	const results = [];
+	for (const record of records) {
+		results.push(record.properties.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), { id: record.id }));
+	}
+	return results;
 }

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const controlOperations = [
+export const controlOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const controlOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const controlFields = [
+export const controlFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                   control:get                              */
@@ -138,4 +138,4 @@ export const controlFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

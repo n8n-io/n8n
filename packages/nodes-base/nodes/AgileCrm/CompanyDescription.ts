@@ -1,7 +1,8 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-export const companyOperations = [
+
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,8 +44,9 @@ export const companyOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
-export const companyFields = [
+];
+
+export const companyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  company:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -91,7 +93,6 @@ export const companyFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 20,
 		displayOptions: {
 			show: {
 				resource: [
@@ -105,7 +106,280 @@ export const companyFields = [
 				],
 			},
 		},
+		default: 20,
+		description: 'Number of results to fetch.',
 	},
+
+	{
+		displayName: 'Filter',
+		name: 'filterType',
+		type: 'options',
+		options: [
+			{
+				name: 'None',
+				value: 'none',
+			},
+			{
+				name: 'Build Manually',
+				value: 'manual',
+			},
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: 'none',
+	},
+	{
+		displayName: 'Must Match',
+		name: 'matchType',
+		type: 'options',
+		options: [
+			{
+				name: 'Any filter',
+				value: 'anyFilter',
+			},
+			{
+				name: 'All Filters',
+				value: 'allFilters',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'manual',
+				],
+			},
+		},
+		default: 'anyFilter',
+	},
+	{
+		displayName: 'Simplify Response',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Return a simplified version of the response instead of the raw data.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'manual',
+				],
+			},
+		},
+		default: '',
+		placeholder: 'Add Condition',
+		options: [
+			{
+				displayName: 'Conditions',
+				name: 'conditions',
+				values: [
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+						description: 'Any searchable field.',
+					},
+					{
+						displayName: 'Condition Type',
+						name: 'condition_type',
+						type: 'options',
+						options: [
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'On',
+								value: 'ON',
+							},
+							{
+								name: 'Before',
+								value: 'BEFORE',
+							},
+							{
+								name: 'After',
+								value: 'AFTER',
+							},
+						],
+						default: 'EQUALS',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value 2',
+						name: 'value2',
+						type: 'string',
+						displayOptions: {
+							show: {
+								condition_type: [
+									'BETWEEN',
+								],
+							},
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
+		name: 'jsonNotice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Filters (JSON)',
+		name: 'filterJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+		description: '',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'fixedCollection',
+				placeholder: 'Add Sort',
+				default: [],
+				options: [
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						values: [
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'ASC',
+									},
+									{
+										name: 'Descending',
+										value: 'DESC',
+									},
+								],
+								default: 'ASC',
+								description: 'The sorting direction',
+							},
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'string',
+								default: '',
+								description: `The sorting field`,
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                company:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -246,6 +520,7 @@ export const companyFields = [
 				name: 'websiteOptions',
 				type: 'fixedCollection',
 				description: 'Companies websites.',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -324,6 +599,7 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -541,6 +817,7 @@ export const companyFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Companys websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -620,6 +897,7 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -657,4 +935,5 @@ export const companyFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+
+];

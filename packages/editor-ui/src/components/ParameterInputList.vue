@@ -1,6 +1,6 @@
 <template>
 	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name">
+		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -14,28 +14,31 @@
 				/>
 			</div>
 
-			<div v-else-if="parameter.type === 'notice'" v-html="parameter.displayName" class="parameter-item parameter-notice"></div>
+			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
+				<n8n-text size="small">
+					<span v-html="$locale.nodeText().inputLabelDisplayName(parameter, path)"></span>
+				</n8n-text>
+			</div>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div class="parameter-name" :title="parameter.displayName">
-					<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
-						<font-awesome-icon
-							icon="trash"
-							class="reset-icon clickable"
-							title="Parameter Options"
-							@click="deleteOption(parameter.name)"
-						/>
-					</div>
-					{{parameter.displayName}}:
-					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
-						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
-						<font-awesome-icon icon="question-circle"/>
-					</n8n-tooltip>
+				<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
+					<font-awesome-icon
+						icon="trash"
+						class="reset-icon clickable"
+						:title="$locale.baseText('parameterInputList.parameterOptions')"
+						@click="deleteOption(parameter.name)"
+					/>
 				</div>
-				<div>
+				<n8n-input-label
+					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
+					size="small"
+					:underline="true"
+					:labelHoverableOnly="true"
+				>
 					<collection-parameter
 						v-if="parameter.type === 'collection'"
 						:parameter="parameter"
@@ -52,15 +55,15 @@
 						:path="getPath(parameter.name)"
 						@valueChanged="valueChanged"
 					/>
-				</div>
+				</n8n-input-label>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
-				<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
+				<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
 					<font-awesome-icon
 						icon="trash"
 						class="reset-icon clickable"
-						title="Delete Parameter"
+						:title="$locale.baseText('parameterInputList.deleteParameter')"
 						@click="deleteOption(parameter.name)"
 					/>
 				</div>
@@ -93,8 +96,6 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
-import { addTargetBlank } from './helpers';
-
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -114,6 +115,7 @@ export default mixins(
 			'parameters', // INodeProperties
 			'path', // string
 			'hideDelete', // boolean
+			'indent',
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -124,7 +126,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			addTargetBlank,
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
@@ -260,50 +261,42 @@ export default mixins(
 		position: absolute;
 		z-index: 999;
 		color: #f56c6c;
+		font-size: var(--font-size-2xs);
 
 		&:hover {
 			color: #ff0000;
 		}
 	}
 
+	.indent > div {
+		padding-left: var(--spacing-s);
+	}
+
 	.multi-parameter {
 		position: relative;
-		margin: 0.5em 0;
-		padding: 0.5em 0;
+		margin: var(--spacing-xs) 0;
 
-		>.parameter-name {
-			font-weight: 600;
-			border-bottom: 1px solid #999;
+		.delete-option {
+			top: 0;
+			left: 0;
+		}
 
-			&:hover {
-				.parameter-info {
-					display: inline;
-				}
-			}
-
-			.delete-option {
-				top: 0;
-				left: -0.9em;
-			}
-
-			.parameter-info {
-				display: none;
-			}
-
+		.parameter-info {
+			display: none;
 		}
 	}
 
 	.parameter-item {
 		position: relative;
-		margin: 8px 0;
+		margin: var(--spacing-xs) 0;
 
 		>.delete-option {
-			left: -0.9em;
-			top: 0.6em;
+			top: var(--spacing-5xs);
+			left: 0;
 		}
 	}
 	.parameter-item:hover > .delete-option,
-	.parameter-name:hover > .delete-option {
+	.multi-parameter:hover > .delete-option {
 		display: block;
 	}
 
@@ -311,9 +304,7 @@ export default mixins(
 		background-color: #fff5d3;
 		color: $--custom-font-black;
 		margin: 0.3em 0;
-		padding: 0.8em;
-		line-height: 1.5;
-		word-break: normal;
+		padding: 0.7em;
 
 		a {
 			font-weight: var(--font-weight-bold);

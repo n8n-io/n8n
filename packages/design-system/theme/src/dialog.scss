@@ -59,16 +59,15 @@
 	}
 
 	@include mixins.e(title) {
-		line-height: var.$dialog-font-line-height;
-		font-size: var.$dialog-title-font-size;
+		line-height: var(--font-line-height-compact);
+		font-size: var(--font-size-xl);
 		color: var(--color-text-dark);
+		font-weight: var(--font-weight-regular);
 	}
 
 	@include mixins.e(body) {
 		padding: var.$dialog-padding-primary;
 		color: var(--color-text-base);
-		font-size: var.$dialog-content-font-size;
-		word-break: break-all;
 	}
 
 	@include mixins.e(footer) {

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -54,9 +54,9 @@ export const taskOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                task:create                                 */
@@ -238,11 +238,11 @@ export const taskFields = [
 				displayName: 'Assignees',
 				name: 'assignees',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: [],
 			},
@@ -254,7 +254,7 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Custom fields to set as JSON in the format:<br />[{"id": "", "value": ""}]',
+				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{
 				displayName: 'Content',
@@ -322,11 +322,11 @@ export const taskFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: '',
 			},
@@ -334,11 +334,11 @@ export const taskFields = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'space',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
+					loadOptionsDependsOn: [
+						'space',
+					],
 				},
 				default: [],
 				description: 'The array of tags applied to this task',
@@ -722,11 +722,11 @@ export const taskFields = [
 				displayName: 'Assignees',
 				name: 'assignees',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 
 				default: [],
@@ -893,11 +893,11 @@ export const taskFields = [
 				displayName: 'Statuses',
 				name: 'statuses',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: [],
 			},
@@ -912,11 +912,11 @@ export const taskFields = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'space',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
+					loadOptionsDependsOn: [
+						'space',
+					],
 				},
 				default: [],
 				description: 'The array of tags applied to this task',
@@ -1063,8 +1063,8 @@ export const taskFields = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed<br />
-		if for example needed for labels which expects the value<br />
+		description: `The value is JSON and will be parsed as such. Is needed
+		if for example needed for labels which expects the value
 		to be an array.`,
 	},
 	{
@@ -1085,4 +1085,4 @@ export const taskFields = [
 		},
 		description: 'The value to set on custom field.',
 	},
-] as INodeProperties[];
+];

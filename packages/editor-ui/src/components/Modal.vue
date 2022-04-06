@@ -2,26 +2,37 @@
 	<el-dialog
 		:visible="visible"
 		:before-close="closeDialog"
-		:title="title"
-		:class="{'dialog-wrapper': true, 'center': center, 'scrollable': scrollable}"
+		:class="{'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable}"
 		:width="width"
 		:show-close="showClose"
 		:custom-class="getCustomClass()"
+		:close-on-click-modal="closeOnClickModal"
+		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		append-to-body
 	>
-		<template v-slot:title>
+		<template v-slot:title v-if="$scopedSlots.header">
 			<slot name="header" v-if="!loading" />
+		</template>
+		<template v-slot:title v-else-if="title">
+			<div :class="centerTitle ? $style.centerTitle : ''">
+				<div v-if="title">
+					<n8n-heading tag="h1" size="xlarge">{{title}}</n8n-heading>
+				</div>
+				<div v-if="subtitle" :class="$style.subtitle">
+					<n8n-heading tag="h3" size="small" color="text-light">{{subtitle}}</n8n-heading>
+				</div>
+			</div>
 		</template>
 		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
 			<slot v-if="!loading"  name="content"/>
-			<div class="loader" v-else>
+			<div :class="$style.loader" v-else>
 				<n8n-spinner />
 			</div>
 		</div>
-		<el-row  v-if="!loading" class="modal-footer">
+		<div v-if="!loading && $scopedSlots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
-		</el-row>
+		</div>
 	</el-dialog>
 </template>
 
@@ -35,6 +46,9 @@ export default Vue.extend({
 			type: String,
 		},
 		title: {
+			type: String,
+		},
+		subtitle: {
 			type: String,
 		},
 		eventBus: {
@@ -72,12 +86,27 @@ export default Vue.extend({
 		height: {
 			type: String,
 		},
+		minHeight: {
+			type: String,
+		},
 		maxHeight: {
 			type: String,
 		},
 		scrollable: {
 			type: Boolean,
 			default: false,
+		},
+		centerTitle: {
+			type: Boolean,
+			default: false,
+		},
+		closeOnClickModal: {
+			type: Boolean,
+			default: true,
+		},
+		closeOnPressEscape: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	mounted() {
@@ -86,6 +115,10 @@ export default Vue.extend({
 		if (this.$props.eventBus) {
 			this.$props.eventBus.$on('close', () => {
 				this.closeDialog();
+			});
+
+			this.$props.eventBus.$on('closeAll', () => {
+				this.closeAllDialogs();
 			});
 		}
 
@@ -112,22 +145,18 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		closeDialog(callback?: () => void) {
+		closeAllDialogs() {
+			this.$store.commit('ui/closeAllModals');
+		},
+		async closeDialog() {
 			if (this.beforeClose) {
-				this.beforeClose(() => {
-					this.$store.commit('ui/closeTopModal');
-					if (typeof callback === 'function') {
-						callback();
-					}
-				});
-
-				return;
+				const shouldClose = await this.beforeClose();
+				if (shouldClose === false) { // must be strictly false to stop modal from closing
+					return;
+				}
 			}
 
-			this.$store.commit('ui/closeTopModal');
-			if (typeof callback === 'function') {
-				callback();
-			}
+			this.$store.commit('ui/closeModal', this.$props.name);
 		},
 		getCustomClass() {
 			let classes = this.$props.customClass || '';
@@ -150,6 +179,9 @@ export default Vue.extend({
 			const styles: {[prop: string]: string} = {};
 			if (this.height) {
 				styles['--dialog-height'] = this.height;
+			}
+			if (this.minHeight) {
+				styles['--dialog-min-height'] = this.minHeight;
 			}
 			if (this.maxHeight) {
 				styles['--dialog-max-height'] = this.maxHeight;
@@ -174,6 +206,7 @@ export default Vue.extend({
 		max-width: var(--dialog-max-width, 80%);
 		min-width: var(--dialog-min-width, 420px);
 		height: var(--dialog-height);
+		min-height: var(--dialog-min-height);
 		max-height: var(--dialog-max-height);
 	}
 
@@ -188,12 +221,14 @@ export default Vue.extend({
 		overflow: hidden;
 		flex-grow: 1;
 	}
-}
 
-.scrollable .modal-content {
-	overflow-y: auto;
+	&.scrollable .modal-content {
+		overflow-y: auto;
+	}
 }
+</style>
 
+<style lang="scss" module>
 .center {
 		display: flex;
 		align-items: center;
@@ -207,5 +242,17 @@ export default Vue.extend({
 	color: var(--color-primary-tint-1);
 	font-size: 30px;
 	height: 80%;
+}
+
+.centerTitle {
+	text-align: center;
+}
+
+.subtitle {
+	margin-top: var(--spacing-2xs);
+}
+
+.footer {
+	margin-top: var(--spacing-l);
 }
 </style>

@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -72,9 +73,14 @@ export function sendSuccessResponse(
 	data: any,
 	raw?: boolean,
 	responseCode?: number,
+	responseHeader?: object,
 ) {
 	if (responseCode !== undefined) {
 		res.status(responseCode);
+	}
+
+	if (responseHeader) {
+		res.header(responseHeader);
 	}
 
 	if (raw === true) {
@@ -96,7 +102,7 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production') {
+	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}
@@ -128,6 +134,9 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 	res.status(httpStatusCode).json(response);
 }
 
+const isUniqueConstraintError = (error: Error) =>
+	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
  * all the responses have the same format
@@ -143,10 +152,12 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
 		try {
 			const data = await processFunction(req, res);
 
-			// Success response
 			sendSuccessResponse(res, data);
 		} catch (error) {
-			// Error response
+			if (error instanceof Error && isUniqueConstraintError(error)) {
+				error.message = 'There is already an entry with this name';
+			}
+
 			sendErrorResponse(res, error);
 		}
 	};

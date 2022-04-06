@@ -26,7 +26,6 @@ export class Stackby implements INodeType {
 		description: 'Read, write, and delete data in Stackby',
 		defaults: {
 			name: 'Stackby',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -161,7 +160,7 @@ export class Stackby implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'All Stories',
-						description: 'The name or ID of a view in the Stories table. If set,<br />only the records in that view will be returned. The records<br />will be sorted according to the order of the view.',
+						description: 'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
 					},
 				],
 			},

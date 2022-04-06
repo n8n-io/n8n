@@ -4,7 +4,7 @@ import {
 
 import * as placeholders from './placeholders';
 
-export const indexOperations = [
+export const indexOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const indexOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const indexFields = [
+export const indexFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              index: create
 	// ----------------------------------------
@@ -110,7 +110,7 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
@@ -128,14 +128,14 @@ export const indexFields = [
 			{
 				displayName: 'Timeout',
 				name: 'timeout',
-				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
+				description: 'Period to wait for a response. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '30s',
 			},
 			{
 				displayName: 'Wait for Active Shards',
 				name: 'wait_for_active_shards',
-				description: 'The number of shard copies that must be active before proceeding with the operation. Set to <code>all</code><br>or any positive integer up to the total number of shards in the index. Default: 1, the primary shard',
+				description: 'The number of shard copies that must be active before proceeding with the operation. Set to <code>all</code> or any positive integer up to the total number of shards in the index. Default: 1, the primary shard',
 				type: 'string',
 				default: '1',
 			},
@@ -269,7 +269,7 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
@@ -319,4 +319,4 @@ export const indexFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

@@ -29,7 +29,6 @@ export class WooCommerceTrigger implements INodeType {
 		description: 'Handle WooCommerce events via webhooks',
 		defaults: {
 			name: 'WooCommerce Trigger',
-			color: '#96588a',
 		},
 		inputs: [],
 		outputs: ['main'],

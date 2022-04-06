@@ -29,7 +29,7 @@
 		@include mixins.e(arrow) {
 			margin: 0 8px 0 auto;
 			transition: transform 0.3s;
-			font-weight: 300;
+			font-weight: 400;
 			@include mixins.when(active) {
 				transform: rotate(90deg);
 			}

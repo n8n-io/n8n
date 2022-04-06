@@ -59,7 +59,6 @@ export class Bitwarden implements INodeType {
 		description: 'Consume the Bitwarden API',
 		defaults: {
 			name: 'Bitwarden',
-			color: '#175DDC',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

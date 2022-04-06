@@ -43,6 +43,24 @@
 		var(--color-primary-shade-2-l)
 	);
 
+	--color-avatar-accent-1-h: 40;
+	--color-avatar-accent-1-s: 15.3%;
+	--color-avatar-accent-1-l: 88.4%;
+	--color-avatar-accent-1: hsl(
+		var(--color-avatar-accent-1-h),
+		var(--color-avatar-accent-1-s),
+		var(--color-avatar-accent-1-l)
+	);
+
+	--color-avatar-accent-2-h: 212;
+	--color-avatar-accent-2-s: 71%;
+	--color-avatar-accent-2-l: 48.6%;
+	--color-avatar-accent-2: hsl(
+		var(--color-avatar-accent-2-h),
+		var(--color-avatar-accent-2-s),
+		var(--color-avatar-accent-2-l)
+	);
+
 	--color-secondary-h: 247;
 	--color-secondary-s: 49%;
 	--color-secondary-l: 53%;
@@ -50,6 +68,13 @@
 		var(--color-secondary-h),
 		var(--color-secondary-s),
 		var(--color-secondary-l)
+	);
+
+	--color-secondary-tint-1-l: 92%;
+	--color-secondary-tint-1: hsl(
+		var(--color-secondary-h),
+		var(--color-secondary-s),
+		var(--color-secondary-tint-1-l)
 	);
 
 	--color-success-h: 150.4;
@@ -73,6 +98,15 @@
 		var(--color-success-h),
 		var(--color-success-s),
 		var(--color-success-tint-2-l)
+	);
+
+	--color-success-light-h: 150;
+	--color-success-light-s: 54%;
+	--color-success-light-l: 70%;
+	--color-success-light: hsl(
+		var(--color-success-light-h),
+		var(--color-success-light-s),
+		var(--color-success-light-l)
 	);
 
 	--color-warning-h: 36;
@@ -187,6 +221,24 @@
 		var(--color-text-xlight-l)
 	);
 
+	--color-foreground-xdark-h: 220;
+	--color-foreground-xdark-s: 7.4%;
+	--color-foreground-xdark-l: 52.5%;
+	--color-foreground-xdark: hsl(
+		var(--color-foreground-xdark-h),
+		var(--color-foreground-xdark-s),
+		var(--color-foreground-xdark-l)
+	);
+
+	--color-foreground-dark-h: 228;
+	--color-foreground-dark-s: 9.6%;
+	--color-foreground-dark-l: 79.6%;
+	--color-foreground-dark: hsl(
+		var(--color-foreground-dark-h),
+		var(--color-foreground-dark-s),
+		var(--color-foreground-dark-l)
+	);
+
 	--color-foreground-base-h: 220;
 	--color-foreground-base-s: 20%;
 	--color-foreground-base-l: 88.2%;
@@ -259,6 +311,26 @@
 		var(--color-background-xlight-l)
 	);
 
+	--color-canvas-dot-h: 204;
+	--color-canvas-dot-s: 15.6%;
+	--color-canvas-dot-l: 87.5%;
+	--color-canvas-dot: hsl(
+		var(--color-canvas-dot-h),
+		var(--color-canvas-dot-s),
+		var(--color-canvas-dot-l)
+	);
+
+	--color-canvas-background-h: 260;
+	--color-canvas-background-s: 100%;
+	--color-canvas-background-l: 99.4%;
+	--color-canvas-background: hsl(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l)
+	);
+
+	--border-radius-xlarge: 12px;
+	--border-radius-large: 8px;
 	--border-radius-base: 4px;
 	--border-radius-small: 2px;
 	--border-color-base: var(--color-foreground-base);
@@ -269,6 +341,7 @@
 	--border-base: var(--border-width-base) var(--border-style-base)
 		var(--color-foreground-base);
 
+	--font-size-3xs: 0.625rem;
 	--font-size-2xs: 0.75rem;
 	--font-size-xs: 0.8125rem;
 	--font-size-s: 0.875rem;
@@ -283,7 +356,6 @@
 	--font-line-height-xloose: 1.5;
 
 	--font-weight-regular: 400;
-	--font-weight-semi-bold: 500;
 	--font-weight-bold: 600;
 	--font-family: 'Open Sans', sans-serif;
 

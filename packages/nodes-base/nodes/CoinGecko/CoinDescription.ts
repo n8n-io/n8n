@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const coinOperations = [
+export const coinOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -58,9 +58,9 @@ export const coinOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
-export const coinFields = [
+export const coinFields: INodeProperties[] = [
 	{
 		displayName: 'Search By',
 		name: 'searchBy',
@@ -239,6 +239,7 @@ export const coinFields = [
 		name: 'contractAddress',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -260,6 +261,7 @@ export const coinFields = [
 		name: 'contractAddresses',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -779,4 +781,4 @@ export const coinFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

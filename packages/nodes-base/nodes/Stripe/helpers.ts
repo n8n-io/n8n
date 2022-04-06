@@ -102,10 +102,10 @@ export function adjustMetadata(
 ) {
 	if (!fields.metadata || isEmpty(fields.metadata)) return fields;
 
-	let adjustedMetadata = {};
+	const adjustedMetadata: Record<string, string> = {};
 
 	fields.metadata.metadataProperties.forEach(pair => {
-		adjustedMetadata = { ...adjustedMetadata, ...pair };
+		adjustedMetadata[pair.key] = pair.value;
 	});
 
 	return {
@@ -154,19 +154,25 @@ export async function loadResource(
 export async function handleListing(
 	this: IExecuteFunctions,
 	resource: string,
+	i: number,
 	qs: IDataObject = {},
 ) {
+	const returnData: IDataObject[] = [];
 	let responseData;
 
-	responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, qs, {});
-	responseData = responseData.data;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = this.getNodeParameter('limit', i, 0) as number;
 
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	do {
+		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);
+		returnData.push(...responseData.data);
 
-	if (!returnAll) {
-		const limit = this.getNodeParameter('limit', 0) as number;
-		responseData = responseData.slice(0, limit);
-	}
+		if (!returnAll && returnData.length >= limit) {
+			return returnData.slice(0, limit);
+		}
 
-	return responseData;
+		qs.starting_after = returnData[returnData.length - 1].id;
+	} while (responseData.has_more);
+
+	return returnData;
 }

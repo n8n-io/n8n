@@ -57,7 +57,6 @@ export class AwsS3 implements INodeType {
 		description: 'Sends data to AWS S3',
 		defaults: {
 			name: 'AWS S3',
-			color: '#d05b4b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

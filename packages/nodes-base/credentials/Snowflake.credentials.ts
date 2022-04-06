@@ -63,8 +63,7 @@ export class Snowflake implements ICredentialType {
 			name: 'clientSessionKeepAlive',
 			type: 'boolean',
 			default: false,
-			description: `By default, client connections typically time out approximately 3-4 hours after the most recent query was executed.<br>
-			If the parameter clientSessionKeepAlive is set to true, the client’s connection to the server will be kept alive indefinitely, even if no queries are executed.`,
+			description: `By default, client connections typically time out approximately 3-4 hours after the most recent query was executed. If the parameter clientSessionKeepAlive is set to true, the client’s connection to the server will be kept alive indefinitely, even if no queries are executed.`,
 		},
 	];
 }

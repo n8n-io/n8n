@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const changeOperations = [
+export const changeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const changeOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const changeFields = [
+export const changeFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              change: create
 	// ----------------------------------------
@@ -57,9 +57,7 @@ export const changeFields = [
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: [
-				'getRequesters',
-			],
+			loadOptionsMethod: 'getRequesters',
 		},
 		displayOptions: {
 			show: {
@@ -147,9 +145,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the agent to whom the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
@@ -183,9 +179,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the department requesting the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -202,9 +196,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the agent group to which the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgentGroups',
-					],
+					loadOptionsMethod: 'getAgentGroups',
 				},
 			},
 			{
@@ -518,9 +510,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the agent to whom the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
@@ -554,9 +544,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the department requesting the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -573,9 +561,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the agent group to which the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgentGroups',
-					],
+					loadOptionsMethod: 'getAgentGroups',
 				},
 			},
 			{
@@ -630,9 +616,7 @@ export const changeFields = [
 				default: '',
 				description: 'ID of the requester of the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getRequesters',
-					],
+					loadOptionsMethod: 'getRequesters',
 				},
 			},
 			{
@@ -699,4 +683,4 @@ export const changeFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

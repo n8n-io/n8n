@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -27,7 +24,6 @@ export class Signl4 implements INodeType {
 		description: 'Consume SIGNL4 API',
 		defaults: {
 			name: 'SIGNL4',
-			color: '#53afe8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -165,19 +161,14 @@ export class Signl4 implements INodeType {
 						name: 'externalId',
 						type: 'string',
 						default: '',
-						description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
-						the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
-						which is great for correlation/synchronization of that record with the alert.<br/>
-						If you resolve / close an alert you must use the same External ID as in the original alert.`,
+						description: `If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.`,
 					},
 					{
 						displayName: 'Filtering',
 						name: 'filtering',
 						type: 'boolean',
 						default: 'false',
-						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. <br/>
-						If set to true, the event will only trigger a notification to the team, if it contains at least one keyword <br/>
-						from one of your services and system categories (i.e. it is whitelisted)`,
+						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)`,
 					},
 					{
 						displayName: 'Location',
@@ -243,10 +234,8 @@ export class Signl4 implements INodeType {
 						],
 					},
 				},
-				description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
-				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
-				which is great for correlation/synchronization of that record with the alert.<br/>
-				If you resolve / close an alert you must use the same External ID as in the original alert.`,
+				description: `If the event originates from a record in a 3rd party system, use this parameter to pass
+				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.`,
 			},
 		],
 	};
@@ -320,8 +309,9 @@ export class Signl4 implements INodeType {
 										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
 									}
 
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
 									data.attachment = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,

@@ -31,7 +31,6 @@ export class ConvertKitTrigger implements INodeType {
 		description: 'Handle ConvertKit events via webhooks',
 		defaults: {
 			name: 'ConvertKit Trigger',
-			color: '#fb6970',
 		},
 		inputs: [],
 		outputs: ['main'],

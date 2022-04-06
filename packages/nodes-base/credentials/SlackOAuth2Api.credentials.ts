@@ -15,6 +15,8 @@ const userScopes = [
 	'reactions:write',
 	'stars:read',
 	'stars:write',
+	'usergroups:write',
+	'usergroups:read',
 	'users.profile:read',
 	'users.profile:write',
 ];

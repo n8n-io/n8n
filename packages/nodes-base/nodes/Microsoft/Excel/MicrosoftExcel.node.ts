@@ -45,7 +45,6 @@ export class MicrosoftExcel implements INodeType {
 		description: 'Consume Microsoft Excel API',
 		defaults: {
 			name: 'Microsoft Excel',
-			color: '#1c6d40',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
