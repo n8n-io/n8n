@@ -1144,6 +1144,8 @@
 	"node.execute.executing": "Executing",
 	"node.execute.fetchEvent": "Fetch Event",
 	"node.execute.listenForEvent": "Listen For Event",
+	"node.output.pollEventNodeHint": "Fetch an event to output data",
+	"node.output.triggerEventNodeHint": "Listen for an event to output data",
 	"node.output": "Output",
 	"node.output.runNodeHint": "Execute this node to output data",
 	"node.output.executing": "Executing node...",

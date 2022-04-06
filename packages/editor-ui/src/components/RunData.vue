@@ -66,6 +66,8 @@
 					<div :class="$style.spinner"><n8n-spinner /></div>
 					<n8n-text>{{ $locale.baseText('node.output.executing') }}</n8n-text>
 				</div>
+				<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('node.output.pollEventNodeHint') }}</n8n-text>
+				<n8n-text v-else-if="isTriggerNode">{{ $locale.baseText('node.output.triggerEventNodeHint') }}</n8n-text>
 				<n8n-text v-else>{{ $locale.baseText('node.output.runNodeHint') }}</n8n-text>
 			</div>
 
@@ -278,6 +280,18 @@ export default mixins(
 			this.init();
 		},
 		computed: {
+			nodeType (): INodeTypeDescription | null {
+				if (this.node) {
+					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				}
+				return null;
+			},
+			isTriggerNode (): boolean {
+				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			},
+			isPollingTypeNode (): boolean {
+				return !!(this.nodeType && this.nodeType.polling);
+			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
@@ -606,7 +620,7 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | null;
+				const nodeType = this.nodeType;
 				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
