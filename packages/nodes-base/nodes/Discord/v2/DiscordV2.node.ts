@@ -59,72 +59,73 @@ export class DiscordV2 implements INodeType {
 					placeholder: 'Captain Hook',
 				},
 				{
-					displayName: 'Avatar URL',
-					name: 'avatarUrl',
-					type: 'string',
-					default: '',
-					required: false,
-				},
-				{
-					displayName: 'TTS',
-					name: 'tts',
-					type: 'boolean',
-					default: false,
-					required: false,
-					description: 'Should this message be sent as a Text To Speech message?',
-				},
-				{
-					displayName: 'Embeds',
-					name: 'embeds',
-					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
-					default: '',
-					required: false,
-				},
-				{
-					displayName: 'Allowed Mentions',
-					name: 'allowedMentions',
-					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
-					default: '',
-				},
-				{
-					displayName: 'Components',
-					name: 'components',
-					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
-					default: '',
-				},
-				{
-					displayName: 'Flags',
-					name: 'flags',
-					type: 'number',
-					default: '',
-				},
-				{
-					displayName: 'Attachments',
-					name: 'attachments',
-					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
-					default: '',
-				},
-				{
-					displayName: 'Json Payload',
-					name: 'payloadJson',
-					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
-					default: '',
-				},
-				{
-					displayName: 'File',
-					name: 'file',
-					type: 'string',
-					default: '',
+					displayName: 'Additional Fields',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Option',
+					default: {},
+					options: [
+						{
+							displayName: 'Components',
+							name: 'components',
+							type: 'json',
+							typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+							default: '',
+						},
+						{
+							displayName: 'TTS',
+							name: 'tts',
+							type: 'boolean',
+							default: false,
+							required: false,
+							description: 'Should this message be sent as a Text To Speech message?',
+						},
+						{
+							displayName: 'Flags',
+							name: 'flags',
+							type: 'number',
+							default: '',
+						},
+						{
+							displayName: 'Avatar URL',
+							name: 'avatarUrl',
+							type: 'string',
+							default: '',
+							required: false,
+						},
+						{
+							displayName: 'Attachments',
+							name: 'attachments',
+							type: 'json',
+							typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+							default: '',
+						},
+						{
+							displayName: 'Embeds',
+							name: 'embeds',
+							type: 'json',
+							typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+							default: '',
+							required: false,
+						},
+						{
+							displayName: 'Allowed Mentions',
+							name: 'allowedMentions',
+							type: 'json',
+							typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+							default: '',
+						},
+						{
+							displayName: 'Json Payload',
+							name: 'payloadJson',
+							type: 'json',
+							typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+							default: '',
+						},
+					],
 				},
 			],
 		};
-
-
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -143,65 +144,65 @@ export class DiscordV2 implements INodeType {
 		body.username =
 			nodeInput['username'] ||
 			(this.getNodeParameter('username', 0, '') as string);
-		body.avatar_url =
-			nodeInput['avatarUrl'] ||
-			(this.getNodeParameter('avatarUrl', 0, '') as string);
-		body.tts =
-			nodeInput['tts'] || (this.getNodeParameter('tts', 0, false) as boolean);
-		body.embeds =
-			nodeInput['embeds'] || (this.getNodeParameter('embeds', 0, '') as any);
-		body.allowed_mentions =
-			nodeInput['allowedMentions'] ||
-			(this.getNodeParameter('allowedMentions', 0, '') as any);
-		body.flags =
-			nodeInput['flags'] || (this.getNodeParameter('flags', 0, '') as number);
-		body.components =
-			nodeInput['components'] || (this.getNodeParameter('components', 0, '') as any);
-		body.payload_json =
-			nodeInput['payloadJson'] || (this.getNodeParameter('payloadJson', 0, '') as any);
-		body.attachments =
-			nodeInput['attachments'] || (this.getNodeParameter('attachments', 0, '') as any);
 
-
-		if (this.getNodeParameter('file', 0, '') as any) {
-			const propertyNameUpload = this.getNodeParameter('file', 0, '') as any;
-			body.file = await this.helpers.getBinaryDataBuffer(0, propertyNameUpload);
-
-		}
-
-		if (!body.content && !body.embeds) {
-			throw new Error('Either content or embeds must be set.');
-		}
-
-		if (body.embeds) {
-			try {
-				//@ts-expect-error
-				body.embeds = JSON.parse(body.embeds);
-				if (!Array.isArray(body.embeds)) {
-					throw new Error('Embeds must be an array of embeds.');
+		const items = this.getInputData();
+		const length = items.length as number;
+		for (let i = 0; i < length; i++) {
+			const options = this.getNodeParameter('options', i) as IDataObject;
+			if (!body.content && !options.embeds) {
+				throw new Error('Either content or embeds must be set.');
+			}
+			if (options.embeds) {
+				try {
+					//@ts-expect-error
+					body.embeds = JSON.parse(options.embeds);
+					if (!Array.isArray(body.embeds)) {
+						throw new Error('Embeds must be an array of embeds.');
+					}
+				} catch (e) {
+					throw new Error('Embeds must be valid JSON.');
 				}
-			} catch (e) {
-				throw new Error('Embeds must be valid JSON.');
+			}
+
+			if (options.components) {
+				try {
+					//@ts-expect-error
+					body.components = JSON.parse(options.components);
+					// if (!Array.isArray(options.components)) {
+					// 	throw new Error('components must be an array of components.');
+					// }
+				} catch (e) {
+					throw new Error('components must be valid JSON.');
+				}
+			}
+
+			if (options.allowed_mentions) {
+					//@ts-expect-error
+					body.allowed_mentions = JSON.parse(options.allowed_mentions);
+			}
+
+			if (options.avatarUrl) {
+				body.avatar_url = options.avatarUrl as string;
+			}
+
+			if (options.flags) {
+				body.flags = options.flags as number;
+			}
+
+			if (options.tts) {
+				body.tts = options.tts as boolean;
+			}
+
+			if (options.payloadJson) {
+				//@ts-expect-error
+				body.payload_json = JSON.parse(options.payloadJson);
+			}
+
+			if (options.attachments) {
+				//@ts-expect-error
+				body.attachments = JSON.parse(options.attachments as DiscordAttachment[]);
 			}
 		}
-
-		if (body.components) {
-			try {
-				//@ts-expect-error
-				body.components = JSON.parse(body.components);
-				if (!Array.isArray(body.components)) {
-					throw new Error('components must be an array of components.');
-				}
-			} catch (e) {
-				throw new Error('components must be valid JSON.');
-			}
-		}
-
-		if (body.allowed_mentions) {
-				//@ts-expect-error
-				body.allowed_mentions = JSON.parse(body.allowed_mentions);
-		}
-
 
 
 		//* Not used props, delete them from the payload as Discord won't need them :^
@@ -214,9 +215,9 @@ export class DiscordV2 implements INodeType {
 		if (!body.components) delete body.components;
 		if (!body.payload_json) delete body.payload_json;
 		if (!body.attachments) delete body.attachments;
-		if (!body.file) delete body.file;
 
 		let options;
+
 		if(!body.payload_json){
 			 options = {
 				method: 'POST',
@@ -235,7 +236,6 @@ export class DiscordV2 implements INodeType {
 				headers: {
 					'content-type': 'multipart/form-data; charset=utf-8',
 				},
-				json: true,
 			};
 		}
 		let maxTries = 5;
