@@ -21,8 +21,9 @@
 
 			<div v-if="!hasRunError" @click.stop>
 				<n8n-radio-buttons
-					v-model="displayMode"
+					:value="displayMode"
 					:options="buttons"
+					@input="onDisplayModeChange"
 				/>
 			</div>
 		</div>
@@ -41,7 +42,7 @@
 			</n8n-text>
 		</div>
 
-		<div :class="$style.dataContainer">
+		<div :class="$style.dataContainer" ref="dataContainer">
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" :class="$style.copyButton">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
@@ -477,6 +478,26 @@ export default mixins(
 			},
 		},
 		methods: {
+			onDisplayModeChange(displayMode: string) {
+				const previous = this.displayMode;
+				this.displayMode = displayMode;
+
+				const dataContainer = this.$refs.dataContainer;
+				if (dataContainer) {
+					const dataDisplay = (dataContainer as Element).children[0];
+
+					if (dataDisplay){
+						dataDisplay.scrollTo(0, 0);
+					}
+				}
+
+				this.closeBinaryDataDisplay();
+				this.$externalHooks().run('runData.displayModeChanged', { newValue: displayMode, oldValue: previous });
+				if(this.node) {
+					const nodeType = this.node ? this.node.type : '';
+					this.$telemetry.track('User changed node output view mode', { old_mode: previous, new_mode: displayMode, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
+				}
+			},
 			getRunLabel(option: number) {
 				let itemsCount = 0;
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
@@ -737,14 +758,6 @@ export default mixins(
 			},
 			jsonData () {
 				this.refreshDataSize();
-			},
-			displayMode (newValue, oldValue) {
-				this.closeBinaryDataDisplay();
-				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
-				if(this.node) {
-					const nodeType = this.node ? this.node.type : '';
-					this.$telemetry.track('User changed node output view mode', { old_mode: oldValue, new_mode: newValue, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
-				}
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
