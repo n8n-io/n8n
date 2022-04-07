@@ -26,7 +26,7 @@
 					:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
 					@click="() => handleTabClick(option.value)"
 				>
-					<n8n-icon v-if="option.icon" :icon="option.icon" size="small" />
+					<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
 					<span v-if="option.label">{{ option.label }}</span>
 				</div>
 			</div>
