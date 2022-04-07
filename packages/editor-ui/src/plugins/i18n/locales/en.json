@@ -1156,6 +1156,7 @@
 	"ndv.output.tooMuchData.title": "Output data is huge!",
 	"ndv.output.tooMuchData.message": "The node contains {size} MB of data. Displaying it may cause problems. <br /> If you do decide to display it, avoid the JSON view.",
 	"ndv.output.tooMuchData.showDataAnyway": "Show data anyway",
+	"ndv.output.all": "all",
 	"ndv.output.items": "items",
 	"ndv.output.pageSize": "Page Size",
 	"ndv.output.item": "item",

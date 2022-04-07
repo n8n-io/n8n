@@ -207,6 +207,11 @@
 						:label="size"
 						:value="size">
 					</n8n-option>
+					<n8n-option
+						:label="$locale.baseText('ndv.output.all')"
+						:value="dataCount"
+					>
+					</n8n-option>
 				</n8n-select>
 			</div>
 		</div>
