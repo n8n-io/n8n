@@ -79,6 +79,7 @@ export default Vue.extend({
 	overflow-wrap: anywhere;
 	height: 60px;
 	overflow: hidden;
+	padding-right: var(--spacing-s);
 }
 
 .title {

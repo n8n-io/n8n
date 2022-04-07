@@ -2,6 +2,7 @@
 	<n8n-button
 		:loading="workflowRunning"
 		:label="label"
+		size="small"
 		@click="onClick"
 	/>
 </template>
