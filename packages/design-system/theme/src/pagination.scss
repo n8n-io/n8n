@@ -221,7 +221,8 @@
 			}
 
 			&.active {
-				background-color: var(--color-primary);
+				background-color: var(--color-foreground-xdark);
+				border-color: var(--color-foreground-xdark);
 				color: var.$color-white;
 			}
 		}
