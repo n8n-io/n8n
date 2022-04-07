@@ -202,7 +202,7 @@
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select size="mini" v-model="pageSize">
+				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange">
 					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
@@ -489,6 +489,13 @@ export default mixins(
 			},
 		},
 		methods: {
+			onPageSizeChange(pageSize: number) {
+				this.pageSize = pageSize;
+				const maxPage = Math.ceil(this.dataCount / this.pageSize);
+				if (maxPage < this.currentPage) {
+					this.currentPage = maxPage;
+				}
+			},
 			onDisplayModeChange(displayMode: string) {
 				const previous = this.displayMode;
 				this.displayMode = displayMode;
