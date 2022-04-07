@@ -897,6 +897,9 @@ export default mixins(
 	td {
 		padding: var(--spacing-2xs);
 		border: var(--border-base);
+		overflow-wrap: break-word;
+		max-width: 300px;
+		white-space: pre-wrap;
 	}
 }
 
