@@ -307,8 +307,8 @@ export default mixins(
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
-					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
+					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 				];
 				if (this.binaryData.length) {
 					return [ ...defaults,
