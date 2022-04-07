@@ -17,7 +17,7 @@
 				</div>
 			</div>
 			<span :class="$style.title" slot="reference">
-				<ShortenName :name="value" :limit="40">
+				<ShortenName :name="value" :limit="35">
 					<template v-slot="{ shortenedName }">
 						{{ shortenedName }}
 					</template>
