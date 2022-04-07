@@ -84,8 +84,6 @@ export default Vue.extend({
 
 .title {
 	text-overflow: ellipsis;
-	display: flex;
-	align-items: center;
 
 	> *:first-child {
 		padding-right: var(--spacing-3xs);
