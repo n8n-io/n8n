@@ -140,7 +140,11 @@ export async function validateCrendetials(this: ICredentialTestFunctions, decryp
 
 	// Sign AWS API request with the user credentials
 	const signOpts = { host: endpoint.host, method: 'POST', path: '?Action=GetCallerIdentity&Version=2011-06-15' } as Request;
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+	sign(signOpts, {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.sessionToken ? `${credentials.sessionToken}`.trim() : undefined,
+	});
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
