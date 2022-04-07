@@ -68,7 +68,7 @@
 					<n8n-text>{{ $locale.baseText('ndv.output.executing') }}</n8n-text>
 				</div>
 				<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
-				<n8n-text v-else-if="isTriggerNode">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
+				<n8n-text v-else-if="isTriggerNode && !isScheduleTrigger">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
 				<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
 			</div>
 
@@ -316,6 +316,9 @@ export default mixins(
 			},
 			isPollingTypeNode (): boolean {
 				return !!(this.nodeType && this.nodeType.polling);
+			},
+			isScheduleTrigger (): boolean {
+				return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [

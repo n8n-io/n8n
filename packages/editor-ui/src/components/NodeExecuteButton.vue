@@ -40,12 +40,15 @@ export default mixins(
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
+		isScheduleTrigger (): boolean {
+			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+		},
 		label(): string {
 			if (this.isPollingTypeNode) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (this.isTriggerNode) {
+			if (this.isTriggerNode && !this.isScheduleTrigger) {
 				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
