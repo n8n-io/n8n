@@ -754,7 +754,7 @@ export default mixins(
 
 .center {
 	display: flex;
-	height: 80%;
+	height: 100%;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
