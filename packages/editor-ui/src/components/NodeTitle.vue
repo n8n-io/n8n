@@ -71,13 +71,15 @@ export default Vue.extend({
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-compact);
 	overflow-wrap: anywhere;
-	overflow: hidden;
 	padding-right: var(--spacing-s);
 }
 
 .title {
 	max-height: 100px;
-	text-overflow: ellipsis;
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-line-clamp: 5;
+	-webkit-box-orient: vertical;
 
 	> *:first-child {
 		padding-right: var(--spacing-3xs);
