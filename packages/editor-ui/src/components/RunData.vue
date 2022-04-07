@@ -200,7 +200,7 @@
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select size="mini" v-model="pageSize">
-					<template slot="prepend">{{ $locale.baseText('ndv.output.items') }}</template>
+					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
 						:key="size"
@@ -972,7 +972,7 @@ export default mixins(
 
 .pageSizeSelector {
 	text-transform: capitalize;
-	max-width: 120px;
+	max-width: 150px;
 }
 
 </style>

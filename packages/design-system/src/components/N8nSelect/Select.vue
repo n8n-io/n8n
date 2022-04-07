@@ -146,5 +146,6 @@ export default {
 	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
 	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
 	color: var(--color-text-base);
+	white-space: nowrap;
 }
 </style>
