@@ -8,13 +8,13 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -79,7 +79,7 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
@@ -134,10 +134,12 @@ export class NotionV2 implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const users = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 				for (const user of users) {
-					returnData.push({
-						name: user.name,
-						value: user.id,
-					});
+					if (user.type === 'person') {
+						returnData.push({
+							name: user.name,
+							value: user.id,
+						});
+					}
 				}
 				return returnData;
 			},
@@ -148,7 +150,7 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
@@ -194,7 +196,7 @@ export class NotionV2 implements INodeType {
 			},
 		},
 		credentialTest: {
-			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
@@ -241,6 +243,7 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', `/blocks/${blockId}/children`, {});
 					} else {
@@ -248,6 +251,9 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'GET', `/blocks/${blockId}/children`, {}, qs);
 						responseData = responseData.results;
 					}
+
+					responseData = responseData.map((_data: IDataObject) => ({ object: _data.object, parent_id: blockId, ..._data }));
+
 					returnData.push.apply(returnData, responseData);
 				}
 			}
@@ -281,7 +287,6 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
 						responseData = responseData.results;
 					}
-
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}

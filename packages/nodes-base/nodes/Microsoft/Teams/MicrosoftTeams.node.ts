@@ -27,6 +27,11 @@ import {
 } from './ChannelMessageDescription';
 
 import {
+	chatMessageFields,
+	chatMessageOperations,
+} from './ChatMessageDescription';
+
+import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
@@ -66,6 +71,10 @@ export class MicrosoftTeams implements INodeType {
 						value: 'channelMessage',
 					},
 					{
+						name: 'Chat Message',
+						value: 'chatMessage',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 					},
@@ -79,6 +88,8 @@ export class MicrosoftTeams implements INodeType {
 			/// MESSAGE
 			...channelMessageOperations,
 			...channelMessageFields,
+			...chatMessageOperations,
+			...chatMessageFields,
 			///TASK
 			...taskOperations,
 			...taskFields,
@@ -189,6 +200,29 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the chats to display them to user so that they can
+			// select them easily
+			async getChats(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs: IDataObject = {
+					$expand: 'members',
+				};
+				const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs);
+				for (const chat of value) {
+					if (!chat.topic) {
+						chat.topic = chat.members
+										.filter((member: IDataObject) => member.displayName)
+										.map((member: IDataObject) => member.displayName).join(', ');
+					}
+					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
+					const chatId = chat.id;
+					returnData.push({
+						name: chatName,
+						value: chatId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -294,6 +328,39 @@ export class MicrosoftTeams implements INodeType {
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/beta/teams/${teamId}/channels/${channelId}/messages`, {});
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+				}
+				if (resource === 'chatMessage') {
+					// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
+					if (operation === 'create') {
+						const chatId = this.getNodeParameter('chatId', i) as string;
+						const messageType = this.getNodeParameter('messageType', i) as string;
+						const message = this.getNodeParameter('message', i) as string;
+						const body: IDataObject = {
+							body: {
+								contentType: messageType,
+								content: message,
+							},
+						};
+						responseData = await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+					}
+					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
+					if (operation === 'get') {
+						const chatId = this.getNodeParameter('chatId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i) as string;
+						responseData = await microsoftApiRequest.call(this, 'GET', `/v1.0/chats/${chatId}/messages/${messageId}`);
+					}
+					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
+					if (operation === 'getAll') {
+						const chatId = this.getNodeParameter('chatId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/chats/${chatId}/messages`);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/chats/${chatId}/messages`, {});
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}

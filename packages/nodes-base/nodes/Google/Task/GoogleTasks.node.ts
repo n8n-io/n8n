@@ -171,7 +171,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/list
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const options = this.getNodeParameter(
+						const { showCompleted = true, showDeleted = false, showHidden = false, ...options } = this.getNodeParameter(
 							'additionalFields',
 							i,
 						) as IDataObject;
@@ -187,15 +187,11 @@ export class GoogleTasks implements INodeType {
 						if (options.dueMax) {
 							qs.dueMax = options.dueMax as string;
 						}
-						if (options.showCompleted) {
-							qs.showCompleted = options.showCompleted as boolean;
-						}
-						if (options.showDeleted) {
-							qs.showDeleted = options.showDeleted as boolean;
-						}
-						if (options.showHidden) {
-							qs.showHidden = options.showHidden as boolean;
-						}
+
+						qs.showCompleted = showCompleted;
+						qs.showDeleted = showDeleted;
+						qs.showHidden = showHidden;
+
 						if (options.updatedMin) {
 							qs.updatedMin = options.updatedMin as string;
 						}

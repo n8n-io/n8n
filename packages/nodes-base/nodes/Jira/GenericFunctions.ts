@@ -12,6 +12,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -69,7 +70,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -117,6 +118,49 @@ export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 
 export function getId(url: string) {
 	return url.split('/').pop();
+}
+
+export function simplifyIssueOutput(responseData: { 
+	names: { [key: string]: string },
+	fields: IDataObject,
+	id: string,
+	key: string,
+	self: string
+}) {
+	const mappedFields: IDataObject = {
+		id: responseData.id,
+		key: responseData.key,
+		self: responseData.self,
+	};
+	// Sort custom fields last so we map them last
+	const customField = /^customfield_\d+$/;
+	const sortedFields: string[] = Object.keys(responseData.fields).sort((a, b) => {
+		if (customField.test(a) && customField.test(b)) {
+			return a > b ? 1 : -1;
+		}
+		if (customField.test(a)) {
+			return 1;
+		}
+		if (customField.test(b)) {
+			return -1;
+		}
+		return a > b ? 1 : -1;
+	});
+	for (const field of sortedFields) {
+		if (responseData.names[field] in mappedFields) {
+			let newField: string = responseData.names[field];
+			let counter = 0;
+			while (newField in mappedFields) {
+				counter++;
+				newField = `${responseData.names[field]}_${counter}`;
+			}
+			mappedFields[newField] = responseData.fields[field];
+		} else {
+			mappedFields[responseData.names[field] || field] = responseData.fields[field];
+		}
+	}
+
+	return mappedFields;
 }
 
 export const allEvents = [

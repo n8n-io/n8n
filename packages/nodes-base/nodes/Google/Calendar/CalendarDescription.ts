@@ -28,7 +28,7 @@ export const calendarOperations: INodeProperties[] = [
 
 export const calendarFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 calendar:availability                               */
+	/*                                 calendar:availability                      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar ID',
@@ -136,6 +136,4 @@ export const calendarFields: INodeProperties[] = [
 			},
 		],
 	},
-
-
 ];
