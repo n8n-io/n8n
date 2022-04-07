@@ -551,7 +551,7 @@ export default mixins(
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
 		font-size: var(--font-size-l);
 		display: flex;
 

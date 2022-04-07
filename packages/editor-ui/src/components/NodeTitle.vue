@@ -16,24 +16,18 @@
 					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('ndv.title.rename')" />
 				</div>
 			</div>
-			<span :class="$style.title" slot="reference">
-				<ShortenName :name="value" :limit="35">
-					<template v-slot="{ shortenedName }">
-						{{ shortenedName }}
-					</template>
-				</ShortenName>
+			<div slot="reference" :class="$style.title">
+				{{ value }}
 				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
-			</span>
+			</div>
 		</el-popover>
 	</span>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
-import ShortenName from './ShortenName.vue';
 
 export default Vue.extend({
-	components: { ShortenName },
 	name: 'NodeTitle',
 	props: {
 		value: {
@@ -77,13 +71,14 @@ export default Vue.extend({
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-compact);
 	overflow-wrap: anywhere;
-	height: 60px;
 	overflow: hidden;
 	padding-right: var(--spacing-s);
 }
 
 .title {
 	text-overflow: ellipsis;
+	max-height: 100px;
+	overflow: scroll;
 
 	> *:first-child {
 		padding-right: var(--spacing-3xs);
