@@ -115,7 +115,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 <style lang="scss">
 .data-display-wrapper {
 	height: 85%;
-	margin-top: 32px !important;
+	margin-top: 48px !important;
 
 	.el-dialog__header {
 		padding: 0 !important;
@@ -154,7 +154,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 .backToCanvas {
 	position: absolute;
-	top: -24px;
+	top: -40px;
 
 	&:hover {
 		cursor: pointer;

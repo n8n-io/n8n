@@ -76,9 +76,8 @@ export default Vue.extend({
 }
 
 .title {
-	text-overflow: ellipsis;
 	max-height: 100px;
-	overflow: scroll;
+	text-overflow: ellipsis;
 
 	> *:first-child {
 		padding-right: var(--spacing-3xs);
