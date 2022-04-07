@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="!!node"
+		:visible="!!node || renaming"
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
@@ -47,6 +47,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	components: {
 		NodeSettings,
 		RunData,
+	},
+	props: {
+		renaming: {
+			type: Boolean,
+		},
 	},
 	data () {
 		return {
