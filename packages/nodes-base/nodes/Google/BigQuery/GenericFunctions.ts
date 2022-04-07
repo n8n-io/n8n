@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError
+	IDataObject, JsonObject, NodeApiError, NodeOperationError
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -68,7 +68,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -94,6 +94,8 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
 	const scopes = [
 		'https://www.googleapis.com/auth/bigquery',
 	];
@@ -109,11 +111,11 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},

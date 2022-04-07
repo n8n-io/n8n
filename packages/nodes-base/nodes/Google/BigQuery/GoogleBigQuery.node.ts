@@ -67,6 +67,7 @@ export class GoogleBigQuery implements INodeType {
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Service Account',
@@ -83,6 +84,7 @@ export class GoogleBigQuery implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Record',
@@ -90,7 +92,7 @@ export class GoogleBigQuery implements INodeType {
 					},
 				],
 				default: 'record',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...recordOperations,
 			...recordFields,
