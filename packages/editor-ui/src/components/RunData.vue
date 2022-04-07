@@ -759,6 +759,7 @@ export default mixins(
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing-s);
+	text-align: center;
 
 	> * {
 		max-width: 316px;
@@ -830,6 +831,7 @@ export default mixins(
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
+	padding-bottom: var(--spacing-3xl);
 }
 
 .jsonDisplay {
