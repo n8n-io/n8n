@@ -47,7 +47,8 @@ export default {
 
 .button {
 	border-radius: 0;
-	padding: var(--spacing-2xs) 15px;
+	padding: var(--spacing-3xs) var(--spacing-s);
+	height: 26px;
 	font-size: var(--font-size-2xs);
 	border-radius: var(--border-radius-base);
 	font-weight: var(--font-weight-bold);
