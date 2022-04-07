@@ -937,12 +937,12 @@ export default mixins(
 .binaryButtonContainer {
 	margin-top: 1.5em;
 	display: flex;
-	flex-direction: column;
-	align-items: center;
+	flex-direction: row;
+	justify-content: center;
 
 	> * {
 		flex-grow: 0;
-		margin-bottom: var(--spacing-3xs);
+		margin-right: var(--spacing-3xs);
 	}
 }
 
