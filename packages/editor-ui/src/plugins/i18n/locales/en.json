@@ -1152,6 +1152,7 @@
 	"ndv.output.noOutputData.message": "n8n stops executing the workflow when a node has no output data. You can change this default behaviour via",
 	"ndv.output.noOutputData.message.settings": "Settings",
 	"ndv.output.noOutputData.message.settingsOption": "> “Always Output Data”.",
+	"ndv.output.noOutputDataInBranch": "No output data in this branch",
 	"ndv.output.tooMuchData.title": "Output data is huge!",
 	"ndv.output.tooMuchData.message": "The node contains {size} MB of data. Displaying it may cause problems. <br /> If you do decide to display it, avoid the JSON view.",
 	"ndv.output.tooMuchData.showDataAnyway": "Show data anyway",

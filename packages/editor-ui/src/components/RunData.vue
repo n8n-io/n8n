@@ -75,6 +75,12 @@
 				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 			</div>
 
+			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
+				<n8n-text>
+					{{ $locale.baseText('ndv.output.noOutputDataInBranch') }}
+				</n8n-text>
+			</div>
+
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
 				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
 				<n8n-text>
