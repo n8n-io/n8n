@@ -99,7 +99,7 @@ export default Vue.extend({
 
 .editIcon {
 	display: none;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-l);
 }
 
 .editButtons {
