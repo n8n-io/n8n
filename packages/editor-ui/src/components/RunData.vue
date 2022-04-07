@@ -884,7 +884,8 @@ export default mixins(
 .table {
 	border-collapse: collapse;
 	text-align: left;
-	width: calc(100% - 1px);
+	width: calc(100% - var(--spacing-s));
+	margin-right: var(--spacing-s);
 	border: var(--border-base);
 	font-size: var(--font-size-2xs);
 
