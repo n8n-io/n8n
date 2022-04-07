@@ -35,7 +35,10 @@
 			</n8n-select>
 		</div>
 
-		<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
+		<div v-if="maxOutputIndex > 0" :class="{[$style.tabs]: displayMode === 'table'}">
+			<n8n-tabs v-model="outputIndex" :options="branches" />
+		</div>
+
 		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'ndv.output.item' : 'ndv.output.items') }}
@@ -852,7 +855,6 @@ export default mixins(
 	top: 0;
 	left: 0;
 	padding-left: var(--spacing-s);
-	padding-top: var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
@@ -864,6 +866,11 @@ export default mixins(
 .jsonDisplay {
 	composes: dataDisplay;
 	background-color: var(--color-background-base);
+	padding-top: var(--spacing-s);
+}
+
+.tabs {
+	margin-bottom: var(--spacing-s);
 }
 
 .table {
@@ -891,6 +898,7 @@ export default mixins(
 
 .itemsCount {
 	margin-left: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
 }
 
 .runSelector {
