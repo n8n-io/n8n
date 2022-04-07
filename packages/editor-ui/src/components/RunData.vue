@@ -19,7 +19,7 @@
 				</n8n-info-tip>
 			</div>
 
-			<div v-if="!hasRunError" @click.stop>
+			<div v-if="!hasRunError" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
 					:value="displayMode"
 					:options="buttons"
@@ -839,6 +839,7 @@ export default mixins(
 	align-items: center;
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
+	position: relative;
 
 	> *:first-child {
 		flex-grow: 1;
@@ -989,6 +990,11 @@ export default mixins(
 .pageSizeSelector {
 	text-transform: capitalize;
 	max-width: 150px;
+}
+
+.displayModes {
+	position: absolute;
+	right: var(--spacing-s);
 }
 
 </style>
