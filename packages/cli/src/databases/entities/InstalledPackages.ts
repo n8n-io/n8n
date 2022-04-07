@@ -1,9 +1,19 @@
 /* eslint-disable import/no-cycle */
-import { BeforeUpdate, Column, CreateDateColumn, Entity, PrimaryColumn, Unique, UpdateDateColumn } from 'typeorm';
+import {
+	BeforeUpdate,
+	Column,
+	CreateDateColumn,
+	Entity,
+	JoinColumn,
+	OneToMany,
+	PrimaryColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 import { IsDate, IsOptional } from 'class-validator';
 
 import config = require('../../../config');
 import { DatabaseType } from '../../index';
+import { InstalledNodes } from './InstalledNodes';
 
 function getTimestampSyntax() {
 	const dbType = config.get('database.type') as DatabaseType;
@@ -25,6 +35,10 @@ export class InstalledPackages {
 
 	@Column()
 	installedVersion: string;
+
+	@OneToMany(() => InstalledNodes, (installedNode) => installedNode.package)
+	@JoinColumn({ referencedColumnName: 'package' })
+	installedNodes: InstalledNodes[];
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	@IsOptional() // ignored by validation because set at DB level
