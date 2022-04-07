@@ -149,6 +149,7 @@ const isUniqueConstraintError = (error: Error) =>
  */
 
 export function send(processFunction: (req: Request, res: Response) => Promise<any>) {
+	// eslint-disable-next-line consistent-return
 	return async (req: Request, res: Response) => {
 		try {
 			const data = await processFunction(req, res);

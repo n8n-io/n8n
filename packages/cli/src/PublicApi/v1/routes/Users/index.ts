@@ -10,12 +10,12 @@ import { Role } from '../../../../databases/entities/Role';
 
 import {
 	clean,
-	connectionName,
 	decodeCursor,
 	deleteDataAndSendTelemetry,
+	getAllUsersAndCount,
 	getGlobalMemberRole,
 	getNextCursor,
-	getSelectableProperties,
+	getUser,
 	getUsers,
 	getUsersToSaveAndInvite,
 	inviteUsers,
@@ -112,74 +112,35 @@ export = {
 		return clean(userToDelete);
 	},
 	// eslint-disable-next-line consistent-return
-	getUser: async (req: UserRequest.Get, res: express.Response): Promise<any> => {
-		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
+	getUser: ResponseHelper.send(async (req: UserRequest.Get, res: express.Response) => {
+		const { includeRole } = req;
 		const { identifier } = req.params;
 
-		const query = getConnection(connectionName())
-			.getRepository(User)
-			.createQueryBuilder()
-			.leftJoinAndSelect('User.globalRole', 'Role')
-			.select(getSelectableProperties('user')?.map((property) => `User.${property}`));
+		const user = await getUser({ withIdentifier: identifier, includeRole });
 
-		if (includeRole) {
-			query.addSelect(getSelectableProperties('role')?.map((property) => `Role.${property}`));
+		if (!user) {
+			throw new ResponseHelper.ResponseError(
+				`Could not find user with identifier: ${identifier}`,
+				undefined,
+				404,
+			);
 		}
 
-		if (uuidValidate(identifier)) {
-			query.where({ id: identifier });
-		} else {
-			query.where({ email: identifier });
-		}
-
-		const user = await query.getOne();
-
-		if (user === undefined) {
-			return res.status(404);
-		}
-
-		res.json(user);
-	},
+		return clean(user);
+	}),
 	// eslint-disable-next-line consistent-return
-	getUsers: async (
-		req: UserRequest.Get,
-		res: express.Response,
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		next: express.NextFunction,
-		// eslint-disable-next-line consistent-return
-	): Promise<any> => {
-		let offset = 0;
-		let limit = parseInt(req.query.limit, 10) || 10;
-		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
+	getUsers: ResponseHelper.send(async (req: UserRequest.Get, res: express.Response) => {
+		const { offset, limit, includeRole } = req;
 
-		if (req.query.cursor) {
-			const { cursor } = req.query;
-			try {
-				({ offset, limit } = decodeCursor(cursor));
-			} catch (error) {
-				return res.status(400).json({
-					message: 'Invalid cursor',
-				});
-			}
-		}
-
-		const query = getConnection(connectionName())
-			.getRepository(User)
-			.createQueryBuilder()
-			.leftJoinAndSelect('User.globalRole', 'Role')
-			.select(getSelectableProperties('user')?.map((property) => `User.${property}`))
-			.limit(limit)
-			.offset(offset);
-
-		if (includeRole) {
-			query.addSelect(getSelectableProperties('role')?.map((property) => `Role.${property}`));
-		}
-
-		const [users, count] = await query.getManyAndCount();
-
-		res.json({
-			users,
-			nextCursor: getNextCursor(offset, limit, count),
+		const [users, count] = await getAllUsersAndCount({
+			includeRole,
+			limit,
+			offset,
 		});
-	},
+
+		return {
+			users: clean(users, { includeRole }),
+			nextCursor: getNextCursor(offset, limit, count),
+		};
+	}),
 };

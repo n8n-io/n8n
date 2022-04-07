@@ -222,16 +222,16 @@ export async function inviteUsers(
 	});
 }
 
-export async function getUserByIdentifier(
-	identifier: string,
-	options?: { includeRole: boolean },
-): Promise<User | undefined> {
-	return Db.collections.User?.findOneOrFail({
+export async function getUser(data: {
+	withIdentifier: string;
+	includeRole: boolean;
+}): Promise<User | undefined> {
+	return Db.collections.User?.findOne({
 		where: {
-			...(uuidValidate(identifier) && { id: identifier }),
-			...(!uuidValidate(identifier) && { email: identifier }),
+			...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
+			...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),
 		},
-		relations: options?.includeRole ? ['globalRole'] : undefined,
+		relations: data?.includeRole ? ['globalRole'] : undefined,
 	});
 }
 
@@ -246,6 +246,26 @@ export async function getUsers(data: {
 		},
 		relations: data?.includeRole ? ['globalRole'] : undefined,
 	});
+}
+
+export async function getAllUsersAndCount(data: {
+	includeRole?: boolean;
+	limit?: number;
+	offset?: number;
+}): Promise<[User[], number]> {
+	console.log({
+		relations: data?.includeRole ? ['globalRole'] : undefined,
+		skip: data.offset,
+		take: data.limit,
+	})
+	const users = await Db.collections.User!.find({
+		where: {},
+		relations: data?.includeRole ? ['globalRole'] : undefined,
+		skip: data.offset,
+		take: data.limit,
+	});
+	const count = await Db.collections.User!.count();
+	return [users, count];
 }
 
 export async function transferWorkflowsAndCredentials(data: {

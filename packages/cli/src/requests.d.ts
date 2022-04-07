@@ -26,7 +26,12 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & { user: User };
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	user: User;
+	limit: number;
+	offset: number;
+	includeRole: boolean;
+};
 
 // ----------------------------------
 //           /workflows
@@ -207,7 +212,7 @@ export declare namespace UserRequest {
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit: string; cursor: string; includeRole: string }
+		{ limit?: string; offset: string; cursor?: string; includeRole?: string }
 	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
