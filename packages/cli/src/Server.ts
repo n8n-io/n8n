@@ -719,6 +719,17 @@ class App {
 			}),
 		);
 
+		// Install new credentials/nodes from npm
+		this.app.get(
+			`/${this.restEndpoint}/node`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
+				const packages = await Db.collections.InstalledPackages!.find({
+					relations: ['installedNodes'],
+				});
+				return packages;
+			}),
+		);
+
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
