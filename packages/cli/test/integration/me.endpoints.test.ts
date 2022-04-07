@@ -10,6 +10,8 @@ import { Role } from '../../src/databases/entities/Role';
 import { randomValidPassword, randomEmail, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 
+jest.mock('../../src/telemetry');
+
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
@@ -275,7 +277,7 @@ describe('Member', () => {
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const memberPassword = randomValidPassword();
 		const member = await testDb.createUser({
-			password: hashSync(memberPassword, genSaltSync(10)),
+			password: memberPassword,
 		});
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
