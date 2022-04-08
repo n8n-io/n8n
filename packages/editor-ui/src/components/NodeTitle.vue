@@ -83,6 +83,7 @@ export default Vue.extend({
 	overflow: hidden;
 	-webkit-line-clamp: 5;
 	-webkit-box-orient: vertical;
+	color: var(--color-text-dark);
 
 	> *:first-child {
 		padding-right: var(--spacing-3xs);
@@ -106,6 +107,7 @@ export default Vue.extend({
 .editIcon {
 	display: none;
 	font-size: var(--font-size-l);
+	color: var(--color-text-base);
 }
 
 .editButtons {
