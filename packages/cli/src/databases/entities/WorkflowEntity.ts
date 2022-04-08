@@ -24,7 +24,7 @@ import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 
 function resolveDataType(dataType: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {
@@ -42,7 +42,7 @@ function resolveDataType(dataType: string) {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const map: { [key in DatabaseType]: string } = {
 		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",

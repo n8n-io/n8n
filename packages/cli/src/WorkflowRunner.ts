@@ -73,7 +73,7 @@ export class WorkflowRunner {
 		this.activeExecutions = ActiveExecutions.getInstance();
 		this.credentialsOverwrites = CredentialsOverwrites().getAll();
 
-		const executionsMode = config.get('executions.mode') as string;
+		const executionsMode = config.getEnv('executions.mode');
 
 		if (executionsMode === 'queue') {
 			this.jobQueue = Queue.getInstance().getBullObjectInstance();
@@ -150,8 +150,8 @@ export class WorkflowRunner {
 		executionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		const executionsProcess = config.get('executions.process') as string;
-		const executionsMode = config.get('executions.mode') as string;
+		const executionsProcess = config.getEnv('executions.process');
+		const executionsMode = config.getEnv('executions.mode');
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
@@ -229,13 +229,13 @@ export class WorkflowRunner {
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
 		// So that the timeout will also work for executions with nested workflows.
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
 			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
 		const workflow = new Workflow({
@@ -326,8 +326,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				const timeout =
-					Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
 				executionTimeout = setTimeout(() => {
 					this.activeExecutions.stopExecution(executionId, 'timeout');
 				}, timeout);
@@ -450,7 +449,7 @@ export class WorkflowRunner {
 
 				const jobData: Promise<IBullJobResponse> = job.finished();
 
-				const queueRecoveryInterval = config.get('queue.bull.queueRecoveryInterval') as number;
+				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
 				const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
 
@@ -533,8 +532,8 @@ export class WorkflowRunner {
 				try {
 					// Check if this execution data has to be removed from database
 					// based on workflow settings.
-					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-					let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+					let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
+					let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
 					if (data.workflowData.settings !== undefined) {
 						saveDataErrorExecution =
 							(data.workflowData.settings.saveDataErrorExecution as string) ||
@@ -643,7 +642,7 @@ export class WorkflowRunner {
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
 			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
@@ -654,8 +653,7 @@ export class WorkflowRunner {
 		};
 
 		if (workflowTimeout > 0) {
-			workflowTimeout =
-				Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
 			// Start timeout already now but give process at least 5 seconds to start.
 			// Without it could would it be possible that the workflow executions times out before it even got started if
 			// the timeout time is very short as the process start time can be quite long.

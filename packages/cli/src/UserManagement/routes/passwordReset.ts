@@ -25,7 +25,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/forgot-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
-			if (config.get('userManagement.emails.mode') === '') {
+			if (config.getEnv('userManagement.emails.mode') === '') {
 				Logger.debug('Request to send password reset email failed because emailing was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to request a password reset email',

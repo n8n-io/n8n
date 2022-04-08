@@ -3,16 +3,15 @@ import { promisify } from 'util';
 
 import config = require('../config');
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
-import { DatabaseType } from '../src';
 
 const exec = promisify(callbackExec);
 
-const dbType = config.get('database.type') as DatabaseType;
+const dbType = config.getEnv('database.type');
 
 if (dbType === 'mysqldb') {
-	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	const host = config.get('database.mysqldb.host');
+	const username = config.getEnv('database.mysqldb.user');
+	const password = config.getEnv('database.mysqldb.password');
+	const host = config.getEnv('database.mysqldb.host');
 
 	const passwordSegment = password ? `-p${password}` : '';
 

@@ -23,7 +23,7 @@ export function ownerNamespace(this: N8nApp): void {
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
 
-			if (config.get('userManagement.isInstanceOwnerSetUp')) {
+			if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to claim instance ownership failed because instance owner already exists',
 					{
