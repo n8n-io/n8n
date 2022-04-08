@@ -496,7 +496,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/conversations.rename
 					if (operation === 'rename') {
 						const channel = this.getNodeParameter('channelId', i) as IDataObject;
-						const name = this.getNodeParameter('name', i) as IDataObject;
+						const name = this.getNodeParameter('name', i);
 						const body: IDataObject = {
 							channel,
 							name,
@@ -543,7 +543,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/conversations.setTopic
 					if (operation === 'setTopic') {
 						const channel = this.getNodeParameter('channelId', i) as IDataObject;
-						const topic = this.getNodeParameter('topic', i) as IDataObject;
+						const topic = this.getNodeParameter('topic', i);
 						const body: IDataObject = {
 							channel,
 							topic,

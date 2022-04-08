@@ -174,7 +174,7 @@ export class Bitwarden implements INodeType {
 					//       collection: update
 					// ----------------------------------
 
-					const updateFields = this.getNodeParameter('updateFields', i) as CollectionUpdateFields;
+					const updateFields = this.getNodeParameter('updateFields', i) as unknown as CollectionUpdateFields;
 
 					if (isEmpty(updateFields)) {
 						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);

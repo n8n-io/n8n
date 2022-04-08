@@ -520,7 +520,7 @@ export class AgileCrm implements INodeType {
 						const limit = 100;
 						responseData = await agileCrmApiRequestAllItems.call(this, 'GET', endpoint, undefined, { page_size: limit });
 					} else {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, { page_size: limit });
 					}
 

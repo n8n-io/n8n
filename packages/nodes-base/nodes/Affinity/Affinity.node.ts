@@ -158,22 +158,22 @@ export class Affinity implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'list') {
 					//https://api-docs.affinity.co/#get-a-specific-list
 					if (operation === 'get') {
-						const listId = this.getNodeParameter('listId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
 						responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}`, {}, qs);
 					}
 					//https://api-docs.affinity.co/#get-all-lists
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

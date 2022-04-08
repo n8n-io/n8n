@@ -13,7 +13,7 @@ import {
 
 export async function createTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('customerId', index) as IDataObject;
-	const subject = this.getNodeParameter('subject', index) as IDataObject;
+	const subject = this.getNodeParameter('subject', index);
 	const { assetId, dueDate, issueType, status, contactId } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
@@ -33,7 +33,7 @@ export async function createTicket(this: IExecuteFunctions, index: number): Prom
 	body.subject = subject;
 
 	let responseData;
-	
+
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 	return this.helpers.returnJsonArray(responseData.ticket);

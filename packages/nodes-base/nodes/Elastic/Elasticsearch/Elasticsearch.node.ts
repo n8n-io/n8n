@@ -129,7 +129,7 @@ export class Elasticsearch implements INodeType {
 					const endpoint = `/${indexId}/_doc/${documentId}`;
 					responseData = await elasticsearchApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-					const simple = this.getNodeParameter('simple', i) as IDataObject;
+					const simple = this.getNodeParameter('simple', i);
 
 					if (simple) {
 						responseData = {
@@ -159,16 +159,16 @@ export class Elasticsearch implements INodeType {
 						qs._source = true;
 					}
 
-					const returnAll = this.getNodeParameter('returnAll', 0);
+					const returnAll = this.getNodeParameter('returnAll');
 
 					if (!returnAll) {
-						qs.size = this.getNodeParameter('limit', 0);
+						qs.size = this.getNodeParameter('limit');
 					}
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 					responseData = responseData.hits.hits;
 
-					const simple = this.getNodeParameter('simple', 0) as IDataObject;
+					const simple = this.getNodeParameter('simple');
 
 					if (simple) {
 						responseData = responseData.map((item: IDataObject) => {

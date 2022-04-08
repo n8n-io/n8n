@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -124,7 +125,7 @@ export class MicrosoftToDo implements INodeType {
 						const body: IDataObject = {
 							applicationName: this.getNodeParameter('applicationName', i) as string,
 							displayName: this.getNodeParameter('displayName', i) as string,
-							...this.getNodeParameter('additionalFields', i) as IDataObject[],
+							...this.getNodeParameter('additionalFields', i),
 						};
 
 						responseData = await microsoftApiRequest.call(this, 'POST', `/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`, body, qs);
@@ -171,7 +172,7 @@ export class MicrosoftToDo implements INodeType {
 						const linkedResourceId = this.getNodeParameter('linkedResourceId', i) as string;
 
 						const body: IDataObject = {
-							...this.getNodeParameter('updateFields', i) as IDataObject[],
+							...this.getNodeParameter('updateFields', i),
 						};
 
 						responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`, body, qs);
@@ -188,7 +189,7 @@ export class MicrosoftToDo implements INodeType {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const body: IDataObject = {
 							title: this.getNodeParameter('title', i) as string,
-							...this.getNodeParameter('additionalFields', i) as IDataObject[],
+							...this.getNodeParameter('additionalFields', i),
 						};
 
 						if (body.content) {
@@ -244,7 +245,7 @@ export class MicrosoftToDo implements INodeType {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const body: IDataObject = {
-							...this.getNodeParameter('updateFields', i) as IDataObject[],
+							...this.getNodeParameter('updateFields', i),
 						};
 
 						if (body.content) {
@@ -319,7 +320,7 @@ export class MicrosoftToDo implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

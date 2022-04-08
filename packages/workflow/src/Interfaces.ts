@@ -525,26 +525,27 @@ export interface IExecuteFunctions {
 		itemIndex?: number,
 	): T['resource'];
 	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	getNodeParameter(
-		parameterName: string,
-		itemIndex: number,
-		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	//--------------------------------------------------
 	getNodeParameter(parameterName: 'limit', itemIndex?: number): number;
 	getNodeParameter(parameterName: 'returnAll', itemIndex?: number): boolean;
 	getNodeParameter(parameterName: 'resource', itemIndex?: number): string;
 	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex: number): string;
-	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex: number): boolean;
+	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex?: number): string;
+	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex?: number): boolean;
 	getNodeParameter(
 		parameterName: IDataObjectReturnTypeParam,
-		itemIndex: number,
+		itemIndex?: number,
 		fallbackValue?: object,
 	): IDataObject;
 	getNodeParameter<T extends string | IDataObject>(parameterName: 'filters', itemIndex?: number): T;
 	getNodeParameter<T extends string | string[]>(parameterName: 'email', itemIndex?: number): T;
 	getNodeParameter<T extends string | string[]>(parameterName: 'to', itemIndex?: number): T;
+	//--------------------------------------------------
+	getNodeParameter(
+		parameterName: string,
+		itemIndex: number,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	//--------------------------------------------------
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;

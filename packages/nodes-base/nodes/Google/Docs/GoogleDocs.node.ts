@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -121,7 +122,7 @@ export class GoogleDocs implements INodeType {
 				try {
 					drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/drives');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Drives' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { message: 'Error in loading Drives' });
 				}
 
 				for (const drive of drives) {
@@ -150,7 +151,7 @@ export class GoogleDocs implements INodeType {
 				try {
 					folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Folders' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { message: 'Error in loading Folders' });
 				}
 
 				for (const folder of folders) {
@@ -239,7 +240,7 @@ export class GoogleDocs implements INodeType {
 						const actionsUi = this.getNodeParameter('actionsUi', i) as {
 							actionFields: IDataObject[]
 						};
-						const { writeControlObject } = this.getNodeParameter('updateFields', i) as IUpdateFields;
+						const { writeControlObject } = this.getNodeParameter('updateFields', i) as unknown as IUpdateFields;
 
 						if (!documentId) {
 							documentId = documentURL;
@@ -444,7 +445,7 @@ export class GoogleDocs implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

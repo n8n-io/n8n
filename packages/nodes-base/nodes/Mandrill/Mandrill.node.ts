@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -710,7 +711,7 @@ export class Mandrill implements INodeType {
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				for (const template of templates) {
 					const templateName = template.name;
@@ -740,7 +741,7 @@ export class Mandrill implements INodeType {
 			try {
 				if (resource === 'message') {
 
-					const options = this.getNodeParameter('options', i) as Options;
+					const options = this.getNodeParameter('options', i) as unknown as Options;
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const toEmail = this.getNodeParameter('toEmail', i) as string;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
@@ -889,7 +890,7 @@ export class Mandrill implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
