@@ -73,10 +73,6 @@ export class MqttTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('mqtt');
 
-		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
-		}
-
 		const topics = (this.getNodeParameter('topics') as string).split(',');
 
 		const topicsQoS: IDataObject = {};

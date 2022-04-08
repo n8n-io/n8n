@@ -35,11 +35,7 @@ export async function actionNetworkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('actionNetworkApi') as { apiKey: string } | undefined;
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('actionNetworkApi') as { apiKey: string };
 
 	const options: OptionsWithUri = {
 		headers: {

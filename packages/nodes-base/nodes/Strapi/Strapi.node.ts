@@ -114,7 +114,7 @@ export class Strapi implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const { apiVersion } = await this.getCredentials('strapiApi') as IDataObject;
+		const { apiVersion } = await this.getCredentials('strapiApi');
 		const { jwt } = await getToken.call(this);
 
 		headers.Authorization = `Bearer ${jwt}`;

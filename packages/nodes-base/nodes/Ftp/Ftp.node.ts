@@ -403,10 +403,6 @@ export class Ftp implements INodeType {
 		}
 		try {
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
-			}
-
 			let ftp: ftpClient;
 			let sftp: sftpClient;
 

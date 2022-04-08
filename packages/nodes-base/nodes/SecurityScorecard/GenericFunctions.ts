@@ -15,10 +15,6 @@ import {
 export async function scorecardApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('securityScorecardApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const headerWithAuthentication = { Authorization: `Token ${credentials.apiKey}` };
 
 	let options: OptionsWithUri = {

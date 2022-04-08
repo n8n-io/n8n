@@ -55,7 +55,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			json: true,
 		};
 		options = Object.assign({}, options, option);
-		const credentials = await this.getCredentials('notionApi') as IDataObject;
+		const credentials = await this.getCredentials('notionApi');
 		if (!uri) {
 			//do not include the API Key when downloading files, else the request fails
 			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
@@ -397,7 +397,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}

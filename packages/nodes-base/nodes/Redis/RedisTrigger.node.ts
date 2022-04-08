@@ -70,10 +70,6 @@ export class RedisTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('redis');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const redisOptions: redis.ClientOpts = {
 			host: credentials.host as string,
 			port: credentials.port as number,

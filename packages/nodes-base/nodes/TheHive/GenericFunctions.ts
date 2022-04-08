@@ -18,10 +18,6 @@ import { Eq } from './QueryFunctions';
 export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('theHiveApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const headerWithAuthentication = Object.assign({}, { Authorization: `Bearer ${credentials.ApiKey}` });
 
 	let options: OptionsWithUri = {
@@ -113,9 +109,6 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
 		const credentials = await this.getCredentials('theHiveApi');
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-		}
 		const version = credentials.apiVersion;
 		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
 

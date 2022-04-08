@@ -41,9 +41,6 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('slackApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 			//@ts-ignore
 			response = await this.helpers.request(options);

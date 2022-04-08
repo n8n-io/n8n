@@ -146,10 +146,6 @@ export class EmailSend implements INodeType {
 
 				const credentials = await this.getCredentials('smtp');
 
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
-
 				const connectionOptions: SMTPTransport.Options = {
 					host: credentials.host as string,
 					port: credentials.port as number,

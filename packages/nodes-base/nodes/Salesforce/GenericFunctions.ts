@@ -29,7 +29,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
 			const credentialsType = 'salesforceJwtApi';
 			const credentials = await this.getCredentials(credentialsType);
-			const response = await getAccessToken.call(this, credentials as IDataObject);
+			const response = await getAccessToken.call(this, credentials);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
 			Logger.debug(`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`);

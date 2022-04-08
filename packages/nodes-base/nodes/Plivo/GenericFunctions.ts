@@ -32,10 +32,6 @@ export async function plivoApiRequest(
 
 	const credentials = await this.getCredentials('plivoApi') as { authId: string, authToken: string };
 
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
-
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'plivo-n8n',
