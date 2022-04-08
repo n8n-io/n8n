@@ -29,7 +29,7 @@ export class Note implements INodeType {
 				typeOptions: {
 					rows: 4,
 				},
-				default: '## I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](https://n8n.io/)',
+				default: '## Title \n**Double click** to edit me.[Styling tips](https://docs.n8n.io/getting-started/key-components/workflow-notes.html)',
 				description: 'Content',
 			},
 			{
