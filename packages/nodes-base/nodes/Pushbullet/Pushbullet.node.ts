@@ -19,7 +19,7 @@ import {
 } from './GenericFunctions';
 
 import * as moment from 'moment-timezone';
-
+const isOnline = require('is-online');
 export class Pushbullet implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushbullet',
@@ -451,6 +451,7 @@ export class Pushbullet implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if (await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'push') {
@@ -608,7 +609,7 @@ export class Pushbullet implements INodeType {
 				throw error;
 			}
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

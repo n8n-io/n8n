@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
-
+const isOnline = require('is-online');
 export class Rundeck implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Rundeck',
@@ -165,7 +165,7 @@ export class Rundeck implements INodeType {
 		const rundeckApi = new RundeckApi(this);
 		await rundeckApi.init();
 
-
+		if (await isOnline()){
 		for (let i = 0; i < length; i++) {
 
 			if (resource === 'job') {
@@ -193,7 +193,7 @@ export class Rundeck implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`);
 			}
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 
 	}

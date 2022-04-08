@@ -38,7 +38,7 @@ export class RssFeedRead implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
+		if (await isOnline()){
 		try{
 
 			const url = this.getNodeParameter('url', 0) as string;
@@ -83,6 +83,7 @@ export class RssFeedRead implements INodeType {
 			}
 			throw error;
 		}
+	}
 	}
 }
 

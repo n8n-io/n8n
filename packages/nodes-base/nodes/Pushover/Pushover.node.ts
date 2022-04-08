@@ -17,7 +17,7 @@ import {
 import {
 	pushoverApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Pushover implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushover',
@@ -313,6 +313,7 @@ export class Pushover implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if (await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
@@ -392,6 +393,7 @@ export class Pushover implements INodeType {
 		} else if (responseData !== undefined) {
 			returnData.push(responseData as IDataObject);
 		}
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

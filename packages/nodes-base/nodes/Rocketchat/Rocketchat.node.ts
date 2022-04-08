@@ -403,6 +403,7 @@ export class Rocketchat implements INodeType {
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if (await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'chat') {
@@ -510,7 +511,7 @@ export class Rocketchat implements INodeType {
 				throw error;
 			}
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

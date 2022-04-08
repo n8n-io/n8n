@@ -31,7 +31,7 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
-
+const isOnline = require('is-online');
 export class Raindrop implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Raindrop',
@@ -109,7 +109,7 @@ export class Raindrop implements INodeType {
 
 		let responseData;
 		const returnData: IDataObject[] = [];
-
+		if (await isOnline()){
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'bookmark') {
@@ -456,7 +456,7 @@ export class Raindrop implements INodeType {
 				throw error;
 			}
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 
 	}

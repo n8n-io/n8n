@@ -32,7 +32,7 @@ import {
 } from './GenericFunctions';
 
 import * as moment from 'moment-timezone';
-
+const isOnline = require('is-online');
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SendGrid',

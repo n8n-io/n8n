@@ -14,7 +14,7 @@ import {
 import {
 	pushcutApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Pushcut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushcut',
@@ -181,6 +181,7 @@ export class Pushcut implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if (await isOnline()){
 		for (let i = 0; i < length; i++) {
 
 			if (resource === 'notification') {
@@ -209,6 +210,7 @@ export class Pushcut implements INodeType {
 			returnData.push(responseData as IDataObject);
 
 		}
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

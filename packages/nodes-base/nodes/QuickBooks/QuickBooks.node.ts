@@ -60,6 +60,7 @@ import {
 	QuickBooksOAuth2Credentials,
 	TransactionFields,
 } from './types';
+const isOnline = require('is-online');
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -201,7 +202,7 @@ export class QuickBooks implements INodeType {
 
 		const { oauthTokenData } = await this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 		const companyId = oauthTokenData.callbackQueryString.realmId;
-
+		if (await isOnline()){
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'bill') {
@@ -1135,6 +1136,7 @@ export class QuickBooks implements INodeType {
 		} else {
 			return [this.helpers.returnJsonArray(returnData)];
 		}
+	}
 	}
 }
 

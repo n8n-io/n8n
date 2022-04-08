@@ -37,6 +37,7 @@ import {
 	reportFields,
 	reportOperations,
 } from './ReportDescription';
+const isOnline = require('is-online');
 
 export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
@@ -136,7 +137,7 @@ export class QuickBase implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+		if (await isOnline()){
 		if (resource === 'field') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
@@ -574,6 +575,7 @@ export class QuickBase implements INodeType {
 				}
 			}
 		}
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
