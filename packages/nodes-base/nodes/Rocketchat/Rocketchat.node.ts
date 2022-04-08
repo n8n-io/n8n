@@ -13,7 +13,7 @@ import {
 	rocketchatApiRequest,
 	validateJSON
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 interface IField {
 	short?: boolean;
 	title?: string;
