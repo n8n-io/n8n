@@ -607,7 +607,7 @@ export class Wise implements INodeType {
 					if (downloadReceipt && responseData !== undefined) {
 						return this.prepareOutputData(responseData);
 					}
-					
+
 					return [this.helpers.returnJsonArray(returnData)];
-				}
+	}
 }

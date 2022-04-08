@@ -1128,7 +1128,7 @@ export class QuickBooks implements INodeType {
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
 		}
-
+		}
 		const download = this.getNodeParameter('download', 0, false) as boolean;
 
 		if (['invoice', 'estimate', 'payment'].includes(resource) && ['get'].includes(operation) && download) {
@@ -1136,7 +1136,6 @@ export class QuickBooks implements INodeType {
 		} else {
 			return [this.helpers.returnJsonArray(returnData)];
 		}
-	}
 	}
 }
 

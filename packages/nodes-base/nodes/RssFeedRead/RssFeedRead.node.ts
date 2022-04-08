@@ -9,7 +9,7 @@ import {
 
 import * as Parser from 'rss-parser';
 import { URL } from 'url';
-
+const isOnline = require('is-online');
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Read',
