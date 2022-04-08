@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { IsDate, IsOptional } from 'class-validator';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType } from '../../index';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';

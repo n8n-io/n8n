@@ -18,7 +18,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';

@@ -1,10 +1,10 @@
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 import { compare, genSaltSync, hashSync } from 'bcryptjs';
 
 import { Db } from '../../src';
-import config = require('../../config');
+import config from '../../config';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Role } from '../../src/databases/entities/Role';
 import {

@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config = require('../../../../config');
+import * as config from '../../../../config';
 import { MigrationHelpers } from '../../MigrationHelpers';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 

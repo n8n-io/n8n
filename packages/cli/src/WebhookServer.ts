@@ -6,16 +6,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as express from 'express';
+import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
-import * as bodyParser from 'body-parser';
+import bodyParser from 'body-parser';
 // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import * as _ from 'lodash';
+import _ from 'lodash';
 
-import * as compression from 'compression';
+import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as parseUrl from 'parseurl';
+import parseUrl from 'parseurl';
 import { WebhookHttpMethod } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -31,7 +31,7 @@ import {
 	WaitingWebhooks,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 

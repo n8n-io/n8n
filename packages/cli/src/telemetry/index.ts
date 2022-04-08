@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient = require('@rudderstack/rudder-sdk-node');
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
-import config = require('../../config');
+import * as config from '../../config';
 import { getLogger } from '../Logger';
 
 type CountBufferItemKey =

@@ -15,7 +15,7 @@ import {
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
-import * as path from 'path';
+import path from 'path';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
 

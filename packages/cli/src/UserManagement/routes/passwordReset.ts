@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 
-import express = require('express');
+import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
@@ -15,7 +15,7 @@ import { getInstanceBaseUrl, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
-import config = require('../../../config');
+import * as config from '../../../config';
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**

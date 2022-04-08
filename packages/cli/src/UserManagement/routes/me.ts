@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import { compare, genSaltSync, hashSync } from 'bcryptjs';
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 

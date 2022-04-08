@@ -14,7 +14,7 @@ import {
 } from 'typeorm';
 
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, ICredentialsDb } from '../..';
 import { SharedCredentials } from './SharedCredentials';
 

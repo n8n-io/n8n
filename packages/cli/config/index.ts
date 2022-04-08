@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import * as convict from 'convict';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import convict from 'convict';
+import dotenv from 'dotenv';
+import path from 'path';
 import * as core from 'n8n-core';
 
 dotenv.config();
@@ -674,7 +674,7 @@ const config = convict({
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: function check(rawValue) {
+			format: function check(rawValue: string): void {
 				if (rawValue === '') {
 					return;
 				}
@@ -698,7 +698,7 @@ const config = convict({
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: function check(rawValue) {
+			format: function check(rawValue: string): void {
 				try {
 					const values = JSON.parse(rawValue);
 					if (!Array.isArray(values)) {

@@ -30,7 +30,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import * as express from 'express';
+import express from 'express';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -48,7 +48,7 @@ import {
 	WorkflowRunner,
 	ExternalHooks,
 } from '.';
-import config = require('../config');
+import config from '../config';
 import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
