@@ -19,6 +19,7 @@
 		"target": "es2019",
 		"sourceMap": true,
 		"esModuleInterop": true,
+		"useUnknownInCatchVariables": false,
 	},
 	"include": [
 		"**/*.d.ts",
