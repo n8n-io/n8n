@@ -485,7 +485,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'checklist') {
 					if (operation === 'create') {
 						const taskId = this.getNodeParameter('task', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const body: IDataObject = {
 							name,
 						};
@@ -514,7 +514,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'checklistItem') {
 					if (operation === 'create') {
 						const checklistId = this.getNodeParameter('checklist', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							name,
@@ -602,7 +602,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'folder') {
 					if (operation === 'create') {
 						const spaceId = this.getNodeParameter('space', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const body: IDataObject = {
 							name,
 						};
@@ -641,7 +641,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'goal') {
 					if (operation === 'create') {
 						const teamId = this.getNodeParameter('team', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							name,
@@ -711,7 +711,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'goalKeyResult') {
 					if (operation === 'create') {
 						const goalId = this.getNodeParameter('goal', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const type = this.getNodeParameter('type', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
@@ -838,7 +838,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'task') {
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITask = {
 							name,
@@ -1269,7 +1269,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'spaceTag') {
 					if (operation === 'create') {
 						const spaceId = this.getNodeParameter('space', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
 						const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
 						const body: IDataObject = {
@@ -1284,7 +1284,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'delete') {
 						const spaceId = this.getNodeParameter('space', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						responseData = await clickupApiRequest.call(this, 'DELETE', `/space/${spaceId}/tag/${name}`);
 						responseData = { success: true };
 					}
@@ -1300,7 +1300,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'update') {
 						const spaceId = this.getNodeParameter('space', i) as string;
-						const tagName = this.getNodeParameter('name', i) as string;
+						const tagName = this.getNodeParameter('name', i);
 						const newTagName = this.getNodeParameter('newName', i) as string;
 						const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
 						const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
@@ -1319,7 +1319,7 @@ export class ClickUp implements INodeType {
 					if (operation === 'create') {
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const folderless = this.getNodeParameter('folderless', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IList = {
 							name,

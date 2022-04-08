@@ -327,7 +327,7 @@ export class MessageBird implements INodeType {
 						requestMethod = 'POST';
 						requestPath = '/messages';
 						const originator = this.getNodeParameter('originator', i) as string;
-						const body = this.getNodeParameter('message', i) as string;
+						const body = this.getNodeParameter('message', i);
 
 						bodyRequest = {
 							recipients: [],

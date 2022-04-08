@@ -369,7 +369,7 @@ export class Segment implements INodeType {
 					//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#track
 					if (operation === 'event') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const event = this.getNodeParameter('event', i) as string;
+						const event = this.getNodeParameter('event', i);
 						const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 						const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 						const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
@@ -499,7 +499,7 @@ export class Segment implements INodeType {
 					//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#page
 					if (operation === 'page') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 						const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 						const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];

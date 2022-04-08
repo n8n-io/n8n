@@ -460,7 +460,7 @@ export class SentryIo implements INodeType {
 						}
 					}
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const agreeTerms = this.getNodeParameter('agreeTerms', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const endpoint = `/api/0/organizations/`;
@@ -487,7 +487,7 @@ export class SentryIo implements INodeType {
 					if (operation === 'create') {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/projects/`;
 
@@ -579,7 +579,7 @@ export class SentryIo implements INodeType {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
 						const version = this.getNodeParameter('version', i) as string;
-						const url = this.getNodeParameter('url', i) as string;
+						const url = this.getNodeParameter('url', i);
 						const projects = this.getNodeParameter('projects', i) as string[];
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -720,7 +720,7 @@ export class SentryIo implements INodeType {
 
 					if (operation === 'create') {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);

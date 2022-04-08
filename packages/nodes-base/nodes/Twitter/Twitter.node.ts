@@ -114,7 +114,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/direct-messages/sending-and-receiving/api-reference/new-event
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'message_create',
@@ -152,7 +152,7 @@ export class Twitter implements INodeType {
 				if (resource === 'tweet') {
 					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 					if (operation === 'create') {
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITweet = {
 							status: text,

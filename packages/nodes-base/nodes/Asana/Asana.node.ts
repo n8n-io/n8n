@@ -2119,7 +2119,7 @@ export class Asana implements INodeType {
 						requestMethod = 'POST';
 						endpoint = `/tasks/${taskId}/subtasks`;
 
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
@@ -2137,7 +2137,7 @@ export class Asana implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						requestMethod = 'GET';
 						endpoint = `/tasks/${taskId}/subtasks`;
@@ -2172,7 +2172,7 @@ export class Asana implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/tasks';
 
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 						// body.notes = this.getNodeParameter('taskNotes', 0) as string;
 						body.workspace = this.getNodeParameter('workspace', i) as string;
 
@@ -2313,9 +2313,9 @@ export class Asana implements INodeType {
 						const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
 
 						if (!isTextHtml) {
-							body.text = this.getNodeParameter('text', i) as string;
+							body.text = this.getNodeParameter('text', i);
 						} else {
-							body.html_text = this.getNodeParameter('text', i) as string;
+							body.html_text = this.getNodeParameter('text', i);
 						}
 
 						requestMethod = 'POST';

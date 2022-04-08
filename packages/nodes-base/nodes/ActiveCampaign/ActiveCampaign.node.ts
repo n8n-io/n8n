@@ -448,7 +448,7 @@ export class ActiveCampaign implements INodeType {
 						dataKey = 'account';
 
 						body.account = {
-							name: this.getNodeParameter('name', i) as string,
+							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -670,7 +670,7 @@ export class ActiveCampaign implements INodeType {
 						dataKey = 'tag';
 
 						body.tag = {
-							tag: this.getNodeParameter('name', i) as string,
+							tag: this.getNodeParameter('name', i),
 							tagType: this.getNodeParameter('tagType', i) as string,
 						} as IDataObject;
 
@@ -747,10 +747,10 @@ export class ActiveCampaign implements INodeType {
 						endpoint = '/api/3/deals';
 
 						body.deal = {
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							contact: this.getNodeParameter('contact', i) as string,
 							value: this.getNodeParameter('value', i) as number,
-							currency: this.getNodeParameter('currency', i) as string,
+							currency: this.getNodeParameter('currency', i),
 						} as IDataObject;
 
 						const group = this.getNodeParameter('group', i) as string;
@@ -868,7 +868,7 @@ export class ActiveCampaign implements INodeType {
 						body.connection = {
 							service: this.getNodeParameter('service', i) as string,
 							externalid: this.getNodeParameter('externalid', i) as string,
-							name: this.getNodeParameter('name', i) as string,
+							name: this.getNodeParameter('name', i),
 							logoUrl: this.getNodeParameter('logoUrl', i) as string,
 							linkUrl: this.getNodeParameter('linkUrl', i) as string,
 						} as IDataObject;
@@ -941,7 +941,7 @@ export class ActiveCampaign implements INodeType {
 						endpoint = '/api/3/ecomOrders';
 
 						body.ecomOrder = {
-							source: this.getNodeParameter('source', i) as string,
+							source: this.getNodeParameter('source', i),
 							email: this.getNodeParameter('email', i) as string,
 							totalPrice: this.getNodeParameter('totalPrice', i) as number,
 							currency: this.getNodeParameter('currency', i)!.toString().toUpperCase() as string,

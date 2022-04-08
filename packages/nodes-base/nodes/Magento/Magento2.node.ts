@@ -543,7 +543,7 @@ export class Magento2 implements INodeType {
 					if (operation === 'create') {
 						// https://magento.redoc.ly/2.3.7-admin/tag/products#operation/catalogProductRepositoryV1SavePost
 						const sku = this.getNodeParameter('sku', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const attributeSetId = this.getNodeParameter('attributeSetId', i) as string;
 						const price = this.getNodeParameter('price', i) as number;
 

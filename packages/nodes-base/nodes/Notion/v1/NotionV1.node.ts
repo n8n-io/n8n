@@ -263,7 +263,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					// tslint:disable-next-line: no-any
 					const body: { [key: string]: any } = {
 						parent: {},
@@ -285,7 +285,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const simple = this.getNodeParameter('simple');
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('options.filter', i, {}) as IDataObject;
@@ -329,7 +329,7 @@ export class NotionV1 implements INodeType {
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
 					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
 					// tslint:disable-next-line: no-any
 					const body: { [key: string]: any } = {
@@ -375,14 +375,14 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					// tslint:disable-next-line: no-any
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
 					};
 					body.parent['page_id'] = extractPageId(this.getNodeParameter('pageId', i) as string);
-					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
+					body.properties = formatTitle(this.getNodeParameter('title', i));
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
@@ -395,7 +395,7 @@ export class NotionV1 implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
@@ -406,10 +406,10 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
-					const text = this.getNodeParameter('text', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const text = this.getNodeParameter('text', i);
+					const options = this.getNodeParameter('options', i);
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					const body: IDataObject = {};
 
 					if (text) {

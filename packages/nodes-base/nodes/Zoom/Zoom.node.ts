@@ -307,7 +307,7 @@ export class Zoom implements INodeType {
 							body.settings = settingValues;
 						}
 
-						body.topic = this.getNodeParameter('topic', i) as string;
+						body.topic = this.getNodeParameter('topic', i);
 
 						if (additionalFields.type) {
 							body.type = additionalFields.type as string;

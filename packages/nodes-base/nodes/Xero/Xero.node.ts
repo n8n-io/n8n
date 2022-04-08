@@ -411,7 +411,7 @@ export class Xero implements INodeType {
 					if (operation === 'getAll') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.statuses) {
 							qs.statuses = (options.statuses as string[]).join(',');
 						}
@@ -437,7 +437,7 @@ export class Xero implements INodeType {
 				if (resource === 'contact') {
 					if (operation === 'create') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const addressesUi = additionalFields.addressesUi as IDataObject;
 						const phonesUi = additionalFields.phonesUi as IDataObject;
@@ -546,7 +546,7 @@ export class Xero implements INodeType {
 					if (operation === 'getAll') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.includeArchived) {
 							qs.includeArchived = options.includeArchived as boolean;
 						}

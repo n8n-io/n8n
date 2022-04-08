@@ -221,7 +221,7 @@ export class PagerDuty implements INodeType {
 				if (resource === 'incident') {
 					//https://api-reference.pagerduty.com/#!/Incidents/post_incidents
 					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const serviceId = this.getNodeParameter('serviceId', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -276,7 +276,7 @@ export class PagerDuty implements INodeType {
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options');
 						if (options.userIds) {
 							options.userIds = (options.userIds as string).split(',') as string[];
 						}
@@ -383,7 +383,7 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Log_Entries/get_log_entries
 					if (operation === 'getAll') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						keysToSnakeCase(qs);
 						const returnAll = this.getNodeParameter('returnAll');

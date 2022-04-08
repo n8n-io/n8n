@@ -173,7 +173,7 @@ export class GoogleAnalytics implements INodeType {
 							'additionalFields',
 							i,
 						) as IDataObject;
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 
 						const body: IData = {
 							viewId,

@@ -256,7 +256,7 @@ export class GooglePerspective implements INodeType {
 					const body: CommentAnalyzeBody = {
 						comment: {
 							type: 'PLAIN_TEXT',
-							text: this.getNodeParameter('text', i) as string,
+							text: this.getNodeParameter('text', i),
 						},
 						requestedAttributes,
 					};

@@ -74,7 +74,7 @@ export class Strava implements INodeType {
 				if (resource === 'activity') {
 					//https://developers.strava.com/docs/reference/#api-Activities-createActivity
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const type = this.getNodeParameter('type', i) as string;
 

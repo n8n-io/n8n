@@ -586,7 +586,7 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/group.html#create
 
 						const body: IDataObject = {
-							name: this.getNodeParameter('name', i) as string,
+							name: this.getNodeParameter('name', i),
 						};
 
 						const {
@@ -690,7 +690,7 @@ export class Zammad implements INodeType {
 
 						const body = {
 							article: {},
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							group: this.getNodeParameter('group', i) as string,
 							customer: this.getNodeParameter('customer', i) as string,
 						};

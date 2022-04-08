@@ -109,7 +109,7 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}`);
 
 						const fileName = responseData.name;
@@ -155,7 +155,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 						responseData = responseData.filter((item: IDataObject) => item.file);
 						returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -175,11 +175,11 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -208,8 +208,8 @@ export class MicrosoftOneDrive implements INodeType {
 				if (resource === 'folder') {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_post_children?view=odsp-graph-online
 					if (operation === 'create') {
-						const names = (this.getNodeParameter('name', i) as string).split('/').filter(s => s.trim() !== '');
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const names = (this.getNodeParameter('name', i)).split('/').filter(s => s.trim() !== '');
+						const options = this.getNodeParameter('options', i);
 						let parentFolderId = options.parentFolderId ? options.parentFolderId : null;
 						for (const name of names) {
 							const body: IDataObject = {
@@ -243,7 +243,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 						responseData = responseData.filter((item: IDataObject) => item.folder);
 						returnData.push.apply(returnData, responseData as IDataObject[]);

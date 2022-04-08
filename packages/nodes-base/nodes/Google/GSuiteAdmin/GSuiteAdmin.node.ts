@@ -181,7 +181,7 @@ export class GSuiteAdmin implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					Object.assign(qs, options);
 
@@ -242,7 +242,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const lastName = this.getNodeParameter('lastName', i) as string;
 
-					const password = this.getNodeParameter('password', i) as string;
+					const password = this.getNodeParameter('password', i);
 
 					const username = this.getNodeParameter('username', i) as string;
 
@@ -317,7 +317,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const projection = this.getNodeParameter('projection', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.projection = projection;
 
@@ -346,7 +346,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const projection = this.getNodeParameter('projection', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.projection = projection;
 

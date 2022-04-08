@@ -457,7 +457,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/conversations.members
 					if (operation === 'member') {
 						const returnAll = this.getNodeParameter('returnAll');
-						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+						const resolveData = this.getNodeParameter('resolveData');
 						qs.channel = this.getNodeParameter('channelId', i) as string;
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/conversations.members', {}, qs);
@@ -479,7 +479,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.open
 					if (operation === 'open') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						if (options.channelId) {
 							body.channel = options.channelId as string;
@@ -565,7 +565,7 @@ export class Slack implements INodeType {
 					if (['post', 'postEphemeral'].includes(operation)) {
 						const channel = this.getNodeParameter('channel', i) as string;
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const body: IDataObject = {
 							channel,
 							text,
@@ -578,7 +578,7 @@ export class Slack implements INodeType {
 							action = 'postEphemeral';
 						}
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (authentication === 'accessToken' && sendAsUser !== '') {
 							body.username = sendAsUser;
@@ -814,7 +814,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/chat.update
 					if (operation === 'update') {
 						const channel = this.getNodeParameter('channelId', i) as string;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const ts = this.getNodeParameter('ts', i) as string;
 						const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
 						const body: IDataObject = {
@@ -872,7 +872,7 @@ export class Slack implements INodeType {
 					const timestamp = this.getNodeParameter('timestamp', i) as string;
 					//https://api.slack.com/methods/reactions.add
 					if (operation === 'add') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const body: IDataObject = {
 							channel,
 							name,
@@ -882,7 +882,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/reactions.remove
 					if (operation === 'remove') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const body: IDataObject = {
 							channel,
 							name,
@@ -900,7 +900,7 @@ export class Slack implements INodeType {
 				if (resource === 'star') {
 					//https://api.slack.com/methods/stars.add
 					if (operation === 'add') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						if (options.channelId) {
 							body.channel = options.channelId as string;
@@ -918,7 +918,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/stars.remove
 					if (operation === 'delete') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						if (options.channelId) {
 							body.channel = options.channelId as string;
@@ -949,8 +949,8 @@ export class Slack implements INodeType {
 				if (resource === 'file') {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -968,7 +968,7 @@ export class Slack implements INodeType {
 							body.title = options.title as string;
 						}
 						if (binaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							if (items[i].binary === undefined
 								//@ts-ignore
 								|| items[i].binary[binaryPropertyName] === undefined) {
@@ -1048,7 +1048,7 @@ export class Slack implements INodeType {
 				if (resource === 'userGroup') {
 					//https://api.slack.com/methods/usergroups.create
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

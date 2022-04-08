@@ -19,7 +19,7 @@ export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSin
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	const source = this.getNodeParameter('source', 0) as string;
+	const source = this.getNodeParameter('source');
 	const isPreview = source === 'previewApi';
 
 	const options: OptionsWithUri = {

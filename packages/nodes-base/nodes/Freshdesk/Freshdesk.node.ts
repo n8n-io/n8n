@@ -1155,8 +1155,8 @@ export class Freshdesk implements INodeType {
 						const value = this.getNodeParameter('requesterIdentificationValue', i) as string;
 						const status = this.getNodeParameter('status', i) as string;
 						const priority = this.getNodeParameter('priority', i) as string;
-						const source = this.getNodeParameter('source', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const source = this.getNodeParameter('source', i);
+						const options = this.getNodeParameter('options', i);
 						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 						const body: ICreateTicketBody = {
 							// @ts-ignore
@@ -1325,7 +1325,7 @@ export class Freshdesk implements INodeType {
 					//https://developers.freshdesk.com/api/#list_all_tickets
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.requesterId) {
 							qs.requester_id = options.requesterId as string;
 						}
@@ -1364,7 +1364,7 @@ export class Freshdesk implements INodeType {
 				} else if (resource === 'contact') {
 					//https://developers.freshdesk.com/api/#create_contact
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const email = this.getNodeParameter('email', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 

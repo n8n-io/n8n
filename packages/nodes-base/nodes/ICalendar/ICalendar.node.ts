@@ -304,12 +304,12 @@ export class ICalendar implements INodeType {
 		const operation = this.getNodeParameter('operation');
 		if (operation === 'createEventFile') {
 			for (let i = 0; i < length; i++) {
-				const title = this.getNodeParameter('title', i) as string;
+				const title = this.getNodeParameter('title', i);
 				const allDay = this.getNodeParameter('allDay', i) as boolean;
 				const start = this.getNodeParameter('start', i) as string;
 				let end = this.getNodeParameter('end', i) as string;
 				end = (allDay) ? moment(end).utc().add(1, 'day').format() as string : end;
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				let fileName = 'event.ics';
 

@@ -322,7 +322,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Company/listCompaniesUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (qs.fields) {
@@ -435,7 +435,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/getContactUsingGET
 				if (operation === 'get') {
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.fields) {
 						qs.optional_properties = options.fields as string;
 					}
@@ -444,7 +444,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listContactsUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.email) {
 						qs.email = options.email as boolean;
 					}
@@ -602,7 +602,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (returnAll) {
@@ -690,7 +690,7 @@ export class Keap implements INodeType {
 				if (operation === 'send') {
 					const userId = this.getNodeParameter('userId', i) as number;
 					const contactIds = ((this.getNodeParameter('contactIds', i) as string).split(',') as string[]).map((e) => (parseInt(e, 10)));
-					const subject = this.getNodeParameter('subject', i) as string;
+					const subject = this.getNodeParameter('subject', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEmail = {
 						user_id: userId,
@@ -767,7 +767,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/createFileUsingPOST
 				if (operation === 'upload') {
-					const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const binaryData = this.getNodeParameter('binaryData', i);
 					const fileAssociation = this.getNodeParameter('fileAssociation', i) as string;
 					const isPublic = this.getNodeParameter('isPublic', i) as boolean;
 					const body: IFile = {
@@ -779,7 +779,7 @@ export class Keap implements INodeType {
 						body.contact_id = contactId;
 					}
 					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');

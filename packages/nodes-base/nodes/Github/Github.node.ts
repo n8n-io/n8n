@@ -1912,7 +1912,7 @@ export class Github implements INodeType {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
@@ -1976,7 +1976,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'POST';
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 						body.body = this.getNodeParameter('body', i) as string;
 						const labels = this.getNodeParameter('labels', i) as IDataObject[];
 
@@ -2191,7 +2191,7 @@ export class Github implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
-						body.event = snakeCase(this.getNodeParameter('event', i) as string).toUpperCase();
+						body.event = snakeCase(this.getNodeParameter('event', i)).toUpperCase();
 						if (body.event === 'REQUEST_CHANGES' || body.event === 'COMMENT') {
 							body.body = this.getNodeParameter('body', i) as string;
 						}
@@ -2256,7 +2256,7 @@ export class Github implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.');
 						}
 						// Add the returned data to the item as binary property
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,

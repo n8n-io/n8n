@@ -328,7 +328,7 @@ export class SendGrid implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						responseData = await sendGridApiRequest.call(this, '/marketing/lists', 'POST', { name }, qs);
 						returnData.push(responseData);
 					} catch (error) {
@@ -360,7 +360,7 @@ export class SendGrid implements INodeType {
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const listId = this.getNodeParameter('listId', i) as string;
 						responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'PATCH', { name }, qs);
 						returnData.push(responseData);
@@ -438,7 +438,7 @@ export class SendGrid implements INodeType {
 
 							// message body
 						} else {
-							body.personalizations[0].subject = this.getNodeParameter('subject', i) as string;
+							body.personalizations[0].subject = this.getNodeParameter('subject', i);
 							body.content = [{
 								type: this.getNodeParameter('contentType', i) as string,
 								value: this.getNodeParameter('contentValue', i) as string,

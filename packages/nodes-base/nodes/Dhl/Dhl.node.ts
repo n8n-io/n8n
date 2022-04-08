@@ -135,7 +135,7 @@ export class Dhl implements INodeType {
 					if (operation === 'get') {
 
 						const trackingNumber = this.getNodeParameter('trackingNumber', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						qs = {
 							trackingNumber,

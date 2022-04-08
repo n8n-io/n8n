@@ -291,10 +291,10 @@ export class Sms77 implements INodeType {
 			try {
 				if (resource === 'sms') {
 					if (operation === 'send') {
-						const from = this.getNodeParameter('from', i) as string;
+						const from = this.getNodeParameter('from', i);
 						const to = this.getNodeParameter('to', i) as string;
-						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const text = this.getNodeParameter('message', i);
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							from,
 							to,
@@ -308,8 +308,8 @@ export class Sms77 implements INodeType {
 				if (resource === 'voice') {
 					if (operation === 'send') {
 						const to = this.getNodeParameter('to', i) as string;
-						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const text = this.getNodeParameter('message', i);
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							to,
 							text,

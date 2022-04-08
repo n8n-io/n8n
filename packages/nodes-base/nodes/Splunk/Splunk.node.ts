@@ -241,7 +241,7 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#saved.2Fsearches
 
 						const qs = {} as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						populate(options, qs);
 						setCount.call(this, qs);
@@ -331,7 +331,7 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs
 
 						const qs = {} as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						populate(options, qs);
 						setCount.call(this, qs);
@@ -362,7 +362,7 @@ export class Splunk implements INodeType {
 						const filters = this.getNodeParameter('filters', i) as IDataObject & {
 							keyValueMatch?: { keyValuePair?: { key: string; value: string; } }
 						};
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const keyValuePair = filters?.keyValueMatch?.keyValuePair;
 

@@ -187,7 +187,7 @@ export class GoogleDocs implements INodeType {
 						const folderId = this.getNodeParameter('folderId', i) as string;
 
 						const body: IDataObject = {
-							name: this.getNodeParameter('title', i) as string,
+							name: this.getNodeParameter('title', i),
 							mimeType: 'application/vnd.google-apps.document',
 							...(folderId && folderId !== 'default') ? { parents: [folderId] } : {},
 						};
@@ -199,7 +199,7 @@ export class GoogleDocs implements INodeType {
 						// https://developers.google.com/docs/api/reference/rest/v1/documents/get
 
 						const documentURL = this.getNodeParameter('documentURL', i) as string;
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 						let documentId = extractID(documentURL);
 
 						if (!documentId) {
@@ -236,7 +236,7 @@ export class GoogleDocs implements INodeType {
 
 						const documentURL = this.getNodeParameter('documentURL', i) as string;
 						let documentId = extractID(documentURL);
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 						const actionsUi = this.getNodeParameter('actionsUi', i) as {
 							actionFields: IDataObject[]
 						};

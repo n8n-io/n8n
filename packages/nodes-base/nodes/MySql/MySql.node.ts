@@ -291,7 +291,7 @@ export class MySql implements INodeType {
 				const columns = columnString.split(',').map(column => column.trim());
 				const insertItems = copyInputItems(items, columns);
 				const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 

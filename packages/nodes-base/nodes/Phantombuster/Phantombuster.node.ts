@@ -153,7 +153,7 @@ export class Phantombuster implements INodeType {
 					if (operation === 'getOutput') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -204,9 +204,9 @@ export class Phantombuster implements INodeType {
 					if (operation === 'launch') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

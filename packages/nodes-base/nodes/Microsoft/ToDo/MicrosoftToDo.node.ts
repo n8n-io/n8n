@@ -188,7 +188,7 @@ export class MicrosoftToDo implements INodeType {
 
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const body: IDataObject = {
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							...this.getNodeParameter('additionalFields', i),
 						};
 

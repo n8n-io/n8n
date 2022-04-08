@@ -444,7 +444,7 @@ export class GoogleSlides implements INodeType {
 
 						const download = this.getNodeParameter('download', 0) as boolean;
 						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							const data = await this.helpers.request({
 								uri: responseData.contentUrl,
@@ -479,7 +479,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 
 						const body = {
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 						};
 
 						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
@@ -517,7 +517,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const requests = texts.map((text => {
 							return {
 								replaceAllText: {

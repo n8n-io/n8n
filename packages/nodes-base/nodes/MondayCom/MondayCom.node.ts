@@ -282,7 +282,7 @@ export class MondayCom implements INodeType {
 						responseData = responseData.data.archive_board;
 					}
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const kind = this.getNodeParameter('kind', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -367,7 +367,7 @@ export class MondayCom implements INodeType {
 				if (resource === 'boardColumn') {
 					if (operation === 'create') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const columnType = this.getNodeParameter('columnType', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -426,7 +426,7 @@ export class MondayCom implements INodeType {
 				if (resource === 'boardGroup') {
 					if (operation === 'create') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IGraphqlBody = {
 							query:
@@ -572,7 +572,7 @@ export class MondayCom implements INodeType {
 					if (operation === 'create') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 						const groupId = this.getNodeParameter('groupId', i) as string;
-						const itemName = this.getNodeParameter('name', i) as string;
+						const itemName = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IGraphqlBody = {

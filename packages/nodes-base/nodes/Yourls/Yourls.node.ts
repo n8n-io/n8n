@@ -69,7 +69,7 @@ export class Yourls implements INodeType {
 			try {
 				if (resource === 'url') {
 					if (operation === 'shorten') {
-						const url = this.getNodeParameter('url', i) as string;
+						const url = this.getNodeParameter('url', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs.url = url;
 						qs.action = 'shorturl';

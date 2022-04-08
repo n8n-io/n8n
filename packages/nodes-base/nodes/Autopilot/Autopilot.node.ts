@@ -322,7 +322,7 @@ export class Autopilot implements INodeType {
 				if (resource === 'list') {
 					if (operation === 'create') {
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IDataObject = {
 							name,

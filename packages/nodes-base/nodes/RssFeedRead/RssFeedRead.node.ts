@@ -41,7 +41,7 @@ export class RssFeedRead implements INodeType {
 
 		try{
 
-			const url = this.getNodeParameter('url', 0) as string;
+			const url = this.getNodeParameter('url');
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');

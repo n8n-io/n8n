@@ -132,7 +132,7 @@ export class AgileCrm implements INodeType {
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
 
 				} else if (operation === 'getAll') {
-					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const simple = this.getNodeParameter('simple');
 					const returnAll = this.getNodeParameter('returnAll');
 					const filterType = this.getNodeParameter('filterType', i) as string;
 					const sort = this.getNodeParameter('options.sort.sort', i, {}) as { direction: string, field: string };
@@ -188,7 +188,7 @@ export class AgileCrm implements INodeType {
 					}
 
 				} else if (operation === 'create') {
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 					const body: IContact = {};
 					const properties: IDataObject[] = [];
 
@@ -344,7 +344,7 @@ export class AgileCrm implements INodeType {
 				} else if (operation === 'update') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
 					const contactUpdatePayload: IContactUpdate = { id: contactId };
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 					const body: IContact = {};
 					const properties: IDataObject[] = [];
 
@@ -525,7 +525,7 @@ export class AgileCrm implements INodeType {
 					}
 
 				} else if (operation === 'create') {
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					const body: IDeal = {};
 
@@ -547,7 +547,7 @@ export class AgileCrm implements INodeType {
 						body.expected_value = this.getNodeParameter('expectedValue', i) as number;
 						body.milestone = this.getNodeParameter('milestone', i) as string;
 						body.probability = this.getNodeParameter('probability', i) as number;
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 
 						if (additionalFields.contactIds) {
 							body.contactIds = additionalFields.contactIds as string[];
@@ -564,7 +564,7 @@ export class AgileCrm implements INodeType {
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
 
 				} else if (operation === 'update') {
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					const body: IDeal = {};
 

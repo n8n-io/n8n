@@ -75,7 +75,7 @@ export class Peekalink implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'isAvailable') {
-					const url = this.getNodeParameter('url', i) as string;
+					const url = this.getNodeParameter('url', i);
 					const body: IDataObject = {
 						link: url,
 					};
@@ -83,7 +83,7 @@ export class Peekalink implements INodeType {
 					responseData = await peekalinkApiRequest.call(this, 'POST', `/is-available/`, body);
 				}
 				if (operation === 'preview') {
-					const url = this.getNodeParameter('url', i) as string;
+					const url = this.getNodeParameter('url', i);
 					const body: IDataObject = {
 						link: url,
 					};

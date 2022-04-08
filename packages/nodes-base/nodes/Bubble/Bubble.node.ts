@@ -141,8 +141,8 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}`;
 
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonParameters = this.getNodeParameter('jsonParameters');
+					const options = this.getNodeParameter('options', i);
 
 					if (jsonParameters === false) {
 						if (options.filters) {

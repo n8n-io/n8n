@@ -248,7 +248,7 @@ export class MicrosoftSql implements INodeType {
 				//         executeQuery
 				// ----------------------------------
 
-				const rawQuery = this.getNodeParameter('query', 0) as string;
+				const rawQuery = this.getNodeParameter('query');
 
 				const queryResult = await pool.request().query(rawQuery);
 

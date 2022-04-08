@@ -168,7 +168,7 @@ export class Linear implements INodeType {
 				if (resource === 'issue') {
 					if (operation === 'create') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IGraphqlBody = {
 							query: query.createIssue(),

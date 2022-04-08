@@ -327,7 +327,7 @@ export class AwsSqs implements INodeType {
 				const options = this.getNodeParameter('options', i, {}) as IDataObject;
 				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
-				const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i) as string;
+				const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i);
 				params.push(`MessageBody=${message}`);
 
 				if (options.delaySeconds) {

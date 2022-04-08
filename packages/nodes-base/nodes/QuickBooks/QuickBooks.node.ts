@@ -538,7 +538,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const estimateId = this.getNodeParameter('estimateId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 
@@ -681,7 +681,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 
@@ -853,7 +853,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 

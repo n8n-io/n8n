@@ -226,7 +226,7 @@ export class Stripe implements INodeType {
 
 						const body = {
 							customer: this.getNodeParameter('customerId', i),
-							currency: (this.getNodeParameter('currency', i) as string).toLowerCase(),
+							currency: (this.getNodeParameter('currency', i)).toLowerCase(),
 							amount: this.getNodeParameter('amount', i),
 							source: this.getNodeParameter('source', i),
 						} as IDataObject;

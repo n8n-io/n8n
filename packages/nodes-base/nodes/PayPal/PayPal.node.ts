@@ -91,7 +91,7 @@ export class PayPal implements INodeType {
 					if (operation === 'create') {
 						const body: IPaymentBatch = {};
 						const header: ISenderBatchHeader = {};
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const senderBatchId = this.getNodeParameter('senderBatchId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						header.sender_batch_id = senderBatchId;

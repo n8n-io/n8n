@@ -981,7 +981,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/create_company
 						if (operation === 'upsert') {
 							const email = this.getNodeParameter('email', i) as string;
-							const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+							const resolveData = this.getNodeParameter('resolveData', i);
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const body: IDataObject[] = [];
 							if (additionalFields.annualRevenue) {
@@ -1420,7 +1420,7 @@ export class Hubspot implements INodeType {
 					if (resource === 'company') {
 						//https://developers.hubspot.com/docs/methods/companies/create_company
 						if (operation === 'create') {
-							const name = this.getNodeParameter('name', i) as string;
+							const name = this.getNodeParameter('name', i);
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const body: IDataObject[] = [];
 							body.push({
@@ -1876,7 +1876,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/companies/get-all-companies
 						if (operation === 'getAll') {
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 							const returnAll = this.getNodeParameter('returnAll');
 							if (options.includeMergeAudits) {
 								qs.includeMergeAudits = options.includeMergeAudits as boolean;
@@ -1920,7 +1920,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/search_companies_by_domain
 						if (operation === 'searchByDomain') {
 							const domain = this.getNodeParameter('domain', i) as string;
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 							const returnAll = this.getNodeParameter('returnAll');
 							const body: IDataObject = {
 								requestOptions: {},

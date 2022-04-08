@@ -114,7 +114,7 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
 						const credentials = await this.getCredentials('aws');
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
 							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
@@ -165,7 +165,7 @@ export class AwsS3 implements INodeType {
 
 					// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
 					if (operation === 'delete') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						responseData = await awsApiRequestSOAP.call(this, `${name}.s3`, 'DELETE', '', '', {}, headers);
 						returnData.push({ success: true });
@@ -312,7 +312,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options');
 
 						if (options.folderKey) {
 							qs['prefix'] = options.folderKey as string;
@@ -459,7 +459,7 @@ export class AwsS3 implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = Buffer.from(response.body as string, 'utf8');
 
@@ -471,7 +471,7 @@ export class AwsS3 implements INodeType {
 
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (options.versionId) {
 							qs.versionId = options.versionId as string;
@@ -489,7 +489,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options');
 
 						if (options.folderKey) {
 							qs['prefix'] = options.folderKey as string;
@@ -526,7 +526,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'upload') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject).tagsValues as IDataObject[];
 						let path = '/';
@@ -594,7 +594,7 @@ export class AwsS3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');

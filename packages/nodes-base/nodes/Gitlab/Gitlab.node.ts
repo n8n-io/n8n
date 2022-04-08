@@ -1182,7 +1182,7 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'POST';
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 						body.description = this.getNodeParameter('body', i) as string;
 						body.due_date = this.getNodeParameter('due_date', i) as string;
 						const labels = this.getNodeParameter('labels', i) as IDataObject[];

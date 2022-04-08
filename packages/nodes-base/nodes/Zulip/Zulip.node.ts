@@ -169,7 +169,7 @@ export class Zulip implements INodeType {
 					//https://zulipchat.com/api/send-message
 					if (operation === 'sendStream') {
 						const stream = this.getNodeParameter('stream', i) as string;
-						const topic = this.getNodeParameter('topic', i) as string;
+						const topic = this.getNodeParameter('topic', i);
 						const content = this.getNodeParameter('content', i) as string;
 						const body: IMessage = {
 							type: 'stream',
@@ -273,7 +273,7 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'create') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
 
 						body.subscriptions = JSON.stringify(subscriptions.properties);
@@ -332,7 +332,7 @@ export class Zulip implements INodeType {
 					if (operation === 'update') {
 						const streamId = this.getNodeParameter('streamId', i) as string;
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -411,7 +411,7 @@ export class Zulip implements INodeType {
 
 					if (operation === 'create') {
 						body.email = this.getNodeParameter('email', i) as string;
-						body.password = this.getNodeParameter('password', i) as string;
+						body.password = this.getNodeParameter('password', i);
 						body.full_name = this.getNodeParameter('fullName', i) as string;
 						body.short_name = this.getNodeParameter('shortName', i) as string;
 

@@ -207,7 +207,7 @@ export class Compression implements INodeType {
 			try {
 
 				if (operation === 'decompress') {
-					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
+					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName')).split(',').map(key => key.trim());
 
 					const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
@@ -261,7 +261,7 @@ export class Compression implements INodeType {
 				}
 
 				if (operation === 'compress') {
-					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
+					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName')).split(',').map(key => key.trim());
 
 					const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
 

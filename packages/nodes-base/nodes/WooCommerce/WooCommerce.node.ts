@@ -247,7 +247,7 @@ export class WooCommerce implements INodeType {
 			} else if (resource === 'product') {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-a-product
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IProduct = {
 						name,
@@ -303,7 +303,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-products
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.after) {
 						qs.after = options.after as string;
 					}
@@ -497,7 +497,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.after) {
 						qs.after = options.after as string;
 					}

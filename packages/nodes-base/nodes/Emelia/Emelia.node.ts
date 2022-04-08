@@ -304,7 +304,7 @@ export class Emelia implements INodeType {
 						//        campaign: duplicate
 						// ----------------------------------
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const variables = {
 							fromId: this.getNodeParameter('campaignId', i),
 							name: this.getNodeParameter('campaignName', i),

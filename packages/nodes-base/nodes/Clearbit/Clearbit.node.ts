@@ -136,7 +136,7 @@ export class Clearbit implements INodeType {
 						responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/companies/find', {}, qs);
 					}
 					if (operation === 'autocomplete') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						qs.query = name;
 						responseData = await clearbitApiRequest.call(this, 'GET', 'autocomplete', '/v1/companies/suggest', {}, qs);
 					}

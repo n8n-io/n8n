@@ -1056,7 +1056,7 @@ export class GoogleSheets implements INodeType {
 
 			let range = '';
 			if (!['create', 'delete', 'remove'].includes(operation)) {
-				range = this.getNodeParameter('range', 0) as string;
+				range = this.getNodeParameter('range');
 			}
 
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
@@ -1115,7 +1115,7 @@ export class GoogleSheets implements INodeType {
 					try {
 						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
-						const simple = this.getNodeParameter('simple', 0) as boolean;
+						const simple = this.getNodeParameter('simple');
 						const properties = { ...options };
 
 						if (options.tabColor) {
@@ -1232,7 +1232,7 @@ export class GoogleSheets implements INodeType {
 				//         read
 				// ----------------------------------
 				try {
-					const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const rawData = this.getNodeParameter('rawData');
 
 					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
@@ -1298,7 +1298,7 @@ export class GoogleSheets implements INodeType {
 				//         update
 				// ----------------------------------
 				try {
-					const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const rawData = this.getNodeParameter('rawData');
 
 					const items = this.getInputData();
 
@@ -1355,7 +1355,7 @@ export class GoogleSheets implements INodeType {
 
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
 						const body = {

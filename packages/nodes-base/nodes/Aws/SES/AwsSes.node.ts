@@ -1076,7 +1076,7 @@ export class AwsSes implements INodeType {
 
 						const message = this.getNodeParameter('body', i) as string;
 
-						const subject = this.getNodeParameter('subject', i) as string;
+						const subject = this.getNodeParameter('subject', i);
 
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 

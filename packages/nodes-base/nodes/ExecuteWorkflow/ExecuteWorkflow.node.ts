@@ -146,7 +146,7 @@ export class ExecuteWorkflow implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const source = this.getNodeParameter('source', 0) as string;
+		const source = this.getNodeParameter('source');
 
 		const workflowInfo: IExecuteWorkflowInfo = {};
 

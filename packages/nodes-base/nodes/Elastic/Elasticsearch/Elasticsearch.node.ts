@@ -119,7 +119,7 @@ export class Elasticsearch implements INodeType {
 					const documentId = this.getNodeParameter('documentId', i);
 
 					const qs = {} as IDataObject;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					if (Object.keys(options).length) {
 						Object.assign(qs, options);

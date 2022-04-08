@@ -162,9 +162,9 @@ export class Msg91 implements INodeType {
 
 					qs.route = 4;
 					qs.country = 0;
-					qs.sender = this.getNodeParameter('from', i) as string;
+					qs.sender = this.getNodeParameter('from', i);
 					qs.mobiles = this.getNodeParameter('to', i) as string;
-					qs.message = this.getNodeParameter('message', i) as string;
+					qs.message = this.getNodeParameter('message', i);
 
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);

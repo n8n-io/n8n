@@ -80,7 +80,7 @@ export class Line implements INodeType {
 				if (resource === 'notification') {
 					//https://notify-bot.line.me/doc/en/
 					if (operation === 'send') {
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

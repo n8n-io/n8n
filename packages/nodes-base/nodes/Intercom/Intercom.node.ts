@@ -134,7 +134,7 @@ export class Intercom implements INodeType {
 				if (resource === 'lead') {
 					if (operation === 'create' || operation === 'update') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: ILead = {};
 						if (operation === 'create') {
 							body.email = this.getNodeParameter('email', i) as string;
@@ -279,7 +279,7 @@ export class Intercom implements INodeType {
 				if (resource === 'user') {
 					if (operation === 'create' || operation === 'update') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: IUser = {};
 
 						if (operation === 'create') {
@@ -431,7 +431,7 @@ export class Intercom implements INodeType {
 					if (operation === 'create' || operation === 'update') {
 						const id = this.getNodeParameter('companyId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: ICompany = {
 							company_id: id,
 						};

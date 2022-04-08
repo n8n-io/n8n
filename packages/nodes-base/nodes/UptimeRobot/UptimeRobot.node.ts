@@ -155,7 +155,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'create') {
 						body = {
 							friendly_name: this.getNodeParameter('friendlyName', i) as string,
-							url: this.getNodeParameter('url', i) as string,
+							url: this.getNodeParameter('url', i),
 							type: this.getNodeParameter('type', i) as number,
 						};
 

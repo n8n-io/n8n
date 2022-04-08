@@ -250,7 +250,7 @@ export class MicrosoftOutlook implements INodeType {
 					try {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						const subject = this.getNodeParameter('subject', i) as string;
+						const subject = this.getNodeParameter('subject', i);
 
 						const bodyContent = this.getNodeParameter('bodyContent', i, '') as string;
 
@@ -428,7 +428,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						const response = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -565,7 +565,7 @@ export class MicrosoftOutlook implements INodeType {
 
 						const toRecipients = this.getNodeParameter('toRecipients', i) as string;
 
-						const subject = this.getNodeParameter('subject', i) as string;
+						const subject = this.getNodeParameter('subject', i);
 
 						const bodyContent = this.getNodeParameter('bodyContent', i, '') as string;
 
@@ -635,7 +635,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (items[i].binary === undefined) {
@@ -730,7 +730,7 @@ export class MicrosoftOutlook implements INodeType {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const attachmentId = this.getNodeParameter('attachmentId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						// Get attachment details first
 						const attachmentDetails = await microsoftApiRequest.call(

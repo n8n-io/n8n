@@ -296,7 +296,7 @@ export class Dropcontact implements INodeType {
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 				const data = [];
 				const simplify = this.getNodeParameter('simplify', 0) as boolean;
 

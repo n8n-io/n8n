@@ -100,7 +100,7 @@ export class Uplead implements INodeType {
 				if (resource === 'company') {
 					if (operation === 'enrich') {
 						const domain = this.getNodeParameter('domain', i) as string;
-						const company = this.getNodeParameter('company', i) as string;
+						const company = this.getNodeParameter('company', i);
 						if (domain) {
 							qs.domain = domain;
 						}

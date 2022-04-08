@@ -133,7 +133,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 				if (resource === 'account') {
 					//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/create-entity-web-api
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						// tslint:disable-next-line: no-any
 						const additionalFields = this.getNodeParameter('additionalFields', i) as { addresses: { address: [{ [key: string]: any }] } };
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
@@ -169,7 +169,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'get') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/retrieve-entity-using-web-api
 						const accountId = this.getNodeParameter('accountId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.returnFields) {
 							qs['$select'] = (options.returnFields as string[]).join(',');
 						}
@@ -182,7 +182,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'getAll') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (options.returnFields) {
 							qs['$select'] = (options.returnFields as string[]).join(',');

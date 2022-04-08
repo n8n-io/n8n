@@ -223,7 +223,7 @@ export class SeaTable implements INodeType {
 						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
 						qs.table_name = tableName;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const returnAll = this.getNodeParameter('returnAll');
 
 						Object.assign(qs, filters, options);

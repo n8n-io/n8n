@@ -1936,7 +1936,7 @@ export class Telegram implements INodeType {
 						endpoint = 'setChatDescription';
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.description = this.getNodeParameter('description', i) as string;
+						body.description = this.getNodeParameter('description', i);
 
 					} else if (operation === 'setTitle') {
 						// ----------------------------------
@@ -1946,7 +1946,7 @@ export class Telegram implements INodeType {
 						endpoint = 'setChatTitle';
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 
 					}
 					// } else if (resource === 'bot') {
@@ -1983,7 +1983,7 @@ export class Telegram implements INodeType {
 							body.message_id = this.getNodeParameter('messageId', i) as string;
 						}
 
-						body.text = this.getNodeParameter('text', i) as string;
+						body.text = this.getNodeParameter('text', i);
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
@@ -2094,7 +2094,7 @@ export class Telegram implements INodeType {
 						endpoint = 'sendMessage';
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.text = this.getNodeParameter('text', i) as string;
+						body.text = this.getNodeParameter('text', i);
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
@@ -2167,7 +2167,7 @@ export class Telegram implements INodeType {
 				let responseData;
 
 				if (binaryData === true) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);

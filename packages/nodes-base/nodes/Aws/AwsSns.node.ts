@@ -141,9 +141,9 @@ export class AwsSns implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const params = [
-					'TopicArn=' + this.getNodeParameter('topic', i) as string,
-					'Subject=' + this.getNodeParameter('subject', i) as string,
-					'Message=' + this.getNodeParameter('message', i) as string,
+					'TopicArn=' + this.getNodeParameter('topic', i),
+					'Subject=' + this.getNodeParameter('subject', i),
+					'Message=' + this.getNodeParameter('message', i),
 				];
 
 

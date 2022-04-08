@@ -235,7 +235,7 @@ export class PostHog implements INodeType {
 					try {
 						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

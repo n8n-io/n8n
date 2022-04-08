@@ -264,7 +264,7 @@ export class GoogleChat implements INodeType {
 
 						items[i] = newItem;
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 
@@ -391,7 +391,7 @@ export class GoogleChat implements INodeType {
 						}
 
 						let message: IMessage = {};
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						if (jsonParameters) {
 							const messageJson = this.getNodeParameter('messageJson', i);
 
@@ -475,7 +475,7 @@ export class GoogleChat implements INodeType {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 
 						let message: IMessage = {};
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						if (jsonParameters) {
 							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i);
 
@@ -560,7 +560,7 @@ export class GoogleChat implements INodeType {
 						}
 
 						let message: IMessage = {};
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						if (jsonParameters) {
 							const messageJson = this.getNodeParameter('messageJson', i);
 

@@ -400,7 +400,7 @@ export class Misp implements INodeType {
 						//               feed: create
 						// ----------------------------------------
 
-						const url = this.getNodeParameter('url', i) as string;
+						const url = this.getNodeParameter('url', i);
 
 						throwOnInvalidUrl.call(this, url);
 

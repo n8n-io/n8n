@@ -315,7 +315,7 @@ export class GoToWebinar implements INodeType {
 
 						const body = [
 							{
-								name: this.getNodeParameter('name', i) as string,
+								name: this.getNodeParameter('name', i),
 								email: this.getNodeParameter('email', i) as string,
 							},
 						] as IDataObject[];
@@ -559,7 +559,7 @@ export class GoToWebinar implements INodeType {
 						const timesProperties = this.getNodeParameter('times.timesProperties', i, []) as IDataObject;
 
 						const body = {
-							subject: this.getNodeParameter('subject', i) as string,
+							subject: this.getNodeParameter('subject', i),
 							times: timesProperties,
 						} as IDataObject;
 

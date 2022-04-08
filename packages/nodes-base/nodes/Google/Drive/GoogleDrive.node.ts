@@ -2132,7 +2132,7 @@ export class GoogleDrive implements INodeType {
 						//         create
 						// ----------------------------------
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IDataObject = {
 							name,
@@ -2242,7 +2242,7 @@ export class GoogleDrive implements INodeType {
 						// ----------------------------------
 
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const requestOptions = {
 							resolveWithFullResponse: true,
@@ -2295,7 +2295,7 @@ export class GoogleDrive implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = Buffer.from(response.body as string);
 
@@ -2393,7 +2393,7 @@ export class GoogleDrive implements INodeType {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
-						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+						const resolveData = this.getNodeParameter('resolveData');
 
 						let mimeType = 'text/plain';
 						let body;
@@ -2406,7 +2406,7 @@ export class GoogleDrive implements INodeType {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
@@ -2426,7 +2426,7 @@ export class GoogleDrive implements INodeType {
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
 						}
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const parents = this.getNodeParameter('parents', i) as string[];
 
 						let qs: IDataObject = {
@@ -2513,7 +2513,7 @@ export class GoogleDrive implements INodeType {
 						//         folder:create
 						// ----------------------------------
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body = {
 							name,
@@ -2553,7 +2553,7 @@ export class GoogleDrive implements INodeType {
 
 						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {};
 

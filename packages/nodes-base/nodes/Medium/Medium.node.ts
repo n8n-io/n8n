@@ -460,7 +460,7 @@ export class Medium implements INodeType {
 						//         post:create
 						// ----------------------------------
 
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 						const content = this.getNodeParameter('content', i) as string;
 						bodyRequest = {

@@ -218,7 +218,7 @@ export class MicrosoftExcel implements INodeType {
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
 							if (filters.fields) {
@@ -262,7 +262,7 @@ export class MicrosoftExcel implements INodeType {
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
 							if (filters.fields) {
@@ -313,7 +313,7 @@ export class MicrosoftExcel implements INodeType {
 						const tableId = this.getNodeParameter('table', i) as string;
 						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
 						const lookupValue = this.getNodeParameter('lookupValue', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, {});
 
@@ -425,8 +425,8 @@ export class MicrosoftExcel implements INodeType {
 					if (operation === 'getContent') {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
-						const range = this.getNodeParameter('range', i) as string;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const range = this.getNodeParameter('range', i);
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
 							if (filters.fields) {

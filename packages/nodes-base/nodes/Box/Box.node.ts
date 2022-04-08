@@ -123,7 +123,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
 
 						const fileName = responseData.name;
@@ -166,7 +166,7 @@ export class Box implements INodeType {
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
@@ -208,7 +208,7 @@ export class Box implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						// tslint:disable-next-line: no-any
 						const body: { accessible_by: IDataObject, [key: string]: any } = {
 							accessible_by: {},
@@ -251,7 +251,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
 						const attributes: IDataObject = {};
@@ -264,7 +264,7 @@ export class Box implements INodeType {
 						}
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -324,9 +324,9 @@ export class Box implements INodeType {
 				if (resource === 'folder') {
 					// https://developer.box.com/reference/post-folders
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {
 							name,
 						};
@@ -369,7 +369,7 @@ export class Box implements INodeType {
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
@@ -411,7 +411,7 @@ export class Box implements INodeType {
 						const folderId = this.getNodeParameter('folderId', i) as string;
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						// tslint:disable-next-line: no-any
 						const body: { accessible_by: IDataObject, [key: string]: any } = {
 							accessible_by: {},

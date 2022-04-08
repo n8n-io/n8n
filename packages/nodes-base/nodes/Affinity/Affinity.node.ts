@@ -254,7 +254,7 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#get-a-specific-person
 					if (operation === 'get') {
 						const personId = this.getNodeParameter('personId', i) as number;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
@@ -263,7 +263,7 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#search-for-persons
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.term) {
 							qs.term = options.term as string;
 						}
@@ -287,7 +287,7 @@ export class Affinity implements INodeType {
 				if (resource === 'organization') {
 					//https://api-docs.affinity.co/#create-a-new-organization
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const domain = this.getNodeParameter('domain', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IOrganization = {
@@ -318,7 +318,7 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#get-a-specific-organization
 					if (operation === 'get') {
 						const organizationId = this.getNodeParameter('organizationId', i) as number;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
@@ -327,7 +327,7 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#search-for-organizations
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.term) {
 							qs.term = options.term as string;
 						}

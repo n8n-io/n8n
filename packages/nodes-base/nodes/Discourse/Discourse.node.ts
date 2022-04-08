@@ -153,7 +153,7 @@ export class Discourse implements INodeType {
 				if (resource === 'category') {
 					//https://docs.discourse.org/#tag/Categories/paths/~1categories.json/post
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const color = this.getNodeParameter('color', i) as string;
 						const textColor = this.getNodeParameter('textColor', i) as string;
 
@@ -195,7 +195,7 @@ export class Discourse implements INodeType {
 					if (operation === 'update') {
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -218,7 +218,7 @@ export class Discourse implements INodeType {
 				if (resource === 'group') {
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/post
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IDataObject = {
 							name,
@@ -235,7 +235,7 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Groups/paths/~1groups~1{name}.json/get
 					if (operation === 'get') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						responseData = await discourseApiRequest.call(
 							this,
@@ -271,7 +271,7 @@ export class Discourse implements INodeType {
 					if (operation === 'update') {
 						const groupId = this.getNodeParameter('groupId', i) as string;
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IDataObject = {
 							name,
@@ -289,7 +289,7 @@ export class Discourse implements INodeType {
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/post
 					if (operation === 'create') {
 						const content = this.getNodeParameter('content', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
@@ -367,7 +367,7 @@ export class Discourse implements INodeType {
 				// 	if (operation === 'query') {
 				// 		qs.term = this.getNodeParameter('term', i) as string;
 
-				// 		const simple = this.getNodeParameter('simple', i) as boolean;
+				// 		const simple = this.getNodeParameter('simple', i);
 
 				// 		const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -397,9 +397,9 @@ export class Discourse implements INodeType {
 				if (resource === 'user') {
 					//https://docs.discourse.org/#tag/Users/paths/~1users/post
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const email = this.getNodeParameter('email', i) as string;
-						const password = this.getNodeParameter('password', i) as string;
+						const password = this.getNodeParameter('password', i);
 						const username = this.getNodeParameter('username', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

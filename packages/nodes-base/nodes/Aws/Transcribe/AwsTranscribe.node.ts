@@ -493,7 +493,7 @@ export class AwsTranscribe implements INodeType {
 
 						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
 							responseData = await this.helpers.request({ method: 'GET', uri: responseData.Transcript.TranscriptFileUri, json: true });
-							const simple = this.getNodeParameter('simple', 0) as boolean;
+							const simple = this.getNodeParameter('simple');
 							if (simple === true) {
 								responseData = { transcript: responseData.results.transcripts.map((data: IDataObject) => data.transcript).join(' ') };
 							}

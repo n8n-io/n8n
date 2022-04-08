@@ -763,8 +763,8 @@ export class OneSimpleApi implements INodeType {
 				if (resource === 'website') {
 					if (operation === 'pdf') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 						qs.url = link;
 
 						if (options.page) {
@@ -795,8 +795,8 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'screenshot') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 
 						qs.url = link;
 
@@ -834,7 +834,7 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'seo') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						qs.url = link;
 
 						if (options.headers) {
@@ -893,9 +893,9 @@ export class OneSimpleApi implements INodeType {
 					}
 
 					if (operation === 'qrCode') {
-						const message = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const message = this.getNodeParameter('message', i);
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 
 						qs.message = message;
 

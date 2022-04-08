@@ -113,12 +113,12 @@ export class ProfitWell implements INodeType {
 					if (operation === 'get') {
 						const type = this.getNodeParameter('type', i) as string;
 
-						const simple = this.getNodeParameter('simple', 0) as boolean;
+						const simple = this.getNodeParameter('simple');
 
 						if (type === 'daily') {
 							qs.month = this.getNodeParameter('month', i) as string;
 						}
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 

@@ -280,7 +280,7 @@ export class CiscoWebex implements INodeType {
 
 				if (resource === 'meeting') {
 					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
 						const invitees = this.getNodeParameter('additionalFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
@@ -310,7 +310,7 @@ export class CiscoWebex implements INodeType {
 
 					if (operation === 'delete') {
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const qs: IDataObject = {
 							...options,
@@ -322,7 +322,7 @@ export class CiscoWebex implements INodeType {
 
 					if (operation === 'get') {
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						let headers = {};
 
 						const qs: IDataObject = {
@@ -438,9 +438,9 @@ export class CiscoWebex implements INodeType {
 		// 	if (operation === 'download') {
 		// 		for (let i = 0; i < items.length; i++) {
 		// 			const transcriptId = this.getNodeParameter('transcriptId', i) as string;
-		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 		// 			const meetingId = this.getNodeParameter('meetingId', i) as string;
-		// 			const options = this.getNodeParameter('options', i) as IDataObject;
+		// 			const options = this.getNodeParameter('options', i);
 
 		// 			const qs: IDataObject = {
 		// 				meetingId,

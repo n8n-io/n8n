@@ -89,9 +89,9 @@ export class Sendy implements INodeType {
 
 					const replyTo = this.getNodeParameter('replyTo', i) as string;
 
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 
-					const subject = this.getNodeParameter('subject', i) as string;
+					const subject = this.getNodeParameter('subject', i);
 
 					const htmlText = this.getNodeParameter('htmlText', i) as boolean;
 

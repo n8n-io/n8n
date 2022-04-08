@@ -463,7 +463,7 @@ export class ElasticSecurity implements INodeType {
 
 						// https://www.elastic.co/guide/en/security/current/cases-api-add-comment.html
 
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -532,7 +532,7 @@ export class ElasticSecurity implements INodeType {
 
 						// https://www.elastic.co/guide/en/security/current/cases-api-update-comment.html
 
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 						const caseId = this.getNodeParameter('caseId', i);
 						const commentId = this.getNodeParameter('commentId', i);
 
@@ -568,7 +568,7 @@ export class ElasticSecurity implements INodeType {
 
 						const body: ConnectorCreatePayload = {
 							connector_type_id: connectorType,
-							name: this.getNodeParameter('name', i) as string,
+							name: this.getNodeParameter('name', i),
 						};
 
 						if (connectorType === '.jira') {
@@ -595,7 +595,7 @@ export class ElasticSecurity implements INodeType {
 							};
 							body.secrets = {
 								username: this.getNodeParameter('username', i) as string,
-								password: this.getNodeParameter('password', i) as string,
+								password: this.getNodeParameter('password', i),
 							};
 						}
 

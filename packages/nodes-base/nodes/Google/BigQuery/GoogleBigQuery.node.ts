@@ -153,7 +153,7 @@ export class GoogleBigQuery implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					Object.assign(body, options);
 					if (body.traceId === undefined) {
 						body.traceId = uuid();
@@ -191,7 +191,7 @@ export class GoogleBigQuery implements INodeType {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const datasetId = this.getNodeParameter('datasetId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const simple = this.getNodeParameter('simple', 0) as boolean;
+				const simple = this.getNodeParameter('simple');
 				let fields;
 
 				if (simple === true) {
@@ -205,7 +205,7 @@ export class GoogleBigQuery implements INodeType {
 				}
 
 				for (let i = 0; i < length; i++) {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					Object.assign(qs, options);
 
 					// if (qs.useInt64Timestamp !== undefined) {

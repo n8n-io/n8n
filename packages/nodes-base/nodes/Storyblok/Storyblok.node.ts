@@ -182,7 +182,7 @@ export class Storyblok implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const source = this.getNodeParameter('source', 0) as string;
+		const source = this.getNodeParameter('source');
 		const resource = this.getNodeParameter('resource');
 		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
@@ -215,9 +215,9 @@ export class Storyblok implements INodeType {
 					if (resource === 'story') {
 						// if (operation === 'create') {
 						// 	const space = this.getNodeParameter('space', i) as string;
-						// 	const name = this.getNodeParameter('name', i) as string;
+						// 	const name = this.getNodeParameter('name', i);
 						// 	const slug = this.getNodeParameter('slug', i) as string;
-						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						// 	const additionalFields = this.getNodeParameter('additionalFields', i);
 						// 	const body: IDataObject = {
 						// 		name,
@@ -301,7 +301,7 @@ export class Storyblok implements INodeType {
 						if (operation === 'publish') {
 							const space = this.getNodeParameter('space', i) as string;
 							const storyId = this.getNodeParameter('storyId', i) as string;
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 							const query: IDataObject = {};
 							// Not sure if these two options work
 							if (options.releaseId) {

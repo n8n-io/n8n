@@ -236,7 +236,7 @@ export class Coda implements INodeType {
 						qs = {};
 						const docId = this.getNodeParameter('docId', i) as string;
 						const tableId = this.getNodeParameter('tableId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 
 						if (options.disableParsing) {
@@ -289,7 +289,7 @@ export class Coda implements INodeType {
 						const docId = this.getNodeParameter('docId', i) as string;
 						const tableId = this.getNodeParameter('tableId', i) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const endpoint = `/docs/${docId}/tables/${tableId}/rows/${rowId}`;
 						if (options.useColumnNames === false) {
@@ -326,7 +326,7 @@ export class Coda implements INodeType {
 				const docId = this.getNodeParameter('docId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll');
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 				if (options.useColumnNames === false) {
 					qs.useColumnNames = options.useColumnNames as boolean;
@@ -604,7 +604,7 @@ export class Coda implements INodeType {
 				const docId = this.getNodeParameter('docId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll');
 				const viewId = this.getNodeParameter('viewId', 0) as string;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
 				if (options.useColumnNames === false) {
 					qs.useColumnNames = options.useColumnNames as boolean;
@@ -722,7 +722,7 @@ export class Coda implements INodeType {
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
 						const keyName = this.getNodeParameter('keyName', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}`;
 						if (options.disableParsing) {

@@ -235,7 +235,7 @@ export class Cortex implements INodeType {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);

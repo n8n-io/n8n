@@ -357,7 +357,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
 							this,
@@ -374,7 +374,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						if (returnAll) {
 							responseData = await odooGetAll.call(
@@ -466,7 +466,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
 							this,
@@ -483,7 +483,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
 						if (returnAll) {
@@ -568,7 +568,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const noteId = this.getNodeParameter('noteId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
 							this,
@@ -585,7 +585,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						if (returnAll) {
 							responseData = await odooGetAll.call(
@@ -673,7 +673,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
 							this,
@@ -690,7 +690,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						if (returnAll) {
 							responseData = await odooGetAll.call(

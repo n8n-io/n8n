@@ -599,7 +599,7 @@ export class Egoi implements INodeType {
 
 						const email = this.getNodeParameter('email', i) as string;
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -643,7 +643,7 @@ export class Egoi implements INodeType {
 
 						const listId = this.getNodeParameter('list', i) as string;
 
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 
 						const by = this.getNodeParameter('by', 0) as string;
 
@@ -683,7 +683,7 @@ export class Egoi implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll');
 
-						const simple = this.getNodeParameter('simple', i) as boolean;
+						const simple = this.getNodeParameter('simple', i);
 
 						if (returnAll) {
 
@@ -705,7 +705,7 @@ export class Egoi implements INodeType {
 					if (operation === 'update') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICreateMemberBody = {

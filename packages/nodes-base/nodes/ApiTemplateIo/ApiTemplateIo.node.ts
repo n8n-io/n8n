@@ -449,11 +449,11 @@ export class ApiTemplateIo implements INodeType {
 				// https://docs.apitemplate.io/reference/api-reference.html#create-an-image-jpeg-and-png
 				for (let i = 0; i < length; i++) {
 					try {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						let options: IDataObject = {};
 						if (download) {
-							options = this.getNodeParameter('options', i) as IDataObject;
+							options = this.getNodeParameter('options', i);
 						}
 
 						const qs = {
@@ -486,7 +486,7 @@ export class ApiTemplateIo implements INodeType {
 						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, body);
 
 						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(data, options.fileName || fileName);
@@ -529,11 +529,11 @@ export class ApiTemplateIo implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					try {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						let options: IDataObject = {};
 						if (download) {
-							options = this.getNodeParameter('options', i) as IDataObject;
+							options = this.getNodeParameter('options', i);
 						}
 
 						const qs = {
@@ -559,7 +559,7 @@ export class ApiTemplateIo implements INodeType {
 						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, data);
 
 						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(data, options.fileName || fileName);

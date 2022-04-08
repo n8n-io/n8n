@@ -401,7 +401,7 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'clients';
 
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -469,7 +469,7 @@ export class Harvest implements INodeType {
 						endpoint = 'projects';
 
 						body.client_id = this.getNodeParameter('clientId', i) as string;
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 						body.is_billable = this.getNodeParameter('isBillable', i) as string;
 						body.bill_by = this.getNodeParameter('billBy', i) as string;
 						body.budget_by = this.getNodeParameter('budgetBy', i) as string;
@@ -703,7 +703,7 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'tasks';
 
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);

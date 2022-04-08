@@ -330,7 +330,7 @@ export class Grafana implements INodeType {
 						// https://grafana.com/docs/grafana/latest/http_api/team/#add-team
 
 						const body = {
-							name: this.getNodeParameter('name', i) as string,
+							name: this.getNodeParameter('name', i),
 						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);

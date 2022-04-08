@@ -116,7 +116,7 @@ export class DeepL implements INodeType {
 
 					if (operation === 'translate') {
 
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const translateTo = this.getNodeParameter('translateTo', i) as string;
 						const qs = { target_lang: translateTo, text } as IDataObject;
 

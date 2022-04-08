@@ -116,7 +116,7 @@ export class S3 implements INodeType {
 							throw new NodeApiError(this.getNode(), error);
 						}
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
 							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
@@ -305,7 +305,7 @@ export class S3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options');
 
 						if (options.folderKey) {
 							qs['prefix'] = options.folderKey as string;
@@ -452,7 +452,7 @@ export class S3 implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = Buffer.from(response.body as string, 'utf8');
 
@@ -464,7 +464,7 @@ export class S3 implements INodeType {
 
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (options.versionId) {
 							qs.versionId = options.versionId as string;
@@ -482,7 +482,7 @@ export class S3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options');
 
 						if (options.folderKey) {
 							qs['prefix'] = options.folderKey as string;
@@ -519,7 +519,7 @@ export class S3 implements INodeType {
 					if (operation === 'upload') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject).tagsValues as IDataObject[];
 						let path = '/';
@@ -588,7 +588,7 @@ export class S3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');

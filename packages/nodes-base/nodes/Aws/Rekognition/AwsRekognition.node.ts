@@ -454,11 +454,11 @@ export class AwsRekognition implements INodeType {
 								body.Filters.WordFilter = keysTPascalCase(wordFilter);
 							}
 
-							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+							const binaryData = this.getNodeParameter('binaryData');
 
 							if (binaryData) {
 
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
 
 								if (items[i].binary === undefined) {
 									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -480,7 +480,7 @@ export class AwsRekognition implements INodeType {
 
 								const bucket = this.getNodeParameter('bucket', i) as string;
 
-								const name = this.getNodeParameter('name', i) as string;
+								const name = this.getNodeParameter('name', i);
 
 								Object.assign(body, {
 									Image: {

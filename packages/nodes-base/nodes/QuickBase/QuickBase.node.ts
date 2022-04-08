@@ -145,7 +145,7 @@ export class QuickBase implements INodeType {
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const qs: IDataObject = {
 						tableId,
@@ -209,7 +209,7 @@ export class QuickBase implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					responseData = await quickbaseApiRequest.call(this, 'GET', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`, {}, {}, { json: false, resolveWithFullResponse: true });
 
@@ -229,11 +229,11 @@ export class QuickBase implements INodeType {
 			if (operation === 'create') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const simple = this.getNodeParameter('simple', 0) as boolean;
+				const simple = this.getNodeParameter('simple');
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -316,7 +316,7 @@ export class QuickBase implements INodeType {
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {
 						from: tableId,
@@ -369,13 +369,13 @@ export class QuickBase implements INodeType {
 
 				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
 
-				const simple = this.getNodeParameter('simple', 0) as boolean;
+				const simple = this.getNodeParameter('simple');
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -442,7 +442,7 @@ export class QuickBase implements INodeType {
 			if (operation === 'upsert') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const simple = this.getNodeParameter('simple', 0) as boolean;
+				const simple = this.getNodeParameter('simple');
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
@@ -450,7 +450,7 @@ export class QuickBase implements INodeType {
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options');
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};

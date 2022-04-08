@@ -241,7 +241,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
@@ -269,13 +269,13 @@ export class GoogleContacts implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 						const useQuery = this.getNodeParameter('useQuery', i) as boolean;
 
 						const endpoint = (useQuery) ? ':searchContacts' : '/me/connections';
 
 						if (useQuery) {
-							qs.query = this.getNodeParameter('query', i) as string;
+							qs.query = this.getNodeParameter('query', i);
 						}
 
 						if (options.sortOrder) {

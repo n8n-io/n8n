@@ -254,7 +254,7 @@ export class Signl4 implements INodeType {
 					//https://connect.signl4.com/webhook/docs/index.html
 					// Send alert
 					if (operation === 'send') {
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const data: IDataObject = {

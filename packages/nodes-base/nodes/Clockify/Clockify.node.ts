@@ -250,7 +250,7 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -378,7 +378,7 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IDataObject = {
 							name,
@@ -476,7 +476,7 @@ export class Clockify implements INodeType {
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',

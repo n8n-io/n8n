@@ -168,7 +168,7 @@ export class UrlScanIo implements INodeType {
 						};
 
 						const body: IDataObject = {
-							url: this.getNodeParameter('url', i) as string,
+							url: this.getNodeParameter('url', i),
 							...rest,
 						};
 

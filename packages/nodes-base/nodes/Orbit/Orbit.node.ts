@@ -154,7 +154,7 @@ export class Orbit implements INodeType {
 					if (operation === 'create') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							title,
@@ -288,7 +288,7 @@ export class Orbit implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						qs.resolveIdentities = this.getNodeParameter('resolveIdentities', 0) as boolean;
 						if (returnAll === true) {
@@ -301,10 +301,10 @@ export class Orbit implements INodeType {
 					}
 					if (operation === 'lookup') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const source = this.getNodeParameter('source', i) as string;
+						const source = this.getNodeParameter('source', i);
 
 						if (['github', 'twitter', 'discourse'].includes(source)) {
-							qs.source = this.getNodeParameter('source', i) as string;
+							qs.source = this.getNodeParameter('source', i);
 							const searchBy = this.getNodeParameter('searchBy', i) as string;
 							if (searchBy === 'id') {
 								qs.uid = this.getNodeParameter('id', i) as string;
@@ -411,7 +411,7 @@ export class Orbit implements INodeType {
 					if (operation === 'create') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						const url = this.getNodeParameter('url', i) as string;
+						const url = this.getNodeParameter('url', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'post',

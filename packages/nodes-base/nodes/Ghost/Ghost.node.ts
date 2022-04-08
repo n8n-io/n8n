@@ -154,7 +154,7 @@ export class Ghost implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource');
 		const operation = this.getNodeParameter('operation');
-		const source = this.getNodeParameter('source', 0) as string;
+		const source = this.getNodeParameter('source');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -165,7 +165,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -186,7 +186,7 @@ export class Ghost implements INodeType {
 
 							const returnAll = this.getNodeParameter('returnAll');
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -208,7 +208,7 @@ export class Ghost implements INodeType {
 					if (resource === 'post') {
 						if (operation === 'create') {
 
-							const title = this.getNodeParameter('title', i) as string;
+							const title = this.getNodeParameter('title', i);
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
@@ -265,7 +265,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -287,7 +287,7 @@ export class Ghost implements INodeType {
 
 							const returnAll = this.getNodeParameter('returnAll');
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 

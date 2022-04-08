@@ -197,7 +197,7 @@ export class Gotify implements INodeType {
 				if (resource === 'message') {
 					if (operation === 'create') {
 
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

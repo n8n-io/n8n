@@ -200,7 +200,7 @@ export class Shopify implements INodeType {
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#show-2020-04
 					if (operation === 'get') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.fields) {
 							qs.fields = options.fields as string;
 						}
@@ -210,7 +210,7 @@ export class Shopify implements INodeType {
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.fields) {
 							qs.fields = options.fields as string;
 						}
@@ -291,7 +291,7 @@ export class Shopify implements INodeType {
 					let body: IProduct = {};
 					//https://shopify.dev/docs/admin-api/rest/reference/products/product#create-2020-04
 					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 

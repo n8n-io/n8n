@@ -102,7 +102,7 @@ export class GoogleTasks implements INodeType {
 						body = {};
 						//https://developers.google.com/tasks/v1/reference/tasks/insert
 						const taskId = this.getNodeParameter('task', i) as string;
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
 							i,

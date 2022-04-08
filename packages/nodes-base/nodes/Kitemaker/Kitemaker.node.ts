@@ -241,7 +241,7 @@ export class Kitemaker implements INodeType {
 					// ----------------------------------
 
 					const input = {
-						title: this.getNodeParameter('title', i) as string,
+						title: this.getNodeParameter('title', i),
 						statusId: this.getNodeParameter('statusId', i) as string[],
 					};
 

@@ -323,8 +323,8 @@ export class Zendesk implements INodeType {
 				if (resource === 'ticket') {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets
 					if (operation === 'create') {
-						const description = this.getNodeParameter('description', i) as string;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const description = this.getNodeParameter('description', i);
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const comment: IComment = {
 							body: description,
 						};
@@ -380,7 +380,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
 					if (operation === 'update') {
 						const ticketId = this.getNodeParameter('id', i) as string;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const body: ITicket = {};
 
 						if (jsonParameters) {
@@ -462,7 +462,7 @@ export class Zendesk implements INodeType {
 					if (operation === 'getAll') {
 						const ticketType = this.getNodeParameter('ticketType', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						qs.query = 'type:ticket';
 						if (options.query) {
 							qs.query += ` ${options.query}`;
@@ -536,7 +536,7 @@ export class Zendesk implements INodeType {
 				if (resource === 'user') {
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#create-user
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
@@ -644,7 +644,7 @@ export class Zendesk implements INodeType {
 				if (resource === 'organization') {
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#create-organization
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 
 						const body: IDataObject & { name: string; organization_fields?: { [key: string]: object | string } } = {
 							name,

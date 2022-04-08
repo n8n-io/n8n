@@ -449,7 +449,7 @@ export class Ftp implements INodeType {
 				if (protocol === 'sftp') {
 
 					if (operation === 'list') {
-						const path = this.getNodeParameter('path', i) as string;
+						const path = this.getNodeParameter('path', i);
 
 						const recursive = this.getNodeParameter('recursive', i) as boolean;
 
@@ -464,8 +464,8 @@ export class Ftp implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const path = this.getNodeParameter('path', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const path = this.getNodeParameter('path', i);
+						const options = this.getNodeParameter('options', i);
 
 						if (options.folder === true) {
 							responseData = await sftp!.rmdir(path, !!options.recursive);
@@ -491,20 +491,20 @@ export class Ftp implements INodeType {
 					}
 
 					if (operation === 'download') {
-						const path = this.getNodeParameter('path', i) as string;
+						const path = this.getNodeParameter('path', i);
 
 						responseData = await sftp!.get(path);
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
-						const filePathDownload = this.getNodeParameter('path', i) as string;
+						const filePathDownload = this.getNodeParameter('path', i);
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData as Buffer, filePathDownload);
 
 						returnItems.push(items[i]);
 					}
 
 					if (operation === 'upload') {
-						const remotePath = this.getNodeParameter('path', i) as string;
+						const remotePath = this.getNodeParameter('path', i);
 						await recursivelyCreateSftpDirs(sftp!, remotePath);
 
 						if (this.getNodeParameter('binaryData', i) === true) {
@@ -515,7 +515,7 @@ export class Ftp implements INodeType {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
@@ -536,7 +536,7 @@ export class Ftp implements INodeType {
 				if (protocol === 'ftp') {
 
 					if (operation === 'list') {
-						const path = this.getNodeParameter('path', i) as string;
+						const path = this.getNodeParameter('path', i);
 
 						const recursive = this.getNodeParameter('recursive', i) as boolean;
 
@@ -551,8 +551,8 @@ export class Ftp implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const path = this.getNodeParameter('path', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const path = this.getNodeParameter('path', i);
+						const options = this.getNodeParameter('options', i);
 
 						if (options.folder === true) {
 							responseData = await ftp!.rmdir(path, !!options.recursive);
@@ -564,7 +564,7 @@ export class Ftp implements INodeType {
 					}
 
 					if (operation === 'download') {
-						const path = this.getNodeParameter('path', i) as string;
+						const path = this.getNodeParameter('path', i);
 
 						responseData = await ftp!.get(path);
 
@@ -577,9 +577,9 @@ export class Ftp implements INodeType {
 						// @ts-ignore
 						responseData = Buffer.concat(chunks);
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
-						const filePathDownload = this.getNodeParameter('path', i) as string;
+						const filePathDownload = this.getNodeParameter('path', i);
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
 
 						returnItems.push(items[i]);
@@ -597,7 +597,7 @@ export class Ftp implements INodeType {
 					}
 
 					if (operation === 'upload') {
-						const remotePath = this.getNodeParameter('path', i) as string;
+						const remotePath = this.getNodeParameter('path', i);
 						const fileName = basename(remotePath);
 						const dirPath = remotePath.replace(fileName, '');
 
@@ -609,7 +609,7 @@ export class Ftp implements INodeType {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);

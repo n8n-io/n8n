@@ -193,7 +193,7 @@ export class Paddle implements INodeType {
 			try {
 				if (resource === 'coupon') {
 					if (operation === 'create') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -216,7 +216,7 @@ export class Paddle implements INodeType {
 							}
 
 							if (discountType === 'flat') {
-								body.currency = this.getNodeParameter('currency', i) as string;
+								body.currency = this.getNodeParameter('currency', i);
 							}
 
 							body.coupon_type = couponType;
@@ -278,7 +278,7 @@ export class Paddle implements INodeType {
 
 					if (operation === 'update') {
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -351,7 +351,7 @@ export class Paddle implements INodeType {
 				if (resource === 'payment') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -468,7 +468,7 @@ export class Paddle implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;

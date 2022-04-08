@@ -572,7 +572,7 @@ export class Todoist implements INodeType {
 						const content = this.getNodeParameter('content', i) as string;
 						const projectId = this.getNodeParameter('project', i) as number;
 						const labels = this.getNodeParameter('labels', i) as number[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IBodyCreateTask = {
 							content,

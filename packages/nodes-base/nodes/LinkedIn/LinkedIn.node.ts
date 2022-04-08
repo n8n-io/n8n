@@ -80,7 +80,7 @@ export class LinkedIn implements INodeType {
 			try {
 				if (resource === 'post') {
 					if (operation === 'create') {
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -139,7 +139,7 @@ export class LinkedIn implements INodeType {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);

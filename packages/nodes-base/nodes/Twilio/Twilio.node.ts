@@ -204,9 +204,9 @@ export class Twilio implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/Messages.json';
 
-						body.From = this.getNodeParameter('from', i) as string;
+						body.From = this.getNodeParameter('from', i);
 						body.To = this.getNodeParameter('to', i) as string;
-						body.Body = this.getNodeParameter('message', i) as string;
+						body.Body = this.getNodeParameter('message', i);
 						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
