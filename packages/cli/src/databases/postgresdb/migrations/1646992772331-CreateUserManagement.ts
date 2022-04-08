@@ -7,9 +7,9 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 	name = 'CreateUserManagement1646992772331';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
@@ -140,9 +140,9 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}

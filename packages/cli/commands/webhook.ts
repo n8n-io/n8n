@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
@@ -95,7 +95,7 @@ export class Webhook extends Command {
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
-			if (config.get('executions.mode') !== 'queue') {
+			if (config.getEnv('executions.mode') !== 'queue') {
 				/**
 				 * It is technically possible to run without queues but
 				 * there are 2 known bugs when running in this mode:
@@ -152,15 +152,15 @@ export class Webhook extends Command {
 				const { cli } = await GenericHelpers.getVersions();
 				InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
 
-				if (config.get('executions.mode') === 'queue') {
-					const redisHost = config.get('queue.bull.redis.host');
-					const redisPassword = config.get('queue.bull.redis.password');
-					const redisPort = config.get('queue.bull.redis.port');
-					const redisDB = config.get('queue.bull.redis.db');
-					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				if (config.getEnv('executions.mode') === 'queue') {
+					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisPassword = config.getEnv('queue.bull.redis.password');
+					const redisPort = config.getEnv('queue.bull.redis.port');
+					const redisDB = config.getEnv('queue.bull.redis.db');
+					const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0;
 					let cumulativeTimeout = 0;
 

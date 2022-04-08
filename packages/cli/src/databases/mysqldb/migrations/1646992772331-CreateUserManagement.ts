@@ -7,7 +7,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 	name = 'CreateUserManagement1646992772331';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
@@ -156,7 +156,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD UNIQUE INDEX \`IDX_${tablePrefix}943d8f922be094eb507cb9a7f9\` (\`name\`)`,

@@ -45,7 +45,7 @@ export class UserManagementMailer {
 
 	constructor() {
 		// Other implementations can be used in the future.
-		if (config.get('userManagement.emails.mode') === 'smtp') {
+		if (config.getEnv('userManagement.emails.mode') === 'smtp') {
 			this.mailer = new NodeMailer();
 		}
 	}
