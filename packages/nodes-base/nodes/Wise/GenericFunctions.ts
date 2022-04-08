@@ -1,49 +1,53 @@
 import {
+	createSign,
+} from 'crypto';
+
+import {
 	IExecuteFunctions,
 	IHookFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
 
 /**
  * Make an authenticated API request to Wise.
  */
 export async function wiseApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'PATCH',
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment } = await this.getCredentials('wiseApi') as {
+	const { apiToken, environment, privateKey } = await this.getCredentials('wiseApi') as {
 		apiToken: string,
 		environment: 'live' | 'test',
+		privateKey?: string,
 	};
 
 	const rootUrl = environment === 'live'
 		? 'https://api.transferwise.com/'
 		: 'https://api.sandbox.transferwise.tech/';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			'Authorization': `Bearer ${apiToken}`,
 		},
 		method,
-		uri: `${rootUrl}${endpoint}`,
+		url: `${rootUrl}${endpoint}`,
 		qs,
 		body,
 		json: true,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
 	};
 
 	if (!Object.keys(body).length) {
@@ -58,9 +62,11 @@ export async function wiseApiRequest(
 		Object.assign(options, option);
 	}
 
+	let response;
 	try {
-		return await this.helpers.request!(options);
+		response = await this.helpers.httpRequest!(options);
 	} catch (error) {
+		delete error.config;
 		throw new NodeApiError(this.getNode(), error);
 	}
 
@@ -154,8 +160,12 @@ export type Profile = {
 };
 
 export type Recipient = {
+	active: boolean,
 	id: number,
-	accountHolderName: string
+	accountHolderName: string,
+	country: string | null,
+	currency: string,
+	type: string,
 };
 
 export type StatementAdditionalFields = {

@@ -39,7 +39,7 @@ import { omit } from 'lodash';
 import * as moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
-
+const isOnline = require('is-online');
 export class Wise implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wise',
@@ -187,7 +187,7 @@ export class Wise implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 		let downloadReceipt = false;
-
+		if (await isOnline()){
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'account') {
@@ -616,7 +616,7 @@ export class Wise implements INodeType {
 		if (downloadReceipt && responseData !== undefined) {
 			return this.prepareOutputData(responseData);
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
