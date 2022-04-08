@@ -507,6 +507,7 @@ export type IPushData =
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -537,6 +538,11 @@ type PushDataConsoleMessage = {
 type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -571,6 +577,11 @@ export interface IPushDataNodeExecuteBefore {
 }
 
 export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+
+export interface IPushDataRemoveNodeType {
 	name: string;
 	version: number;
 }

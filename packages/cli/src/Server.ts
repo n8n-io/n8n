@@ -169,6 +169,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { nodesController } from './api/nodes.api';
 import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
@@ -684,51 +685,7 @@ class App {
 			next();
 		});
 
-		// Install new credentials/nodes from npm
-		this.app.post(
-			`/${this.restEndpoint}/node`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
-				const name = req.body.name as string;
-				if (name === undefined) {
-					throw new ResponseHelper.ResponseError(
-						`The parameter "name" is missing!`,
-						undefined,
-						400,
-					);
-				}
-
-				try {
-					const nodes = await LoadNodesAndCredentials().loadNpmModule(name);
-
-					// Inform the connected frontends that new nodes are available
-					nodes.forEach((nodeData) => {
-						const pushInstance = Push.getInstance();
-						pushInstance.send('reloadNodeType', nodeData);
-					});
-
-					return {
-						nodes,
-					};
-				} catch (error) {
-					throw new ResponseHelper.ResponseError(
-						`Error loading package "${name}": ${error.message}`,
-						undefined,
-						500,
-					);
-				}
-			}),
-		);
-
-		// Install new credentials/nodes from npm
-		this.app.get(
-			`/${this.restEndpoint}/node`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
-				const packages = await Db.collections.InstalledPackages!.find({
-					relations: ['installedNodes'],
-				});
-				return packages;
-			}),
-		);
+		this.app.use(`/${this.restEndpoint}/node`, nodesController);
 
 		// ----------------------------------------
 		// User Management

@@ -651,6 +651,13 @@ export const store = new Vuex.Store({
 			state.nodeTypes = newNodesState;
 		},
 
+		removeNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			Vue.set(state, 'nodeTypes', oldNodesToKeep);
+			state.nodeTypes = oldNodesToKeep;
+		},
+
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
 			const updated = state.sidebarMenuItems.concat(menuItems);
 			Vue.set(state, 'sidebarMenuItems', updated);

@@ -353,6 +353,16 @@ export const pushConnection = mixins(
 						.then((nodesInfo) => {
 							this.$store.commit('updateNodeTypes', nodesInfo);
 						});
+				} else if (receivedData.type === 'removeNodeType') {
+					const pushData = receivedData.data;
+
+					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
+
+					// Force reload of all credential types
+					this.$store.dispatch('credentials/fetchCredentialTypes')
+						.then(() => {
+							this.$store.commit('removeNodeTypes', nodesToBeRemoved);
+						});
 				}
 				return true;
 			},
