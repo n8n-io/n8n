@@ -353,7 +353,10 @@ export default mixins(
 					return null;
 				}
 				const executionData: IRunExecutionData = this.workflowExecution.data;
-				return executionData.resultData.runData;
+				if (executionData && executionData.resultData) {
+					return executionData.resultData.runData;
+				}
+				return null;
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
