@@ -66,6 +66,7 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -1033,9 +1034,11 @@ export async function getBase(
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');
 
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	if (encryptionKey === undefined) {
-		throw new Error('No encryption key got found to decrypt the credentials!');
+	let encryptionKey: string;
+	try {
+		encryptionKey = await UserSettings.getEncryptionKey();
+	} catch (error) {
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
 	return {
