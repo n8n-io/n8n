@@ -9,7 +9,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 	name = 'UpdateWorkflowCredentials1630451444017';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`
@@ -146,7 +146,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`

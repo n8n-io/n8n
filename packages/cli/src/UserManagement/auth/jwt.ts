@@ -26,7 +26,7 @@ export function issueJWT(user: User): JwtToken {
 			.digest('hex');
 	}
 
-	const signedToken = jwt.sign(payload, config.get('userManagement.jwtSecret'), {
+	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
 	});
 
@@ -57,7 +57,7 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.get('userManagement.jwtSecret')) as JwtPayload;
+	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret')) as JwtPayload;
 	return resolveJwtContent(jwtPayload);
 }
 

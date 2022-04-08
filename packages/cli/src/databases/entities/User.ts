@@ -27,7 +27,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 64;
 
 function resolveDataType(dataType: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {
@@ -45,7 +45,7 @@ function resolveDataType(dataType: string) {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const map: { [key in DatabaseType]: string } = {
 		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
@@ -62,7 +62,7 @@ export class User {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ length: 254 })
+	@Column({ length: 254, nullable: true })
 	@Index({ unique: true })
 	@IsEmail()
 	email: string;
@@ -81,7 +81,7 @@ export class User {
 
 	@Column({ nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
-	password?: string;
+	password: string;
 
 	@Column({ type: String, nullable: true })
 	resetPasswordToken?: string | null;

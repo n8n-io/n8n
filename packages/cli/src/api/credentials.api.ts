@@ -99,7 +99,7 @@ credentialsController.get(
 		const { name: newName } = req.query;
 
 		return GenericHelpers.generateUniqueName(
-			newName ?? config.get('credentials.defaultName'),
+			newName ?? config.getEnv('credentials.defaultName'),
 			'credentials',
 		);
 	}),

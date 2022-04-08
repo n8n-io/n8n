@@ -5,13 +5,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import {
-	BinaryDataManager,
-	IBinaryDataConfig,
-	IProcessMessage,
-	UserSettings,
-	WorkflowExecute,
-} from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -176,7 +170,7 @@ export class WorkflowRunnerProcess {
 		const { cli } = await GenericHelpers.getVersions();
 		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
 		// Credentials should now be loaded from database.
@@ -204,27 +198,27 @@ export class WorkflowRunnerProcess {
 		} else if (
 			inputData.workflowData.settings !== undefined &&
 			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.getEnv('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		} else if (
 			inputData.workflowData.settings === undefined &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.getEnv('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
 
 		// Start timeout for the execution
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
 		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
 			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
 		this.workflow = new Workflow({

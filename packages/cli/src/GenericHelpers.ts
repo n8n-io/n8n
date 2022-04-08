@@ -31,10 +31,10 @@ let versionCache: IPackageVersions | undefined;
  * @returns {string}
  */
 export function getBaseUrl(): string {
-	const protocol = config.get('protocol');
-	const host = config.get('host');
-	const port = config.get('port');
-	const path = config.get('path');
+	const protocol = config.getEnv('protocol');
+	const host = config.getEnv('host');
+	const port = config.getEnv('port');
+	const path = config.getEnv('path');
 
 	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 		return `${protocol}://${host}${path}`;
@@ -117,14 +117,16 @@ export async function getConfigValue(
 	// Check if environment variable is defined for config key
 	if (currentSchema.env === undefined) {
 		// No environment variable defined, so return value from config
-		return config.get(configKey);
+		// @ts-ignore
+		return config.getEnv(configKey);
 	}
 
 	// Check if special file enviroment variable exists
 	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
 	if (fileEnvironmentVariable === undefined) {
 		// Does not exist, so return value from config
-		return config.get(configKey);
+		// @ts-ignore
+		return config.getEnv(configKey);
 	}
 
 	let data;

@@ -9,20 +9,20 @@ export class NodeMailer implements UserManagementMailerImplementation {
 
 	constructor() {
 		this.transport = createTransport({
-			host: config.get('userManagement.emails.smtp.host'),
-			port: config.get('userManagement.emails.smtp.port'),
-			secure: config.get('userManagement.emails.smtp.secure'),
+			host: config.getEnv('userManagement.emails.smtp.host'),
+			port: config.getEnv('userManagement.emails.smtp.port'),
+			secure: config.getEnv('userManagement.emails.smtp.secure'),
 			auth: {
-				user: config.get('userManagement.emails.smtp.auth.user'),
-				pass: config.get('userManagement.emails.smtp.auth.pass'),
+				user: config.getEnv('userManagement.emails.smtp.auth.user'),
+				pass: config.getEnv('userManagement.emails.smtp.auth.pass'),
 			},
 		});
 	}
 
 	async verifyConnection(): Promise<void> {
-		const host = config.get('userManagement.emails.smtp.host') as string;
-		const user = config.get('userManagement.emails.smtp.auth.user') as string;
-		const pass = config.get('userManagement.emails.smtp.auth.pass') as string;
+		const host = config.getEnv('userManagement.emails.smtp.host');
+		const user = config.getEnv('userManagement.emails.smtp.auth.user');
+		const pass = config.getEnv('userManagement.emails.smtp.auth.pass');
 
 		return new Promise((resolve, reject) => {
 			this.transport.verify((error: Error) => {
@@ -43,8 +43,8 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
-		let sender = config.get('userManagement.emails.smtp.sender');
-		const user = config.get('userManagement.emails.smtp.auth.user') as string;
+		let sender = config.getEnv('userManagement.emails.smtp.sender');
+		const user = config.getEnv('userManagement.emails.smtp.auth.user');
 
 		if (!sender && user.includes('@')) {
 			sender = user;

@@ -7,7 +7,7 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}c4d999a5e90784e8caccf5589d'`);
 
@@ -32,7 +32,7 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`DROP INDEX 'IDX_${tablePrefix}81fc04c8a17de15835713505e4'`);
 		await queryRunner.query(`DROP INDEX 'IDX_${tablePrefix}b94b45ce2c73ce46c54f20b5f9'`);

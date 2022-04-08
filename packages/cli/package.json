@@ -31,8 +31,8 @@
     "start:windows": "cd bin && n8n",
     "test": "npm run test:sqlite",
     "test:sqlite": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=sqlite; jest",
-    "test:postgres": "export DB_TYPE=postgresdb && jest",
-    "test:mysql": "export DB_TYPE=mysqldb && jest",
+    "test:postgres": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=postgresdb && jest",
+    "test:mysql": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=mysqldb && jest",
     "watch": "tsc --watch",
     "typeorm": "ts-node ../../node_modules/typeorm/cli.js"
   },

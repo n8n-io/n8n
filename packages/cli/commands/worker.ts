@@ -158,7 +158,7 @@ export class Worker extends Command {
 			staticData = workflowData.staticData;
 		}
 
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
 		if (
 			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			currentExecutionDb.workflowData.settings &&
@@ -169,7 +169,7 @@ export class Worker extends Command {
 
 		let executionTimeoutTimestamp: number | undefined;
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 
@@ -288,7 +288,7 @@ export class Worker extends Command {
 				await startDbInitPromise;
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -299,7 +299,7 @@ export class Worker extends Command {
 
 				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
 
 				console.info('\nn8n worker is now ready');
@@ -352,8 +352,8 @@ export class Worker extends Command {
 					}
 				});
 
-				if (config.get('queue.health.active')) {
-					const port = config.get('queue.health.port') as number;
+				if (config.getEnv('queue.health.active')) {
+					const port = config.getEnv('queue.health.port');
 
 					const app = express();
 					const server = http.createServer(app);

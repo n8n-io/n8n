@@ -16,8 +16,8 @@ export class Queue {
 	constructor() {
 		this.activeExecutions = ActiveExecutions.getInstance();
 
-		const prefix = config.get('queue.bull.prefix') as string;
-		const redisOptions = config.get('queue.bull.redis') as object;
+		const prefix = config.getEnv('queue.bull.prefix');
+		const redisOptions = config.getEnv('queue.bull.redis');
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize

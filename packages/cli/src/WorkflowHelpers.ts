@@ -39,7 +39,7 @@ import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 /**
  * Returns the data of the last executed node
