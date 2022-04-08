@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Response } from 'express';
 import { In } from 'typeorm';
 import { genSaltSync, hashSync } from 'bcryptjs';
@@ -190,6 +189,7 @@ export function usersNamespace(this: N8nApp): void {
 					};
 					if (result?.success) {
 						void InternalHooksManager.getInstance().onUserTransactionalEmail({
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							user_id: id!,
 							message_type: 'New user invite',
 						});

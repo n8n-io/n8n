@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 
 import { compare, genSaltSync, hashSync } from 'bcryptjs';

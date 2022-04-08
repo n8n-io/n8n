@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { hashSync, genSaltSync } from 'bcryptjs';
 import * as express from 'express';
 import validator from 'validator';

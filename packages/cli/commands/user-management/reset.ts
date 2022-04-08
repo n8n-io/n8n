@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import Command from '@oclif/command';
 import { Not } from 'typeorm';

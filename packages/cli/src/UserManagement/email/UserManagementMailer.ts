@@ -60,7 +60,6 @@ export class UserManagementMailer {
 		let template = await getTemplate('invite', 'invite.html');
 		template = replaceStrings(template, inviteEmailData);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',

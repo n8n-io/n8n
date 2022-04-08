@@ -181,7 +181,6 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
 		// throttle just on success to allow for self healing on failure
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then((data) =>
 				setTimeout(() => {
@@ -370,7 +369,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					const execution = await Db.collections.Execution.findOne(this.executionId);
 
 					if (execution === undefined) {
@@ -417,7 +415,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					await Db.collections.Execution.update(
 						this.executionId,
 						flattenedExecutionData as IExecutionFlattedDb,

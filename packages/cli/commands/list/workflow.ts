@@ -42,7 +42,6 @@ export class ListWorkflowCommand extends Command {
 				findQuery.active = flags.active === 'true';
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const workflows = await Db.collections.Workflow.find(findQuery);
 			if (flags.onlyId) {
 				workflows.forEach((workflow) => console.log(workflow.id));
