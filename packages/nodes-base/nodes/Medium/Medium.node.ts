@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -542,7 +543,7 @@ export class Medium implements INodeType {
 						//         publication:getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const user = await mediumApiRequest.call(
 							this,
@@ -573,7 +574,7 @@ export class Medium implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -697,7 +698,7 @@ export class Disqus implements INodeType {
 							if(returnAll) {
 								responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}
@@ -729,7 +730,7 @@ export class Disqus implements INodeType {
 							if(returnAll) {
 								responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint) as IDataObject;
 							}
@@ -762,7 +763,7 @@ export class Disqus implements INodeType {
 							if(returnAll) {
 								responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}
@@ -780,7 +781,7 @@ export class Disqus implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

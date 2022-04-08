@@ -12,6 +12,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -201,7 +202,7 @@ export class GoogleChat implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `${err.message}`,
+						message: `${(err as JsonObject).message}`,
 					};
 				}
 
@@ -294,7 +295,7 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces/list
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
@@ -343,7 +344,7 @@ export class GoogleChat implements INodeType {
 
 						const spaceId = this.getNodeParameter('spaceId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
@@ -608,9 +609,9 @@ export class GoogleChat implements INodeType {
 				if (this.continueOnFail()) {
 					// Return the actual reason as error
 					if (operation === 'download') {
-						items[i].json = { error: error.message };
+						items[i].json = { error: (error as JsonObject).message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as JsonObject).message });
 					}
 					continue;
 				}

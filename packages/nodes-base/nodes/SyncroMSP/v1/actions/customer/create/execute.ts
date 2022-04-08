@@ -12,7 +12,7 @@ import {
 } from '../../../transport';
 
 export async function addCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const email = this.getNodeParameter('email', index) as IDataObject;
+	const email = this.getNodeParameter('email', index);
 	const { address, getSms, businessName, lastname, firstName, invoiceCcEmails, noEmail, notes, notificationEmail, phone, referredBy } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;

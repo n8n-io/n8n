@@ -238,12 +238,7 @@ export function getExecuteFunctions(
 				parameterName: string,
 				itemIndex: number,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): any => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,

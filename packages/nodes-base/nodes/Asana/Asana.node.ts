@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -2014,7 +2015,7 @@ export class Asana implements INodeType {
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
+					throw new NodeApiError(this.getNode(), (error as JsonObject), { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
 				}
 
 				const workspace = taskData.data.workspace.gid;
@@ -2157,7 +2158,7 @@ export class Asana implements INodeType {
 						responseData = responseData.data;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as boolean;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -2242,7 +2243,7 @@ export class Asana implements INodeType {
 							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2543,7 +2544,7 @@ export class Asana implements INodeType {
 
 						} else {
 
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2595,7 +2596,7 @@ export class Asana implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

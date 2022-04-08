@@ -14,7 +14,7 @@ import {
 
 export async function createContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('customerId', index) as IDataObject;
-	const email = this.getNodeParameter('email', index) as IDataObject;
+	const email = this.getNodeParameter('email', index);
 	const { address, notes, phone, name } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;

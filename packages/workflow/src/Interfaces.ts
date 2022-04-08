@@ -470,6 +470,37 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 	};
 }
 
+type StringReturnTypeParam =
+	| 'binaryPropertyName'
+	| 'binaryProperty'
+	| 'company'
+	| 'currency'
+	| 'description'
+	| 'event'
+	| 'from'
+	| 'message'
+	| 'name'
+	| 'password'
+	| 'path'
+	| 'query'
+	| 'range'
+	| 'source'
+	| 'subject'
+	| 'text'
+	| 'title'
+	| 'topic'
+	| 'url';
+
+type BooleanReturnTypeParam =
+	| 'binaryData'
+	| 'download'
+	| 'jsonParameters'
+	| 'rawData'
+	| 'resolveData'
+	| 'simple';
+
+type IDataObjectReturnTypeParam = 'additionalFields' | 'options' | 'updateFields';
+
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
 	evaluateExpression(
@@ -488,6 +519,7 @@ export interface IExecuteFunctions {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
+	//------------------------------------------------
 	getNodeParameter<T extends { resource: string }>(
 		parameterName: 'resource',
 		itemIndex?: number,
@@ -498,6 +530,22 @@ export interface IExecuteFunctions {
 		itemIndex: number,
 		fallbackValue?: any,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	//--------------------------------------------------
+	getNodeParameter(parameterName: 'limit', itemIndex?: number): number;
+	getNodeParameter(parameterName: 'returnAll', itemIndex?: number): boolean;
+	getNodeParameter(parameterName: 'resource', itemIndex?: number): string;
+	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
+	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex: number): string;
+	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex: number): boolean;
+	getNodeParameter(
+		parameterName: IDataObjectReturnTypeParam,
+		itemIndex: number,
+		fallbackValue?: object,
+	): IDataObject;
+	getNodeParameter<T extends string | IDataObject>(parameterName: 'filters', itemIndex?: number): T;
+	getNodeParameter<T extends string | string[]>(parameterName: 'email', itemIndex?: number): T;
+	getNodeParameter<T extends string | string[]>(parameterName: 'to', itemIndex?: number): T;
+	//--------------------------------------------------
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;

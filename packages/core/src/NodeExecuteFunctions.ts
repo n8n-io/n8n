@@ -1414,11 +1414,11 @@ export function getNodeParameter(
 	connectionInputData: INodeExecutionData[],
 	node: INode,
 	parameterName: string,
-	itemIndex: number,
+	itemIndex = 0,
 	mode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+): any {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -1612,15 +1612,7 @@ export function getExecutePollFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1765,15 +1757,7 @@ export function getExecuteTriggerFunctions(
 			getActivationMode: (): WorkflowActivateMode => {
 				return activation;
 			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1975,16 +1959,7 @@ export function getExecuteFunctions(
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
-			getNodeParameter: (
-				parameterName: string,
-				itemIndex: number,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any): any => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2234,15 +2209,7 @@ export function getExecuteSingleFunctions(
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2402,15 +2369,7 @@ export function getLoadOptionsFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2531,15 +2490,7 @@ export function getExecuteHookFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2691,15 +2642,7 @@ export function getExecuteWebhookFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (
-				parameterName: string,
-				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;

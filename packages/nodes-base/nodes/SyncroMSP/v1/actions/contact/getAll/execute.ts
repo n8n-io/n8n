@@ -24,7 +24,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 		return this.helpers.returnJsonArray(responseData);
 	} else {
-		const limit = this.getNodeParameter('limit', index) as IDataObject;
+		const limit = this.getNodeParameter('limit', index);
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 		return this.helpers.returnJsonArray((responseData.contacts).splice(0, limit));
 	}

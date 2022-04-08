@@ -273,7 +273,7 @@ export class Mailjet implements INodeType {
 								body.Variables![variable.name as string] = variable.value;
 							}
 						}
-						
+
 						if (additionalFields.bccEmail) {
 							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
 							for (const email of bccEmail) {
@@ -319,7 +319,7 @@ export class Mailjet implements INodeType {
 					//https://dev.mailjet.com/sms/reference/send-message#v4_post_sms-send
 					if (operation === 'send') {
 						const from = this.getNodeParameter('from', i) as string;
-						const to = this.getNodeParameter('to', i) as boolean;
+						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const body: IDataObject = {
 							From: from,
