@@ -306,6 +306,9 @@ export default mixins(
 			isDemo (): boolean {
 				return this.$route.name === VIEWS.DEMO;
 			},
+			isStickyNode (): boolean {
+				return this.$store.getters.isStickyNode;
+			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
@@ -727,36 +730,32 @@ export default mixins(
 						this.$store.commit('setActiveNode', null);
 					}
 
-					if (this.lastSelectedNode) {
-						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
-							const nodeParameters = {
-								content: this.lastSelectedNode.parameters.content,
-								height: this.lastSelectedNode.parameters.height,
-								isEditable: false,
-								totalSize: this.lastSelectedNode.parameters.totalSize,
-								width: this.lastSelectedNode.parameters.width,
-								zIndex: this.lastSelectedNode.parameters.zIndex,
-							};
+					if (this.lastSelectedNode && this.isStickyNode) {
+						const nodeParameters = {
+							content: this.lastSelectedNode.parameters.content,
+							height: this.lastSelectedNode.parameters.height,
+							isEditable: false,
+							totalSize: this.lastSelectedNode.parameters.totalSize,
+							width: this.lastSelectedNode.parameters.width,
+							zIndex: this.lastSelectedNode.parameters.zIndex,
+						};
 
-							const updateInformation = {
-								name: this.lastSelectedNode.name,
-								value: nodeParameters,
-							};
+						const updateInformation = {
+							name: this.lastSelectedNode.name,
+							value: nodeParameters,
+						};
 
-							this.$store.commit('setNodeParameters', updateInformation);
-						}
+						this.$store.commit('setNodeParameters', updateInformation);
 					}
 
 					return;
 				}
 
 			
-				if (this.lastSelectedNode) {
-					if (this.lastSelectedNode.type !== 'n8n-nodes-base.note') {
-						// node modal is open
-						if (this.activeNode) {
-							return;
-						}
+				if (!this.isStickyNode) {
+					// node modal is open
+					if (this.activeNode) {
+						return;
 					}
 				}
 
@@ -764,10 +763,8 @@ export default mixins(
 					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
-					if (this.isStickyInEditMode && this.lastSelectedNode) {
-						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
-							return;
-						}
+					if (this.isStickyInEditMode && this.isStickyNode) {
+						return;
 					} else {
 						e.stopPropagation();
 						e.preventDefault();
@@ -797,10 +794,8 @@ export default mixins(
 					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
-					if (this.lastSelectedNode) {
-						if (this.lastSelectedNode.type === 'n8n-nodes-base.note' && this.isStickyInEditMode) {
-							return;
-						}
+					if (this.isStickyNode && this.isStickyInEditMode) {
+						return;
 					}
 
 					e.stopPropagation();
@@ -810,10 +805,8 @@ export default mixins(
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
 					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
-					if (this.lastSelectedNode) {
-						if (this.lastSelectedNode.type === 'n8n-nodes-base.note' && this.isStickyInEditMode) {
-							return;
-						}
+					if (this.isStickyNode && this.isStickyInEditMode) {
+						return;
 					}
 					// Cut nodes
 					e.stopPropagation();
@@ -866,24 +859,22 @@ export default mixins(
 					}
 					
 
-					if (this.lastSelectedNode) {
-						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
-							const nodeParameters = {
-								content: this.lastSelectedNode.parameters.content,
-								height: this.lastSelectedNode.parameters.height,
-								isEditable: true,
-								totalSize: this.lastSelectedNode.parameters.totalSize,
-								width: this.lastSelectedNode.parameters.width,
-								zIndex: this.lastSelectedNode.parameters.zIndex,
-							};
+					if (this.lastSelectedNode && this.isStickyNode) {
+						const nodeParameters = {
+							content: this.lastSelectedNode.parameters.content,
+							height: this.lastSelectedNode.parameters.height,
+							isEditable: true,
+							totalSize: this.lastSelectedNode.parameters.totalSize,
+							width: this.lastSelectedNode.parameters.width,
+							zIndex: this.lastSelectedNode.parameters.zIndex,
+						};
 
-							const updateInformation = {
-								name: this.lastSelectedNode.name,
-								value: nodeParameters,
-							};
+						const updateInformation = {
+							name: this.lastSelectedNode.name,
+							value: nodeParameters,
+						};
 
-							this.$store.commit('setNodeParameters', updateInformation);
-						}
+						this.$store.commit('setNodeParameters', updateInformation);
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
 					// Select all downstream nodes

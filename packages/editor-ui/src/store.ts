@@ -820,11 +820,10 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		isStickyNode: (state, getters) : boolean | null => {
-			if (getters.activeNode) {
-				return getters.activeNode.type === 'n8n-nodes-base.note';
-			}
-			return null;
+		isStickyNode: (state): boolean => {
+			return state.selectedNodes.some((node: INodeUi) => {
+				return node.type === "n8n-nodes-base.note";
+			});
 		},
 
 		/**
