@@ -889,7 +889,7 @@ export default mixins(
 	text-align: left;
 	width: calc(100% - var(--spacing-s));
 	margin-right: var(--spacing-s);
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-s);
 
 	th {
 		padding: var(--spacing-2xs);

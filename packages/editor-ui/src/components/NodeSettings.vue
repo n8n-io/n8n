@@ -555,6 +555,7 @@ export default mixins(
 		display: flex;
 
 		.node-name {
+			padding-top: var(--spacing-5xs);
 			flex-grow: 1;
 		}
 	}
