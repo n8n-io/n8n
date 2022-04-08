@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Response } from 'express';
 import { In } from 'typeorm';
-import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
@@ -12,6 +11,7 @@ import { N8nApp, PublicUser } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import {
 	getInstanceBaseUrl,
+	hashPassword,
 	isEmailSetUp,
 	sanitizeUser,
 	validatePassword,
@@ -349,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			invitee.firstName = firstName;
 			invitee.lastName = lastName;
-			invitee.password = hashSync(validPassword, genSaltSync(10));
+			invitee.password = await hashPassword(validPassword);
 
 			const updatedUser = await Db.collections.User!.save(invitee);
 

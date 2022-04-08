@@ -62,7 +62,7 @@ export class User {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ length: 254 })
+	@Column({ length: 254, nullable: true })
 	@Index({ unique: true })
 	@IsEmail()
 	email: string;
@@ -81,7 +81,7 @@ export class User {
 
 	@Column({ nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
-	password?: string;
+	password: string;
 
 	@Column({ type: String, nullable: true })
 	resetPasswordToken?: string | null;

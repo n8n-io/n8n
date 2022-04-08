@@ -4,7 +4,7 @@
 import { Workflow } from 'n8n-workflow';
 import { In, IsNull, Not } from 'typeorm';
 import express = require('express');
-import { compare } from 'bcryptjs';
+import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import { PublicUser } from './Interfaces';
 import { Db, ResponseHelper } from '..';
@@ -61,11 +61,6 @@ export function getInstanceBaseUrl(): string {
 	const n8nBaseUrl = config.get('editorBaseUrl') || getWebhookBaseUrl();
 
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
-}
-
-export async function isInstanceOwnerSetup(): Promise<boolean> {
-	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
-	return users.length !== 0;
 }
 
 // TODO: Enforce at model level
@@ -223,9 +218,12 @@ export function isAuthenticatedRequest(request: express.Request): request is Aut
 //            hashing
 // ----------------------------------
 
-export async function compareHash(str: string, hash: string): Promise<boolean | undefined> {
+export const hashPassword = async (validPassword: string): Promise<string> =>
+	hash(validPassword, genSaltSync(10));
+
+export async function compareHash(plaintext: string, hashed: string): Promise<boolean | undefined> {
 	try {
-		return await compare(str, hash);
+		return await compare(plaintext, hashed);
 	} catch (error) {
 		if (error instanceof Error && error.message.includes('Invalid salt version')) {
 			error.message +=
