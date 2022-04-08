@@ -2,7 +2,7 @@
 import { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { Column, ColumnOptions, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
 
 function resolveDataType(dataType: string) {

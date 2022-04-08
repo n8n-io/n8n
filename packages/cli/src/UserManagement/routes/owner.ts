@@ -1,11 +1,11 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as express from 'express';
+import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { validateEntity } from '../../GenericHelpers';
 import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';

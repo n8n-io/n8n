@@ -4,7 +4,7 @@
 // eslint-disable-next-line import/no-cycle
 import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 class ExternalHooksClass implements IExternalHooksClass {
 	externalHooks: {

@@ -1,6 +1,6 @@
-import express = require('express');
+import express from 'express';
 
-import * as request from 'supertest';
+import request from 'supertest';
 import {
 	REST_PATH_SEGMENT,
 	ROUTES_REQUIRING_AUTHORIZATION,

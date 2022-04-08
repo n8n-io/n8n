@@ -1,7 +1,7 @@
 import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
-import config = require('../config');
+import config from '../config';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
 
 const exec = promisify(callbackExec);

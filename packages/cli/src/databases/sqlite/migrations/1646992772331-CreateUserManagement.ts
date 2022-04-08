@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-import config = require('../../../../config');
+import * as config from '../../../../config';
 import {
 	loadSurveyFromDisk,
 	logMigrationEnd,

@@ -6,7 +6,7 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable no-console */
-import * as fs from 'fs';
+import fs from 'fs';
 import { Command, flags } from '@oclif/command';
 
 import { BinaryDataManager, UserSettings } from 'n8n-core';
@@ -36,7 +36,7 @@ import {
 	NodeTypes,
 	WorkflowRunner,
 } from '../src';
-import config = require('../config');
+import config from '../config';
 import { User } from '../src/databases/entities/User';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 

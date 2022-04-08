@@ -13,7 +13,7 @@ import {
 	promisify,
 } from 'util';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import * as ics from 'ics';
 
