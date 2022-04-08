@@ -221,7 +221,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.isResizing = true;
 			this.stickyProp.height = parameters.height;
 			this.stickyProp.width = parameters.width;
-			this.stickyProp.zIndex = (parameters.height + parameters.width) * -1;
 			
 			if(parameters.top) {
 				this.stickyProp.top = parameters.top;
@@ -237,7 +236,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			this.setSizeParameters();
+			if (this.node) {
+				const isStickyInEditMode = this.node.parameters.isEditable as boolean;
+				if (isStickyInEditMode) {
+					this.setSizeParameters(null, isStickyInEditMode, 99999);
+				} else {
+					this.setSizeParameters(null, isStickyInEditMode);
+				}
+			}
+			
 			this.__makeInstanceDraggable(this.data);
 		},
 		setNodeActive () {

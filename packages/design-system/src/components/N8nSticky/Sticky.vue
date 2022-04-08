@@ -5,7 +5,6 @@
     :style="styles"
   >
     <n8n-resize 
-      v-if="!isStickyEditable"
       :minHeight="minHeight"
       :minWidth="minWidth"
       :resizer="resizer"
@@ -13,7 +12,8 @@
       @onResizeStart="onResizeStart"
     >
       <template>
-        <div 
+        <div
+          v-if="!isStickyEditable"
           :class="$style.wrapper"
           @dblclick="changeMode"
         >
@@ -22,37 +22,38 @@
             theme="sticky"
           />
         </div>
+        <div 
+          v-else
+          @mouseover="onMouseHover"
+          @mouseout="onMouseHoverEnd"
+          class="sticky-textarea"
+          :class="{'full-height': !shouldShowFooter}"
+        >
+          <n8n-input
+            v-model="tempContent"
+            type="textarea"
+            :rows="5"
+            @blur="onBlur"
+            @change="onChange"
+            @focus="onFocus"
+            @input="onInput"
+          />
+          <div v-if="shouldShowFooter" :class="$style.footer">
+            <n8n-text
+              size="xsmall"
+              aligh="right"
+            >
+              You can style with 
+              <a href="https://www.markdownguide.org/getting-started/" target="_blank">
+                Markdown
+              </a>
+            </n8n-text>
+          </div>
+        </div>
       </template>
     </n8n-resize>
     
-    <div 
-      v-else
-      @mouseover="onMouseHover"
-      @mouseout="onMouseHoverEnd"
-      class="sticky-textarea"
-      :class="{'full-height': !shouldShowFooter}"
-    >
-      <n8n-input
-        v-model="tempContent"
-        type="textarea"
-        :rows="5"
-        @blur="onBlur"
-        @change="onChange"
-        @focus="onFocus"
-        @input="onInput"
-      />
-      <div v-if="shouldShowFooter" :class="$style.footer">
-        <n8n-text
-          size="xsmall"
-          aligh="right"
-        >
-          You can style with 
-          <a href="https://www.markdownguide.org/getting-started/" target="_blank">
-            Markdown
-          </a>
-        </n8n-text>
-      </div>
-    </div>
+    
   </div>
 </template>
 
@@ -226,7 +227,7 @@ export default {
 }
 
 .footer {
-  padding: var(--spacing-4xs) 0 var(--spacing-xs);
+  padding: var(--spacing-5xs) 0 var(--spacing-2xs);
   display: flex;
   justify-content: flex-end;
 }
@@ -234,6 +235,7 @@ export default {
 
 <style lang="scss">
 .sticky-textarea {
+  width: calc(100% - var(--spacing-s));
   height: calc(100% - var(--spacing-l));
   
   .el-textarea {
@@ -247,6 +249,6 @@ export default {
 }
 
 .full-height {
-  height: calc(100% - var(--spacing-2xs));
+  height: calc(100% - var(--spacing-s));
 }
 </style>
