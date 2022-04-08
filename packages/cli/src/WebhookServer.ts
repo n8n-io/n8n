@@ -195,8 +195,8 @@ class App {
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
-		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
-		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
+		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
 		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
 		this.executionTimeout = config.getEnv('executions.timeout');
 		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');

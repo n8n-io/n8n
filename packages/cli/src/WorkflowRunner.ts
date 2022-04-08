@@ -73,7 +73,7 @@ export class WorkflowRunner {
 		this.activeExecutions = ActiveExecutions.getInstance();
 		this.credentialsOverwrites = CredentialsOverwrites().getAll();
 
-		const executionsMode = config.getEnv('executions.mode') as string;
+		const executionsMode = config.getEnv('executions.mode');
 
 		if (executionsMode === 'queue') {
 			this.jobQueue = Queue.getInstance().getBullObjectInstance();
