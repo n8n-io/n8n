@@ -8,7 +8,7 @@ on:
       repository:
         description: 'GitHub repository to create image off.'
         required: true
-        default: 'n8n-io/n8n'
+        default: 'saurabharch/n8n'
       branch:
         description: 'GitHub branch to create image off.'
         required: true
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
+          repository: ${{ github.event.inputs.repository || 'saurabharch/n8n' }}
           ref: ${{ github.event.inputs.branch || 'master' }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -48,7 +48,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Merge Master - optionally
         run: |
-          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
+          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/saurabharch/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
         shell: bash
       - name: Build and push
         uses: docker/build-push-action@v2
@@ -57,7 +57,7 @@ jobs:
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: n8nio/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: saurabharch/n8n:${{ github.event.inputs.tag || 'nightly' }}
       - name: Call Success URL - optionally
         run: |
           [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""
