@@ -57,7 +57,10 @@ export default Vue.extend({
 			});
 		},
 		onRename() {
-			this.$emit('input', this.newName);
+			if (this.newName.trim() !== '') {
+				this.$emit('input', this.newName.trim());
+			}
+
 			this.editName = false;
 		},
 	},
