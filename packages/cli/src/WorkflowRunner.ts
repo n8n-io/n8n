@@ -514,7 +514,7 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const executionDb = (await Db.collections.Execution!.findOne(
+				const executionDb = (await Db.collections.Execution.findOne(
 					executionId,
 				)) as IExecutionFlattedDb;
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
@@ -549,7 +549,7 @@ export class WorkflowRunner {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						await Db.collections.Execution!.delete(executionId);
+						await Db.collections.Execution.delete(executionId);
 						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
 					}
 					// eslint-disable-next-line id-denylist

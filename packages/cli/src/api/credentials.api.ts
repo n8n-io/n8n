@@ -53,12 +53,12 @@ credentialsController.get(
 
 		try {
 			if (req.user.globalRole.name === 'owner') {
-				credentials = await Db.collections.Credentials!.find({
+				credentials = await Db.collections.Credentials.find({
 					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
 					where: filter,
 				});
 			} else {
-				const shared = await Db.collections.SharedCredentials!.find({
+				const shared = await Db.collections.SharedCredentials.find({
 					where: whereClause({
 						user: req.user,
 						entityType: 'credentials',
@@ -67,7 +67,7 @@ credentialsController.get(
 
 				if (!shared.length) return [];
 
-				credentials = await Db.collections.Credentials!.find({
+				credentials = await Db.collections.Credentials.find({
 					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
 					where: {
 						id: In(shared.map(({ credentialId }) => credentialId)),
@@ -175,7 +175,7 @@ credentialsController.post(
 
 		await externalHooks.run('credentials.create', [encryptedData]);
 
-		const role = await Db.collections.Role!.findOneOrFail({
+		const role = await Db.collections.Role.findOneOrFail({
 			name: 'owner',
 			scope: 'credential',
 		});
@@ -213,7 +213,7 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials!.findOne({
+		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
 				user: req.user,
@@ -236,7 +236,7 @@ credentialsController.delete(
 
 		await externalHooks.run('credentials.delete', [credentialId]);
 
-		await Db.collections.Credentials!.remove(shared.credentials);
+		await Db.collections.Credentials.remove(shared.credentials);
 
 		return true;
 	}),
@@ -255,7 +255,7 @@ credentialsController.patch(
 
 		await validateEntity(updateData);
 
-		const shared = await Db.collections.SharedCredentials!.findOne({
+		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
 				user: req.user,
@@ -329,11 +329,11 @@ credentialsController.patch(
 		await externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Db.collections.Credentials!.update(credentialId, newCredentialData);
+		await Db.collections.Credentials.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		const responseData = await Db.collections.Credentials!.findOne(credentialId);
+		const responseData = await Db.collections.Credentials.findOne(credentialId);
 
 		if (responseData === undefined) {
 			throw new ResponseHelper.ResponseError(
@@ -363,7 +363,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials!.findOne({
+		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
 				user: req.user,

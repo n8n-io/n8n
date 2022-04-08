@@ -69,7 +69,7 @@ export class ActiveWorkflowRunner {
 		// NOTE
 		// Here I guess we can have a flag on the workflow table like hasTrigger
 		// so intead of pulling all the active wehhooks just pull the actives that have a trigger
-		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow!.find({
+		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
 			where: { active: true },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
@@ -256,7 +256,7 @@ export class ActiveWorkflowRunner {
 			});
 		}
 
-		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId, {
+		const workflowData = await Db.collections.Workflow.findOne(webhook.workflowId, {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === undefined) {
@@ -332,7 +332,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = (await Db.collections.Webhook?.find({ webhookPath: path })) as IWebhookDb[];
+		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path });
 
 		// Gather all request methods in string array
 		const webhookMethods: string[] = webhooks.map((webhook) => webhook.method);
@@ -349,12 +349,12 @@ export class ActiveWorkflowRunner {
 		let activeWorkflows: WorkflowEntity[] = [];
 
 		if (!user || user.globalRole.name === 'owner') {
-			activeWorkflows = await Db.collections.Workflow!.find({
+			activeWorkflows = await Db.collections.Workflow.find({
 				select: ['id'],
 				where: { active: true },
 			});
 		} else {
-			const shared = await Db.collections.SharedWorkflow!.find({
+			const shared = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: whereClause({
 					user,
@@ -379,7 +379,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
-		const workflow = await Db.collections.Workflow!.findOne(id);
+		const workflow = await Db.collections.Workflow.findOne(id);
 		return !!workflow?.active;
 	}
 
@@ -512,7 +512,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
-		const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+		const workflowData = await Db.collections.Workflow.findOne(workflowId, {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === undefined) {
@@ -715,7 +715,7 @@ export class ActiveWorkflowRunner {
 		let workflowInstance: Workflow;
 		try {
 			if (workflowData === undefined) {
-				workflowData = (await Db.collections.Workflow!.findOne(workflowId, {
+				workflowData = (await Db.collections.Workflow.findOne(workflowId, {
 					relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 				})) as IWorkflowDb;
 			}

@@ -54,7 +54,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
 
 			if (!user || !user.password) {
 				Logger.debug(
@@ -70,7 +70,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
-			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
+			await Db.collections.User.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getInstanceBaseUrl();
 			const url = new URL(`${baseUrl}/change-password`);
@@ -135,7 +135,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User!.findOne({
+			const user = await Db.collections.User.findOne({
 				id,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -188,7 +188,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User!.findOne({
+			const user = await Db.collections.User.findOne({
 				id: userId,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -205,7 +205,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(userId, {
+			await Db.collections.User.update(userId, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,

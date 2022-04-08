@@ -228,13 +228,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const credential = userId
-			? await Db.collections
-					.SharedCredentials!.findOneOrFail({
-						relations: ['credentials'],
-						where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
-					})
-					.then((shared) => shared.credentials)
-			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
+			? await Db.collections.SharedCredentials.findOneOrFail({
+					relations: ['credentials'],
+					where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+			  }).then((shared) => shared.credentials)
+			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
 
 		if (!credential) {
 			throw new Error(
@@ -436,7 +434,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
+		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
 	getCredentialTestFunction(
@@ -713,7 +711,7 @@ export async function getCredentialForUser(
 	user: User,
 ): Promise<ICredentialsDb | null> {
 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
+	const sharedCredential = await Db.collections.SharedCredentials.findOne({
 		relations: ['credentials'],
 		where: whereClause({
 			user,

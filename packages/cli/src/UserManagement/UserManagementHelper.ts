@@ -15,7 +15,7 @@ import config = require('../../config');
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
-	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
 		where: { workflow: { id: workflowId } },
 		relations: ['user', 'user.globalRole'],
 	});
@@ -33,7 +33,7 @@ export function isEmailSetUp(): boolean {
 }
 
 async function getInstanceOwnerRole(): Promise<Role> {
-	const ownerRole = await Db.collections.Role!.findOneOrFail({
+	const ownerRole = await Db.collections.Role.findOneOrFail({
 		where: {
 			name: 'owner',
 			scope: 'global',
@@ -45,7 +45,7 @@ async function getInstanceOwnerRole(): Promise<Role> {
 export async function getInstanceOwner(): Promise<User> {
 	const ownerRole = await getInstanceOwnerRole();
 
-	const owner = await Db.collections.User!.findOneOrFail({
+	const owner = await Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],
 		where: {
 			globalRole: ownerRole,
@@ -64,7 +64,7 @@ export function getInstanceBaseUrl(): string {
 }
 
 export async function isInstanceOwnerSetup(): Promise<boolean> {
-	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
+	const users = await Db.collections.User.find({ email: Not(IsNull()) });
 	return users.length !== 0;
 }
 
@@ -126,7 +126,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 }
 
 export async function getUserById(userId: string): Promise<User> {
-	const user = await Db.collections.User!.findOneOrFail(userId, {
+	const user = await Db.collections.User.findOneOrFail(userId, {
 		relations: ['globalRole'],
 	});
 	return user;
@@ -179,7 +179,7 @@ export async function checkPermissionsForExecution(
 	}
 
 	// Check for the user's permission to all used credentials
-	const credentialCount = await Db.collections.SharedCredentials!.count({
+	const credentialCount = await Db.collections.SharedCredentials.count({
 		where: {
 			user: { id: userId },
 			credentials: In(ids),

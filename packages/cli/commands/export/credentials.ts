@@ -119,7 +119,7 @@ export class ExportCredentialsCommand extends Command {
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const credentials = await Db.collections.Credentials!.find(findQuery);
+			const credentials = await Db.collections.Credentials.find(findQuery);
 
 			if (flags.decrypted) {
 				const encryptionKey = await UserSettings.getEncryptionKey();

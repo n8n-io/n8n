@@ -54,7 +54,7 @@ export function meNamespace(this: N8nApp): void {
 
 				await validateEntity(newUser);
 
-				const user = await Db.collections.User!.save(newUser);
+				const user = await Db.collections.User.save(newUser);
 
 				Logger.info('User updated successfully', { userId: user.id });
 
@@ -100,7 +100,7 @@ export function meNamespace(this: N8nApp): void {
 
 			req.user.password = hashSync(validPassword, genSaltSync(10));
 
-			const user = await Db.collections.User!.save(req.user);
+			const user = await Db.collections.User.save(req.user);
 			Logger.info('Password updated successfully', { userId: user.id });
 
 			await issueCookie(res, user);
@@ -136,7 +136,7 @@ export function meNamespace(this: N8nApp): void {
 				);
 			}
 
-			await Db.collections.User!.save({
+			await Db.collections.User.save({
 				id: req.user.id,
 				personalizationAnswers,
 			});
