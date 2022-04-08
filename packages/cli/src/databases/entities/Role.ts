@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType } from '../../index';
 import { User } from './User';
 import { SharedWorkflow } from './SharedWorkflow';

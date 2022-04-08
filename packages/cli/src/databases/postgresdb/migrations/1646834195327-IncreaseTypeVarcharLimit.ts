@@ -3,7 +3,7 @@ import {
 	QueryRunner,
 } from 'typeorm';
 
-import config = require('../../../../config');
+import * as config from '../../../../config';
 
 export class IncreaseTypeVarcharLimit1646834195327 implements MigrationInterface {
 	name = 'IncreaseTypeVarcharLimit1646834195327';

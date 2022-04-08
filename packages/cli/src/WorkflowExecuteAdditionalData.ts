@@ -39,7 +39,7 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import * as config from '../config';
+import config from '../config';
 import {
 	ActiveExecutions,
 	CredentialsHelper,

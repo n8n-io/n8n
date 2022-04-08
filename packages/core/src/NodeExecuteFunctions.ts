@@ -60,20 +60,17 @@ import {
 
 import { Agent } from 'https';
 import { stringify } from 'qs';
-import * as clientOAuth1 from 'oauth-1.0a';
-import { Token } from 'oauth-1.0a';
-import * as clientOAuth2 from 'client-oauth2';
-import * as crypto from 'crypto';
-import * as url from 'url';
+import clientOAuth1, { Token } from 'oauth-1.0a';
+import clientOAuth2 from 'client-oauth2';
+import crypto, { createHmac } from 'crypto';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as express from 'express';
-import * as FormData from 'form-data';
-import * as path from 'path';
+import express from 'express';
+import FormData from 'form-data';
+import path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
-import * as requestPromise from 'request-promise-native';
-import { createHmac } from 'crypto';
+import requestPromise from 'request-promise-native';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
@@ -84,7 +81,7 @@ import axios, {
 	AxiosResponse,
 	Method,
 } from 'axios';
-import { URL, URLSearchParams } from 'url';
+import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {

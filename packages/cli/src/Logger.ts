@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import * as winston from 'winston';
+import winston from 'winston';
 
 import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
 
-import * as callsites from 'callsites';
+import callsites from 'callsites';
 import { basename } from 'path';
-import config = require('../config');
+import config from '../config';
 
 class Logger implements ILogger {
 	private logger: winston.Logger;

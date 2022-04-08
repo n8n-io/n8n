@@ -14,7 +14,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, IPersonalizationSurveyAnswers } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';

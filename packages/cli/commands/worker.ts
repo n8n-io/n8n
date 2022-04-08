@@ -7,9 +7,9 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as express from 'express';
-import * as http from 'http';
-import * as PCancelable from 'p-cancelable';
+import express from 'express';
+import http from 'http';
+import PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
@@ -18,7 +18,7 @@ import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } 
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
-import * as Bull from 'bull';
+import Bull from 'bull';
 import {
 	CredentialsOverwrites,
 	CredentialTypes,
@@ -39,7 +39,7 @@ import {
 
 import { getLogger } from '../src/Logger';
 
-import * as config from '../config';
+import config from '../config';
 import * as Queue from '../src/Queue';
 import {
 	checkPermissionsForExecution,

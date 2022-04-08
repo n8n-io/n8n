@@ -29,10 +29,10 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-await-in-loop */
 
-import * as express from 'express';
+import express from 'express';
 import { readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
-import { cloneDeep } from 'lodash';
+import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindConditions,
@@ -47,22 +47,19 @@ import {
 	Not,
 	Raw,
 } from 'typeorm';
-import * as bodyParser from 'body-parser';
-import * as cookieParser from 'cookie-parser';
-import * as history from 'connect-history-api-fallback';
-import * as os from 'os';
+import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
+import history from 'connect-history-api-fallback';
+import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as _ from 'lodash';
-import * as clientOAuth2 from 'client-oauth2';
-import * as clientOAuth1 from 'oauth-1.0a';
-import { RequestOptions } from 'oauth-1.0a';
-import * as csrf from 'csrf';
-import * as requestPromise from 'request-promise-native';
+import clientOAuth2 from 'client-oauth2';
+import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
+import csrf from 'csrf';
+import requestPromise, { OptionsWithUrl } from 'request-promise-native';
 import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
-import * as promClient from 'prom-client';
 
 import {
 	BinaryDataManager,
@@ -91,16 +88,15 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
-import * as compression from 'compression';
-import * as jwt from 'jsonwebtoken';
-import * as jwks from 'jwks-rsa';
+import basicAuth from 'basic-auth';
+import compression from 'compression';
+import jwt from 'jsonwebtoken';
+import jwks from 'jwks-rsa';
 // @ts-ignore
-import * as timezones from 'google-timezones-json';
-import * as parseUrl from 'parseurl';
-import * as querystring from 'querystring';
-import { OptionsWithUrl } from 'request-promise-native';
-import { Registry } from 'prom-client';
+import timezones from 'google-timezones-json';
+import parseUrl from 'parseurl';
+import querystring from 'querystring';
+import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
 	ActiveExecutions,
@@ -143,7 +139,7 @@ import {
 	getCredentialForUser,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 

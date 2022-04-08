@@ -1,16 +1,16 @@
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
-import express = require('express');
-import * as superagent from 'superagent';
-import * as request from 'supertest';
+import express from 'express';
+import superagent from 'superagent';
+import request from 'supertest';
 import { URL } from 'url';
-import bodyParser = require('body-parser');
-import * as util from 'util';
+import bodyParser from 'body-parser';
+import util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 
-import config = require('../../../config');
+import config from '../../../config';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';

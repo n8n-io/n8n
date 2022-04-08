@@ -25,7 +25,7 @@ import {
 	Source as ParserSource,
 } from 'mailparser';
 
-import * as lodash from 'lodash';
+import _ from 'lodash';
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
@@ -286,7 +286,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = lodash.find(message.parts, { which: '' });
+					const part = _.find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -356,7 +356,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = lodash.find(message.parts, { which: 'TEXT' });
+					const part = _.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
