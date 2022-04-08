@@ -24,10 +24,10 @@ export async function getWorkflowOwner(workflowId: string | number): Promise<Use
 }
 
 export function isEmailSetUp(): boolean {
-	const smtp = config.get('userManagement.emails.mode') === 'smtp';
-	const host = !!config.get('userManagement.emails.smtp.host');
-	const user = !!config.get('userManagement.emails.smtp.auth.user');
-	const pass = !!config.get('userManagement.emails.smtp.auth.pass');
+	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
+	const host = !!config.getEnv('userManagement.emails.smtp.host');
+	const user = !!config.getEnv('userManagement.emails.smtp.auth.user');
+	const pass = !!config.getEnv('userManagement.emails.smtp.auth.pass');
 
 	return smtp && host && user && pass;
 }
@@ -58,7 +58,7 @@ export async function getInstanceOwner(): Promise<User> {
  * Return the n8n instance base URL without trailing slash.
  */
 export function getInstanceBaseUrl(): string {
-	const n8nBaseUrl = config.get('editorBaseUrl') || getWebhookBaseUrl();
+	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
 
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 }

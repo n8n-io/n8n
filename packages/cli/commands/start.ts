@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
-import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
@@ -100,9 +100,9 @@ export class Start extends Command {
 
 			await InternalHooksManager.getInstance().onN8nStop();
 
-			const skipWebhookDeregistration = config.get(
+			const skipWebhookDeregistration = config.getEnv(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
-			) as boolean;
+			);
 
 			const removePromises = [];
 			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
@@ -169,7 +169,7 @@ export class Start extends Command {
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
 
-				if (!config.get('userManagement.jwtSecret')) {
+				if (!config.getEnv('userManagement.jwtSecret')) {
 					// If we don't have a JWT secret set, generate
 					// one based and save to config.
 					const encryptionKey = await UserSettings.getEncryptionKey();
@@ -222,12 +222,12 @@ export class Start extends Command {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
-				if (config.get('executions.mode') === 'queue') {
-					const redisHost = config.get('queue.bull.redis.host');
-					const redisPassword = config.get('queue.bull.redis.password');
-					const redisPort = config.get('queue.bull.redis.port');
-					const redisDB = config.get('queue.bull.redis.db');
-					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				if (config.getEnv('executions.mode') === 'queue') {
+					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisPassword = config.getEnv('queue.bull.redis.password');
+					const redisPort = config.getEnv('queue.bull.redis.port');
+					const redisDB = config.getEnv('queue.bull.redis.db');
+					const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0;
 					let cumulativeTimeout = 0;
 
@@ -285,7 +285,7 @@ export class Start extends Command {
 				const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 
 				if (dbType === 'sqlite') {
-					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
+					const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 					if (shouldRunVacuum) {
 						// eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-non-null-assertion
 						await Db.collections.Execution!.query('VACUUM;');
@@ -324,7 +324,7 @@ export class Start extends Command {
 						subdomain: tunnelSubdomain,
 					};
 
-					const port = config.get('port');
+					const port = config.getEnv('port');
 
 					// @ts-ignore
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
@@ -340,7 +340,7 @@ export class Start extends Command {
 				const { cli } = await GenericHelpers.getVersions();
 				InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig, true);
 
 				await Server.start();
@@ -354,7 +354,7 @@ export class Start extends Command {
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
-				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+				const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
 
 				if (saveManualExecutions) {
 					this.log('\nManual executions will be visible only for the owner');

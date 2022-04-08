@@ -6,7 +6,7 @@ import config = require('../../../config');
 import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
 
 function resolveDataType(dataType: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {

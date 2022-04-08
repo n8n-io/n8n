@@ -5,9 +5,9 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 	name = 'UniqueWorkflowNames1620824779533';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
@@ -58,9 +58,9 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}

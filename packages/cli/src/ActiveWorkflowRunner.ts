@@ -74,7 +74,7 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
-		if (!config.get('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+		if (!config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -466,7 +466,7 @@ export class ActiveWorkflowRunner {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
 					// When skipWebhoooksDeregistrationOnShutdown is enabled,
