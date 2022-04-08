@@ -89,7 +89,7 @@
     "ts-jest": "^27.1.3",
     "ts-node": "^8.9.1",
     "tslint": "^6.1.2",
-    "typescript": "~4.3.5"
+    "typescript": "~4.6.0"
   },
   "dependencies": {
     "@oclif/command": "^1.5.18",
