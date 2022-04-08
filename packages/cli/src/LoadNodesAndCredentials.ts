@@ -276,6 +276,32 @@ class LoadNodesAndCredentialsClass {
 		return loadedNodes;
 	}
 
+	async removeNpmModule(packageName: string, installedNodes: InstalledNodes[]): Promise<void> {
+		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+
+		const command = `npm remove ${packageName}`;
+		const execOptions = {
+			cwd: downloadFolder,
+			env: {
+				NODE_PATH: process.env.NODE_PATH,
+				PATH: process.env.PATH,
+			},
+		};
+
+		try {
+			await execAsync(command, execOptions);
+		} catch (error) {
+			if (error.message.includes('404 Not Found')) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
+			}
+			throw error;
+		}
+
+		installedNodes.forEach((installedNode) => {
+			delete this.nodeTypes[installedNode.name];
+		});
+	}
+
 	/**
 	 * Loads a node from a file
 	 *
