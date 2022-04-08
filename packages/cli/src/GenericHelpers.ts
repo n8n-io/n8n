@@ -5,12 +5,12 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as express from 'express';
+import express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
 import { IDataObject } from 'n8n-workflow';
 import { validate } from 'class-validator';
-import * as config from '../config';
+import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
 import { Db, ICredentialsDb, IPackageVersions, ResponseHelper } from '.';

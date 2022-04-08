@@ -1,10 +1,10 @@
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { Db } from '../../src';
-import config = require('../../config');
+import config from '../../config';
 import {
 	randomEmail,
 	randomName,

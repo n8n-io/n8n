@@ -13,7 +13,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
-import * as express from 'express';
+import express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 

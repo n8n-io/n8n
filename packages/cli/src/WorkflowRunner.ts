@@ -26,12 +26,12 @@ import {
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as PCancelable from 'p-cancelable';
+import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import * as Bull from 'bull';
-import * as config from '../config';
+import Bull from 'bull';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,

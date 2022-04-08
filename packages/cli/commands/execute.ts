@@ -22,7 +22,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import config = require('../config');
+import config from '../config';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class Execute extends Command {

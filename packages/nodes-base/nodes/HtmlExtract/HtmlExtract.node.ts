@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio';
+import cheerio from 'cheerio';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,

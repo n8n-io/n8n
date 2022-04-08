@@ -3,7 +3,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import express = require('express');
+import express from 'express';
 import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
@@ -24,7 +24,7 @@ import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { validateEntity } from '../GenericHelpers';
 import type { CredentialRequest } from '../requests';
-import config = require('../../config');
+import * as config from '../../config';
 import { externalHooks } from '../Server';
 
 export const credentialsController = express.Router();

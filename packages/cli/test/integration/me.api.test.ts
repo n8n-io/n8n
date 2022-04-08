@@ -1,8 +1,8 @@
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 import { IsNull } from 'typeorm';
 
-import config = require('../../config');
+import config from '../../config';
 import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';

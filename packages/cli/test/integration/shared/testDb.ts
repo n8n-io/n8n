@@ -1,7 +1,7 @@
 import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
 import { Credentials, UserSettings } from 'n8n-core';
 
-import config = require('../../../config');
+import config from '../../../config';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
 import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { randomEmail, randomName, randomString, randomValidPassword } from './random';
