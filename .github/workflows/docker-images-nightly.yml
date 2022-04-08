@@ -8,7 +8,7 @@ on:
       repository:
         description: 'GitHub repository to create image off.'
         required: true
-        default: 'n8n-io/n8n'
+        default: 'saurabharch/n8n'
       branch:
         description: 'GitHub branch to create image off.'
         required: true
