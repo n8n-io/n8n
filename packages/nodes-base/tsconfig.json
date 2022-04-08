@@ -16,7 +16,8 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2019",
-		"sourceMap": true
+		"sourceMap": true,
+		"esModuleInterop": true
 	},
 	"include": [
 		"credentials/**/*",
