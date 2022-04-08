@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import { GenericHelpers } from '../..';
-import config = require('../../../config');
+import * as config from '../../../config';
 import {
 	InviteEmailData,
 	PasswordResetData,

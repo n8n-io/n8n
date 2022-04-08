@@ -1,5 +1,5 @@
 import { createConnection } from 'typeorm';
-import config = require('../config');
+import config from '../config';
 import { exec } from 'child_process';
 import { getBootstrapMySqlOptions, getBootstrapPostgresOptions } from './integration/shared/testDb';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';

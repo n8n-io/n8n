@@ -6,15 +6,15 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as localtunnel from 'localtunnel';
+import localtunnel from 'localtunnel';
 import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as Redis from 'ioredis';
+import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import { createHash } from 'crypto';
-import * as config from '../config';
+import config from '../config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,

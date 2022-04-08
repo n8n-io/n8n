@@ -6,10 +6,10 @@
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as Redis from 'ioredis';
+import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
-import * as config from '../config';
+import config from '../config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,

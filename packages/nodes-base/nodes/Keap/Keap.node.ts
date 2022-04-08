@@ -100,7 +100,7 @@ import {
 	pascalCase,
 } from 'change-case';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {

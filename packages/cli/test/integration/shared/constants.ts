@@ -1,4 +1,4 @@
-import config = require('../../../config');
+import config from '../../../config';
 
 export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 

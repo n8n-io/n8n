@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { Workflow } from 'n8n-workflow';
-import { In, IsNull, Not } from 'typeorm';
-import express = require('express');
+import { In } from 'typeorm';
+import express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import { PublicUser } from './Interfaces';
@@ -11,7 +11,7 @@ import { Db, ResponseHelper } from '..';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
-import config = require('../../config');
+import * as config from '../../config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {

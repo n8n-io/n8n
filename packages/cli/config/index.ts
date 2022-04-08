@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable no-console */
-
-import * as convict from 'convict';
-import * as dotenv from 'dotenv';
+import convict from 'convict';
+import dotenv from 'dotenv';
 import { schema } from './schema';
 
 dotenv.config();

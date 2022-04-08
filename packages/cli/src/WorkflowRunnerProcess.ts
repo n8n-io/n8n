@@ -44,7 +44,7 @@ import {
 
 import { getLogger } from './Logger';
 
-import * as config from '../config';
+import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 

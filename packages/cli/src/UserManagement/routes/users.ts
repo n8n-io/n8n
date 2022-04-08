@@ -21,7 +21,7 @@ import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
 
 export function usersNamespace(this: N8nApp): void {

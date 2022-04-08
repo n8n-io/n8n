@@ -13,7 +13,7 @@ import {
 } from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType } from '../../index';
 import { ITagDb } from '../../Interfaces';
 import { idStringifier } from '../utils/transformers';
