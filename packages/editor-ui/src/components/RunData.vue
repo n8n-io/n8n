@@ -885,25 +885,33 @@ export default mixins(
 }
 
 .table {
-	border-collapse: collapse;
+	border-collapse: separate;
 	text-align: left;
 	width: calc(100% - var(--spacing-s));
 	margin-right: var(--spacing-s);
-	border: var(--border-base);
 	font-size: var(--font-size-2xs);
 
 	th {
 		padding: var(--spacing-2xs);
 		background-color: var(--color-background-base);
-		border: var(--border-base);
+		border-top: var(--border-base);
+		border-bottom: var(--border-base);
+		border-left: var(--border-base);
+		position: sticky;
+		top: 0;
 	}
 
 	td {
 		padding: var(--spacing-2xs);
-		border: var(--border-base);
+		border-bottom: var(--border-base);
+		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		max-width: 300px;
 		white-space: pre-wrap;
+	}
+
+	th:last-child, td:last-child {
+		border-right: var(--border-base);
 	}
 }
 
