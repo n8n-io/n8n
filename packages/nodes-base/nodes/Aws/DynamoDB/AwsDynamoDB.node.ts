@@ -186,7 +186,7 @@ export class AwsDynamoDB implements INodeType {
 
 						const eavUi = this.getNodeParameter('additionalFields.eavUi.eavValues', i, []) as IAttributeValueUi[];
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 
 						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [{ key: string, type: string, value: string }];
@@ -239,7 +239,7 @@ export class AwsDynamoDB implements INodeType {
 						const tableName = this.getNodeParameter('tableName', 0) as string;
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						// tslint:disable-next-line: no-any
@@ -299,7 +299,7 @@ export class AwsDynamoDB implements INodeType {
 						const eavUi = this.getNodeParameter('eavUi.eavValues', i, []) as IAttributeValueUi[];
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 						const scan = this.getNodeParameter('scan', 0) as boolean;
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 

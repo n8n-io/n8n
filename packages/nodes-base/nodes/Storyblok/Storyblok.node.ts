@@ -183,8 +183,8 @@ export class Storyblok implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const source = this.getNodeParameter('source', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -197,13 +197,13 @@ export class Storyblok implements INodeType {
 						}
 						if (operation === 'getAll') {
 							const filters = this.getNodeParameter('filters', i) as string;
-							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
 							if (returnAll) {
 								responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', '/v1/cdn/stories', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.per_page = limit;
 								responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories`, {}, qs);
 								responseData = responseData.stories;
@@ -218,7 +218,7 @@ export class Storyblok implements INodeType {
 						// 	const name = this.getNodeParameter('name', i) as string;
 						// 	const slug = this.getNodeParameter('slug', i) as string;
 						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
-						// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						// 	const additionalFields = this.getNodeParameter('additionalFields', i);
 						// 	const body: IDataObject = {
 						// 		name,
 						// 		slug,
@@ -286,13 +286,13 @@ export class Storyblok implements INodeType {
 						if (operation === 'getAll') {
 							const space = this.getNodeParameter('space', i) as string;
 							const filters = this.getNodeParameter('filters', i) as string;
-							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
 							if (returnAll) {
 								responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', `/v1/spaces/${space}/stories`, {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.per_page = limit;
 								responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories`, {}, qs);
 								responseData = responseData.stories;

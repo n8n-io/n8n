@@ -403,7 +403,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource');
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/${resource}/describe`);
 				for (const field of fields) {
@@ -423,7 +423,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getRecordTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let resource = this.getNodeParameter('resource', 0) as string;
+				let resource = this.getNodeParameter('resource');
 				if (resource === 'customObject') {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
@@ -1019,8 +1019,8 @@ export class Salesforce implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		Logger.debug(`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`);
 
@@ -1031,7 +1031,7 @@ export class Salesforce implements INodeType {
 					if (operation === 'create' || operation === 'upsert') {
 						const company = this.getNodeParameter('company', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ILead = {
 							Company: company,
 							LastName: lastname,
@@ -1130,7 +1130,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/patch-lead-id
 					if (operation === 'update') {
 						const leadId = this.getNodeParameter('leadId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ILead = {};
 						if (!Object.keys(updateFields).length) {
 							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
@@ -1228,14 +1228,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Lead', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -1294,7 +1294,7 @@ export class Salesforce implements INodeType {
 				if (resource === 'contact') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/post-contact
 					if (operation === 'create' || operation === 'upsert') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const lastname = this.getNodeParameter('lastname', i) as string;
 						const body: IContact = {
 							LastName: lastname,
@@ -1417,7 +1417,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/patch-contact-id
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IContact = {};
 						if (!Object.keys(updateFields).length) {
 							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
@@ -1536,14 +1536,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Contact', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -1604,7 +1604,7 @@ export class Salesforce implements INodeType {
 					if (operation === 'create' || operation === 'upsert') {
 						const customObject = this.getNodeParameter('customObject', i) as string;
 						const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (customFieldsUi) {
 							const customFields = (customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -1635,7 +1635,7 @@ export class Salesforce implements INodeType {
 						const recordId = this.getNodeParameter('recordId', i) as string;
 						const customObject = this.getNodeParameter('customObject', i) as string;
 						const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.recordTypeId) {
 							body.RecordTypeId = updateFields.recordTypeId as string;
@@ -1658,14 +1658,14 @@ export class Salesforce implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const customObject = this.getNodeParameter('customObject', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, customObject, returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, customObject, returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -1687,7 +1687,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/atlas.en-us.206.0.api_rest.meta/api_rest/dome_sobject_insert_update_blob.htm
 					if (operation === 'upload') {
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 						let data;
 						const body: { entity_content: { [key: string]: string } } = {
@@ -1734,7 +1734,7 @@ export class Salesforce implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const closeDate = this.getNodeParameter('closeDate', i) as string;
 						const stageName = this.getNodeParameter('stageName', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IOpportunity = {
 							Name: name,
 							CloseDate: closeDate,
@@ -1798,7 +1798,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
 					if (operation === 'update') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IOpportunity = {};
 						if (updateFields.name !== undefined) {
 							body.Name = updateFields.name as string;
@@ -1860,14 +1860,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Opportunity', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -1912,7 +1912,7 @@ export class Salesforce implements INodeType {
 				if (resource === 'account') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/post-account
 					if (operation === 'create' || operation === 'upsert') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const name = this.getNodeParameter('name', i) as string;
 						const body: IAccount = {
 							Name: name,
@@ -2020,7 +2020,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/patch-account-id
 					if (operation === 'update') {
 						const accountId = this.getNodeParameter('accountId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IAccount = {};
 						if (updateFields.name !== undefined) {
 							body.Name = updateFields.name as string;
@@ -2121,14 +2121,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Account', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Account', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -2174,7 +2174,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/post-case
 					if (operation === 'create') {
 						const type = this.getNodeParameter('type', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ICase = {
 							Type: type,
 						};
@@ -2240,7 +2240,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/patch-case-id
 					if (operation === 'update') {
 						const caseId = this.getNodeParameter('caseId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICase = {};
 						if (updateFields.type !== undefined) {
 							body.Type = updateFields.type as string;
@@ -2311,14 +2311,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Case', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Case', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -2358,7 +2358,7 @@ export class Salesforce implements INodeType {
 				if (resource === 'task') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/post-task
 					if (operation === 'create') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const status = this.getNodeParameter('status', i) as string;
 						const body: ITask = {
 							Status: status,
@@ -2449,7 +2449,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/patch-task-id
 					if (operation === 'update') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ITask = {};
 						if (updateFields.type !== undefined) {
 							body.TaskSubtype = updateFields.type as string;
@@ -2544,14 +2544,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Task', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Task', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -2578,7 +2578,7 @@ export class Salesforce implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 						const body: IAttachment = {
 							Name: name,
@@ -2604,7 +2604,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/patch-attachment-id
 					if (operation === 'update') {
 						const attachmentId = this.getNodeParameter('attachmentId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IAttachment = {};
 						if (updateFields.binaryPropertyName !== undefined) {
 							const binaryPropertyName = updateFields.binaryPropertyName as string;
@@ -2636,14 +2636,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'Attachment', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -2673,14 +2673,14 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						try {
 							if (returnAll) {
 								qs.q = getQuery(options, 'User', returnAll) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'User', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 							}
@@ -2716,11 +2716,11 @@ export class Salesforce implements INodeType {
 					}
 					//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
 						responseData = responseData.actions;
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

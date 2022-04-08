@@ -243,7 +243,7 @@ export class MySql implements INodeType {
 
 		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 		let returnItems = [];
 
 		if (operation === 'executeQuery') {

@@ -169,8 +169,8 @@ export class Misp implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 
@@ -195,7 +195,7 @@ export class Misp implements INodeType {
 							value: this.getNodeParameter('value', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						throwOnMissingSharingGroup.call(this, additionalFields);
 
@@ -244,7 +244,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						throwOnMissingSharingGroup.call(this, updateFields);
@@ -274,7 +274,7 @@ export class Misp implements INodeType {
 							info: this.getNodeParameter('information', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						throwOnMissingSharingGroup.call(this, additionalFields);
 
@@ -343,7 +343,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						throwOnMissingSharingGroup.call(this, updateFields);
@@ -410,7 +410,7 @@ export class Misp implements INodeType {
 							url,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -564,7 +564,7 @@ export class Misp implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -611,7 +611,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						Object.assign(body, updateFields);
 
@@ -666,10 +666,10 @@ export class Misp implements INodeType {
 
 						responseData = await mispApiRequest.call(this, 'GET', '/tags') as LoadedTags;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit');
 							responseData = responseData.Tag.slice(0, limit);
 						}
 
@@ -714,7 +714,7 @@ export class Misp implements INodeType {
 							role_id: this.getNodeParameter('role_id', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -760,7 +760,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						Object.assign(body, updateFields);
 
@@ -796,10 +796,10 @@ export class Misp implements INodeType {
 
 						responseData = await mispApiRequest.call(this, 'GET', '/warninglists') as { Warninglists: Array<{ Warninglist: unknown }> };
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit');
 							responseData = responseData.Warninglists.slice(0, limit).map(i => i.Warninglist);
 						} else {
 							responseData = responseData.Warninglists.map(i => i.Warninglist);

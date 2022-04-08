@@ -45,7 +45,7 @@ export class MongoDb implements INodeType {
 		let returnItems = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 
 		if (operation === 'aggregate') {
 			// ----------------------------------

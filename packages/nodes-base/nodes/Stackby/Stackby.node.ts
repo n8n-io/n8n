@@ -192,7 +192,7 @@ export class Stackby implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
 				try {
@@ -280,7 +280,7 @@ export class Stackby implements INodeType {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
@@ -291,7 +291,7 @@ export class Stackby implements INodeType {
 					if (returnAll === true) {
 						responseData = await apiRequestAllItems.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					} else {
-						qs.maxrecord = this.getNodeParameter('limit', 0) as number;
+						qs.maxrecord = this.getNodeParameter('limit');
 						responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					}
 

@@ -83,15 +83,15 @@ export class UnleashedSoftware implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource');
+			const operation = this.getNodeParameter('operation');
 
 			//https://apidocs.unleashedsoftware.com/SalesOrders
 			if (resource === 'salesOrder') {
 
 				if (operation === 'getAll') {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					if (filters.startDate) {
@@ -115,7 +115,7 @@ export class UnleashedSoftware implements INodeType {
 					if (returnAll) {
 						responseData = await unleashedApiRequestAllItems.call(this, 'Items', 'GET', '/SalesOrders', {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
 						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs, 1);
 						responseData = responseData.Items;
@@ -129,7 +129,7 @@ export class UnleashedSoftware implements INodeType {
 			if (resource === 'stockOnHand') {
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -150,7 +150,7 @@ export class UnleashedSoftware implements INodeType {
 					if (returnAll) {
 						responseData = await unleashedApiRequestAllItems.call(this, 'Items', 'GET', '/StockOnHand', {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
 						responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand`, {}, qs, 1);
 						responseData = responseData.Items;

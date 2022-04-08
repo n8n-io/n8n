@@ -105,8 +105,8 @@ export class AwsS3 implements INodeType {
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < items.length; i++) {
 			const headers: IDataObject = {};
 			try {
@@ -115,7 +115,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'create') {
 						const credentials = await this.getCredentials('aws');
 						const name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
 							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
 						}
@@ -173,11 +173,11 @@ export class AwsS3 implements INodeType {
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListAllMyBucketsResult.Buckets.Bucket', 's3', 'GET', '');
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit');
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListAllMyBucketsResult.Buckets.Bucket', 's3', 'GET', '', '', qs);
 							responseData = responseData.slice(0, qs.limit);
 						}
@@ -187,8 +187,8 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll');
+						const additionalFields = this.getNodeParameter('additionalFields');
 
 						if (additionalFields.prefix) {
 							qs['prefix'] = additionalFields.prefix as string;
@@ -224,7 +224,7 @@ export class AwsS3 implements INodeType {
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						} else {
-							qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
+							qs['max-keys'] = this.getNodeParameter('limit');
 							responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 							responseData = responseData.ListBucketResult.Contents;
 						}
@@ -240,7 +240,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'create') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const folderName = this.getNodeParameter('folderName', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let path = `/${folderName}/`;
 
 						if (additionalFields.requesterPays) {
@@ -311,7 +311,7 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -331,7 +331,7 @@ export class AwsS3 implements INodeType {
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit');
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						}
 						if (Array.isArray(responseData)) {
@@ -348,7 +348,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						headers['x-amz-copy-source'] = sourcePath;
 
@@ -488,7 +488,7 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -510,7 +510,7 @@ export class AwsS3 implements INodeType {
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit');
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 							responseData = responseData.splice(0, qs.limit);
 						}
@@ -527,7 +527,7 @@ export class AwsS3 implements INodeType {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject).tagsValues as IDataObject[];
 						let path = '/';
 						let body;

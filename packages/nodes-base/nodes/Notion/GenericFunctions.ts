@@ -72,7 +72,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource');
 
 	const returnData: IDataObject[] = [];
 
@@ -397,7 +397,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}

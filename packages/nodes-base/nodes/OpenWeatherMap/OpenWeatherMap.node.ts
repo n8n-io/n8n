@@ -214,7 +214,7 @@ export class OpenWeatherMap implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 
 		let endpoint = '';
 		let locationSelection;

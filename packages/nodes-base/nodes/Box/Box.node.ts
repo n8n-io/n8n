@@ -84,8 +84,8 @@ export class Box implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -93,7 +93,7 @@ export class Box implements INodeType {
 					if (operation === 'copy') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (additionalFields.name) {
 							body.name = additionalFields.name as string;
@@ -157,7 +157,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-files-id
 					if (operation === 'get') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.fields) {
 							qs.fields = additionalFields.fields as string;
 						}
@@ -167,8 +167,8 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
 						const query = this.getNodeParameter('query', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
 						qs.type = 'file';
 						qs.query = query;
@@ -197,7 +197,7 @@ export class Box implements INodeType {
 						if (returnAll) {
 							responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
@@ -370,8 +370,8 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
 						const query = this.getNodeParameter('query', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
 						qs.type = 'folder';
 						qs.query = query;
@@ -400,7 +400,7 @@ export class Box implements INodeType {
 						if (returnAll) {
 							responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
@@ -454,7 +454,7 @@ export class Box implements INodeType {
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {
 						const folderId = this.getNodeParameter('folderId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.fields) {
 							qs.fields = updateFields.fields;

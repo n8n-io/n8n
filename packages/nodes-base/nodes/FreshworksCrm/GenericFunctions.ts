@@ -62,7 +62,7 @@ export async function getAllItemsViewId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ fromLoadOptions } = { fromLoadOptions: false },
 ) {
-	let resource = this.getNodeParameter('resource', 0) as string;
+	let resource = this.getNodeParameter('resource');
 	let keyword = 'All';
 
 	if (resource === 'account' || fromLoadOptions) {
@@ -115,7 +115,7 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll');
 
 	if (returnAll) {
 		return await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);

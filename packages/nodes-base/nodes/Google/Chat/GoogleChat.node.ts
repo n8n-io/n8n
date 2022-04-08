@@ -220,8 +220,8 @@ export class GoogleChat implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'media') {
@@ -304,7 +304,7 @@ export class GoogleChat implements INodeType {
 								`/v1/spaces`,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
 							responseData = await googleApiRequest.call(
@@ -356,7 +356,7 @@ export class GoogleChat implements INodeType {
 							);
 
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
 							responseData = await googleApiRequest.call(
@@ -382,7 +382,7 @@ export class GoogleChat implements INodeType {
 						const spaceId = this.getNodeParameter('spaceId', i) as string;
 
 						// get additional fields for threadKey and requestId
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.threadKey) {
 							qs.threadKey = additionalFields.threadKey;
 						}
@@ -554,7 +554,7 @@ export class GoogleChat implements INodeType {
 						const uri = this.getNodeParameter('incomingWebhookUrl', i) as string;
 
 						// get additional fields for threadKey
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.threadKey) {
 							qs.threadKey = additionalFields.threadKey;
 						}

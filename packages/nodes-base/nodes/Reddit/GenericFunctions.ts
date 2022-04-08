@@ -21,7 +21,7 @@ export async function redditApiRequest(
 	qs: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource') as string;
 
 	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
 
@@ -71,8 +71,8 @@ export async function redditApiRequestAllItems(
 	let responseData;
 	const returnData: IDataObject[] = [];
 
-	const resource = this.getNodeParameter('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource');
+	const operation = this.getNodeParameter('operation');
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 
 	qs.limit = 100;

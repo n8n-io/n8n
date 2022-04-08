@@ -172,8 +172,8 @@ export class Zoom implements INodeType {
 		const returnData: IDataObject[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -207,7 +207,7 @@ export class Zoom implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetings
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const filters = this.getNodeParameter(
 							'filters',
@@ -220,7 +220,7 @@ export class Zoom implements INodeType {
 						if (returnAll) {
 							responseData = await zoomApiRequestAllItems.call(this, 'meetings', 'GET', '/users/me/meetings', {}, qs);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
 							responseData = responseData.meetings;
 						}
@@ -252,7 +252,7 @@ export class Zoom implements INodeType {
 					}
 					if (operation === 'create') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingcreate
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {};
 
@@ -527,11 +527,11 @@ export class Zoom implements INodeType {
 				// 		if (additionalFields.status) {
 				// 			qs.status = additionalFields.status as string;
 				// 		}
-				// 		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				// 		const returnAll = this.getNodeParameter('returnAll', i);
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
 				// 		} else {
-				// 			qs.page_size = this.getNodeParameter('limit', i) as number;
+				// 			qs.page_size = this.getNodeParameter('limit', i);
 				// 			responseData = await zoomApiRequest.call(this, 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
 
 				// 		}
@@ -682,11 +682,11 @@ export class Zoom implements INodeType {
 				// 	if (operation === 'getAll') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinars
 				// 		const userId = this.getNodeParameter('userId', i) as string;
-				// 		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				// 		const returnAll = this.getNodeParameter('returnAll', i);
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/users/${userId}/webinars`, {}, qs);
 				// 		} else {
-				// 			qs.page_size = this.getNodeParameter('limit', i) as number;
+				// 			qs.page_size = this.getNodeParameter('limit', i);
 				// 			responseData = await zoomApiRequest.call(this, 'GET', `/users/${userId}/webinars`, {}, qs);
 
 				// 		}

@@ -235,8 +235,8 @@ export class Harvest implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -281,7 +281,7 @@ export class Harvest implements INodeType {
 						body.task_id = this.getNodeParameter('taskId', i) as string;
 						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -299,7 +299,7 @@ export class Harvest implements INodeType {
 						body.task_id = this.getNodeParameter('taskId', i) as string;
 						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -361,7 +361,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `time_entries/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						Object.assign(body, updateFields);
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -403,7 +403,7 @@ export class Harvest implements INodeType {
 
 						body.name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -418,7 +418,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `clients/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -474,7 +474,7 @@ export class Harvest implements INodeType {
 						body.bill_by = this.getNodeParameter('billBy', i) as string;
 						body.budget_by = this.getNodeParameter('budgetBy', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -489,7 +489,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `projects/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						Object.assign(body, updateFields);
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -555,7 +555,7 @@ export class Harvest implements INodeType {
 						body.last_name = this.getNodeParameter('lastName', i) as string;
 						body.email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -570,7 +570,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `users/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -623,7 +623,7 @@ export class Harvest implements INodeType {
 						body.client_id = this.getNodeParameter('clientId', i) as string;
 						body.first_name = this.getNodeParameter('firstName', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -638,7 +638,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `contacts/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -705,7 +705,7 @@ export class Harvest implements INodeType {
 
 						body.name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -720,7 +720,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `tasks/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -772,7 +772,7 @@ export class Harvest implements INodeType {
 
 						body.client_id = this.getNodeParameter('clientId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -787,7 +787,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `invoices/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -841,7 +841,7 @@ export class Harvest implements INodeType {
 						body.expense_category_id = this.getNodeParameter('expenseCategoryId', i) as string;
 						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -856,7 +856,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `expenses/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -908,7 +908,7 @@ export class Harvest implements INodeType {
 
 						body.client_id = this.getNodeParameter('clientId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
@@ -923,7 +923,7 @@ export class Harvest implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `estimates/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(qs, updateFields);
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);

@@ -152,8 +152,8 @@ export class Ghost implements INodeType {
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		const source = this.getNodeParameter('source', 0) as string;
 		for (let i = 0; i < length; i++) {
 			try {
@@ -184,7 +184,7 @@ export class Ghost implements INodeType {
 
 						if (operation === 'getAll') {
 
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll');
 
 							const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -214,7 +214,7 @@ export class Ghost implements INodeType {
 
 							const content = this.getNodeParameter('content', i) as string;
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							const post: IDataObject = {
 								title,
@@ -285,7 +285,7 @@ export class Ghost implements INodeType {
 						if (operation === 'getAll') {
 
 
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll');
 
 							const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -309,7 +309,7 @@ export class Ghost implements INodeType {
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 
 							const post: IDataObject = {};
 

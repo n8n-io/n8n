@@ -161,8 +161,8 @@ export class Linear implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'issue') {
@@ -207,7 +207,7 @@ export class Linear implements INodeType {
 						responseData = responseData.data?.issues?.nodes[0];
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const body: IGraphqlBody = {
 							query: query.getIssues(),
 							variables: {
@@ -217,7 +217,7 @@ export class Linear implements INodeType {
 						if (returnAll) {
 							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit');
 							body.variables.first = limit;
 							responseData = await linearApiRequest.call(this, body);
 							responseData = responseData.data.issues.nodes;
@@ -225,7 +225,7 @@ export class Linear implements INodeType {
 					}
 					if (operation === 'update') {
 						const issueId = this.getNodeParameter('issueId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IGraphqlBody = {
 							query: query.updateIssue(),
 							variables: {

@@ -59,7 +59,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 
 		if (response.ok === false) {
 			if (response.error === 'paid_teams_only') {
-				throw new NodeOperationError(this.getNode(), `Your current Slack plan does not include the resource '${this.getNodeParameter('resource', 0) as string}'`, {
+				throw new NodeOperationError(this.getNode(), `Your current Slack plan does not include the resource '${this.getNodeParameter('resource')}'`, {
 					description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
 				});
 			}

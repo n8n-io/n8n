@@ -106,8 +106,8 @@ export class Twitter implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'directMessage') {
@@ -115,7 +115,7 @@ export class Twitter implements INodeType {
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'message_create',
 							message_create: {
@@ -153,7 +153,7 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 					if (operation === 'create') {
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITweet = {
 							status: text,
 						};
@@ -204,8 +204,8 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 					if (operation === 'search') {
 						const q = this.getNodeParameter('searchText', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {
 							q,
 						};
@@ -239,7 +239,7 @@ export class Twitter implements INodeType {
 						if (returnAll) {
 							responseData = await twitterApiRequestAllItems.call(this, 'statuses', 'GET', '/search/tweets.json', {}, qs);
 						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
+							qs.count = this.getNodeParameter('limit');
 							responseData = await twitterApiRequest.call(this, 'GET', '/search/tweets.json', {}, qs);
 							responseData = responseData.statuses;
 						}
@@ -247,7 +247,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
 					if (operation === 'like') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const qs: IDataObject = {
 							id: tweetId,
@@ -262,7 +262,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-retweet-id
 					if (operation === 'retweet') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const qs: IDataObject = {
 							id: tweetId,

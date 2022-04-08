@@ -460,7 +460,7 @@ export class Airtable implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 
 		const application = this.getNodeParameter('application', 0) as string;
 		const table = encodeURI(this.getNodeParameter('table', 0) as string);
@@ -585,7 +585,7 @@ export class Airtable implements INodeType {
 				requestMethod = 'GET';
 				endpoint = `${application}/${table}`;
 
-				returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				returnAll = this.getNodeParameter('returnAll');
 
 				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 
@@ -602,7 +602,7 @@ export class Airtable implements INodeType {
 				if (returnAll === true) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
-					qs.maxRecords = this.getNodeParameter('limit', 0) as number;
+					qs.maxRecords = this.getNodeParameter('limit');
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 

@@ -589,8 +589,8 @@ export class Egoi implements INodeType {
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -601,7 +601,7 @@ export class Egoi implements INodeType {
 
 						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: ICreateMemberBody = {
 							base: {
@@ -681,7 +681,7 @@ export class Egoi implements INodeType {
 
 						const listId = this.getNodeParameter('list', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
@@ -690,7 +690,7 @@ export class Egoi implements INodeType {
 							responseData = await egoiApiRequestAllItems.call(this, 'items', 'GET', `/lists/${listId}/contacts`, {});
 
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts`, {}, { limit });
 
@@ -707,7 +707,7 @@ export class Egoi implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICreateMemberBody = {
 							base: {
 							},

@@ -541,7 +541,7 @@ export class Redis implements INodeType {
 
 			const client = redis.createClient(redisOptions);
 
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const operation = this.getNodeParameter('operation');
 
 			client.on('error', (err: Error) => {
 				client.quit();

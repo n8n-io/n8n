@@ -134,8 +134,8 @@ export class Wordpress implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -143,7 +143,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/posts/#create-a-post
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPost = {
 							title,
 						};
@@ -185,7 +185,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IPost = {
 							id: parseInt(postId, 10),
 						};
@@ -241,7 +241,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.context) {
 							qs.context = options.context as string;
@@ -282,7 +282,7 @@ export class Wordpress implements INodeType {
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
 					}
@@ -305,7 +305,7 @@ export class Wordpress implements INodeType {
 						const lastName = this.getNodeParameter('lastName', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const password = this.getNodeParameter('password', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IUser = {
 							name,
 							username,
@@ -331,7 +331,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 					if (operation === 'update') {
 						const userId = this.getNodeParameter('userId', i) as number;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IUser = {
 							id: userId,
 						};
@@ -378,7 +378,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#list-users
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.context) {
 							qs.context = options.context as string;
@@ -398,7 +398,7 @@ export class Wordpress implements INodeType {
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
 					}

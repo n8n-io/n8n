@@ -127,8 +127,8 @@ export class SeaTable implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -224,14 +224,14 @@ export class SeaTable implements INodeType {
 						qs.table_name = tableName;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						Object.assign(qs, filters, options);
 
 						if (returnAll) {
 							responseData = await setableApiRequestAllItems.call(this, ctx, 'rows', 'GET', endpoint, body, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit');
 							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}

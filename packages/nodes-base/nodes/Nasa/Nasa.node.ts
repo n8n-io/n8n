@@ -921,8 +921,8 @@ export class Nasa implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -941,7 +941,7 @@ export class Nasa implements INodeType {
 				// trigger an error in getNodeParameter dealt with in the catch block.
 				let additionalFields;
 				try {
-					additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					additionalFields = this.getNodeParameter('additionalFields', i);
 				} catch (error) {
 					additionalFields = {} as IDataObject;
 				}
@@ -990,10 +990,10 @@ export class Nasa implements INodeType {
 
 					if (operation === 'getAll') {
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll');
 
 						if (returnAll === false) {
-							qs.size = this.getNodeParameter('limit', 0) as number;
+							qs.size = this.getNodeParameter('limit');
 						}
 
 						propertyName = 'near_earth_objects';

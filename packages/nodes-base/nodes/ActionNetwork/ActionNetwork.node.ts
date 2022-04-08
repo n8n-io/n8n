@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -253,7 +254,7 @@ export class ActionNetwork implements INodeType {
 							},
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body.person, adjustPersonPayload(additionalFields));
@@ -287,7 +288,7 @@ export class ActionNetwork implements INodeType {
 
 						const personId = this.getNodeParameter('personId', i);
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPersonPayload(updateFields));
@@ -390,7 +391,7 @@ export class ActionNetwork implements INodeType {
 
 						const body = makeOsdiLink(personId) as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -525,7 +526,7 @@ export class ActionNetwork implements INodeType {
 
 				}
 
-				const simplify = this.getNodeParameter('simple', i, false) as boolean;
+				const simplify = this.getNodeParameter('simple', i, false);
 
 				if (simplify) {
 					response = operation === 'getAll'
@@ -539,7 +540,7 @@ export class ActionNetwork implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

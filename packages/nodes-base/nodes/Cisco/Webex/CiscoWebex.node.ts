@@ -112,8 +112,8 @@ export class CiscoWebex implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 
@@ -234,7 +234,7 @@ export class CiscoWebex implements INodeType {
 							roomId: this.getNodeParameter('roomId', i),
 						};
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 
 						if (Object.keys(filters).length) {
@@ -244,7 +244,7 @@ export class CiscoWebex implements INodeType {
 						if (returnAll === true) {
 							responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/messages', {}, qs);
 						} else {
-							qs.max = this.getNodeParameter('limit', i) as number;
+							qs.max = this.getNodeParameter('limit', i);
 							responseData = await webexApiRequest.call(this, 'GET', '/messages', {}, qs);
 							responseData = responseData.items;
 						}
@@ -284,7 +284,7 @@ export class CiscoWebex implements INodeType {
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
 						const invitees = this.getNodeParameter('additionalFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							title,
@@ -340,7 +340,7 @@ export class CiscoWebex implements INodeType {
 
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs: IDataObject = {
 							...filters,
@@ -358,7 +358,7 @@ export class CiscoWebex implements INodeType {
 							responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/meetings', {}, qs);
 							returnData.push(...responseData);
 						} else {
-							qs.max = this.getNodeParameter('limit', i) as number;
+							qs.max = this.getNodeParameter('limit', i);
 							responseData = await webexApiRequest.call(this, 'GET', '/meetings', {}, qs);
 							responseData = responseData.items;
 						}
@@ -367,7 +367,7 @@ export class CiscoWebex implements INodeType {
 					if (operation === 'update') {
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
 						const invitees = this.getNodeParameter('updateFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const {
 							title,
@@ -467,7 +467,7 @@ export class CiscoWebex implements INodeType {
 		// 			try {
 		// 				const meetingId = this.getNodeParameter('meetingId', i) as string;
 		// 				const filters = this.getNodeParameter('filters', i) as IDataObject;
-		// 				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		// 				const returnAll = this.getNodeParameter('returnAll', i);
 
 		// 				const qs: IDataObject = {
 		// 					meetingId,
@@ -478,7 +478,7 @@ export class CiscoWebex implements INodeType {
 		// 					responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/meetingTranscripts', {}, qs);
 		// 					returnData.push(...responseData);
 		// 				} else {
-		// 					qs.max = this.getNodeParameter('limit', i) as number;
+		// 					qs.max = this.getNodeParameter('limit', i);
 		// 					responseData = await webexApiRequest.call(this, 'GET', '/meetingTranscripts', {}, qs);
 		// 					returnData.push(...responseData.items);
 		// 				}

@@ -405,8 +405,8 @@ export class GoogleSlides implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -500,12 +500,12 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						//      presentation: getSlides
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
 						responseData = responseData.slides;
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 						returnData.push(...this.helpers.returnJsonArray(responseData));

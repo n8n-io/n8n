@@ -378,8 +378,8 @@ export class GoogleBooks implements INodeType {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		const qs: IDataObject = {};
 		let responseData;
 
@@ -392,11 +392,11 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(this, 'GET', `v1/volumes/${volumeId}`, {});
 					} else if (operation === 'getAll') {
 						const searchQuery = this.getNodeParameter('searchQuery', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', `v1/volumes?q=${searchQuery}`, {});
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', `v1/volumes?q=${searchQuery}`, {}, qs);
 							responseData = responseData.items || [];
 						}
@@ -418,7 +418,7 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {});
 					} else if (operation === 'getAll') {
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let endpoint;
 						if (myLibrary === false) {
 							const userId = this.getNodeParameter('userId', i) as string;
@@ -429,7 +429,7 @@ export class GoogleBooks implements INodeType {
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items || [];
 						}
@@ -453,7 +453,7 @@ export class GoogleBooks implements INodeType {
 
 					if (operation === 'getAll') {
 						const shelfId = this.getNodeParameter('shelfId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
 						let endpoint;
 						if (myLibrary === false) {
@@ -465,7 +465,7 @@ export class GoogleBooks implements INodeType {
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items || [];
 						}

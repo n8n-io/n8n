@@ -128,7 +128,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
@@ -140,12 +140,12 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 
 			if (operation === 'getAllPeople') {
 
-				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', i);
 
 				if (returnAll === true) {
 					responseData = data;
 				} else {
-					const limit = this.getNodeParameter('limit', i) as number;
+					const limit = this.getNodeParameter('limit', i);
 					responseData = data.slice(0, limit);
 				}
 			}

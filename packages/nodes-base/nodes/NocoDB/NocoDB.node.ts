@@ -106,8 +106,8 @@ export class NocoDB implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		const projectId = this.getNodeParameter('projectId', 0) as string;
 		const table = this.getNodeParameter('table', 0) as string;
 
@@ -227,7 +227,7 @@ export class NocoDB implements INodeType {
 						requestMethod = 'GET';
 						endpoint = `/nc/${projectId}/api/v1/${table}`;
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll');
 						qs = this.getNodeParameter('options', i, {}) as IDataObject;
 
 						if (qs.sort) {
@@ -242,7 +242,7 @@ export class NocoDB implements INodeType {
 						if (returnAll === true) {
 							responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit');
 							responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
 						}
 

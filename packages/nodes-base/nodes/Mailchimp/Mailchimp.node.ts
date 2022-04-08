@@ -1858,8 +1858,8 @@ export class Mailchimp implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -1868,12 +1868,12 @@ export class Mailchimp implements INodeType {
 					if (operation === 'getAll') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const categoryId = this.getNodeParameter('groupCategory', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', 'interests', {}, qs);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', {}, qs);
 							responseData = responseData.interests;
 						}
@@ -1995,7 +1995,7 @@ export class Mailchimp implements INodeType {
 					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members
 					if (operation === 'getAll') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						if (options.beforeLastChanged) {
@@ -2026,7 +2026,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll === true) {
 							responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/members`, 'GET', 'members', {}, qs);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'GET', {}, qs);
 							responseData = responseData.members;
 						}
@@ -2036,7 +2036,7 @@ export class Mailchimp implements INodeType {
 
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: ICreateMemberBody = {
 							listId,
@@ -2181,7 +2181,7 @@ export class Mailchimp implements INodeType {
 				if (resource === 'campaign') {
 					//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.status) {
 							qs.status = options.status as string;
@@ -2229,7 +2229,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll === true) {
 							responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
 							responseData = responseData.campaigns;
 						}

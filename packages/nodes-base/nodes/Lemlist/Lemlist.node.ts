@@ -110,8 +110,8 @@ export class Lemlist implements INodeType {
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -134,7 +134,7 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#activities
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
@@ -146,7 +146,7 @@ export class Lemlist implements INodeType {
 						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit');
 							responseData = responseData.slice(0, limit);
 						}
 
@@ -191,7 +191,7 @@ export class Lemlist implements INodeType {
 						// https://developer.lemlist.com/#add-a-lead-in-a-campaign
 
 						const qs = {} as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.deduplicate !== undefined) {
 							qs.deduplicate = additionalFields.deduplicate;
@@ -310,7 +310,7 @@ export class Lemlist implements INodeType {
 							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/unsubscribes');
 						} else {
 							const qs = {
-								limit: this.getNodeParameter('limit', i) as number,
+								limit: this.getNodeParameter('limit', i),
 							};
 							responseData = await lemlistApiRequest.call(this, 'GET', '/unsubscribes', {}, qs);
 						}

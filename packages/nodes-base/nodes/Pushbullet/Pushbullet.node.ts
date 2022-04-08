@@ -449,8 +449,8 @@ export class Pushbullet implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'push') {
@@ -544,7 +544,7 @@ export class Pushbullet implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -558,7 +558,7 @@ export class Pushbullet implements INodeType {
 							responseData = await pushbulletApiRequestAllItems.call(this, 'pushes', 'GET', '/pushes', {}, qs);
 
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit');
 
 							responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
 

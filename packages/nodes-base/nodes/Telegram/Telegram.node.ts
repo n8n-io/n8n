@@ -1858,8 +1858,8 @@ export class Telegram implements INodeType {
 		let requestMethod: string;
 		let endpoint: string;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 		const binaryData = this.getNodeParameter('binaryData', 0, false) as boolean;
 
 		for (let i = 0; i < items.length; i++) {
@@ -1881,7 +1881,7 @@ export class Telegram implements INodeType {
 						body.callback_query_id = this.getNodeParameter('queryId', i) as string;
 
 						// Add additional fields
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 					} else if (operation === 'answerInlineQuery') {
@@ -1895,7 +1895,7 @@ export class Telegram implements INodeType {
 						body.results = this.getNodeParameter('results', i) as string;
 
 						// Add additional fields
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 					}
 
@@ -2008,7 +2008,7 @@ export class Telegram implements INodeType {
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
 
-						const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const { disable_notification } = this.getNodeParameter('additionalFields', i);
 						if (disable_notification) {
 							body.disable_notification = true;
 						}
@@ -2108,7 +2108,7 @@ export class Telegram implements INodeType {
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const mediaItems = this.getNodeParameter('media', i) as IDataObject;

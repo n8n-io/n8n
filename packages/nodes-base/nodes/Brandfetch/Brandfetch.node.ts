@@ -163,7 +163,7 @@ export class Brandfetch implements INodeType {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 		const responseData = [];
 		for (let i = 0; i < length; i++) {
 			try {

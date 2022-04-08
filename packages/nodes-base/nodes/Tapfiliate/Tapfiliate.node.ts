@@ -107,8 +107,8 @@ export class Tapfiliate implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'affiliate') {
@@ -117,7 +117,7 @@ export class Tapfiliate implements INodeType {
 						const firstname = this.getNodeParameter('firstname', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							firstname,
 							lastname,
@@ -158,13 +158,13 @@ export class Tapfiliate implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						Object.assign(qs, filters);
 						if (returnAll) {
 							responseData = await tapfiliateApiRequestAllItems.call(this, 'GET', `/affiliates/`, {}, qs);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await tapfiliateApiRequest.call(this, 'GET', `/affiliates/`, {}, qs);
 							responseData = responseData.splice(0, limit);
 						}
@@ -205,7 +205,7 @@ export class Tapfiliate implements INodeType {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-post
 						const programId = this.getNodeParameter('programId', i) as string;
 						const affiliateId = this.getNodeParameter('affiliateId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							affiliate: {
 								id: affiliateId,
@@ -240,13 +240,13 @@ export class Tapfiliate implements INodeType {
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
 						const programId = this.getNodeParameter('programId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						Object.assign(qs, filters);
 						if (returnAll) {
 							responseData = await tapfiliateApiRequestAllItems.call(this, 'GET', `/programs/${programId}/affiliates/`, {}, qs);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await tapfiliateApiRequest.call(this, 'GET', `/programs/${programId}/affiliates/`, {}, qs);
 							responseData = responseData.splice(0, limit);
 						}

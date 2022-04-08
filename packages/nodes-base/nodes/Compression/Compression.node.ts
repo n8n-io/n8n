@@ -201,7 +201,7 @@ export class Compression implements INodeType {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
 		const returnData: INodeExecutionData[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			try {

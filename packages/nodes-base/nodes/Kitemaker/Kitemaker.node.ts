@@ -249,7 +249,7 @@ export class Kitemaker implements INodeType {
 						throw new Error('Please enter a status to set for the work item to create.');
 					}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(input, additionalFields);
@@ -302,7 +302,7 @@ export class Kitemaker implements INodeType {
 						id: this.getNodeParameter('workItemId', i),
 					};
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					if (!Object.keys(updateFields).length) {
 						throw new Error('Please enter at least one field to update for the work item.');

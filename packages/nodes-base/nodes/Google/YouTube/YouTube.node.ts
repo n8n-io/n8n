@@ -214,8 +214,8 @@ export class YouTube implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -254,7 +254,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/channels/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -293,7 +293,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -307,7 +307,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/channels/update
 					if (operation === 'update') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {
 							id: channelId,
@@ -490,7 +490,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -526,7 +526,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -585,7 +585,7 @@ export class YouTube implements INodeType {
 					if (operation === 'update') {
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						qs.part = 'snippet, status';
 
@@ -687,7 +687,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlistItems/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
@@ -718,7 +718,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -808,7 +808,7 @@ export class YouTube implements INodeType {
 				if (resource === 'video') {
 					//https://developers.google.com/youtube/v3/docs/search/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -838,7 +838,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -1005,7 +1005,7 @@ export class YouTube implements INodeType {
 						const id = this.getNodeParameter('videoId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						qs.part = 'snippet, status, recordingDetails';
 
@@ -1124,7 +1124,7 @@ export class YouTube implements INodeType {
 				if (resource === 'videoCategory') {
 					//https://developers.google.com/youtube/v3/docs/videoCategories/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const regionCode = this.getNodeParameter('regionCode', i) as string;
 
 						qs.regionCode = regionCode;
@@ -1141,7 +1141,7 @@ export class YouTube implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

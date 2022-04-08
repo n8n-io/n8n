@@ -137,8 +137,8 @@ export class KoBoToolbox implements INodeType {
 		let returnData: any[] = [];
 		const binaryItems: INodeExecutionData[] = [];
 		const items = this.getInputData();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -178,7 +178,7 @@ export class KoBoToolbox implements INodeType {
 							...(formFilterOptions.filter && { q: formFilterOptions.filter }),
 							...(formQueryOptions?.sort?.value?.ordering && { ordering: (formQueryOptions?.sort?.value?.descending ? '-' : '') + formQueryOptions?.sort?.value?.ordering }),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
 			}
@@ -203,7 +203,7 @@ export class KoBoToolbox implements INodeType {
 							//...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
 							...(submissionQueryOptions.fields && { fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string)) }),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 
 					if (submissionQueryOptions.reformat) {
@@ -307,7 +307,7 @@ export class KoBoToolbox implements INodeType {
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000) as number,
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
 
@@ -343,7 +343,7 @@ export class KoBoToolbox implements INodeType {
 							start: this.getNodeParameter('start', i, 0) as number,
 							limit: this.getNodeParameter('limit', i, 1000) as number,
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
 

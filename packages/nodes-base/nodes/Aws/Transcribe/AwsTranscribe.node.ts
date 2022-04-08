@@ -399,8 +399,8 @@ export class AwsTranscribe implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'transcriptionJob') {
@@ -501,7 +501,7 @@ export class AwsTranscribe implements INodeType {
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						const action = 'Transcribe.ListTranscriptionJobs';
 						const body: IDataObject = {};
@@ -518,7 +518,7 @@ export class AwsTranscribe implements INodeType {
 							responseData = await awsApiRequestRESTAllItems.call(this, 'TranscriptionJobSummaries', 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							body['MaxResults'] = limit;
 							responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 							responseData = responseData.TranscriptionJobSummaries;

@@ -122,7 +122,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						if (!returnAll) {
 							qs.$count = true;
@@ -175,7 +175,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						if (!returnAll) {
 							qs.$count = true;
@@ -201,7 +201,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							},
 						};
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this);

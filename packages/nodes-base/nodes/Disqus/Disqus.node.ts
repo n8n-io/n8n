@@ -637,8 +637,8 @@ export class Disqus implements INodeType {
 		const returnData: IDataObject[] = [];
 
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -664,7 +664,7 @@ export class Disqus implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs.forum = id;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -685,10 +685,10 @@ export class Disqus implements INodeType {
 						endpoint = 'forums/listPosts.json';
 
 						const id = this.getNodeParameter('id', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(qs, additionalFields);
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						qs.forum = id;
 						qs.limit = 100;
@@ -717,8 +717,8 @@ export class Disqus implements INodeType {
 						endpoint = 'forums/listCategories.json';
 
 						const id = this.getNodeParameter('id', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(qs, additionalFields);
 
 						qs.forum = id;
@@ -749,12 +749,12 @@ export class Disqus implements INodeType {
 						endpoint = 'forums/listThreads.json';
 
 						const id = this.getNodeParameter('id', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						qs.forum = id;
 						qs.limit = 100;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 

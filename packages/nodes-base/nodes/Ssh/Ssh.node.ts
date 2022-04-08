@@ -282,8 +282,8 @@ export class Ssh implements INodeType {
 
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 
 		const temporaryFiles: string[] = [];

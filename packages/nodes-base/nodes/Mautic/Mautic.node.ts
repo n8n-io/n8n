@@ -355,8 +355,8 @@ export class Mautic implements INodeType {
 		let qs: IDataObject;
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			qs = {};
@@ -578,14 +578,14 @@ export class Mautic implements INodeType {
 					}
 					//https://developer.mautic.org/#list-contact-companies
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs = Object.assign(qs, additionalFields);
 						if (returnAll === true) {
 							responseData = await mauticApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 							if (responseData.errors) {
@@ -615,7 +615,7 @@ export class Mautic implements INodeType {
 					//https://developer.mautic.org/?php#create-contact
 					if (operation === 'create') {
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 						let body: IDataObject = {};
 						if (!jsonActive) {
@@ -713,7 +713,7 @@ export class Mautic implements INodeType {
 					//https://developer.mautic.org/?php#edit-contact
 					if (operation === 'update') {
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						let body: IDataObject = {};
 						if (updateFields.email) {
@@ -831,7 +831,7 @@ export class Mautic implements INodeType {
 					}
 					//https://developer.mautic.org/?php#list-contacts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						qs = Object.assign(qs, options);
 						if (qs.orderBy) {
@@ -844,7 +844,7 @@ export class Mautic implements INodeType {
 						if (returnAll === true) {
 							responseData = await mauticApiRequestAllItems.call(this, 'contacts', 'GET', '/contacts', {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 							if (responseData.errors) {
@@ -882,7 +882,7 @@ export class Mautic implements INodeType {
 						const channel = this.getNodeParameter('channel', i) as string;
 						const body: IDataObject = {};
 						if (action === 'add') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							Object.assign(body, additionalFields);
 						}
 						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/${action}`, body);

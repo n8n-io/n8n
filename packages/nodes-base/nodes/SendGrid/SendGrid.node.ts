@@ -129,14 +129,14 @@ export class SendGrid implements INodeType {
 		let responseData;
 		const timezone = this.getTimezone();
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		// https://sendgrid.com/docs/api-reference/
 		if (resource === 'contact') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						let endpoint = '/marketing/contacts';
 						let method = 'GET';
@@ -148,7 +148,7 @@ export class SendGrid implements INodeType {
 						}
 						responseData = await sendGridApiRequestAllItems.call(this, endpoint, method, 'result', body, qs);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 						returnData.push.apply(returnData, responseData);
@@ -293,10 +293,10 @@ export class SendGrid implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await sendGridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, qs);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 						returnData.push.apply(returnData, responseData);

@@ -1144,8 +1144,8 @@ export class Freshdesk implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'ticket') {
@@ -1247,7 +1247,7 @@ export class Freshdesk implements INodeType {
 					//https://developers.freshdesk.com/api/#update_ticket
 					if (operation === 'update') {
 						const ticketId = this.getNodeParameter('ticketId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICreateTicketBody = {};
 
 						if (updateFields.requester) {
@@ -1324,7 +1324,7 @@ export class Freshdesk implements INodeType {
 					}
 					//https://developers.freshdesk.com/api/#list_all_tickets
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.requesterId) {
 							qs.requester_id = options.requesterId as string;
@@ -1352,7 +1352,7 @@ export class Freshdesk implements INodeType {
 						if (returnAll === true) {
 							responseData = await freshdeskApiRequestAllItems.call(this, 'GET', '/tickets', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await freshdeskApiRequest.call(this, 'GET', '/tickets', {}, qs);
 						}
 					}
