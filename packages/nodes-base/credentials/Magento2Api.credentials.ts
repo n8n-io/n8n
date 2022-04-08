@@ -1,8 +1,7 @@
 import {
-	ICredentialDataDecryptedObject,
+	IAuthenticateBearer,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -30,10 +29,9 @@ export class Magento2Api implements ICredentialType {
 			url: '/rest/default/V1/modules',
 		},
 	};
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers = Object.assign({}, {
-			'Authorization': `Bearer ${credentials.accessToken}`,
-		});
-		return requestOptions;
-	}
+
+	authenticate = {
+		type: 'bearer',
+		properties: {},
+	} as IAuthenticateBearer;
 }
