@@ -18,7 +18,9 @@
 			</div>
 			<div slot="reference" :class="{[$style.title]: true, [$style.hoverable]: !readOnly}">
 				{{ value }}
-				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
+				<div :class="$style.editIconContainer">
+					<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
+				</div>
 			</div>
 		</el-popover>
 	</span>
@@ -75,19 +77,15 @@ export default Vue.extend({
 	line-height: var(--font-line-height-compact);
 	overflow-wrap: anywhere;
 	padding-right: var(--spacing-s);
+	overflow: hidden;
 }
 
 .title {
 	max-height: 100px;
 	display: -webkit-box;
-	overflow: hidden;
 	-webkit-line-clamp: 5;
 	-webkit-box-orient: vertical;
 	color: var(--color-text-dark);
-
-	> *:first-child {
-		padding-right: var(--spacing-3xs);
-	}
 }
 
 .hoverable {
@@ -106,8 +104,16 @@ export default Vue.extend({
 
 .editIcon {
 	display: none;
-	font-size: var(--font-size-l);
+	font-size: var(--font-size-xs);
 	color: var(--color-text-base);
+	position: absolute;
+	bottom: 0;
+}
+
+.editIconContainer {
+	display: inline-block;
+	position: relative;
+	width: 0;
 }
 
 .editButtons {
