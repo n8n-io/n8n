@@ -1,15 +1,15 @@
 <template>
   <div class="sticky-wrapper" :style="stickyPosition">
-    <div class="select-sticky-background" v-show="isSelected" :style="selectedStyle" />
+    <div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
     <div 
       :class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
-      :style="wrapperStyle"
+      :style="stickySize"
     >
       <div
         class="sticky-box"
         :data-name="data.name"
         :ref="data.name"
-        :style="stickyStyle"
+        :style="borderStyle"
         @click="setNodeActive"
         @click.left="mouseLeftClick"
         v-touch:start="touchStart"
@@ -101,6 +101,21 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	computed: {
+		borderStyle (): object {
+			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.data.disabled) {
+				borderColor = getStyleTokenValue('--color-foreground-base');
+			}
+
+			const returnStyles: {
+				[key: string]: string;
+			} = {
+				'border-color': borderColor,
+			};
+
+			return returnStyles;
+		},
 		isSelected (): boolean {
 			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
 		},
@@ -117,7 +132,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return [0, 0];
 			}
 		},
-		selectedStyle (): object {
+		selectedStickyStyle (): object {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -125,7 +140,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				width: this.stickyProp.width + 16 + 'px',
 				left: this.stickyProp.left - 8 + 'px',
 				top: this.stickyProp.top - 8 + 'px',
-				zIndex: this.stickyProp.zIndex,
+				zIndex: 0,
+			};
+
+			return returnStyles;
+		},
+		stickySize(): object {
+			const returnStyles: {
+				[key: string]: string | number;
+			} = {
+				height: this.stickyProp.height + 'px',
+				width: this.stickyProp.width + 'px',
 			};
 
 			return returnStyles;
@@ -137,21 +162,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
 				zIndex: this.stickyProp.zIndex,
-			};
-
-			return returnStyles;
-		},
-		stickyStyle (): object {
-			let borderColor = getStyleTokenValue('--color-foreground-xdark');
-
-			if (this.data.disabled) {
-				borderColor = getStyleTokenValue('--color-foreground-base');
-			}
-
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				'border-color': borderColor,
 			};
 
 			return returnStyles;
@@ -169,16 +179,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		showTooltip(): boolean {
 			return !this.hideActions;
-		},
-		wrapperStyle(): object {
-			const returnStyles: {
-				[key: string]: string | number;
-			} = {
-				height: this.stickyProp.height + 'px',
-				width: this.stickyProp.width + 'px',
-			};
-
-			return returnStyles;
 		},
  	},
 	data () {
@@ -203,48 +203,19 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			});
 		},
 		onChangeMode(isStickyInEditMode: boolean) {
-			if (this.node) {
-
-				const nodeParameters = {
-					content: this.node.parameters.content,
-					height: this.stickyProp.height,
-					isEditable: isStickyInEditMode,
-					width: this.stickyProp.width,
-					totalSize: this.stickyProp.height + this.stickyProp.width,
-					zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
-				};
-
-				const updateInformation = {
-					name: this.node.name,
-					value: nodeParameters,
-				};
-
-				this.$store.commit('setNodeParameters', updateInformation);
+			if (isStickyInEditMode) {
+				this.setSizeParameters(null, isStickyInEditMode, 99999);
+			} else {
+				this.setSizeParameters(null, isStickyInEditMode);
 			}
+			
 			this.$emit('onChangeMode', isStickyInEditMode);
 		},
 		onMouseHover(isMouseHoverActive: boolean) {
 			this.$emit('onMouseHover', isMouseHoverActive);
 		},
 		onInputChange(content: string) {
-			if (this.node) {
-
-				const nodeParameters = {
-					content,
-					width: this.node.parameters.width,
-					height: this.node.parameters.height,
-					isEditable: true,
-					totalSize: this.stickyProp.height + this.stickyProp.width,
-					zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
-				};
-
-				const updateInformation = {
-					name: this.node.name,
-					value: nodeParameters,
-				};
-
-				this.$store.commit('setNodeParameters', updateInformation);
-			}
+			this.setSizeParameters(content, true);
 		},
 		onResizeStart(parameters: Sticky) {
 			this.isResizing = true;
@@ -266,22 +237,28 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			this.setSizeParameters(this.stickyProp.height, this.stickyProp.width);
+			this.setSizeParameters();
 			this.__makeInstanceDraggable(this.data);
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
-		setSizeParameters(height: number, width: number) {
+		setSizeParameters(content: string | null = null, isEditable = false, zIndex: number | null = null) {
 			if (this.node) {
+				
+				if (zIndex) {
+					this.stickyProp.zIndex = zIndex;
+				} else {
+					this.stickyProp.zIndex = (this.stickyProp.height + this.stickyProp.width) * -1;
+				}
 
 				const nodeParameters = {
-					content: this.node.parameters.content,
-					height,
-					isEditable: false,
-					width,
-					totalSize: height + width,
-					zIndex: (height + width) * -1,
+					content: content ? content : this.node.parameters.content,
+					height: this.stickyProp.height,
+					width: this.stickyProp.width,
+					isEditable,
+					totalSize: this.stickyProp.height + this.stickyProp.width,
+					zIndex: this.stickyProp.zIndex,
 				};
 
 				const updateInformation = {

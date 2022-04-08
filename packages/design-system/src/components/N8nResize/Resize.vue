@@ -21,12 +21,10 @@ export default {
       currentResizer: null,
       prevX: 0,
       prevY: 0,
-      original_height: 0,
-      original_width: 0,
-      original_x: 0,
-      original_mouse_x: 0,
-      original_y: 0,
-      original_mouse_y: 0,
+      height: 0,
+      width: 0,
+      x: 0,
+      y: 0,
     }
   },
   methods: {
@@ -35,21 +33,19 @@ export default {
 
       this.prevX = e.clientX;
       this.prevY = e.clientY;
+      this.x = e.pageX;
+      this.y = e.pageY;
 
-      this.original_height = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('height').replace('px', ''));
-      this.original_width = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('width').replace('px', ''));
-      this.original_x = this.resizer.getBoundingClientRect().left;
-      this.original_y = this.resizer.getBoundingClientRect().top;
-      this.original_mouse_x = e.pageX;
-      this.original_mouse_y = e.pageY;
-
+      this.height = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('height').replace('px', ''));
+      this.width = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('width').replace('px', ''));
+      
       window.addEventListener('mousemove', this.mouseMove);
       window.addEventListener('mouseup', this.mouseUp);
     },
     mouseMove(e) {
       if (this.currentResizer.classList.contains('bottom-right')) {
-        const width = this.original_width + (e.pageX - this.original_mouse_x);
-        const height = this.original_height + (e.pageY - this.original_mouse_y);
+        const width = this.width + (e.pageX - this.x);
+        const height = this.height + (e.pageY - this.y);
         if (width > this.minWidth) {
           this.resizer.style.width = width + 'px'
         }
@@ -57,8 +53,8 @@ export default {
           this.resizer.style.height = height + 'px'
         }
       } else if (this.currentResizer.classList.contains('bottom-left')) {
-        const height = this.original_height + (e.pageY - this.original_mouse_y);
-        const width = this.original_width - (e.pageX - this.original_mouse_x);
+        const height = this.height + (e.pageY - this.y);
+        const width = this.width - (e.pageX - this.x);
         const left = this.resizer.offsetLeft - (this.prevX - e.clientX)
         
         if (height > this.minHeight) {
@@ -70,8 +66,8 @@ export default {
           this.resizer.style.left = left + 'px'
         }
       } else if (this.currentResizer.classList.contains('top-right')) {
-        const width = this.original_width + (e.pageX - this.original_mouse_x);
-        const height = this.original_height - (e.pageY - this.original_mouse_y);
+        const width = this.width + (e.pageX - this.x);
+        const height = this.height - (e.pageY - this.y);
         const top = this.resizer.offsetTop - (this.prevY - e.clientY);
         
         if (width > this.minWidth) {
@@ -83,8 +79,8 @@ export default {
           this.resizer.style.top = top + 'px';
         }
       } else if (this.currentResizer.classList.contains('top-left')) {
-        const width = this.original_width - (e.pageX - this.original_mouse_x);
-        const height = this.original_height - (e.pageY - this.original_mouse_y);
+        const width = this.width - (e.pageX - this.x);
+        const height = this.height - (e.pageY - this.y);
         const top = this.resizer.offsetTop - (this.prevY - e.clientY);
         const left = this.resizer.offsetLeft - (this.prevX - e.clientX);
 
@@ -97,13 +93,13 @@ export default {
           this.resizer.style.top = top + 'px';
         }
       } else if (this.currentResizer.classList.contains('right')) {
-        const width = this.original_width + (e.pageX - this.original_mouse_x);
+        const width = this.width + (e.pageX - this.x);
         
         if (width > this.minWidth) {
           this.resizer.style.width = width + 'px';
         }
       } else if (this.currentResizer.classList.contains('left')) {
-        const width = this.original_width - (e.pageX - this.original_mouse_x)
+        const width = this.width - (e.pageX - this.x)
         const left = this.resizer.offsetLeft - (this.prevX - e.clientX);
         
         if (width > this.minWidth) {
@@ -111,7 +107,7 @@ export default {
           this.resizer.style.left = left + 'px'
         }
       } else if (this.currentResizer.classList.contains('top')) {
-        const height = this.original_height - (e.pageY - this.original_mouse_y);
+        const height = this.height - (e.pageY - this.y);
         const top = this.resizer.offsetTop - (this.prevY - e.clientY);
         
         if (height > this.minHeight) {
@@ -119,7 +115,7 @@ export default {
           this.resizer.style.top = top + 'px'
         }    
       } else if (this.currentResizer.classList.contains('bottom')) {
-        const height = this.original_height + (e.pageY - this.original_mouse_y)
+        const height = this.height + (e.pageY - this.y)
         if (height > this.minHeight) {
           this.resizer.style.height = height + 'px'
         }
@@ -128,12 +124,14 @@ export default {
       this.prevX = e.clientX;
       this.prevY = e.clientY;
 
+      this.$emit('onResizeStart', this.parametersObject());
+    },
+    parametersObject() {
       const height = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('height').replace('px', ''));
       const width = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('width').replace('px', ''));
       const top = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('top').replace('px', ''));
       const left = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('left').replace('px', ''));
-     
-      this.$emit('onResizeStart', { width, height, top, left});
+      return { width, height, top, left };
     },
     mouseUp() {
       this.$emit('onResizeEnd', true);
