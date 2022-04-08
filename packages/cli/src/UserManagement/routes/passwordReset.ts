@@ -4,14 +4,13 @@
 import express = require('express');
 import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
-import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
-import { getInstanceBaseUrl, validatePassword } from '../UserManagementHelper';
+import { getInstanceBaseUrl, hashPassword, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
@@ -206,7 +205,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			await Db.collections.User!.update(userId, {
-				password: hashSync(validPassword, genSaltSync(10)),
+				password: await hashPassword(validPassword),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,
 			});

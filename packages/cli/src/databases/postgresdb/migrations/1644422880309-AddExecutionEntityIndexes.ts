@@ -14,28 +14,28 @@ export class AddExecutionEntityIndexes1644422880309 implements MigrationInterfac
 		}
 
 		await queryRunner.query(
-			`DROP INDEX "${schema}".IDX_${tablePrefixPure}c4d999a5e90784e8caccf5589d`,
+			`DROP INDEX IF EXISTS "${schema}".IDX_${tablePrefixPure}c4d999a5e90784e8caccf5589d`,
 		);
 		await queryRunner.query(
-			`DROP INDEX "${schema}".IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2`,
+			`DROP INDEX IF EXISTS "${schema}".IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}33228da131bb1112247cf52a42" ON ${tablePrefix}execution_entity ("stoppedAt") `,
+			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefixPure}33228da131bb1112247cf52a42" ON ${tablePrefix}execution_entity ("stoppedAt") `,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}58154df94c686818c99fb754ce" ON ${tablePrefix}execution_entity ("workflowId", "waitTill", "id") `,
+			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefixPure}58154df94c686818c99fb754ce" ON ${tablePrefix}execution_entity ("workflowId", "waitTill", "id") `,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}4f474ac92be81610439aaad61e" ON ${tablePrefix}execution_entity ("workflowId", "finished", "id") `,
+			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefixPure}4f474ac92be81610439aaad61e" ON ${tablePrefix}execution_entity ("workflowId", "finished", "id") `,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}72ffaaab9f04c2c1f1ea86e662" ON ${tablePrefix}execution_entity ("finished", "id") `,
+			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefixPure}72ffaaab9f04c2c1f1ea86e662" ON ${tablePrefix}execution_entity ("finished", "id") `,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}85b981df7b444f905f8bf50747" ON ${tablePrefix}execution_entity ("waitTill", "id") `,
+			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefixPure}85b981df7b444f905f8bf50747" ON ${tablePrefix}execution_entity ("waitTill", "id") `,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}d160d4771aba5a0d78943edbe3" ON ${tablePrefix}execution_entity ("workflowId", "id") `,
+			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefixPure}d160d4771aba5a0d78943edbe3" ON ${tablePrefix}execution_entity ("workflowId", "id") `,
 		);
 	}
 
