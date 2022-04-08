@@ -166,13 +166,25 @@ export class RealtimeDatabase implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//https://firebase.google.com/docs/reference/rest/database
+
+		let lastProjectId = this.getNodeParameter('projectId', 0) as string;
+		let databaseURL = (await googleApiRequest.call(
+			this,
+			'',
+			'GET',
+			'results',
+			{},
+			{},
+			{},
+			`https://firebase.googleapis.com/v1beta1/projects/${lastProjectId}/adminSdkConfig`,
+		) as IDataObject).databaseURL as string;
+
 
 		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
 			throw new NodeOperationError(this.getNode(), `The ${operation} operation needs input data`);
@@ -181,16 +193,19 @@ export class RealtimeDatabase implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				const projectId = this.getNodeParameter('projectId', i) as string;
-				const databaseURL = (await googleApiRequest.call(
-					this,
-					'',
-					'GET',
-					'results',
-					{},
-					{},
-					{},
-					`https://firebase.googleapis.com/v1beta1/projects/${projectId}/adminSdkConfig`,
-				) as IDataObject).databaseURL as string;
+				if (projectId !== lastProjectId) {
+					databaseURL = (await googleApiRequest.call(
+						this,
+						'',
+						'GET',
+						'results',
+						{},
+						{},
+						{},
+						`https://firebase.googleapis.com/v1beta1/projects/${projectId}/adminSdkConfig`,
+					) as IDataObject).databaseURL as string;
+					lastProjectId = projectId;
+				}
 
 				let method = 'GET', attributes = '';
 				const document: IDataObject = {};
