@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import * as OpenApiValidator from 'express-openapi-validator';
 
 import path = require('path');
@@ -8,16 +9,16 @@ import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import passport = require('passport');
 import { Strategy } from 'passport-http-header-strategy';
 import { VerifiedCallback } from 'passport-jwt';
-// eslint-disable-next-line import/no-cycle
 import { Db } from '../..';
 import { middlewares } from '../middlewares';
-// eslint-disable-next-line import/no-cycle
 import { addCustomMiddlewares, IMiddlewares } from '../helpers';
 
 export const publicApiController = (async (): Promise<express.Router> => {
 	const openApiSpec = path.join(__dirname, 'openapi.yml');
 
 	const apiController = express.Router();
+
+	apiController.use('/spec', express.static(openApiSpec));
 
 	apiController.use(express.json());
 
