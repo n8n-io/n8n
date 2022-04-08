@@ -661,7 +661,34 @@ export class Github implements INodeType {
 				description: 'Name of the binary property in which to save the binary data of the received file.',
 			},
 
-
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add.',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'reference',
+						type: 'string',
+						default: '',
+						placeholder: 'master',
+						description: 'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         issue
@@ -1740,7 +1767,7 @@ export class Github implements INodeType {
 		credentialTest: {
 			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
-				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
+				const baseUrl = credentials!.server as string || 'https://api.github.com';
 
 				const options: OptionsWithUri = {
 					method: 'GET',
@@ -1748,7 +1775,7 @@ export class Github implements INodeType {
 						'User-Agent': 'n8n',
 						Authorization: `token ${credentials!.accessToken}`,
 					},
-					uri: baseUrl,
+					uri: baseUrl.endsWith('/') ? baseUrl + 'user' : baseUrl + '/user',
 					json: true,
 					timeout: 5000,
 				};
@@ -1925,11 +1952,20 @@ export class Github implements INodeType {
 						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-					} else if (operation === 'get' || operation === 'list') {
+					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i) as string;
+						const additionalParameters = this.getNodeParameter('additionalParameters', i) as IDataObject;
 
+						if (additionalParameters.reference) {
+							qs.ref = additionalParameters.reference;
+						}
+
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					} else if (operation === 'list') {
+						requestMethod = 'GET';
+						const filePath = this.getNodeParameter('filePath', i) as string;
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					}
 				} else if (resource === 'issue') {

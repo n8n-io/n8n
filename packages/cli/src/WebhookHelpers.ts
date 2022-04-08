@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
@@ -53,8 +54,13 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
+import { User } from './databases/entities/User';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 const activeExecutions = ActiveExecutions.getInstance();
+
+export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 /**
  * Returns all the webhooks which should be created for the give workflow
@@ -204,6 +210,14 @@ export async function executeWebhook(
 		200,
 	) as number;
 
+	const responseData = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseData,
+		executionMode,
+		additionalKeys,
+		'firstEntryJson',
+	);
+
 	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
@@ -213,8 +227,22 @@ export async function executeWebhook(
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
+	let user: User;
+	if (
+		(workflowData as WorkflowEntity).shared?.length &&
+		(workflowData as WorkflowEntity).shared[0].user
+	) {
+		user = (workflowData as WorkflowEntity).shared[0].user;
+	} else {
+		try {
+			user = await getWorkflowOwner(workflowData.id.toString());
+		} catch (error) {
+			throw new ResponseHelper.ResponseError('Cannot find workflow', undefined, 404);
+		}
+	}
+
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -331,7 +359,12 @@ export async function executeWebhook(
 		// directly if responseMode it set to "onReceived" and a respone should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
 			// Return response directly and do not wait for the workflow to finish
-			if (webhookResultData.webhookResponse !== undefined) {
+			if (responseData === 'noData') {
+				// Return without data
+				responseCallback(null, {
+					responseCode,
+				});
+			} else if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
 				responseCallback(null, {
 					data: webhookResultData.webhookResponse,
@@ -389,6 +422,7 @@ export async function executeWebhook(
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			userId: user.id,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -508,16 +542,8 @@ export async function executeWebhook(
 					$executionId: executionId,
 				};
 
-				const responseData = workflow.expression.getSimpleParameterValue(
-					workflowStartNode,
-					webhookData.webhookDescription.responseData,
-					executionMode,
-					additionalKeys,
-					'firstEntryJson',
-				);
-
 				if (!didSendResponse) {
-					let data: IDataObject | IDataObject[];
+					let data: IDataObject | IDataObject[] | undefined;
 
 					if (responseData === 'firstEntryJson') {
 						// Return the JSON data of the first entry
@@ -525,6 +551,7 @@ export async function executeWebhook(
 						if (returnData.data!.main[0]![0] === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						data = returnData.data!.main[0]![0].json;
@@ -576,11 +603,13 @@ export async function executeWebhook(
 						if (data === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						if (data.binary === undefined) {
 							responseCallback(new Error('No binary data to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
@@ -621,6 +650,9 @@ export async function executeWebhook(
 								noWebhookResponse: true,
 							});
 						}
+					} else if (responseData === 'noData') {
+						// Return without data
+						data = undefined;
 					} else {
 						// Return the JSON data of all the entries
 						data = [];

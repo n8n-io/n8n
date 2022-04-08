@@ -7,6 +7,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    timeout-minutes: 30
+
     strategy:
       matrix:
         node-version: [14.x, 16.x]

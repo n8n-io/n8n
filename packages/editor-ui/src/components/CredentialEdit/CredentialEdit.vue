@@ -54,10 +54,10 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection" :class="$style.credTab"
+						<n8n-menu-item index="connection"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
-						<n8n-menu-item index="details" :class="$style.credTab"
+						<n8n-menu-item index="details"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
@@ -456,7 +456,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.message'),
 				);
 				this.closeDialog();
 
@@ -658,7 +657,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.message'),
 				);
 
 				return null;
@@ -687,7 +685,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.message'),
 				);
 
 				return null;
@@ -728,7 +725,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.message'),
 				);
 				this.isDeleting = false;
 
@@ -741,10 +737,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
-				message: this.$locale.baseText(
-					'credentialEdit.credentialEdit.showMessage.message',
-					{ interpolate: { savedCredentialName } },
-				),
 				type: 'success',
 			});
 			this.closeDialog();
@@ -851,10 +843,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
-}
-
-.credTab {
-	padding-left: 12px !important;
 }
 
 .credActions {

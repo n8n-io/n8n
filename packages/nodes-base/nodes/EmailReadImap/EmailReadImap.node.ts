@@ -1,12 +1,15 @@
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	createDeferredPromise,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
+	IDeferredPromise,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	LoggerProxy as Logger,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -23,10 +26,6 @@ import {
 } from 'mailparser';
 
 import * as lodash from 'lodash';
-
-import {
-	LoggerProxy as Logger
-} from 'n8n-workflow';
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
@@ -376,7 +375,21 @@ export class EmailReadImap implements INodeType {
 			return newEmails;
 		};
 
+		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise<void>();
+
 		const establishConnection = (): Promise<ImapSimple> => {
+
+			let searchCriteria = [
+				'UNSEEN',
+			] as Array<string | string[]>;
+			if (options.customEmailConfig !== undefined) {
+				try {
+					searchCriteria = JSON.parse(options.customEmailConfig as string);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+				}
+			}
+
 			const config: ImapSimpleOptions = {
 				imap: {
 					user: credentials.user as string,
@@ -388,16 +401,6 @@ export class EmailReadImap implements INodeType {
 				},
 				onmail: async () => {
 					if (connection) {
-						let searchCriteria = [
-							'UNSEEN',
-						] as Array<string | string[]>;
-						if (options.customEmailConfig !== undefined) {
-							try {
-								searchCriteria = JSON.parse(options.customEmailConfig as string);
-							} catch (error) {
-								throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
-							}
-						}
 						if (staticData.lastMessageUid !== undefined) {
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
 							/**
@@ -415,10 +418,18 @@ export class EmailReadImap implements INodeType {
 							Logger.debug('Querying for new messages on node "EmailReadImap"', {searchCriteria});
 						}
 
-						const returnData = await getNewEmails(connection, searchCriteria);
-
-						if (returnData.length) {
-							this.emit([returnData]);
+						try {
+							const returnData = await getNewEmails(connection, searchCriteria);
+							if (returnData.length) {
+								this.emit([returnData]);
+							}
+						} catch (error) {
+							Logger.error('Email Read Imap node encountered an error fetching new emails', { error });
+							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
+							// if it receives an error before the workflow got activated
+							returnedPromise.promise().then(() => {
+								this.emitError(error as Error);
+							});
 						}
 					}
 				},
@@ -468,10 +479,12 @@ export class EmailReadImap implements INodeType {
 			await connection.end();
 		}
 
+		// Resolve returned-promise so that waiting errors can be emitted
+		returnedPromise.resolve();
+
 		return {
 			closeFunction,
 		};
-
 	}
 }
 
