@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { hashSync, genSaltSync } from 'bcryptjs';
 import * as express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -11,7 +10,7 @@ import { validateEntity } from '../../GenericHelpers';
 import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
-import { sanitizeUser, validatePassword } from '../UserManagementHelper';
+import { hashPassword, sanitizeUser, validatePassword } from '../UserManagementHelper';
 
 export function ownerNamespace(this: N8nApp): void {
 	/**
@@ -74,7 +73,7 @@ export function ownerNamespace(this: N8nApp): void {
 				email,
 				firstName,
 				lastName,
-				password: hashSync(validPassword, genSaltSync(10)),
+				password: await hashPassword(validPassword),
 			});
 
 			await validateEntity(owner);
