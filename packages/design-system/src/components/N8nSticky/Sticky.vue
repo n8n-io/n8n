@@ -131,11 +131,13 @@ export default {
       };
     },
     shouldShowFooter() {
-      return this.height > 100 && this.width > 155;
+      return this.componentHeight > 100 && this.componentWidth > 155;
     },
   },
   data() {
     return {
+      componentHeight: this.height,
+      componentWidth: this.width,
       isStickyEditable: false,
       tempContent: this.content,
       resizer: null,
@@ -185,6 +187,9 @@ export default {
       this.$emit('onResizeEnd', resizeEnd);
     },
     onResizeStart(parameters) {
+      this.componentHeight = parameters.height;
+      this.componentWidth = parameters.width;
+
       this.$emit('onResizeStart', parameters);
     },
   },
