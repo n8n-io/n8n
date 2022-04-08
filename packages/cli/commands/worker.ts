@@ -9,7 +9,7 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import express from 'express';
 import http from 'http';
-import PCancelable = require('p-cancelable');
+import PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';

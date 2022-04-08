@@ -29,7 +29,7 @@ import {
 import glob from 'fast-glob';
 import path from 'path';
 import { getLogger } from './Logger';
-import * as config from '../config';
+import config from '../config';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 

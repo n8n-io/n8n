@@ -5,7 +5,7 @@ import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
 
 import callsites from 'callsites';
 import { basename } from 'path';
-import * as config from '../config';
+import config from '../config';
 
 class Logger implements ILogger {
 	private logger: winston.Logger;

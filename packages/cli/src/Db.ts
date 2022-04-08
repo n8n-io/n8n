@@ -19,7 +19,7 @@ import path from 'path';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';

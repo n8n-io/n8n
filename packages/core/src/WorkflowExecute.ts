@@ -9,7 +9,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import PCancelable = require('p-cancelable');
+import PCancelable from 'p-cancelable';
 
 import {
 	ExecutionError,

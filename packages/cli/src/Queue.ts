@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import Bull from 'bull';
-import * as config from '../config';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { IBullJobData, IBullWebhookResponse } from './Interfaces';
 // eslint-disable-next-line import/no-cycle

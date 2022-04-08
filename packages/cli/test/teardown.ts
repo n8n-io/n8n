@@ -1,5 +1,5 @@
 import { createConnection } from 'typeorm';
-import * as config from '../config';
+import config from '../config';
 import { exec } from 'child_process';
 import { DatabaseType } from '../src';
 import { getBootstrapMySqlOptions, getBootstrapPostgresOptions } from './integration/shared/testDb';

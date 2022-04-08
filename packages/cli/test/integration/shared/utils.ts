@@ -4,7 +4,7 @@ import express from 'express';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import bodyParser = require('body-parser');
+import bodyParser from 'body-parser';
 import util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { INodeTypes, LoggerProxy } from 'n8n-workflow';

@@ -33,7 +33,7 @@ import {
 	WorkflowRunner,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';

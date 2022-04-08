@@ -54,7 +54,7 @@ import os from 'os';
 import clientOAuth2 from 'client-oauth2';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 import csrf from 'csrf';
-import requestPromise = require('request-promise-native');
+import requestPromise, { OptionsWithUrl } from 'request-promise-native';
 import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
@@ -95,7 +95,6 @@ import jwks from 'jwks-rsa';
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
 import querystring from 'querystring';
-import { OptionsWithUrl } from 'request-promise-native';
 import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
@@ -139,7 +138,7 @@ import {
 	getCredentialForUser,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 

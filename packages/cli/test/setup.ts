@@ -1,7 +1,7 @@
 import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
-import * as config from '../config';
+import config from '../config';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
 import { DatabaseType } from '../src';
 
