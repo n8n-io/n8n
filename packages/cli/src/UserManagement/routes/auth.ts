@@ -8,9 +8,10 @@ import { Db, ResponseHelper } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { compareHash, isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
+import { compareHash, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
+import config = require('../../../config');
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -71,13 +72,18 @@ export function authenticationMethods(this: N8nApp): void {
 				// If logged in, return user
 				try {
 					user = await resolveJwt(cookieContents);
+
+					if (!config.get('userManagement.isInstanceOwnerSetUp')) {
+						res.cookie(AUTH_COOKIE_NAME, cookieContents);
+					}
+
 					return sanitizeUser(user);
 				} catch (error) {
 					res.clearCookie(AUTH_COOKIE_NAME);
 				}
 			}
 
-			if (await isInstanceOwnerSetup()) {
+			if (config.get('userManagement.isInstanceOwnerSetUp')) {
 				const error = new Error('Not logged in');
 				// @ts-ignore
 				error.httpStatusCode = 401;
