@@ -5,12 +5,14 @@ const { task, src, dest } = require('gulp');
 const ALLOWED_HEADER_KEYS = ['displayName', 'description'];
 const PURPLE_ANSI_COLOR_CODE = 35;
 
-task('build:icons', copyIcons);
+task('build:assets', copyAssets);
 
-function copyIcons() {
-	src('nodes/**/*.{png,svg}').pipe(dest('dist/nodes'))
+function copyAssets() {
+	['nodes', 'credentials'].forEach((dir) => {
+		src(`${dir}/**/*.{json,png,svg}`).pipe(dest(`dist/${dir}`))
+	});
 
-	return src('credentials/**/*.{png,svg}').pipe(dest('dist/credentials'));
+	return Promise.resolve();
 }
 
 task('build:translations', writeHeaders);
