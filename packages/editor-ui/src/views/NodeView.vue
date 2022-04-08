@@ -750,9 +750,14 @@ export default mixins(
 					return;
 				}
 
-				// node modal is open
-				if (this.activeNode) {
-					return;
+			
+				if (this.lastSelectedNode) {
+					if (this.lastSelectedNode.type !== 'n8n-nodes-base.note') {
+						// node modal is open
+						if (this.activeNode) {
+							return;
+						}
+					}
 				}
 
 				if (e.key === 'd') {
