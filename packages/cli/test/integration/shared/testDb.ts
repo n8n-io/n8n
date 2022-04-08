@@ -1,4 +1,4 @@
-import { createConnection, getConnection, ConnectionOptions } from 'typeorm';
+import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
 import { Credentials, UserSettings } from 'n8n-core';
 
 import config = require('../../../config');
@@ -6,17 +6,17 @@ import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } f
 import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-
+import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
 import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
+import { categorize } from './utils';
 
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
-import type { CredentialPayload } from './types';
-import { genSaltSync, hashSync } from 'bcryptjs';
+import type { CollectionName, CredentialPayload } from './types';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -97,22 +97,49 @@ export async function terminate(testDbName: string) {
 }
 
 /**
- * Truncate DB tables for specified entities.
+ * Truncate DB tables for collections.
  *
- * @param entities Array of entity names whose tables to truncate.
+ * @param collections Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
  */
-export async function truncate(entities: Array<keyof IDatabaseCollections>, testDbName: string) {
+export async function truncate(collections: CollectionName[], testDbName: string) {
 	const dbType = config.get('database.type');
 
+	const testDb = getConnection(testDbName);
+
 	if (dbType === 'sqlite') {
-		const testDb = getConnection(testDbName);
 		await testDb.query('PRAGMA foreign_keys=OFF');
-		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
+		await Promise.all(collections.map((collection) => Db.collections[collection]!.clear()));
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
-	const map: { [K in keyof IDatabaseCollections]: string } = {
+	if (dbType === 'postgresdb') {
+		return Promise.all(
+			collections.map((collection) => {
+				const tableName = toTableName(collection);
+				testDb.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`);
+			}),
+		);
+	}
+
+	/**
+	 * MySQL `TRUNCATE` requires enabling and disabling the global variable `foreign_key_checks`,
+	 * which cannot be safely manipulated by parallel tests, so use `DELETE` and `AUTO_INCREMENT`.
+	 * Clear shared tables first to avoid deadlock: https://stackoverflow.com/a/41174997
+	 */
+	if (dbType === 'mysqldb') {
+		const { pass: isShared, fail: isNotShared } = categorize(
+			collections,
+			(collectionName: CollectionName) => collectionName.toLowerCase().startsWith('shared'),
+		);
+
+		await truncateMySql(testDb, isShared);
+		await truncateMySql(testDb, isNotShared);
+	}
+}
+
+function toTableName(collectionName: CollectionName) {
+	return {
 		Credentials: 'credentials_entity',
 		Workflow: 'workflow_entity',
 		Execution: 'execution_entity',
@@ -123,27 +150,17 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
-	};
+	}[collectionName];
+}
 
-	if (dbType === 'postgresdb') {
-		return Promise.all(
-			entities.map((entity) =>
-				getConnection(testDbName).query(
-					`TRUNCATE TABLE "${map[entity]}" RESTART IDENTITY CASCADE;`,
-				),
-			),
-		);
-	}
-
-	// MySQL truncation requires globals, which cannot be safely manipulated by parallel tests
-	if (dbType === 'mysqldb') {
-		await Promise.all(
-			entities.map(async (entity) => {
-				await Db.collections[entity]!.delete({});
-				await getConnection(testDbName).query(`ALTER TABLE ${map[entity]} AUTO_INCREMENT = 1;`);
-			}),
-		);
-	}
+function truncateMySql(connection: Connection, collections: Array<keyof IDatabaseCollections>) {
+	return Promise.all(
+		collections.map(async (collection) => {
+			const tableName = toTableName(collection);
+			await connection.query(`DELETE FROM ${tableName};`);
+			await connection.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
+		}),
+	);
 }
 
 // ----------------------------------
@@ -179,63 +196,65 @@ export async function saveCredential(
 }
 
 // ----------------------------------
-//          user creation
+//           user creation
 // ----------------------------------
 
-/**
- * Store a user in the DB, defaulting to a `member`.
- */
-export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+export async function createUser(attributes: Partial<User> & { globalRole: Role }): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+
 	const user = {
 		email: email ?? randomEmail(),
-		password: hashSync(password ?? randomValidPassword(), genSaltSync(10)),
+		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		globalRole,
 		...rest,
 	};
 
 	return Db.collections.User!.save(user);
 }
 
-export async function createOwnerShell() {
-	const globalRole = await getGlobalOwnerRole();
-	return Db.collections.User!.save({ globalRole });
-}
+export function createUserShell(globalRole: Role): Promise<User> {
+	if (globalRole.scope !== 'global') {
+		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
+	}
 
-export async function createMemberShell() {
-	const globalRole = await getGlobalMemberRole();
-	return Db.collections.User!.save({ globalRole });
+	const shell: Partial<User> = { globalRole };
+
+	if (globalRole.name !== 'owner') {
+		shell.email = randomEmail();
+	}
+
+	return Db.collections.User!.save(shell);
 }
 
 // ----------------------------------
 //          role fetchers
 // ----------------------------------
 
-export async function getGlobalOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getGlobalOwnerRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
-export async function getGlobalMemberRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getGlobalMemberRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
-export async function getWorkflowOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getWorkflowOwnerRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
-export async function getCredentialOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getCredentialOwnerRole() {
+	return Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
