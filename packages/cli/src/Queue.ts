@@ -28,6 +28,8 @@ export class Queue {
 			} else {
 				delete redisOptions.tls
 			}
+		} else {
+			if (redisOptions?.tls) delete redisOptions.tls
 		}
 
 		// Disabling ready check is necessary as it allows worker to
