@@ -157,6 +157,7 @@ export class Webhook extends Command {
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisTLSRejectUnauthorized = config.getEnv('queue.bull.redis.tls.rejectUnauthorized');
 					const redisPassword = config.getEnv('queue.bull.redis.password');
 					const redisPort = config.getEnv('queue.bull.redis.port');
 					const redisDB = config.getEnv('queue.bull.redis.db');
@@ -198,6 +199,17 @@ export class Webhook extends Command {
 					}
 					if (redisDB) {
 						settings.db = redisDB;
+					}
+					if (redisTLSRejectUnauthorized) {
+						if (redisTLSRejectUnauthorized === 'true') {
+							settings.tls = {
+								rejectUnauthorized: true
+							};
+						} else if (redisTLSRejectUnauthorized === 'false') {
+							settings.tls = {
+								rejectUnauthorized: false
+							};
+						}
 					}
 
 					// This connection is going to be our heartbeat

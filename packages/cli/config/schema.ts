@@ -338,6 +338,14 @@ export const schema = {
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
 				},
+				tls: {
+					rejectUnauthorized: {
+						doc: 'Redis TLS reject unauthorized',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_REJECT_UNAUTHORIZED',
+					},
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
