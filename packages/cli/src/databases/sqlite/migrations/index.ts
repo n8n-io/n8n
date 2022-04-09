@@ -1,4 +1,4 @@
-import config = require('../../../../config');
+import config from '../../../../config';
 
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';

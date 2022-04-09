@@ -31,7 +31,7 @@ import {
 	sendGridApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {

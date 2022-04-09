@@ -1,9 +1,9 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import config = require('../../config');
+import * as config from '../../config';
 import * as utils from './shared/utils';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
@@ -11,6 +11,8 @@ import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
 import { getGlobalOwnerRole } from './shared/testDb';
 import * as testDb from './shared/testDb';
+
+jest.mock('../../src/telemetry');
 
 let globalOwnerRole: Role;
 
@@ -35,7 +37,7 @@ beforeEach(async () => {
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
 		lastName: TEST_USER.lastName,
-		password: hashSync(TEST_USER.password, genSaltSync(10)),
+		password: TEST_USER.password,
 		globalRole: globalOwnerRole,
 	});
 

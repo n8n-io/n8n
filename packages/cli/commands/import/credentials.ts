@@ -12,9 +12,9 @@ import { Credentials, UserSettings } from 'n8n-core';
 
 import { LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as glob from 'fast-glob';
-import * as path from 'path';
+import fs from 'fs';
+import glob from 'fast-glob';
+import path from 'path';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
@@ -146,7 +146,7 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private reportSuccess(total: number) {
-		console.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+		console.info(`Successfully imported ${total} ${total === 1 ? 'credential.' : 'credentials.'}`);
 	}
 
 	private async initOwnerCredentialRole() {

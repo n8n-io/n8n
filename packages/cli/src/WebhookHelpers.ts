@@ -13,7 +13,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
-import * as express from 'express';
+import express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
@@ -551,6 +551,7 @@ export async function executeWebhook(
 						if (returnData.data!.main[0]![0] === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						data = returnData.data!.main[0]![0].json;
@@ -602,11 +603,13 @@ export async function executeWebhook(
 						if (data === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						if (data.binary === undefined) {
 							responseCallback(new Error('No binary data to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(

@@ -17,7 +17,7 @@ import {
 	pushOperations,
 } from './PushDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Spontit implements INodeType {
 	description: INodeTypeDescription = {

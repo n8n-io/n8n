@@ -1,11 +1,18 @@
-import { set } from 'lodash';
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	set,
+} from 'lodash';
+
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -14,7 +21,10 @@ import {
 	createHmac,
 	createSign,
 	getHashes,
+	randomBytes,
 } from 'crypto';
+
+import { v4 as uuid } from 'uuid';
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,18 +48,23 @@ export class Crypto implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Generate',
+						description: 'Generate random string',
+						value: 'generate',
+					},
+					{
 						name: 'Hash',
-						description: 'Hash a text in a specified format.',
+						description: 'Hash a text in a specified format',
 						value: 'hash',
 					},
 					{
 						name: 'Hmac',
-						description: 'Hmac a text in a specified format.',
+						description: 'Hmac a text in a specified format',
 						value: 'hmac',
 					},
 					{
 						name: 'Sign',
-						description: 'Sign a string using a private key.',
+						description: 'Sign a string using a private key',
 						value: 'sign',
 					},
 				],
@@ -100,7 +115,7 @@ export class Crypto implements INodeType {
 				},
 				type: 'string',
 				default: '',
-				description: 'The value that should be hashed.',
+				description: 'The value that should be hashed',
 				required: true,
 			},
 			{
@@ -116,7 +131,7 @@ export class Crypto implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the hash.',
+				description: 'Name of the property to which to write the hash',
 			},
 			{
 				displayName: 'Encoding',
@@ -187,7 +202,7 @@ export class Crypto implements INodeType {
 				},
 				type: 'string',
 				default: '',
-				description: 'The value of which the hmac should be created.',
+				description: 'The value of which the hmac should be created',
 				required: true,
 			},
 			{
@@ -203,7 +218,7 @@ export class Crypto implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the hmac.',
+				description: 'Name of the property to which to write the hmac',
 			},
 			{
 				displayName: 'Secret',
@@ -255,7 +270,7 @@ export class Crypto implements INodeType {
 				},
 				type: 'string',
 				default: '',
-				description: 'The value that should be signed.',
+				description: 'The value that should be signed',
 				required: true,
 			},
 			{
@@ -271,7 +286,7 @@ export class Crypto implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the signed value.',
+				description: 'Name of the property to which to write the signed value',
 			},
 			{
 				displayName: 'Algorithm',
@@ -328,9 +343,76 @@ export class Crypto implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Private key to use when signing the string.',
+				description: 'Private key to use when signing the string',
 				default: '',
 				required: true,
+			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'generate',
+						],
+					},
+				},
+				description: 'Name of the property to which to write the random string',
+			},
+			{
+				displayName: 'Type',
+				name: 'encodingType',
+				displayOptions: {
+					show: {
+						action: [
+							'generate',
+						],
+					},
+				},
+				type: 'options',
+				options: [
+					{
+						name: 'ASCII',
+						value: 'ascii',
+					},
+					{
+						name: 'BASE64',
+						value: 'base64',
+					},
+					{
+						name: 'HEX',
+						value: 'hex',
+					},
+					{
+						name: 'UUID',
+						value: 'uuid',
+					},
+				],
+				default: 'uuid',
+				description: 'Encoding that will be used to generate string',
+				required: true,
+			},
+			{
+				displayName: 'Length',
+				name: 'stringLength',
+				type: 'number',
+				default: 32,
+				description: 'Length of the generated string',
+				displayOptions: {
+					show: {
+						action: [
+							'generate',
+						],
+						encodingType: [
+							'ascii',
+							'base64',
+							'hex',
+						],
+					},
+				},
 			},
 		],
 	};
@@ -369,9 +451,22 @@ export class Crypto implements INodeType {
 
 				item = items[i];
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
-				const value = this.getNodeParameter('value', i) as string;
+				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
 
+				if (action === 'generate') {
+					const encodingType = this.getNodeParameter('encodingType', i) as string;
+					if (encodingType === 'uuid') {
+						newValue = uuid();
+					} else {
+						const stringLength = this.getNodeParameter('stringLength', i) as number;
+						if (encodingType === 'base64') {
+							newValue = randomBytes(stringLength).toString(encodingType as BufferEncoding).replace(/\W/g, '').slice(0, stringLength);
+						} else {
+							newValue = randomBytes(stringLength).toString(encodingType as BufferEncoding).slice(0, stringLength);
+						}
+					}
+				}
 				if (action === 'hash') {
 					const type = this.getNodeParameter('type', i) as string;
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
@@ -413,10 +508,10 @@ export class Crypto implements INodeType {
 				set(newItem, `json.${dataPropertyName}`, newValue);
 
 				returnData.push(newItem);
-			
+
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;

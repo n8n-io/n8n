@@ -4,7 +4,7 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 // Get options for timezones
 const timezones: INodePropertyOptions[] = moment.tz.countries().reduce( (timezones: INodePropertyOptions[], country: string) => {
