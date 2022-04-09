@@ -17,7 +17,19 @@ export class Queue {
 		this.activeExecutions = ActiveExecutions.getInstance();
 
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions = config.getEnv('queue.bull.redis');
+		const redisOptions:any = config.getEnv('queue.bull.redis');
+		
+		if (redisOptions?.tls?.rejectUnauthorized) {
+			const _redisTLSRejectUnauthorized: string = redisOptions.tls.rejectUnauthorized.toLowerCase();
+			if (_redisTLSRejectUnauthorized === 'true') {
+				redisOptions.tls.rejectUnauthorized = true;
+			} else if (_redisTLSRejectUnauthorized === 'false') {
+				redisOptions.tls.rejectUnauthorized = false;
+			} else {
+				delete redisOptions.tls
+			}
+		}
+
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize

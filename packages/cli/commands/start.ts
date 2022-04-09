@@ -268,11 +268,12 @@ export class Start extends Command {
 						settings.db = redisDB;
 					}
 					if (redisTLSRejectUnauthorized) {
-						if (redisTLSRejectUnauthorized === 'true') {
+						const _redisTLSRejectUnauthorized = redisTLSRejectUnauthorized.toLowerCase();
+						if (_redisTLSRejectUnauthorized === 'true') {
 							settings.tls = {
 								rejectUnauthorized: true
 							};
-						} else if (redisTLSRejectUnauthorized === 'false') {
+						} else if (_redisTLSRejectUnauthorized === 'false') {
 							settings.tls = {
 								rejectUnauthorized: false
 							};
