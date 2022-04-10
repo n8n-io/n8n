@@ -1706,11 +1706,13 @@ class App {
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
+				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
+					timezone,
 					true,
 				);
 
@@ -1718,6 +1720,7 @@ class App {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
+					timezone,
 				);
 
 				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1844,17 +1847,20 @@ class App {
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
+					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
 						mode,
+						timezone,
 					);
 
 					const options: OptionsWithUrl = {
@@ -1959,11 +1965,13 @@ class App {
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
+				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
+					timezone,
 					true,
 				);
 
@@ -1971,6 +1979,7 @@ class App {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
+					timezone,
 				);
 
 				const token = new csrf();
@@ -2099,17 +2108,20 @@ class App {
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
+					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
 						mode,
+						timezone,
 					);
 
 					const token = new csrf();
