@@ -126,8 +126,8 @@ export = {
 			);
 		}
 
-		return clean(user);
-	}),
+		return clean(user, { includeRole });
+	}, true),
 	// eslint-disable-next-line consistent-return
 	getUsers: ResponseHelper.send(async (req: UserRequest.Get, res: express.Response) => {
 		const { offset, limit, includeRole } = req;
@@ -142,5 +142,5 @@ export = {
 			users: clean(users, { includeRole }),
 			nextCursor: getNextCursor(offset, limit, count),
 		};
-	}),
+	}, true),
 };
