@@ -80,19 +80,19 @@ export const addMiddlewares = (
 	middlewares: IMiddlewares,
 ): void => {
 	if (middlewareDefined(operationId, middlewares)) {
-		routePath.replace(/\{([^}]+)}/g, ':$1');
+		const expressPath = routePath.replace(/\{([^}]+)}/g, ':$1');
 		switch (method) {
 			case 'get':
-				router.get(routePath, ...middlewares[operationId]);
+				router.get(expressPath, ...middlewares[operationId]);
 				break;
 			case 'post':
-				router.post(routePath, ...middlewares[operationId]);
+				router.post(expressPath, ...middlewares[operationId]);
 				break;
 			case 'put':
-				router.post(routePath, ...middlewares[operationId]);
+				router.put(expressPath, ...middlewares[operationId]);
 				break;
 			case 'delete':
-				router.post(routePath, ...middlewares[operationId]);
+				router.delete(expressPath, ...middlewares[operationId]);
 				break;
 			default:
 				break;
