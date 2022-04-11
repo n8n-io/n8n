@@ -12,6 +12,7 @@ import Switch from 'element-ui/lib/switch';
 import Select from 'element-ui/lib/select';
 import Option from 'element-ui/lib/option';
 import OptionGroup from 'element-ui/lib/option-group';
+import Pagination from 'element-ui/lib/pagination';
 import ButtonGroup from 'element-ui/lib/button-group';
 import Table from 'element-ui/lib/table';
 import TableColumn from 'element-ui/lib/table-column';
@@ -29,6 +30,7 @@ import Loading from 'element-ui/lib/loading';
 import MessageBox from 'element-ui/lib/message-box';
 import Message from 'element-ui/lib/message';
 import Notification from 'element-ui/lib/notification';
+import Popover from 'element-ui/lib/popover';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 
 import N8nActionBox from './N8nActionBox';
@@ -52,12 +54,14 @@ import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
 import N8nLink from './N8nLink';
 import N8nOption from './N8nOption';
+import N8nRadioButtons from './N8nRadioButtons';
 import N8nResize from './N8nResize';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
 import N8nSticky from './N8nSticky';
 import N8nSquareButton from './N8nSquareButton';
 import N8nTags from './N8nTags';
+import N8nTabs from './N8nTabs';
 import N8nTag from './N8nTag';
 import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
@@ -89,10 +93,12 @@ export {
 	N8nMenuItem,
 	N8nOption,
 	N8nResize,
+	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,
 	N8nSticky,
 	N8nSquareButton,
+	N8nTabs,
 	N8nTags,
 	N8nTag,
 	N8nText,
@@ -114,6 +120,7 @@ export {
 	Select,
 	Option,
 	OptionGroup,
+	Pagination,
 	ButtonGroup,
 	Table,
 	TableColumn,
@@ -132,6 +139,7 @@ export {
 	Message,
 	Notification,
 	CollapseTransition,
+	Popover,
 
 	locale,
 };

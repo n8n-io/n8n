@@ -53,7 +53,7 @@
         />
 			</div>
 		</div>
-		<DataDisplay @valueChanged="valueChanged"/>
+		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$locale.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
 			<n8n-icon-button size="xlarge" icon="plus" />
 		</div>
@@ -191,7 +191,6 @@ import {
 import { mapGetters } from 'vuex';
 
 import {
-	loadLanguage,
 	addNodeTranslation,
 	addHeaders,
 } from '@/plugins/i18n';
@@ -254,9 +253,6 @@ export default mixins(
 				deep: true,
 			},
 
-			async defaultLocale (newLocale, oldLocale) {
-				loadLanguage(newLocale);
-			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
@@ -293,7 +289,7 @@ export default mixins(
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
 			},
-			englishLocale(): boolean {
+			isEnglishLocale(): boolean {
 				return this.defaultLocale === 'en';
 			},
 			...mapGetters(['nativelyNumberSuffixedDefaults']),
@@ -380,6 +376,7 @@ export default mixins(
 				pullConnActiveNodeName: null as string | null,
 				pullConnActive: false,
 				dropPrevented: false,
+				renamingActive: false,
 				isResizing: false,
 				isStickyInEditMode: false,
 				shouldPreventScrolling: false,
@@ -422,7 +419,7 @@ export default mixins(
 				type?: string,
 			}) {
 				const allNodeNamesOnCanvas = this.$store.getters.allNodes.map((n: INodeUi) => n.name);
-				originalName = this.englishLocale ? originalName : this.translateName(type, originalName);
+				originalName = this.isEnglishLocale ? originalName : this.translateName(type, originalName);
 
 				if (
 					!allNodeNamesOnCanvas.includes(originalName) &&
@@ -432,7 +429,7 @@ export default mixins(
 				}
 
 				let natives: string[] = this.nativelyNumberSuffixedDefaults;
-				natives = this.englishLocale ? natives : natives.map(name => {
+				natives = this.isEnglishLocale ? natives : natives.map(name => {
 					const type = name.toLowerCase().replace('_', '');
 					return this.translateName(type, name);
 				});
@@ -1367,15 +1364,10 @@ export default mixins(
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
-					message: this.$locale.baseText(
-						maxNodes === 1
-							? 'nodeView.showMessage.showMaxNodeTypeError.message.singular'
-							: 'nodeView.showMessage.showMaxNodeTypeError.message.plural',
+					message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message',
 						{
-							interpolate: {
-								maxNodes: maxNodes!.toString(),
-								nodeTypeDataDisplayName: nodeTypeData.displayName,
-							},
+							adjustToNumber: maxNodes,
+							interpolate: { nodeTypeDataDisplayName: nodeTypeData.displayName },
 						},
 					),
 					type: 'error',
@@ -2359,6 +2351,13 @@ export default mixins(
 				if (currentName === newName) {
 					return;
 				}
+
+				const activeNodeName = this.activeNode && this.activeNode.name;
+				const isActive = activeNodeName === currentName;
+				if (isActive) {
+					this.renamingActive = true;
+				}
+
 				// Check if node-name is unique else find one that is
 				newName = this.getUniqueNodeName({
 					originalName: newName,
@@ -2386,6 +2385,11 @@ export default mixins(
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
+
+				if (isActive) {
+					this.$store.commit('setActiveNode', newName);
+					this.renamingActive = false;
+				}
 			},
 			deleteEveryEndpoint () {
 				// Check as it does not exist on first load
@@ -2859,15 +2863,6 @@ export default mixins(
 
 			try {
 				await Promise.all(loadPromises);
-
-				if (this.defaultLocale !== 'en') {
-					try {
-						const headers = await this.restApi().getNodeTranslationHeaders();
-						addHeaders(headers, this.defaultLocale);
-					} catch (_) {
-						// no headers available
-					}
-				}
 			} catch (error) {
 				this.$showError(
 					error,
