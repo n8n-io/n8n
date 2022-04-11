@@ -746,6 +746,10 @@ export interface ITemplatesNode extends IVersionNode {
 	categories?: ITemplatesCategory[];
 }
 
+export interface INodeMetadata {
+	parametersLastUpdatedAt?: number;
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -783,6 +787,7 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
+	nodeMetadata: {[nodeName: string]: INodeMetadata};
 }
 
 export interface ICredentialTypeMap {
@@ -958,3 +963,11 @@ export type IFormBoxConfig = {
 	redirectLink?: string;
 	redirectText?: string;
 };
+
+export interface ITab {
+	value: string | number;
+	label?: string;
+	href?: string;
+	icon?: string;
+	align?: 'right';
+}
