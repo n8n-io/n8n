@@ -204,7 +204,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(userId, {
+			await Db.collections.User.update(userId, {
 				password: await hashPassword(validPassword),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,
