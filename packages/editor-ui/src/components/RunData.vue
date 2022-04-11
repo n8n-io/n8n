@@ -848,7 +848,7 @@ export default mixins(
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--spacing-s);
-	padding: var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
 
 	> *:first-child {
@@ -1016,7 +1016,6 @@ export default mixins(
 
 .displayModes {
 	position: absolute;
-	top: var(--spacing-s);
 	right: var(--spacing-s);
 }
 
