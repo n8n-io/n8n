@@ -149,8 +149,8 @@ export default mixins(
 		},
 	},
 	async mounted() {
-		this.logHiringBanner();
 		await this.initialize();
+		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
 
