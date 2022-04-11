@@ -254,7 +254,6 @@
 		padding: 0 4px;
 		background: var.$pagination-background-color;
 		vertical-align: top;
-		display: inline-block;
 		font-size: var.$pagination-font-size;
 		min-width: var.$pagination-button-width;
 		height: var.$pagination-button-height;
@@ -263,6 +262,9 @@
 		box-sizing: border-box;
 		text-align: center;
 		margin: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 
 		&.btn-quicknext,
 		&.btn-quickprev {
