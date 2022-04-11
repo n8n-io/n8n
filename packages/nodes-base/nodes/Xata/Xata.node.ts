@@ -379,7 +379,7 @@ export class Xata implements INodeType {
 			},
 
 
-		]
+		],
 	};
 	/*
 	(this: IExecuteFunctions, apiKey: string, method: string,
@@ -506,7 +506,7 @@ export class Xata implements INodeType {
 
 					const id = this.getNodeParameter('id', i) as string;
 					const resource = `data/${id}` as string;
-					const columns = this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[];
+					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el=>el.trim());
 					const body = columns ? { 'columns': columns } : {} as IDataObject;
 					const responseData = await xataApiRequest.call(this, apiKey, 'GET', slug, database, branch, table, resource, body);
 					returnData.push(responseData);

@@ -28,7 +28,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 		if (columns.length === 0 && ignoreColumns.length === 0) {
 
-			throw new Error('You do not have any Field property set');
+			throw new Error('You do not have any additional option set');
 
 		}
 
@@ -75,7 +75,7 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 
 		if (key === 'columns' && additionalOptions[key]) {
 
-			body[key] = additionalOptions[key] as string[];
+			body[key] = (additionalOptions[key] as string[])?.map(el=>el.trim());
 
 		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key]) {
 
