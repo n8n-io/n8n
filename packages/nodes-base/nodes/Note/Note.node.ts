@@ -29,7 +29,7 @@ export class Note implements INodeType {
 				typeOptions: {
 					rows: 4,
 				},
-				default: '## I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](https://n8n.io/)',
+				default: '## Title \n**Double click** to edit me.[Styling tips](https://docs.n8n.io/getting-started/key-components/workflow-notes.html)',
 				description: 'Content',
 			},
 			{
@@ -41,12 +41,36 @@ export class Note implements INodeType {
 				description: 'Height',
 			},
 			{
+				displayName: 'Is Sticky Editable',
+				name: 'isStickyEditable',
+				type: 'boolean',
+				required: true,
+				default: false,
+				description: 'Is Sticky Editable',
+			},
+			{
+				displayName: 'Total Size',
+				name: 'totalSize',
+				type: 'number',
+				required: true,
+				default: 400,
+				description: 'Total Size',
+			},
+			{
 				displayName: 'Width',
 				name: 'width',
 				type: 'number',
 				required: true,
-				default: 220,
+				default: 240,
 				description: 'Width',
+			},
+			{
+				displayName: 'Z-Index',
+				name: 'zIndex',
+				type: 'number',
+				required: true,
+				default: -400,
+				description: 'Z-Index',
 			},
 		],
 	};
