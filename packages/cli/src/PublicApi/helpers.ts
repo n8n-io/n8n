@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable import/no-cycle */
 import * as querystring from 'querystring';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
 import express = require('express');
-import * as SwaggerParser from '@apidevtools/swagger-parser';
+import SwaggerParser from '@apidevtools/swagger-parser';
 import { In } from 'typeorm';
 import { validate as uuidValidate } from 'uuid';
 import { User } from '../databases/entities/User';
@@ -253,11 +256,6 @@ export async function getAllUsersAndCount(data: {
 	limit?: number;
 	offset?: number;
 }): Promise<[User[], number]> {
-	console.log({
-		relations: data?.includeRole ? ['globalRole'] : undefined,
-		skip: data.offset,
-		take: data.limit,
-	})
 	const users = await Db.collections.User!.find({
 		where: {},
 		relations: data?.includeRole ? ['globalRole'] : undefined,

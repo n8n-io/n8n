@@ -15,7 +15,7 @@ const instanceOwnerSetup = (
 	res: express.Response,
 	next: express.NextFunction,
 ): any => {
-	if (config.get('userManagement.isInstanceOwnerSetUp')) {
+	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 		return next();
 	}
 	return res.status(400).json({ message: 'asasas' });
@@ -26,7 +26,7 @@ const emailSetup = (
 	res: express.Response,
 	next: express.NextFunction,
 ): any => {
-	if (config.get('userManagement.emails.mode')) {
+	if (config.getEnv('userManagement.emails.mode')) {
 		return next();
 	}
 	return res.status(400).json({ message: 'asasas' });
@@ -51,13 +51,14 @@ const validEmail = (
 	res: express.Response,
 	next: express.NextFunction,
 ): any => {
-	req.body.forEach((invite) => {
-		if (!validator.isEmail(invite.email)) {
+	// eslint-disable-next-line no-restricted-syntax
+	for (const { email } of req.body) {
+		if (!validator.isEmail(email)) {
 			return res.status(400).json({
-				message: `Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
+				message: `Request to send email invite(s) to user(s) failed because of an invalid email address: ${email}`,
 			});
 		}
-	});
+	}
 	next();
 };
 
