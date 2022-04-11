@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const industryOperations: INodeProperties[] = [
+export const functionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const industryOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'industry',
+					'function',
 				],
 			},
 		},
@@ -26,9 +26,9 @@ export const industryOperations: INodeProperties[] = [
 	},
 ];
 
-export const industryFields: INodeProperties[] = [
+export const functionFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 industry:simple list with ids                             */
+	/*                                 city:simple list with ids                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Filters',
@@ -39,7 +39,7 @@ export const industryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'industry',
+					'function',
 				],
 				operation: [
 					'simple_list_with_ids',
@@ -51,8 +51,8 @@ export const industryFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				default: 'id__s=2462,2455',
-				description: 'The query field accepts with gql syntax，id__eq=2472',
+				default: 'id__s=2411,2404',
+				description: 'The query field accepts with gql syntax，id__eq=2411',
 			},
 			{
 				displayName: 'Fields',

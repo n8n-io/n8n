@@ -93,7 +93,7 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				default: '',
+				default: 'type__s=prospect,client&keyword__eq=sony',
 				description: 'The query field accepts with gql syntax，type__s=prospect,client&id=1089924&keyword__eq=sony',
 			},
 			{

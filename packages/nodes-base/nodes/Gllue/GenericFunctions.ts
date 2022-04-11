@@ -1,5 +1,6 @@
 import {buildOptionWithUri,} from './helpers';
 import {IDataObject} from 'n8n-workflow';
+import {GllueAPIIssueResponse} from './interfaces';
 
 // tslint:disable-next-line:no-any
 export type N8nRequest = (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
@@ -35,4 +36,6 @@ export class Hasura {
 }
 
 
-
+export function isResponseIssue(data: GllueAPIIssueResponse) {
+		return 'status' in data && !data.status;
+}
