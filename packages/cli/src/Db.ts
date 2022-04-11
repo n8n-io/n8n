@@ -15,11 +15,11 @@ import {
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
-import * as path from 'path';
+import path from 'path';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';
@@ -59,7 +59,7 @@ export async function init(
 
 	let connectionOptions: ConnectionOptions;
 
-	const entityPrefix = config.get('database.tablePrefix');
+	const entityPrefix = config.getEnv('database.tablePrefix');
 
 	if (testConnectionOptions) {
 		connectionOptions = testConnectionOptions;
@@ -95,7 +95,7 @@ export async function init(
 					password: (await GenericHelpers.getConfigValue('database.postgresdb.password')) as string,
 					port: (await GenericHelpers.getConfigValue('database.postgresdb.port')) as number,
 					username: (await GenericHelpers.getConfigValue('database.postgresdb.user')) as string,
-					schema: config.get('database.postgresdb.schema'),
+					schema: config.getEnv('database.postgresdb.schema'),
 					migrations: postgresMigrations,
 					migrationsRun: true,
 					migrationsTableName: `${entityPrefix}migrations`,

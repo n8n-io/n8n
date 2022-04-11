@@ -38,8 +38,8 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 function getEnvironment(env: string): string {
 	// @ts-ignore
 	return {
-		'sanbox': 'https://api.sandbox.paypal.com',
-		'live': 'https://api.paypal.com',
+		'sanbox': 'https://api-m.sandbox.paypal.com',
+		'live': 'https://api-m.paypal.com',
 	}[env];
 }
 
