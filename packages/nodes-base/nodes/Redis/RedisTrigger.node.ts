@@ -10,7 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as redis from 'redis';
+import redis from 'redis';
 
 export class RedisTrigger implements INodeType {
 	description: INodeTypeDescription = {

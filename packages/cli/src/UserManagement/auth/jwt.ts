@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { createHash } from 'crypto';
 import { Db } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { JwtToken, JwtPayload } from '../Interfaces';
 import { User } from '../../databases/entities/User';
-import config = require('../../../config');
+import * as config from '../../../config';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -26,7 +26,7 @@ export function issueJWT(user: User): JwtToken {
 			.digest('hex');
 	}
 
-	const signedToken = jwt.sign(payload, config.get('userManagement.jwtSecret'), {
+	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
 	});
 
@@ -57,7 +57,7 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.get('userManagement.jwtSecret')) as JwtPayload;
+	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret')) as JwtPayload;
 	return resolveJwtContent(jwtPayload);
 }
 

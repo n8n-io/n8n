@@ -12,8 +12,8 @@ import { Command, flags } from '@oclif/command';
 
 import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as glob from 'fast-glob';
+import fs from 'fs';
+import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';

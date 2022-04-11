@@ -60,20 +60,17 @@ import {
 
 import { Agent } from 'https';
 import { stringify } from 'qs';
-import * as clientOAuth1 from 'oauth-1.0a';
-import { Token } from 'oauth-1.0a';
-import * as clientOAuth2 from 'client-oauth2';
-import * as crypto from 'crypto';
-import * as url from 'url';
+import clientOAuth1, { Token } from 'oauth-1.0a';
+import clientOAuth2 from 'client-oauth2';
+import crypto, { createHmac } from 'crypto';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as express from 'express';
-import * as FormData from 'form-data';
-import * as path from 'path';
+import express from 'express';
+import FormData from 'form-data';
+import path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
-import * as requestPromise from 'request-promise-native';
-import { createHmac } from 'crypto';
+import requestPromise from 'request-promise-native';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
@@ -84,7 +81,7 @@ import axios, {
 	AxiosResponse,
 	Method,
 } from 'axios';
-import { URL, URLSearchParams } from 'url';
+import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -1103,6 +1100,7 @@ export async function httpRequestWithAuthentication(
 			requestOptions,
 			workflow,
 			node,
+			additionalData.timezone,
 		);
 
 		return await httpRequest(requestOptions);
@@ -1225,6 +1223,7 @@ export async function requestWithAuthentication(
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
+			additionalData.timezone,
 		);
 
 		return await proxyRequestToAxios(requestOptions as IDataObject);
@@ -1375,6 +1374,7 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
+		additionalData.timezone,
 		false,
 		expressionResolveValues,
 	);
@@ -1416,6 +1416,7 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
+	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
@@ -1440,6 +1441,7 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 		);
 	} catch (e) {
@@ -1478,6 +1480,7 @@ export function getNodeWebhookUrl(
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	isTest?: boolean,
 ): string | undefined {
@@ -1496,6 +1499,7 @@ export function getNodeWebhookUrl(
 		node,
 		webhookDescription.path,
 		mode,
+		timezone,
 		additionalKeys,
 	);
 	if (path === undefined) {
@@ -1506,6 +1510,7 @@ export function getNodeWebhookUrl(
 		node,
 		webhookDescription.isFullPath,
 		mode,
+		timezone,
 		additionalKeys,
 		false,
 	) as boolean;
@@ -1635,6 +1640,7 @@ export function getExecutePollFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -1788,6 +1794,7 @@ export function getExecuteTriggerFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -1919,6 +1926,7 @@ export function getExecuteFunctions(
 					node.name,
 					connectionInputData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 			},
@@ -1994,6 +2002,7 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2023,6 +2032,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 				return dataProxy.getDataProxy();
@@ -2176,6 +2186,7 @@ export function getExecuteSingleFunctions(
 					node.name,
 					connectionInputData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 			},
@@ -2252,6 +2263,7 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2269,6 +2281,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 				return dataProxy.getDataProxy();
@@ -2425,6 +2438,7 @@ export function getLoadOptionsFunctions(
 					parameterName,
 					itemIndex,
 					'internal' as WorkflowExecuteMode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2554,6 +2568,7 @@ export function getExecuteHookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2565,6 +2580,7 @@ export function getExecuteHookFunctions(
 					node,
 					additionalData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					isTest,
 				);
@@ -2714,6 +2730,7 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2749,6 +2766,7 @@ export function getExecuteWebhookFunctions(
 					node,
 					additionalData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 			},

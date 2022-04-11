@@ -17,7 +17,7 @@ import {
 	set,
 } from 'lodash';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class DateTime implements INodeType {
 	description: INodeTypeDescription = {

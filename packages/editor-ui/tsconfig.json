@@ -12,6 +12,7 @@
 		"moduleResolution": "node",
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
+		"useUnknownInCatchVariables": false,
 		"sourceMap": true,
 		"baseUrl": ".",
 		"types": [

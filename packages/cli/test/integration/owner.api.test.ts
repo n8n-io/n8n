@@ -1,36 +1,35 @@
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { Db } from '../../src';
-import config = require('../../config');
+import config from '../../config';
 import {
 	randomEmail,
 	randomName,
 	randomValidPassword,
 	randomInvalidPassword,
 } from './shared/random';
+import type { Role } from '../../src/databases/entities/Role';
 
 jest.mock('../../src/telemetry');
 
 let app: express.Application;
 let testDbName = '';
+let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
+	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	utils.initTestLogger();
 	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
-	await testDb.createOwnerShell();
-});
-
-afterEach(async () => {
 	await testDb.truncate(['User'], testDbName);
 });
 
@@ -39,10 +38,17 @@ afterAll(async () => {
 });
 
 test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	const response = await authOwnerAgent.post('/owner').send(TEST_USER);
+	const newOwnerData = {
+		email: randomEmail(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
+	};
+
+	const response = await authOwnerAgent.post('/owner').send(newOwnerData);
 
 	expect(response.statusCode).toBe(200);
 
@@ -59,9 +65,9 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBe(TEST_USER.email);
-	expect(firstName).toBe(TEST_USER.firstName);
-	expect(lastName).toBe(TEST_USER.lastName);
+	expect(email).toBe(newOwnerData.email);
+	expect(firstName).toBe(newOwnerData.firstName);
+	expect(lastName).toBe(newOwnerData.lastName);
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
 	expect(isPending).toBe(false);
@@ -70,12 +76,12 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(globalRole.scope).toBe('global');
 
 	const storedOwner = await Db.collections.User!.findOneOrFail(id);
-	expect(storedOwner.password).not.toBe(TEST_USER.password);
-	expect(storedOwner.email).toBe(TEST_USER.email);
-	expect(storedOwner.firstName).toBe(TEST_USER.firstName);
-	expect(storedOwner.lastName).toBe(TEST_USER.lastName);
+	expect(storedOwner.password).not.toBe(newOwnerData.password);
+	expect(storedOwner.email).toBe(newOwnerData.email);
+	expect(storedOwner.firstName).toBe(newOwnerData.firstName);
+	expect(storedOwner.lastName).toBe(newOwnerData.lastName);
 
-	const isInstanceOwnerSetUpConfig = config.get('userManagement.isInstanceOwnerSetUp');
+	const isInstanceOwnerSetUpConfig = config.getEnv('userManagement.isInstanceOwnerSetUp');
 	expect(isInstanceOwnerSetUpConfig).toBe(true);
 
 	const isInstanceOwnerSetUpSetting = await utils.isInstanceOwnerSetUp();
@@ -83,24 +89,26 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 });
 
 test('POST /owner should fail with invalid inputs', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
-		const response = await authOwnerAgent.post('/owner').send(invalidPayload);
-		expect(response.statusCode).toBe(400);
-	}
+	await Promise.all(
+		INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
+			const response = await authOwnerAgent.post('/owner').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}),
+	);
 });
 
 test('POST /owner/skip-setup should persist skipping setup to the DB', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const response = await authOwnerAgent.post('/owner/skip-setup').send();
 
 	expect(response.statusCode).toBe(200);
 
-	const skipConfig = config.get('userManagement.skipInstanceOwnerSetup');
+	const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
 	expect(skipConfig).toBe(true);
 
 	const { value } = await Db.collections.Settings!.findOneOrFail({
@@ -108,13 +116,6 @@ test('POST /owner/skip-setup should persist skipping setup to the DB', async () 
 	});
 	expect(value).toBe('true');
 });
-
-const TEST_USER = {
-	email: randomEmail(),
-	firstName: randomName(),
-	lastName: randomName(),
-	password: randomValidPassword(),
-};
 
 const INVALID_POST_OWNER_PAYLOADS = [
 	{

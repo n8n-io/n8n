@@ -7,8 +7,8 @@ import { Credentials, UserSettings } from 'n8n-core';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDecryptedDb } from '../../src';
 
