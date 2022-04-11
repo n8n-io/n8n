@@ -11,7 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-
 	getAdditionalOptions,
 	getItem,
 	xataApiFetchAllWrapper,
