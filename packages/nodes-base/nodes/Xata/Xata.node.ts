@@ -213,18 +213,6 @@ export class Xata implements INodeType {
 
 
 					},
-					/* Xata sort feature is buggy for the moment
-					{
-						displayName: 'Sort (JSON)',
-						name:'sort',
-						type: 'string',
-						default:'',
-						placeholder: '',
-						description:'Sort (JSON) as specified in the documentation. If you use expression make sure you stringify the arguments.'
-
-
-					}
-					*/
 
 				],
 			}
@@ -381,13 +369,7 @@ export class Xata implements INodeType {
 
 		],
 	};
-	/*
-	(this: IExecuteFunctions, apiKey: string, method: string,
-		slug: string,branch: string, table: string,
-		resource: string, body: IDataObject = {}, uri?:string): Promise<any> { // tslint:disable-line:no-any
-		const options: OptionsWithUri = {
-			headers: {
-			*/
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();

@@ -12,9 +12,9 @@ import {
 
 export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, location: string) {
 
-	const updateAll = this.getNodeParameter('sendAll', index) as boolean;
+	const sendAll = this.getNodeParameter('sendAll', index) as boolean;
 
-	if (!updateAll) {
+	if (!sendAll) {
 
 		const additionalOptions = getAdditionalOptions(this.getNodeParameter('additionalOptions', index) as IDataObject);
 		const columns = additionalOptions['columns'] ? additionalOptions['columns'] as string[] : [];
@@ -28,7 +28,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 		if (columns.length === 0 && ignoreColumns.length === 0) {
 
-			throw new Error('You do not have any additional option set');
+			throw new Error('You do not have any additional option set. If you want to send all column values to Xata set the Send All properties to true');
 
 		}
 
@@ -75,7 +75,7 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 
 		if (key === 'columns' && additionalOptions[key]) {
 
-			body[key] = (additionalOptions[key] as string[])?.map(el=>el.trim());
+			body[key] = (additionalOptions[key] as string[]).map(el=>el.trim());
 
 		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key]) {
 
@@ -166,6 +166,7 @@ export async function xataApiFetchAllWrapper(this: IExecuteFunctions, apiKey: st
 
 				results.push(item);
 				numRecords++;
+
 				if (numRecords === limit) {
 
 					return results;
@@ -194,13 +195,7 @@ export async function xataApiFetchAll(this: IExecuteFunctions, options: IHttpReq
 
 		if (options['body']!.hasOwnProperty('filter')) {
 
-			delete (options['body'] as IDataObject)['filter']; // filter already encoded in cursor. Need to eliminate otherwise response error
-
-		}
-
-		if (options['body']!.hasOwnProperty('sort')) {
-
-			delete (options['body'] as IDataObject)['sort'];  // sort already encoded in cursor. Need to eliminate otherwise response error
+			delete (options['body'] as IDataObject)['filter']; // if set, filter already encoded in cursor.
 
 		}
 
