@@ -120,6 +120,7 @@ export class Xata implements INodeType {
 			//-------------------------
 
 
+
 			//-------------------------
 			//        delete
 			//-------------------------
@@ -204,7 +205,7 @@ export class Xata implements INodeType {
 						description: 'Only data for columns whose names are in this list will be included in the records.',
 					},
 					{
-						displayName: 'Filter (JSON)',
+						displayName: 'Filter (JSON) as string',
 						name: 'filter',
 						type: 'string',
 						default: '',
@@ -316,39 +317,45 @@ export class Xata implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
-				type: 'collection',
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'string',
+				typeOptions: {
+					multipleValueButtonText: 'Add Column',
+					multipleValues: true,
+				},
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-							'append',
-						],
-						sendAll: [
+						'operation':['append','update'],
+						'sendAll': [
 							false,
 						],
 					},
 				},
-				default: {},
-				description: 'Additional options which decide which column values should be pushed to the table.',
-				placeholder: 'Add Option',
-				options: [
-					{
-						displayName: 'Columns',
-						name: 'columns',
-						type: 'string',
-						typeOptions: {
-							multipleValueButtonText: 'Add Column',
-							multipleValues: true,
-						},
 
 
-						default: [],
-						placeholder: 'Name',
-						description: 'Columns in this list will be push to the table.',
+				default: [],
+				placeholder: 'Name',
+				description: 'Columns in this list will be push to the table.',
 
+			},
+			{
+				displayName: 'Additional Options',
+				name: 'additionalOpetions',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'append',
+							'update',
+						],
 					},
+				},
+				default: {},
+				description: 'Additional Options. You can choose which one you want to inlcude or exclude in the records',
+				placeholder: 'Add option',
+				options: [
+
 					{
 						displayName: 'Ignore Columns',
 						name: 'ignoreColumns',
@@ -356,6 +363,17 @@ export class Xata implements INodeType {
 						typeOptions: {
 							multipleValueButtonText: 'Add Column',
 							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								'/operation': [
+									'append',
+									'udpate',
+								],
+								'/sendAll': [
+									true,
+								],
+							},
 						},
 
 
@@ -488,7 +506,7 @@ export class Xata implements INodeType {
 
 					const id = this.getNodeParameter('id', i) as string;
 					const resource = `data/${id}` as string;
-					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el=>el.trim());
+					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el=> el ? el.trim() : null);
 					const body = columns ? { 'columns': columns } : {} as IDataObject;
 					const responseData = await xataApiRequest.call(this, apiKey, 'GET', slug, database, branch, table, resource, body);
 					returnData.push(responseData);

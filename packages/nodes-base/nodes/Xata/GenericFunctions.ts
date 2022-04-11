@@ -9,6 +9,7 @@ import {
 	IHttpRequestOptions,
 	NodeApiError,
 } from 'n8n-workflow';
+import { IData } from '../Orbit/Interfaces';
 
 export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, location: string) {
 
@@ -16,25 +17,13 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 	if (!sendAll) {
 
-		const additionalOptions = getAdditionalOptions(this.getNodeParameter('additionalOptions', index) as IDataObject);
-		const columns = additionalOptions['columns'] ? additionalOptions['columns'] as string[] : [];
-		const ignoreColumns = additionalOptions['ignoreColumns'] ? additionalOptions['ignoreColumns'] as string[] : [];
+		const filterColumns = getAdditionalOptions(this.getNodeParameter('filterColumns', index) as IDataObject) as IDataObject;
 
-		if (columns.length !== 0 && ignoreColumns.length !== 0) {
+		const columns = filterColumns.hasOwnProperty('columns') ? filterColumns['columns'] as string[]: filterColumns['ignoreColumns'] as string[];
 
-			throw new Error('You cannot have the Columns and Ignore Columns properties set at the same time');
+		const ignore =  filterColumns.hasOwnProperty('columns') ? false : true;
 
-		}
-
-		if (columns.length === 0 && ignoreColumns.length === 0) {
-
-			throw new Error('You do not have any additional option set. If you want to send all column values to Xata set the Send All properties to true');
-
-		}
-
-		const ignore = columns.length === 0 ? true : false as boolean;
-		const filterColumns = ignore ? ignoreColumns : columns as string[];
-		const returnData = filterItemsColumns(item, filterColumns, ignore, location);
+		const returnData = filterItemsColumns(item, columns, ignore, location);
 		return returnData;
 
 	} else {
@@ -75,7 +64,7 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 
 		if (key === 'columns' && additionalOptions[key]) {
 
-			body[key] = (additionalOptions[key] as string[]).map(el=>el.trim());
+			body[key] = (additionalOptions[key] as string[]).map(el=>el ? el.trim() : null);
 
 		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key]) {
 
