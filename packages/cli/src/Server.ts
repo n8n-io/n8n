@@ -30,7 +30,7 @@
 /* eslint-disable no-await-in-loop */
 
 import express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
