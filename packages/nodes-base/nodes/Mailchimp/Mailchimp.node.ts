@@ -19,7 +19,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 enum Status {
 	subscribe = 'subscribe',

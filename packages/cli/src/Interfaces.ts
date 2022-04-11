@@ -21,7 +21,7 @@ import {
 import { WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as PCancelable from 'p-cancelable';
+import PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
@@ -329,7 +329,7 @@ export interface IDiagnosticInfo {
 		};
 	};
 	executionVariables: {
-		[key: string]: string | number | undefined;
+		[key: string]: string | number | boolean | undefined;
 	};
 	deploymentType: string;
 	binaryDataMode: string;
@@ -458,7 +458,7 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	workflowTagsDisabled: boolean;
-	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;

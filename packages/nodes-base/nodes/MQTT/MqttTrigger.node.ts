@@ -10,7 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as mqtt from 'mqtt';
+import mqtt from 'mqtt';
 
 import {
 	IClientOptions, ISubscriptionMap,

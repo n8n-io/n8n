@@ -2,14 +2,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { Workflow } from 'n8n-workflow';
-import { In, IsNull, Not } from 'typeorm';
-import express = require('express');
+import { In } from 'typeorm';
+import express from 'express';
+import { compare, genSaltSync, hash } from 'bcryptjs';
+
 import { PublicUser } from './Interfaces';
-import { Db, GenericHelpers, ResponseHelper } from '..';
+import { Db, ResponseHelper } from '..';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
-import config = require('../../config');
+import * as config from '../../config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
@@ -22,10 +24,10 @@ export async function getWorkflowOwner(workflowId: string | number): Promise<Use
 }
 
 export function isEmailSetUp(): boolean {
-	const smtp = config.get('userManagement.emails.mode') === 'smtp';
-	const host = !!config.get('userManagement.emails.smtp.host');
-	const user = !!config.get('userManagement.emails.smtp.auth.user');
-	const pass = !!config.get('userManagement.emails.smtp.auth.pass');
+	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
+	const host = !!config.getEnv('userManagement.emails.smtp.host');
+	const user = !!config.getEnv('userManagement.emails.smtp.auth.user');
+	const pass = !!config.getEnv('userManagement.emails.smtp.auth.pass');
 
 	return smtp && host && user && pass;
 }
@@ -56,14 +58,9 @@ export async function getInstanceOwner(): Promise<User> {
  * Return the n8n instance base URL without trailing slash.
  */
 export function getInstanceBaseUrl(): string {
-	const n8nBaseUrl = config.get('editorBaseUrl') || getWebhookBaseUrl();
+	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
 
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
-}
-
-export async function isInstanceOwnerSetup(): Promise<boolean> {
-	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
-	return users.length !== 0;
 }
 
 // TODO: Enforce at model level
@@ -199,7 +196,7 @@ export async function checkPermissionsForExecution(
 export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
 	return !!ignoredEndpoints
 		.filter(Boolean) // skip empty paths
-		.find((ignoredEndpoint) => url.includes(ignoredEndpoint));
+		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
 }
 
 /**
@@ -215,4 +212,24 @@ export function isPostUsersId(req: express.Request, restEndpoint: string): boole
 
 export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
 	return request.user !== undefined;
+}
+
+// ----------------------------------
+//            hashing
+// ----------------------------------
+
+export const hashPassword = async (validPassword: string): Promise<string> =>
+	hash(validPassword, genSaltSync(10));
+
+export async function compareHash(plaintext: string, hashed: string): Promise<boolean | undefined> {
+	try {
+		return await compare(plaintext, hashed);
+	} catch (error) {
+		if (error instanceof Error && error.message.includes('Invalid salt version')) {
+			error.message +=
+				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
+		}
+
+		throw new Error(error);
+	}
 }

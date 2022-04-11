@@ -21,7 +21,7 @@ import {
 	contactOperations,
 } from './ContactDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class GetResponse implements INodeType {
 	description: INodeTypeDescription = {

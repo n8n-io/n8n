@@ -6,16 +6,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as express from 'express';
+import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
-import * as bodyParser from 'body-parser';
+import bodyParser from 'body-parser';
 // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import * as _ from 'lodash';
+import _ from 'lodash';
 
-import * as compression from 'compression';
+import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as parseUrl from 'parseurl';
+import parseUrl from 'parseurl';
 import { WebhookHttpMethod } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -31,7 +31,7 @@ import {
 	WaitingWebhooks,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
@@ -193,28 +193,28 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook') as string;
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-		this.executionTimeout = config.get('executions.timeout') as number;
-		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
-		this.timezone = config.get('generic.timezone') as string;
-		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.endpointWebhook = config.getEnv('endpoints.webhook');
+		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
+		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
+		this.executionTimeout = config.getEnv('executions.timeout');
+		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
+		this.timezone = config.getEnv('generic.timezone');
+		this.restEndpoint = config.getEnv('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
-		this.protocol = config.get('protocol');
-		this.sslKey = config.get('ssl_key');
-		this.sslCert = config.get('ssl_cert');
+		this.protocol = config.getEnv('protocol');
+		this.sslKey = config.getEnv('ssl_key');
+		this.sslCert = config.getEnv('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 	}
 
 	/**
@@ -342,8 +342,8 @@ class App {
 }
 
 export async function start(): Promise<void> {
-	const PORT = config.get('port');
-	const ADDRESS = config.get('listen_address');
+	const PORT = config.getEnv('port');
+	const ADDRESS = config.getEnv('listen_address');
 
 	const app = new App();
 
