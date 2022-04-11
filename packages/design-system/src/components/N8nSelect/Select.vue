@@ -1,5 +1,5 @@
 <template functional>
-	<div :class="$style.container">
+	<div :class="{[$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
@@ -130,15 +130,19 @@ export default {
 .container {
 	display: inline-flex;
 	width: 100%;
-	--input-border-color: none;
-	border: var(--border-base);
-	border-radius: var(--input-border-radius, var(--border-radius-base))
+}
+
+.withPrepend {
+	input {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
 }
 
 .prepend {
-	display: inline-block;
 	font-size: var(--font-size-2xs);
-	border-right: var(--border-base);
+	border: var(--border-base);
+	border-right: none;
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing-3xs);
