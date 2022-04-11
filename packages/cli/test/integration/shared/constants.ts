@@ -1,15 +1,15 @@
-import config = require('../../../config');
+import config from '../../../config';
 
-export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
+export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 
 export const PUBLIC_API_REST_PATH_SEGMENT = config.get('publicApiEndpoints.path') as Readonly<string>;
 
 export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	'healthz',
 	'metrics',
-	config.get('endpoints.webhook') as string,
-	config.get('endpoints.webhookWaiting') as string,
-	config.get('endpoints.webhookTest') as string,
+	config.getEnv('endpoints.webhook'),
+	config.getEnv('endpoints.webhookWaiting'),
+	config.getEnv('endpoints.webhookTest'),
 ];
 
 export const SUCCESS_RESPONSE_BODY = {

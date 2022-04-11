@@ -1,7 +1,9 @@
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
-import type { ICredentialsDb } from '../../../src';
+import type { ICredentialsDb, IDatabaseCollections } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
+
+export type CollectionName = keyof IDatabaseCollections;
 
 export type SmtpTestAccount = {
 	user: string;

@@ -30,7 +30,7 @@ import {
 	filters,
 } from './Filters';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
@@ -397,7 +397,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}

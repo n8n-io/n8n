@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Response } from 'express';
 import { In } from 'typeorm';
-import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
@@ -12,6 +11,7 @@ import { N8nApp, PublicUser } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import {
 	getInstanceBaseUrl,
+	hashPassword,
 	isEmailSetUp,
 	sanitizeUser,
 	validatePassword,
@@ -21,7 +21,7 @@ import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
 
 export function usersNamespace(this: N8nApp): void {
@@ -31,7 +31,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
-			if (config.get('userManagement.emails.mode') === '') {
+			if (config.getEnv('userManagement.emails.mode') === '') {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because emailing was not set up',
 				);
@@ -56,14 +56,14 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// TODO: this should be checked in the middleware rather than here
-			if (config.get('userManagement.disabled')) {
+			if (config.getEnv('userManagement.disabled')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
 				throw new ResponseHelper.ResponseError('User management is disabled');
 			}
 
-			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
+			if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 				);
@@ -349,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			invitee.firstName = firstName;
 			invitee.lastName = lastName;
-			invitee.password = hashSync(validPassword, genSaltSync(10));
+			invitee.password = await hashPassword(validPassword);
 
 			const updatedUser = await Db.collections.User!.save(invitee);
 

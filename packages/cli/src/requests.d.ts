@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import express = require('express');
+import express from 'express';
 import {
 	IConnections,
 	ICredentialDataDecryptedObject,
