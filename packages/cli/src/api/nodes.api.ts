@@ -12,7 +12,7 @@ export const nodesController = express.Router();
 /**
  * Initialize Logger if needed
  */
-nodesController.use((_req, _res, next) => {
+nodesController.use((req, res, next) => {
 	try {
 		LoggerProxy.getInstance();
 	} catch (error) {
@@ -43,6 +43,7 @@ nodesController.post(
 			};
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 				`Error loading package "${name}": ${error.message}`,
 				undefined,
 				500,
@@ -93,6 +94,7 @@ nodesController.delete(
 			});
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 				`Error removing package "${req.body.name}": ${error.message}`,
 				undefined,
 				500,
