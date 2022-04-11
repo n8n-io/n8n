@@ -1,5 +1,10 @@
 <template>
-	<div :class="{[$style['node-item']]: true, [$style.bordered]: bordered}">
+	<div
+		draggable
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
+		:class="{[$style['node-item']]: true, [$style.bordered]: bordered}"
+	>
 		<NodeIcon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
 			<div :class="$style.details">
@@ -20,6 +25,10 @@
 						fallback: nodeType.description,
 					})
 				}}
+			</div>
+
+			<div :class="$style.draggable" ref="draggable" v-show="dragging">
+				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
 			</div>
 		</div>
 	</div>
@@ -44,9 +53,26 @@ export default Vue.extend({
 		'nodeType',
 		'bordered',
 	],
+	data(): { dragging: boolean; } {
+		return {
+			dragging: false,
+		};
+	},
 	computed: {
 		shortNodeType() {
 			return this.$locale.shortNodeType(this.nodeType.name);
+		},
+	},
+	methods: {
+		onDragStart(event: DragEvent) {
+			this.$emit('dragstart', event);
+			this.$data.dragging = true;
+
+			event.dataTransfer!.setDragImage(this.$refs.draggable as Element, 0, 0);
+		},
+		onDragEnd(event: Event) {
+			this.$emit('dragend', event);
+			this.$data.dragging = false;
 		},
 	},
 	// @ts-ignore
@@ -100,4 +126,17 @@ export default Vue.extend({
 	display: flex;
 }
 
+.draggable {
+	width: 100px;
+	height: 100px;
+	position: fixed;
+	top: -100px;
+	left: -100px;
+	border: 2px solid var(--color-foreground-xdark);
+	border-radius: var(--border-radius-large);
+	background-color: var(--color-background-xlight);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
 </style>

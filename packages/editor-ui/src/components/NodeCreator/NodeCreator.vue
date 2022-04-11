@@ -2,7 +2,14 @@
 	<div>
 		<SlideTransition>
 			<div class="node-creator" v-if="active" v-click-outside="onClickOutside">
-				<MainPanel @nodeTypeSelected="nodeTypeSelected" :categorizedItems="categorizedItems" :categoriesWithNodes="categoriesWithNodes" :searchItems="searchItems"></MainPanel>
+				<MainPanel
+					@nodeTypeSelected="nodeTypeSelected"
+					@nodeTypeDragStart="nodeTypeDragStart"
+					@nodeTypeDragEnd="nodeTypeDragEnd"
+					:categorizedItems="categorizedItems"
+					:categoriesWithNodes="categoriesWithNodes"
+					:searchItems="searchItems"
+				/>
 			</div>
 		</SlideTransition>
 	</div>
@@ -91,8 +98,15 @@ export default Vue.extend({
 				this.$emit('closeNodeCreator');
 			}
 		},
-		nodeTypeSelected (nodeTypeName: string) {
+		nodeTypeSelected ({ nodeTypeName }: { nodeTypeName: string }) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
+		},
+		nodeTypeDragStart (event: { nodeTypeName: string, event: DragEvent }) {
+			this.$emit('nodeTypeDragStart', event);
+		},
+		nodeTypeDragEnd (event: { nodeTypeName: string, event: DragEvent }) {
+			this.$emit('closeNodeCreator');
+			this.$emit('nodeTypeDragEnd', event);
 		},
 	},
 	watch: {

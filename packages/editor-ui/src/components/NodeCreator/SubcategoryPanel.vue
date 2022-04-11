@@ -38,7 +38,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		selected(element: INodeCreateElement) {
+		selected({ element }: { element: INodeCreateElement }) {
 			this.$emit('selected', element);
 		},
 		onBackArrowClick() {

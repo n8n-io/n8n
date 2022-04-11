@@ -23,6 +23,8 @@
 					:activeIndex="activeIndex"
 					:transitionsEnabled="true"
 					@selected="selected"
+					@dragstart="emitNodeEvent('nodeTypeDragStart', $event)"
+					@dragend="emitNodeEvent('nodeTypeDragEnd', $event)"
 				/>
 			</div>
 			<div
@@ -33,9 +35,14 @@
 					:elements="filteredNodeTypes"
 					:activeIndex="activeIndex"
 					@selected="selected"
+					@dragstart="emitNodeEvent('nodeTypeDragStart', $event)"
+					@dragend="emitNodeEvent('nodeTypeDragEnd', $event)"
 				/>
 			</div>
-			<NoResults v-else @nodeTypeSelected="nodeTypeSelected" />
+			<NoResults
+				v-else
+				@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
+			/>
 		</div>
 	</div>
 </template>
@@ -55,6 +62,7 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
+import {INodeTypeDescription} from "n8n-workflow";
 
 
 export default mixins(externalHooks).extend({
@@ -233,19 +241,14 @@ export default mixins(externalHooks).extend({
 				this.selected(activeNodeType);
 			}
 		},
-		selected(element: INodeCreateElement) {
+		selected({ element, event }: { element: INodeCreateElement, event: MouseEvent }) {
 			if (element.type === 'node') {
-				const properties = element.properties as INodeItemProps;
-
-				this.nodeTypeSelected(properties.nodeType.name);
+				this.emitNodeEvent('nodeTypeSelected', { element, event });
 			} else if (element.type === 'category') {
 				this.onCategorySelected(element.category);
 			} else if (element.type === 'subcategory') {
 				this.onSubcategorySelected(element);
 			}
-		},
-		nodeTypeSelected(nodeTypeName: string) {
-			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {
@@ -275,6 +278,13 @@ export default mixins(externalHooks).extend({
 
 		onClickInside() {
 			this.searchEventBus.$emit('focus');
+		},
+
+		emitNodeEvent(eventName: string, { element, event }: { element: INodeCreateElement, event: Event }) {
+			this.$emit(eventName, {
+				nodeTypeName: (element.properties as INodeItemProps).nodeType.name,
+				event,
+			});
 		},
 	},
 	async mounted() {
