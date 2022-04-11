@@ -998,6 +998,7 @@ describe('Workflow', () => {
 		];
 
 		const nodeTypes = Helpers.NodeTypes();
+		const timezone = 'America/New_York';
 
 		for (const testData of tests) {
 			test(testData.description, () => {
@@ -1110,6 +1111,7 @@ describe('Workflow', () => {
 						activeNodeName,
 						connectionInputData,
 						'manual',
+						timezone,
 						{},
 					);
 					// @ts-ignore
@@ -1264,6 +1266,7 @@ describe('Workflow', () => {
 				activeNodeName,
 				connectionInputData,
 				'manual',
+				timezone,
 				{},
 			);
 

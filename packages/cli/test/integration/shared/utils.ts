@@ -1,16 +1,16 @@
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
-import express = require('express');
-import * as superagent from 'superagent';
-import * as request from 'supertest';
+import express from 'express';
+import superagent from 'superagent';
+import request from 'supertest';
 import { URL } from 'url';
-import bodyParser = require('body-parser');
-import * as util from 'util';
+import bodyParser from 'body-parser';
+import util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 
-import config = require('../../../config');
+import config from '../../../config';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
@@ -23,9 +23,7 @@ import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/U
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
-
 import type { User } from '../../../src/databases/entities/User';
-import { Telemetry } from '../../../src/telemetry';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
@@ -182,9 +180,7 @@ export function prefix(pathSegment: string) {
 export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
 	const cookies: string[] = response.headers['set-cookie'];
 
-	if (!cookies) {
-		throw new Error("No 'set-cookie' header found in response");
-	}
+	if (!cookies) return undefined;
 
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
 
@@ -216,5 +212,37 @@ export async function isInstanceOwnerSetUp() {
 /**
  * Get an SMTP test account from https://ethereal.email to test sending emails.
  */
-export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
+const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
+export async function configureSmtp() {
+	const {
+		user,
+		pass,
+		smtp: { host, port, secure },
+	} = await getSmtpTestAccount();
+
+	config.set('userManagement.emails.mode', 'smtp');
+	config.set('userManagement.emails.smtp.host', host);
+	config.set('userManagement.emails.smtp.port', port);
+	config.set('userManagement.emails.smtp.secure', secure);
+	config.set('userManagement.emails.smtp.auth.user', user);
+	config.set('userManagement.emails.smtp.auth.pass', pass);
+}
+
+// ----------------------------------
+//              misc
+// ----------------------------------
+
+/**
+ * Categorize array items into two groups based on whether they pass a test.
+ */
+export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
+	return arr.reduce<{ pass: T[]; fail: T[] }>(
+		(acc, cur) => {
+			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
+
+			return acc;
+		},
+		{ pass: [], fail: [] },
+	);
+};

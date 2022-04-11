@@ -47,7 +47,7 @@
     "prettier": "^2.3.2",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
-    "typescript": "~4.3.5"
+    "typescript": "~4.6.0"
   },
   "dependencies": {
     "jmespath": "^0.16.0",
