@@ -37,7 +37,7 @@ import {
 	postOperations,
 } from './PostDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Orbit implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,7 +114,7 @@ export class Orbit implements INodeType {
 				for (const workspace of workspaces.data) {
 					returnData.push({
 						name: workspace.attributes.name,
-						value: workspace.id,
+						value: workspace.attributes.slug,
 					});
 				}
 				return returnData;

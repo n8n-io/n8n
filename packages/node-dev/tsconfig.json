@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2019"
 		],
 		"types": [
 			"node"
@@ -13,7 +13,7 @@
 		"preserveConstEnums": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "es2017",
+		"target": "es2019",
 		"sourceMap": true
 	},
 	"include": [

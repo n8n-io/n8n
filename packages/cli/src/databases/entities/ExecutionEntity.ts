@@ -2,11 +2,11 @@
 import { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { Column, ColumnOptions, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
 
 function resolveDataType(dataType: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {
@@ -23,6 +23,11 @@ function resolveDataType(dataType: string) {
 }
 
 @Entity()
+@Index(['workflowId', 'id'])
+@Index(['waitTill', 'id'])
+@Index(['finished', 'id'])
+@Index(['workflowId', 'finished', 'id'])
+@Index(['workflowId', 'waitTill', 'id'])
 export class ExecutionEntity implements IExecutionFlattedDb {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -52,11 +57,9 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column(resolveDataType('json'))
 	workflowData: IWorkflowDb;
 
-	@Index()
 	@Column({ nullable: true })
 	workflowId: string;
 
-	@Index()
 	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
 	waitTill: Date;
 }

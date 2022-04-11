@@ -14,15 +14,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import * as fs from 'fs';
+import fs from 'fs';
 
-import * as formidable from 'formidable';
+import formidable from 'formidable';
 
-import * as isbot from 'isbot';
+import isbot from 'isbot';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -251,6 +251,10 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
 						name: 'GET',
 						value: 'GET',
 					},
@@ -259,8 +263,16 @@ export class Wait implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -514,6 +526,8 @@ export class Wait implements INodeType {
 						displayOptions: {
 							show: {
 								'/httpMethod': [
+									'PATCH',
+									'PUT',
 									'POST',
 								],
 							},
