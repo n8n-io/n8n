@@ -576,6 +576,15 @@ export const schema = {
 		},
 	},
 
+	publicApiEndpoints: {
+		path: {
+			format: String,
+			default: 'api',
+			env: 'N8N_PUBLIC_API_ENDPOINT',
+			doc: 'Path for the public api endpoints',
+		},
+	},
+
 	workflowTagsDisabled: {
 		format: Boolean,
 		default: false,
