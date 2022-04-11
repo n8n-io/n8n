@@ -15,6 +15,8 @@ import {
 	fieldConfigurationOperations,
 } from './descriptions/FieldConfigurationDescription';
 import { createFilterParameter, onOfficeApiAction } from './GenericFunctions';
+import { searchCriteriasFields, searchCriteriasOperations } from './descriptions/SearchCriteriasDescription';
+import { searchCriteriaFieldsFields, searchCriteriaFieldsOperations } from './descriptions/SearchCriteriaFieldsDescription';
 
 export class OnOffice implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +58,14 @@ export class OnOffice implements INodeType {
 						name: 'Field Configuration',
 						value: 'fields',
 					},
+					{
+						name: 'Search Criterias',
+						value: 'searchcriterias',
+					},
+					{
+						name: 'Search Criteria Fields',
+						value: 'searchCriteriaFields',
+					},
 				],
 				default: 'address',
 				required: true,
@@ -70,6 +80,12 @@ export class OnOffice implements INodeType {
 
 			...fieldConfigurationOperations,
 			...fieldConfigurationFields,
+
+			...searchCriteriasOperations,
+			...searchCriteriasFields,
+
+			...searchCriteriaFieldsOperations,
+			// ...searchCriteriaFieldsFields,
 		],
 	};
 
@@ -176,11 +192,11 @@ export class OnOffice implements INodeType {
 				}
 			}
 			if (operation === 'get') {
-				if (resource === 'fields') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				if (resource === 'fields' || resource === 'searchcriterias' || resource === 'searchCriteriaFields') {
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
 					const parameters = {
-						modules: this.getNodeParameter('modules', i) as string[],
+						modules: this.getNodeParameter('modules', i, null) as string[] | undefined,
 						labels: additionalFields.labels,
 						language: additionalFields.language,
 						fieldList: additionalFields.fieldList,
@@ -188,6 +204,8 @@ export class OnOffice implements INodeType {
 						listlimit: additionalFields.limit,
 						realDataTypes: additionalFields.realDataTypes,
 						showFieldMeasureFormat: additionalFields.showFieldMeasureFormat,
+						ids: this.getNodeParameter('ids', i, null) as string[] | undefined,
+						mode: this.getNodeParameter('mode', i, null) as string | undefined,
 					};
 
 					const result = await onOfficeApiAction(
