@@ -45,7 +45,7 @@ import {
 	userGroupOperations,
 } from './UserGroupDescription';
 
-//import * as moment from 'moment';
+//import moment from 'moment';
 
 export class Discourse implements INodeType {
 	description: INodeTypeDescription = {

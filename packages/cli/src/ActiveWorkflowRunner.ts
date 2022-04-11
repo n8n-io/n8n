@@ -30,7 +30,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import * as express from 'express';
+import express from 'express';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -48,7 +48,7 @@ import {
 	WorkflowRunner,
 	ExternalHooks,
 } from '.';
-import config = require('../config');
+import config from '../config';
 import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
@@ -74,7 +74,7 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
-		if (!config.get('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+		if (!config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -466,7 +466,7 @@ export class ActiveWorkflowRunner {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
 					// When skipWebhoooksDeregistrationOnShutdown is enabled,
