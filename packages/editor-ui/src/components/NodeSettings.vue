@@ -1,17 +1,15 @@
 <template>
 	<div class="node-settings" @keydown.stop>
-		<div class="header-side-menu">
-			<span v-if="node">
-				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
-				<span class="node-info">
-					<n8n-link v-if="nodeType" :to="'http://n8n.io/nodes/' + nodeType.name">
-						<n8n-tooltip class="clickable" placement="top" >
-							<div slot="content" v-html="`<strong>${$locale.baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$locale.baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</n8n-link>
-				</span>
-			</span>
+		<div :class="$style.header">
+			<div class="header-side-menu">
+				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
+				<div
+					v-if="!isReadOnly"
+				>
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
+				</div>
+			</div>
+			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -24,22 +22,20 @@
 			</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<el-tabs stretch @tab-click="handleTabClick">
-				<el-tab-pane :label="$locale.baseText('nodeSettings.parameters')">
-					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-					<node-webhooks :node="node" :nodeType="nodeType" />
-					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
-						<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-						</n8n-text>
-					</div>
-				</el-tab-pane>
-				<el-tab-pane :label="$locale.baseText('nodeSettings.settings')">
-					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
-					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-				</el-tab-pane>
-			</el-tabs>
+			<div v-show="openPanel === 'params'">
+				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+				<node-webhooks :node="node" :nodeType="nodeType" />
+				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+					<n8n-text>
+					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+					</n8n-text>
+				</div>
+			</div>
+			<div v-show="openPanel === 'settings'">
+				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
+				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -59,12 +55,11 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { ElTabPane } from "element-ui/types/tab-pane";
-
-import DisplayWithChange from '@/components/DisplayWithChange.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeTabs from '@/components/NodeTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
@@ -73,21 +68,23 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 )
-
 	.extend({
 		name: 'NodeSettings',
 		components: {
-			DisplayWithChange,
+			NodeTitle,
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
+			NodeTabs,
 			NodeWebhooks,
+			NodeExecuteButton,
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
@@ -150,14 +147,16 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
+		},
+		props: {
+			eventBus: {
 			},
 		},
 		data () {
 			return {
 				nodeValid: true,
 				nodeColor: null,
+				openPanel: 'params',
 				nodeValues: {
 					color: '#ff0000',
 					alwaysOutputData: false,
@@ -271,7 +270,9 @@ export default mixins(
 			},
 		},
 		methods: {
-			noOp () {},
+			onNodeExecute () {
+				this.$emit('execute');
+			},
 			setValue (name: string, value: NodeParameterValue) {
 				const nameParts = name.split('.');
 				let lastNamePart: string | undefined = nameParts.pop();
@@ -337,6 +338,13 @@ export default mixins(
 
 				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
+			nameChanged(name: string) {
+				// @ts-ignore
+				this.valueChanged({
+					value: name,
+					name: 'name',
+				});
+			},
 			valueChanged (parameterData: IUpdateInformation) {
 				let newValue: NodeParameterValue;
 				if (parameterData.hasOwnProperty('value')) {
@@ -362,7 +370,6 @@ export default mixins(
 					};
 					this.$emit('valueChanged', sendData);
 
-					this.$store.commit('setActiveNode', newValue);
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
@@ -514,20 +521,25 @@ export default mixins(
 					this.nodeValid = false;
 				}
 			},
-			handleTabClick(tab: ElTabPane) {
-				if(tab.label === 'Settings') {
-					this.$telemetry.track('User viewed node settings', { node_type: this.node ? this.node.type : '', workflow_id: this.$store.getters.workflowId });
-				}
-			},
 		},
 		mounted () {
 			this.setNodeValues();
+			if (this.eventBus) {
+				(this.eventBus as Vue).$on('openSettings', () => {
+					this.openPanel = 'settings';
+				});
+			}
 		},
 	});
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.header {
+	background-color: var(--color-background-base);
+}
+</style>
 
+<style lang="scss">
 .node-settings {
 	overflow: hidden;
 	min-width: 350px;
@@ -538,20 +550,13 @@ export default mixins(
 	}
 
 	.header-side-menu {
-		padding: 1em 0 1em 1.8em;
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
 		font-size: var(--font-size-l);
-		background-color: $--custom-window-sidebar-top;
+		display: flex;
 
-		.node-info {
-			display: none;
-			padding-left: 0.5em;
-			font-size: 0.8em;
-		}
-
-		&:hover {
-			.node-info {
-				display: inline;
-			}
+		.node-name {
+			padding-top: var(--spacing-5xs);
+			flex-grow: 1;
 		}
 	}
 
@@ -561,51 +566,8 @@ export default mixins(
 
 	.node-parameters-wrapper {
 		height: 100%;
-
-		.el-tabs__header {
-			background-color: #fff5f2;
-			margin-bottom: 0;
-		}
-
-		.el-tabs {
-			height: 100%;
-			.el-tabs__content {
-				overflow-y: auto;
-				height: 100%;
-				padding-bottom: 180px;
-
-				.el-tab-pane {
-					margin: 0 var(--spacing-s);
-				}
-			}
-		}
-
-		.el-tabs__nav {
-			padding-bottom: var(--spacing-xs);
-		}
-
-		.add-option {
-			i.el-select__caret {
-				color: var(--color-foreground-xlight);
-			}
-			.el-input .el-input__inner {
-				&,
-				&:hover,
-				&:focus {
-					border-radius: 20px;
-					color: var(--color-foreground-xlight);
-					font-weight: 600;
-					background-color: var(--color-primary);
-					border-color: var(--color-primary);
-					text-align: center;
-				}
-
-				&::placeholder {
-					color: var(--color-foreground-xlight);
-					opacity: 1; /** Firefox */
-				}
-			}
-		}
+		overflow-y: auto;
+		padding: 0 20px 200px 20px;
 	}
 }
 

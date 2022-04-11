@@ -28,10 +28,13 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
+import { addHeaders, loadLanguage } from './plugins/i18n';
+import { restApi } from '@/components/mixins/restApi';
 
 export default mixins(
 	showMessage,
 	userHelpers,
+	restApi,
 ).extend({
 	name: 'App',
 	components: {
@@ -42,6 +45,9 @@ export default mixins(
 	computed: {
 		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
+		defaultLocale (): string {
+			return this.$store.getters.defaultLocale;
+		},
 	},
 	data() {
 		return {
@@ -79,7 +85,7 @@ export default mixins(
 			}
 		},
 		logHiringBanner() {
-			if (!this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
+			if (this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -143,8 +149,8 @@ export default mixins(
 		},
 	},
 	async mounted() {
-		this.logHiringBanner();
 		await this.initialize();
+		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
 
@@ -152,6 +158,11 @@ export default mixins(
 
 		this.trackPage();
 		this.$externalHooks().run('app.mount');
+
+		if (this.defaultLocale !== 'en') {
+			const headers = await this.restApi().getNodeTranslationHeaders();
+			if (headers) addHeaders(headers, this.defaultLocale);
+		}
 	},
 	watch: {
 		$route(route) {
@@ -159,6 +170,9 @@ export default mixins(
 			this.redirectIfNecessary();
 
 			this.trackPage();
+		},
+		defaultLocale(newLocale) {
+			loadLanguage(newLocale);
 		},
 	},
 });
