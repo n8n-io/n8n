@@ -2,16 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable import/no-cycle */
-import cookieParser = require('cookie-parser');
-import * as passport from 'passport';
+import cookieParser from 'cookie-parser';
+import passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { meNamespace } from './me';
@@ -30,7 +30,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
 		},
-		secretOrKey: config.get('userManagement.jwtSecret') as string,
+		secretOrKey: config.getEnv('userManagement.jwtSecret'),
 	};
 
 	passport.use(

@@ -6,6 +6,7 @@ n8n allows for internalization of the majority of UI text:
 
 - base text, e.g. menu display items in the left-hand sidebar menu,
 - node text, e.g. parameter display names and placeholders in the node view,
+- credential text, e.g. parameter display names and placeholders in the credential modal,
 - header text, e.g. node display names and descriptions at various spots.
 
 Currently, n8n does _not_ allow for internalization of:
@@ -55,12 +56,10 @@ Base text is rendered with no dependencies, i.e. base text is fixed and does not
 The base text file for each locale is located at `/packages/editor-ui/src/plugins/i18n/locales/` and is named `{localeIdentifier}.json`. Keys in the base text file can be Vue component dirs, Vue component names, and references to symbols in those Vue components. These keys are added by the team as the UI is modified or expanded.
 
 ```json
-"nodeCreator": {
-	"categoryNames": {
-		"analytics": "🇩🇪 Analytics",
-		"communication": "🇩🇪 Communication",
-		"coreNodes": "🇩🇪 Core Nodes"
-	}
+{
+	"nodeCreator.categoryNames.analytics": "🇩🇪 Analytics",
+	"nodeCreator.categoryNames.communication": "🇩🇪 Communication",
+	"nodeCreator.categoryNames.coreNodes": "🇩🇪 Core Nodes"
 }
 ```
 
@@ -98,9 +97,9 @@ A credential translation file is placed at `/nodes-base/credentials/translations
 ```
 credentials
 	└── translations
-			└── de
-				├── githubApi.json
-				└── githubOAuth2Api.json
+		└── de
+			├── githubApi.json
+			└── githubOAuth2Api.json
 ```
 Every credential must have its own credential translation file.
 
@@ -123,9 +122,9 @@ GitHub
 	├── GitHub.node.ts
 	├── GitHubTrigger.node.ts
 	└── translations
-			└── de
-				├── github.json
-				└── githubTrigger.json
+		└── de
+			├── github.json
+			└── githubTrigger.json
 ```
 
 Every node must have its own node translation file.
@@ -184,16 +183,10 @@ The object for each node credential parameter allows for the keys `displayName`,
 
 ```json
 {
-	"server": {
-		"displayName": "🇩🇪 Github Server",
-		"description": "🇩🇪 The server to connect to. Only has to be set if Github Enterprise is used.",
-	},
-	"user": {
-		"placeholder": "🇩🇪 Hans",
-	},
-	"accessToken": {
-		"placeholder": "🇩🇪 123",
-	},
+	"server.displayName": "🇩🇪 Github Server",
+	"server.description": "🇩🇪 The server to connect to. Only has to be set if Github Enterprise is used.",
+	"user.placeholder": "🇩🇪 Hans",
+	"accessToken.placeholder": "🇩🇪 123",
 }
 ```
 
@@ -224,10 +217,8 @@ export class Github implements INodeType {
 
 ```json
 {
-	"header": {
-		"displayName": "🇩🇪 GitHub",
-		"description": "🇩🇪 Consume GitHub API",
-	},
+	"header.displayName": "🇩🇪 GitHub",
+	"header.description": "🇩🇪 Consume GitHub API",
 }
 ```
 
@@ -264,11 +255,7 @@ export class Github implements INodeType {
 
 ```json
 {
-	"nodeView": {
-		"resource": {
-			"displayName": "🇩🇪 Resource",
-		},
-	},
+	"nodeView.resource.displayName": "🇩🇪 Resource",
 }
 ```
 
@@ -291,13 +278,9 @@ Allowed keys: `displayName`, `description`, `placeholder`
 
 ```json
 {
-	"nodeView": {
-		"owner": {
-			"displayName": "🇩🇪 Repository Owner",
-			"placeholder": "🇩🇪 n8n-io",
-			"description": "🇩🇪 Owner of the repository",
-		},
-	},
+	"nodeView.owner.displayName": "🇩🇪 Repository Owner",
+	"nodeView.owner.placeholder": "🇩🇪 n8n-io",
+	"nodeView.owner.description": "🇩🇪 Owner of the repository",
 }
 ```
 
@@ -333,20 +316,10 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 
 ```json
 {
-	"nodeView": {
-		"resource": {
-			"displayName": "🇩🇪 Resource",
-			"description": "🇩🇪 Resource to operate on",
-			"options": {
-				"file": {
-					"displayName": "🇩🇪 File",
-				},
-				"issue": {
-					"displayName": "🇩🇪 Issue",
-				},
-			},
-		},
-	},
+	"nodeView.resource.displayName": "🇩🇪 Resource",
+	"nodeView.resource.description": "🇩🇪 Resource to operate on",
+	"nodeView.resource.options.file.displayName": "🇩🇪 File",
+	"nodeView.resource.options.issue.displayName": "🇩🇪 Issue",
 }
 ```
 
@@ -394,19 +367,11 @@ Example of `collection` parameter:
 
 ```json
 {
-	"nodeView": {
-		"labels": {
-			"displayName": "🇩🇪 Labels",
-			"multipleValueButtonText": "🇩🇪 Add Label",
-			"options": {
-				"label": {
-					"displayName": "🇩🇪 Label",
-					"description": "🇩🇪 Label to add to issue",
-					"placeholder": "🇩🇪 Some placeholder"
-				}
-			}
-		}
-	}
+	"nodeView.labels.displayName": "🇩🇪 Labels",
+	"nodeView.labels.multipleValueButtonText": "🇩🇪 Add Label",
+	"nodeView.labels.options.label.displayName": "🇩🇪 Label",
+	"nodeView.labels.options.label.description": "🇩🇪 Label to add to issue",
+	"nodeView.labels.options.label.placeholder": "🇩🇪 Some placeholder"
 }
 ```
 
@@ -461,29 +426,15 @@ Example of `fixedCollection` parameter:
 
 ```json
 {
-	"nodeView": {
-		"additionalParameters": {
-		"displayName": "🇩🇪 Additional Parameters",
-			"placeholder": "🇩🇪 Add Field",
-			"options": {
-				"author": {
-					"displayName": "🇩🇪 Author",
-					"values": {
-						"name": {
-							"displayName": "🇩🇪 Name",
-							"description": "🇩🇪 Name of the author of the commit",
-							"placeholder": "🇩🇪 Jan"
-						},
-						"email": {
-							"displayName": "🇩🇪 Email",
-							"description": "🇩🇪 Email of the author of the commit",
-							"placeholder": "🇩🇪 jan@n8n.io"
-						}
-					}
-				},
-			}
-		}
-	}
+	"nodeView.additionalParameters.displayName": "🇩🇪 Additional Parameters",
+	"nodeView.additionalParameters.placeholder": "🇩🇪 Add Field",
+	"nodeView.additionalParameters.options.author.displayName": "🇩🇪 Author",
+	"nodeView.additionalParameters.options.author.values.name.displayName": "🇩🇪 Name",
+	"nodeView.additionalParameters.options.author.values.name.description": "🇩🇪 Name of the author of the commit",
+	"nodeView.additionalParameters.options.author.values.name.placeholder": "🇩🇪 Jan",
+	"nodeView.additionalParameters.options.author.values.email.displayName": "🇩🇪 Email",
+	"nodeView.additionalParameters.options.author.values.email.description": "🇩🇪 Email of the author of the commit",
+	"nodeView.additionalParameters.options.author.values.email.placeholder": "🇩🇪 jan@n8n.io",
 }
 ```
 

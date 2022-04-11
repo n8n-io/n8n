@@ -531,6 +531,24 @@ export const issueFields: INodeProperties[] = [
 		description: 'Issue Key',
 	},
 	{
+		displayName: 'Simplify Output',
+		name: 'simplifyOutput',
+		type: 'boolean',
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'issue',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: false,
+		description: `Return a simplified output of the issues fields.`,
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',

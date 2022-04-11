@@ -1,7 +1,7 @@
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
-import * as express from 'express';
+import express from 'express';
 
 import { ActiveWebhooks } from 'n8n-core';
 

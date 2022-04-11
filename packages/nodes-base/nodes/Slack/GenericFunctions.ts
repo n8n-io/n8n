@@ -15,7 +15,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 
 export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
