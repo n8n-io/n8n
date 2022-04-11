@@ -73,6 +73,16 @@ export class Redis implements INodeType {
 						value: 'publish',
 						description: 'Publish message to redis channel.',
 					},
+					{
+						name: 'Push',
+						value: 'push',
+						description: 'Push data to a redis list',
+					},
+					{
+						name: 'Pop',
+						value: 'pop',
+						description: 'Pop data from a redis list',
+					},
 				],
 				default: 'info',
 				description: 'The operation to perform.',
@@ -265,7 +275,20 @@ export class Redis implements INodeType {
 				required: true,
 				description: 'The key pattern for the keys to return.',
 			},
-
+			{
+				displayName: 'Get Values',
+				name: 'getValues',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'keys',
+						],
+					},
+				},
+				default: true,
+				description: 'Get the value of matching keys',
+			},
 			// ----------------------------------
 			//         set
 			// ----------------------------------
@@ -410,6 +433,117 @@ export class Redis implements INodeType {
 				default: '',
 				required: true,
 				description: 'Data to publish.',
+			},
+			// ----------------------------------
+			//         push/pop
+			// ----------------------------------
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'push',
+							'pop',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list in Redis.',
+			},
+			{
+				displayName: 'Data',
+				name: 'messageData',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'push',
+						],
+					},
+				},
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				required: true,
+				description: 'Data to push',
+			},
+			{
+				displayName: 'Tail',
+				name: 'tail',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'push',
+							'pop',
+						],
+					},
+				},
+				default: false,
+				description: 'Operate on data at the tail of the list',
+			},
+			{
+				displayName: 'Overwrite',
+				name: 'overwrite',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'pop',
+						],
+					},
+				},
+				default: false,
+				description: 'Overwrite item data with returned data',
+			},
+			{
+				displayName: 'Name',
+				name: 'propertyName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'pop',
+						],
+						overwrite: [
+							false,
+						],
+					},
+				},
+				default: 'data',
+				required: false,
+				description: 'Optional name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name"',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'pop',
+						],
+						overwrite: [
+							false,
+						],
+					},
+				},
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Dot Notation',
+						name: 'dotNotation',
+						type: 'boolean',
+						default: true,
+						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>
+						`,
+					},
+				],
 			},
 		],
 	};
@@ -558,7 +692,7 @@ export class Redis implements INodeType {
 						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]));
 						client.quit();
 
-					} else if (['delete', 'get', 'keys', 'set', 'incr', 'publish'].includes(operation)) {
+					} else if (['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)) {
 						const items = this.getInputData();
 						const returnItems: INodeExecutionData[] = [];
 
@@ -591,9 +725,15 @@ export class Redis implements INodeType {
 								returnItems.push(item);
 							} else if (operation === 'keys') {
 								const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
+								const getValues = this.getNodeParameter('getValues', itemIndex, true) as boolean;
 
 								const clientKeys = util.promisify(client.keys).bind(client);
 								const keys = await clientKeys(keyPattern);
+
+								if (!getValues) {
+									returnItems.push({json: {'keys': keys}});
+									continue;
+								}
 
 								const promises: {
 									[key: string]: GenericValue;
@@ -635,6 +775,48 @@ export class Redis implements INodeType {
 								const clientPublish = util.promisify(client.publish).bind(client);
 								await clientPublish(channel, messageData);
 								returnItems.push(items[itemIndex]);
+							} else if (operation === 'push'){
+								const redisList = this.getNodeParameter('list', itemIndex) as string;
+								const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+								const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+
+								const action = tail ? client.rpushx : client.lpushx;
+								const clientPush = util.promisify(action).bind(client);
+
+								await clientPush(redisList, messageData);
+
+								returnItems.push(items[itemIndex]);
+							} else if (operation === 'pop'){
+								const redisList = this.getNodeParameter('list', itemIndex) as string;
+								const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+								const overwrite = this.getNodeParameter('overwrite', itemIndex, false) as boolean;
+								const propertyName = this.getNodeParameter('propertyName', itemIndex, 'data') as string;
+
+								const action = tail ? client.rpop : client.lpop;
+								const clientPush = util.promisify(action).bind(client);
+								const value = await clientPush(redisList);
+
+								let valueJSON;
+								try {
+									valueJSON = JSON.parse(value);
+								} catch {
+									valueJSON = undefined;
+								}
+								if (overwrite) {
+									if (valueJSON) {
+										item = {json: valueJSON};
+									} else {
+										item = {json: {data: value}};
+									}
+								} else {
+									const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+									if (options.dotNotation === false) {
+										item.json[propertyName] = valueJSON ? valueJSON : value;
+									} else {
+										set(item.json, propertyName, valueJSON ? valueJSON : value);
+									}
+								}
+								returnItems.push(item);
 							}
 						}
 
