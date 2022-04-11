@@ -480,7 +480,7 @@ export const store = new Vuex.Store({
 			if (!state.nodeMetadata[node.name]) {
 				Vue.set(state.nodeMetadata, node.name, {});
 			}
-			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', new Date().getTime());
+			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
 		// Node-Index
