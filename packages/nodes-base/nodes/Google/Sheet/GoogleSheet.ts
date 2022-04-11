@@ -327,9 +327,9 @@ export class GoogleSheet {
 		let itemKey: string | number | undefined | null;
 		let propertyName: string;
 		let itemKeyIndex: number;
-		const updateRowIndices: number[] = [];
+		const updateRowIndices: number[][] = [];
 		let updateColumnName: string;
-		for (const inputItem of inputData) {
+		for (const [inputIndex, inputItem] of inputData.entries()) {
 			itemKey = inputItem[indexKey] as string;
 			// if ([undefined, null].includes(inputItem[indexKey] as string | undefined | null)) {
 			if (itemKey === undefined || itemKey === null) {
@@ -348,11 +348,13 @@ export class GoogleSheet {
 			if (updateAll) {
 				for(let i = 0; i < keyColumnIndexLookup.length; i++) {
 					if (keyColumnIndexLookup[i] === itemKey) {
-						updateRowIndices.push(i + dataStartRowIndex + 1);
+						updateRowIndices.push([i + dataStartRowIndex + 1, inputIndex]);
+						keyColumnIndexLookup[i] = '';
 					}
 				}
 			} else  {
-				updateRowIndices.push(keyColumnIndexLookup.indexOf(itemKey) + dataStartRowIndex + 1);
+				updateRowIndices.push([keyColumnIndexLookup.indexOf(itemKey) + dataStartRowIndex + 1, inputIndex]);
+				keyColumnIndexLookup[keyColumnIndexLookup.indexOf(itemKey)] = '';
 			}
 
 			// Check all the properties in the sheet and check which ones exist on the
@@ -375,10 +377,10 @@ export class GoogleSheet {
 
 				for (const row of updateRowIndices) {
 					updateData.push({
-						range: `${sheet ? sheet + '!' : ''}${updateColumnName}${row}`,
+						range: `${sheet ? sheet + '!' : ''}${updateColumnName}${row[0]}`,
 						values: [
 							[
-								inputItem[propertyName] as string,
+								inputData[row[1]][propertyName] as string,
 							],
 						],
 					});
