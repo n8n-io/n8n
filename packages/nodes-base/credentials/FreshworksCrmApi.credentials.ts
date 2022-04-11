@@ -23,5 +23,13 @@ export class FreshworksCrmApi implements ICredentialType {
 			placeholder: 'n8n-org',
 			description: 'Domain in the Freshworks CRM org URL. For example, in <code>https://n8n-org.myfreshworks.com</code>, the domain is <code>n8n-org</code>.',
 		},
+		{
+			displayName: 'Host',
+			name: 'host',
+			type: 'string',
+			default: 'myfreshworks.com',
+			placeholder: '',
+			description: 'Host in the Freshworks CRM org URL. For example, in <code>https://n8n-org.myfreshworks.com</code>, the host is <code>myfreshworks.com</code>.',
+		},		
 	];
 }
