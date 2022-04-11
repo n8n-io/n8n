@@ -22,26 +22,23 @@ export async function twitchApiRequest(this: IExecuteFunctions | IWebhookFunctio
 
 	const optionsForAppToken: OptionsWithUri = {
 		headers: {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
 		},
 		method: 'POST',
 		qs: {
 			client_id: clientId,
 			client_secret: clientSecret,
-			grant_type: 'client_credentials'
+			grant_type: 'client_credentials',
 		},
 		uri: 'https://id.twitch.tv/oauth2/token',
-		json: true
+		json: true,
 	};
 
 	let appTokenResponse = null;
 
-	// TODO: save app token somewhere and validate it before asking for a new one 👇
-	
-
 	try {
 		appTokenResponse = await this.helpers.request!(optionsForAppToken);
-	} catch (errorObject:any) {
+	} catch (errorObject) {
 		if (errorObject.error) {
 			const errorMessage = errorObject.error.message;
 			throw new Error(`Twitch API App Token error response [${errorObject.error.status}]: ${errorMessage}`);
@@ -71,7 +68,7 @@ export async function twitchApiRequest(this: IExecuteFunctions | IWebhookFunctio
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (errorObject: any) {
+	} catch (errorObject) {
 		if (errorObject.error) {
 			const errorMessage = errorObject.error.message;
 			throw new Error(`Twitch API error response [${errorObject.error.status}]: ${errorMessage}`);
