@@ -30,7 +30,7 @@
 /* eslint-disable no-await-in-loop */
 
 import express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -1503,10 +1503,17 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<object | void> => {
 					const packagesPath = pathJoin(__dirname, '..', '..', '..');
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+
+					try {
+						await promises.access(`${headersPath}.js`);
+					} catch (_) {
+						return; // no headers available
+					}
+
 					try {
 						return require(headersPath);
 					} catch (error) {
-						res.status(500).send('Failed to find headers file');
+						res.status(500).send('Failed to load headers file');
 					}
 				},
 			),

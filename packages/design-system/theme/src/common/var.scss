@@ -777,7 +777,7 @@ $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
 /* Pagination
 -------------------------- */
 /// fontSize||Font|1
-$pagination-font-size: 13px;
+$pagination-font-size: var(--font-size-2xs);
 /// color||Color|0
 $pagination-background-color: $color-white;
 /// color||Color|0
@@ -799,7 +799,7 @@ $pagination-hover-color: var(--color-primary);
 /* Popup
 -------------------------- */
 /// color||Color|0
-$popup-modal-background-color: hsla(247,14%, 70%, 0.75);
+$popup-modal-background-color: hsla(247,14%, 30%, 0.75);
 /// opacity||Other|1
 $popup-modal-opacity: 0.65;
 
