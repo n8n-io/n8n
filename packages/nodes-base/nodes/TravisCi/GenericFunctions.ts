@@ -17,7 +17,7 @@ import {
 	get,
 } from 'lodash';
 
-import * as querystring from 'querystring';
+import querystring from 'querystring';
 
 export async function travisciApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('travisCiApi');
