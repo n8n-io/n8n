@@ -28,9 +28,6 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
-	limit: number;
-	offset: number;
-	includeRole: boolean;
 };
 
 // ----------------------------------
@@ -205,14 +202,14 @@ export declare namespace UserRequest {
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ transferId?: string; includeRole: string }
+		{ transferId?: string; includeRole: boolean }
 	>;
 
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit?: string; offset: string; cursor?: string; includeRole?: string }
+		{ limit: number; offset: number; cursor: string; includeRole: boolean }
 	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;

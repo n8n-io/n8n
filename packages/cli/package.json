@@ -30,7 +30,7 @@
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "npm run test:sqlite",
-    "test:sqlite": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=sqlite; jest",
+    "test:sqlite": "export N8N_LOG_LEVEL='debug'; export DB_TYPE=sqlite; jest --detectOpenHandles",
     "test:postgres": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=postgresdb && jest",
     "test:mysql": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=mysqldb && jest",
     "watch": "tsc --watch",
@@ -92,7 +92,6 @@
     "typescript": "~4.6.0"
   },
   "dependencies": {
-    "@apidevtools/swagger-parser": "^10.0.3",
     "@oclif/command": "^1.5.18",
     "@oclif/errors": "^1.2.2",
     "@rudderstack/rudder-sdk-node": "1.0.6",
@@ -138,7 +137,6 @@
     "p-cancelable": "^2.0.0",
     "passport": "^0.5.0",
     "passport-cookie": "^1.0.9",
-    "passport-http-header-strategy": "^1.1.0",
     "passport-jwt": "^4.0.0",
     "pg": "^8.3.0",
     "prom-client": "^13.1.0",

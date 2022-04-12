@@ -16,7 +16,7 @@ externalDocs:
 servers:
   - url: /api/v1
 tags:
-- name: user
+- name: users
   description: Operations about user
   externalDocs:
     description: Find out more about our store
@@ -31,15 +31,6 @@ paths:
       summary: Retrieve all users
       description: Retrieve all users from your instance. Only available for the instance owner.
       parameters:
-      - name: select
-        in: query
-        required: false
-        style: form
-        explode: true
-        schema:
-          type: string
-          description: Comma-separted list of the properties to return. Use a to return all properties. Dot notation be use for nested properties
-          example: email,firstName
       - name: limit
         in: query
         description: The maximum number of items to return
@@ -65,7 +56,7 @@ paths:
         style: form
         explode: true
         schema:
-          type: string
+          type: boolean
           example: true
       responses:
         "200":
@@ -84,7 +75,7 @@ paths:
       x-eov-operation-id: createUsers
       x-eov-operation-handler: routes/Users
       tags:
-      - user
+      - users
       summary: Invite a user
       description: Invites a user to your instance. Only available for the instance owner.
       operationId: createUser
@@ -138,7 +129,7 @@ paths:
         style: form
         explode: true
         schema:
-          type: string
+          type: boolean
           example: true
       responses:
         "200":
@@ -257,7 +248,7 @@ components:
           description: User's last name
           readOnly: true
           example: doe
-        finishedSetup:
+        pending:
           type: boolean
           description: Whether the user finished setting up the invitation or not
           readOnly: true

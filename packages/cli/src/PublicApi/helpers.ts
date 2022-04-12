@@ -5,8 +5,6 @@
 import * as querystring from 'querystring';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
-import express = require('express');
-import SwaggerParser from '@apidevtools/swagger-parser';
 import { In } from 'typeorm';
 import { validate as uuidValidate } from 'uuid';
 import { User } from '../databases/entities/User';
@@ -22,13 +20,6 @@ interface IPaginationOffsetDecoded {
 	offset: number;
 	limit: number;
 }
-export interface IMiddlewares {
-	[key: string]: [IMiddleware];
-}
-interface IMiddleware {
-	(req: express.Request, res: express.Response, next: express.NextFunction): void;
-}
-
 export type OperationID = 'getUsers' | 'getUser';
 
 export const decodeCursor = (cursor: string): IPaginationOffsetDecoded => {
@@ -40,7 +31,7 @@ export const decodeCursor = (cursor: string): IPaginationOffsetDecoded => {
 	};
 };
 
-export const getNextCursor = (
+export const encodeNextCursor = (
 	offset: number,
 	limit: number,
 	numberOfRecords: number,
@@ -49,12 +40,10 @@ export const getNextCursor = (
 
 	if (retrieveRecordsLength < numberOfRecords) {
 		return Buffer.from(
-			JSON.stringify(
-				querystring.encode({
-					limit,
-					offset: offset + limit,
-				}),
-			),
+			JSON.stringify({
+				limit,
+				offset: offset + limit,
+			}),
 		).toString('base64');
 	}
 
@@ -66,59 +55,6 @@ export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
 		user: ['id', 'email', 'firstName', 'lastName', 'createdAt', 'updatedAt', 'isPending'],
 		role: ['id', 'name', 'scope', 'createdAt', 'updatedAt'],
 	}[table];
-};
-
-export const connectionName = (): string => {
-	return 'default';
-};
-
-const middlewareDefined = (operationId: OperationID, middlewares: IMiddlewares) =>
-	operationId && middlewares[operationId];
-
-export const addMiddlewares = (
-	router: express.Router,
-	method: string,
-	routePath: string,
-	operationId: OperationID,
-	middlewares: IMiddlewares,
-): void => {
-	if (middlewareDefined(operationId, middlewares)) {
-		const expressPath = routePath.replace(/\{([^}]+)}/g, ':$1');
-		switch (method) {
-			case 'get':
-				router.get(expressPath, ...middlewares[operationId]);
-				break;
-			case 'post':
-				router.post(expressPath, ...middlewares[operationId]);
-				break;
-			case 'put':
-				router.put(expressPath, ...middlewares[operationId]);
-				break;
-			case 'delete':
-				router.delete(expressPath, ...middlewares[operationId]);
-				break;
-			default:
-				break;
-		}
-	}
-};
-
-export const addCustomMiddlewares = async (
-	apiController: express.Router,
-	openApiSpec: string,
-	middlewares: IMiddlewares,
-): Promise<void> => {
-	const { paths = {} } = await SwaggerParser.parse(openApiSpec);
-	Object.entries(paths).forEach(([routePath, methods]) => {
-		Object.entries(methods).forEach(([method, data]) => {
-			const operationId: OperationID = (
-				data as {
-					'x-eov-operation-id': OperationID;
-				}
-			)['x-eov-operation-id'];
-			addMiddlewares(apiController, method, routePath, operationId, middlewares);
-		});
-	});
 };
 
 export async function getGlobalMemberRole(): Promise<Role | undefined> {
@@ -227,7 +163,7 @@ export async function inviteUsers(
 
 export async function getUser(data: {
 	withIdentifier: string;
-	includeRole: boolean;
+	includeRole?: boolean;
 }): Promise<User | undefined> {
 	return Db.collections.User?.findOne({
 		where: {
