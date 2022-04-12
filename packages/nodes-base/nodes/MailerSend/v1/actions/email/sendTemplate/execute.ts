@@ -84,7 +84,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 
 	returnItems.push({
 		json: {
-			response
+			response,
 		},
 	});
 

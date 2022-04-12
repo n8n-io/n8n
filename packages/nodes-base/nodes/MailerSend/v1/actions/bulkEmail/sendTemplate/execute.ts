@@ -89,6 +89,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 				}];
 			}
 
+			// tslint:disable-next-line: no-any
 			body.push(emailBody as any as IDataObject);
 		}  // for loop
 
