@@ -73,7 +73,7 @@ beforeEach(async () => {
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
+	config.set('userManagement.emails.mode', 'smtp');
 });
 
 afterAll(async () => {
@@ -106,6 +106,8 @@ test('GET /users should fail due to invalid API Key', async () => {
 });
 
 test('GET /users should fail due to member trying to access owner only endpoint', async () => {
+	config.set('userManagement.isInstanceOwnerSetUp', true);
+
 	const member = await testDb.createUser();
 
 	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: member });
@@ -125,7 +127,7 @@ test('GET /users should fail due no instance owner not setup', async () => {
 
 	const response = await authOwnerAgent.get('/v1/users');
 
-	expect(response.statusCode).toBe(400);
+	expect(response.statusCode).toBe(500);
 
 });
 
@@ -220,7 +222,7 @@ test('GET /users/:identifier should fail due no instance owner not setup', async
 
 	const response = await authOwnerAgent.get(`/v1/users/${owner.id}`);
 
-	expect(response.statusCode).toBe(400);
+	expect(response.statusCode).toBe(500);
 
 });
 
@@ -320,6 +322,82 @@ test('GET /users/:id should return a user', async () => {
 	expect(globalRole).toBeUndefined();
 	expect(createdAt).toBeDefined();
 	expect(updatedAt).toBeDefined();
+});
+
+test('POST /users should fail due to missing API Key', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: false, user: owner });
+
+	await testDb.createUser();
+
+	const response = await authOwnerAgent.post('/v1/users');
+
+	expect(response.statusCode).toBe(401);
+
+});
+
+test('POST /users should fail due to invalid API Key', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	owner.apiKey = null;
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: false, user: owner });
+
+	const response = await authOwnerAgent.post('/v1/users');
+
+	expect(response.statusCode).toBe(401);
+});
+
+test('POST /users should fail due to member trying to access owner only endpoint', async () => {
+
+	const member = await testDb.createUser();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: member });
+
+	const response = await authOwnerAgent.post('/v1/users').send([]);
+
+	expect(response.statusCode).toBe(403);
+});
+
+test('POST /users should fail due instance owner not setup', async () => {
+
+	config.set('userManagement.isInstanceOwnerSetUp', false);
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.post('/v1/users').send([]);
+
+	expect(response.statusCode).toBe(500);
+
+});
+
+test('POST /users should fail due smtp email not setup', async () => {
+
+	config.set('userManagement.emails.mode', '');
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.post('/v1/users').send([]);
+
+	expect(response.statusCode).toBe(500);
+
+});
+
+test('POST /users should fail due not valid body structure', async () => {
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.post('/v1/users').send({});
+
+	expect(response.statusCode).toBe(400);
+
 });
 
 const INITIAL_TEST_USER = {
