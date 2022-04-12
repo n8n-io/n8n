@@ -42,7 +42,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const securityHeaders = {
 		accessKeyId: `${credentials.accessKeyId}`.trim(),
 		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.sessionToken ? `${credentials.sessionToken}`.trim() : undefined
+		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
 	};
 
 	sign(signOpts, securityHeaders);
