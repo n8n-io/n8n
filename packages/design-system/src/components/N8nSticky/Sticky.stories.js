@@ -63,7 +63,7 @@ const Template = (args, { argTypes }) => ({
 
 export const Sticky = Template.bind({});
 Sticky.args = {
-  content: '## Title\n**Double click** to edit me. [Styling tips](https://docs.n8n.io/getting-started/key-components/workflow-notes.html)',
+  content: "## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/getting-started/key-components/workflow-notes.html)",
   height: 160,
   isEditable: false,
   minHeight: 80,

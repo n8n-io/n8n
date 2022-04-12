@@ -44,7 +44,7 @@
               aligh="right"
             >
               You can style with 
-              <a href="https://www.markdownguide.org/getting-started/" target="_blank">
+              <a href="https://docs.n8n.io/getting-started/key-components/workflow-notes.html" target="_blank">
                 Markdown
               </a>
             </n8n-text>
