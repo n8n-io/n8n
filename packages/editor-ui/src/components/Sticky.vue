@@ -215,7 +215,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.$emit('onMouseHover', isMouseHoverActive);
 		},
 		onInputChange(content: string) {
-			this.setSizeParameters(content, true);
+			this.setSizeParameters(content, true, 9999);
 		},
 		onResizeStart(parameters: Sticky) {
 			this.isResizing = true;
