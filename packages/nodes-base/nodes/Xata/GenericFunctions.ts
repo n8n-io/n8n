@@ -9,7 +9,7 @@ import {
 	IHttpRequestOptions,
 	NodeApiError,
 } from 'n8n-workflow';
-import { IData } from '../Orbit/Interfaces';
+
 
 export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, location: string) {
 
@@ -17,18 +17,27 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 	if (!sendAll) {
 
-		const filterColumns = getAdditionalOptions(this.getNodeParameter('filterColumns', index) as IDataObject) as IDataObject;
-
-		const columns = filterColumns.hasOwnProperty('columns') ? filterColumns['columns'] as string[]: filterColumns['ignoreColumns'] as string[];
-
-		const ignore =  filterColumns.hasOwnProperty('columns') ? false : true;
-
+		const columns = (this.getNodeParameter('columns', index, []) as string[])?.map(el => typeof el === 'string' ? el.trim() : null) as string[];
+		const ignore = false;
 		const returnData = filterItemsColumns(item, columns, ignore, location);
 		return returnData;
 
 	} else {
 
+		const additionalOptions = (this.getNodeParameter('additionalOptions', index, {}) as IDataObject) as IDataObject;
+
+		if (additionalOptions['ignoreColumns'] && additionalOptions['ignoreColumns'] !== '') {
+
+			const columns = additionalOptions['ignoreColumns'] as string[];
+			const ignore = true;
+			const returnData = filterItemsColumns(item, columns, ignore, location);
+			return returnData;
+
+		} else {
+
 		return item;
+
+		}
 
 	}
 
@@ -36,17 +45,17 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 export function filterItemsColumns(item: IDataObject, filterColumns: string[], ignore: boolean, location: string) {
 
-	//const columnsData = columnsRequest.columns as IDataObject[];
-	//const columns = columnsData.map(el=>el['name']) as string[];
 	const returnData = ignore ? item : {} as IDataObject;
 
 	for (const key of filterColumns) {
 
-		returnData[key] = item[key];
-
-		if (ignore && returnData.hasOwnProperty(key)) {
+		if (ignore) {
 
 			delete returnData[key];
+
+		} else {
+
+			returnData[key] = item[key] ? item[key] : null;
 
 		}
 
@@ -62,11 +71,11 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 
 	for (const key in additionalOptions) {
 
-		if (key === 'columns' && additionalOptions[key]) {
+		if (key === 'ignoreColumns' && additionalOptions[key] !=='') {
 
-			body[key] = (additionalOptions[key] as string[]).map(el=>el ? el.trim() : null);
+			body[key] = (additionalOptions[key] as string[]).map(el => typeof el === 'string' ? el.trim() : null);
 
-		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key]) {
+		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key] !=='') {
 
 			try {
 

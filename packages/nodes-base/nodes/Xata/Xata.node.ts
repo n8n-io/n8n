@@ -341,7 +341,7 @@ export class Xata implements INodeType {
 			},
 			{
 				displayName: 'Additional Options',
-				name: 'additionalOpetions',
+				name: 'additionalOptions',
 				type: 'collection',
 				displayOptions: {
 					show: {
@@ -368,7 +368,7 @@ export class Xata implements INodeType {
 							show: {
 								'/operation': [
 									'append',
-									'udpate',
+									'update',
 								],
 								'/sendAll': [
 									true,
@@ -506,7 +506,7 @@ export class Xata implements INodeType {
 
 					const id = this.getNodeParameter('id', i) as string;
 					const resource = `data/${id}` as string;
-					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el=> el ? el.trim() : null);
+					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el=> typeof el === 'string' ? el.trim() : null);
 					const body = columns ? { 'columns': columns } : {} as IDataObject;
 					const responseData = await xataApiRequest.call(this, apiKey, 'GET', slug, database, branch, table, resource, body);
 					returnData.push(responseData);
