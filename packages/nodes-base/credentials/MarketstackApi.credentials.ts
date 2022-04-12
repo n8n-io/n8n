@@ -19,7 +19,7 @@ export class MarketstackApi implements ICredentialType {
 			name: 'useHttps',
 			type: 'boolean',
 			default: false,
-			description: 'Use HTTPS (paid plans only).',
+			description: 'Use HTTPS (paid plans only)',
 		},
 	];
 }

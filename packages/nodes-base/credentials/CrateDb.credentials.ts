@@ -37,27 +37,27 @@ export class CrateDb implements ICredentialType {
 			name: 'ssl',
 			type: 'options',
 			options: [
-				{
-					name: 'disable',
-					value: 'disable',
-				},
-				{
-					name: 'allow',
-					value: 'allow',
-				},
-				{
-					name: 'require',
-					value: 'require',
-				},
-				{
-					name: 'verify (not implemented)',
-					value: 'verify',
-				},
-				{
-					name: 'verify-full (not implemented)',
-					value: 'verify-full',
-				},
-			],
+     {
+       name: 'Allow',
+       value: 'allow',
+     },
+     {
+       name: 'Disable',
+       value: 'disable',
+     },
+     {
+       name: 'Require',
+       value: 'require',
+     },
+     {
+       name: 'Verify (Not Implemented)',
+       value: 'verify',
+     },
+     {
+       name: 'Verify-Full (Not Implemented)',
+       value: 'verify-full',
+     },
+   ],
 			default: 'disable',
 		},
 		{
