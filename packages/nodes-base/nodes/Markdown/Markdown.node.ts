@@ -12,6 +12,8 @@ import {
 
 import { Converter, Flavor } from 'showdown';
 
+import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown'
+
 import { JSDOM } from 'jsdom';
 
 import { set } from 'lodash';
@@ -70,6 +72,9 @@ export class Markdown implements INodeType {
 				displayName: 'Markdown',
 				name: 'markdown',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				displayOptions: {
 					show: {
 						mode: [
@@ -115,34 +120,184 @@ export class Markdown implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Markdown Flavor',
-						name: 'flavor',
-						type: 'options',
-						options: [
-							{
-								name: 'Default',
-								value: 'vanilla',
-								description: 'Defaults defined by Showdown library (<a href="https://github.com/showdownjs/showdown#valid-options" target="_blank">more info</a>)',
-							},
-							{
-								name: 'GitHub',
-								value: 'github',
-								description: 'GitHub Flavored Markdown (<a href="https://github.github.com/gfm/" target="_blank">more info</a>)',
-							},
-							{
-								name: 'Original',
-								value: 'original',
-								description: `As first defined by John Gruber (<a href="https://daringfireball.net/projects/markdown/" target='_blank'>more info</a>)`,
-							},
-						],
-						default: 'vanilla',
+						displayName: 'Bullet Marker',
+						name: 'bulletMarker',
+						type: 'string',
+						default: '*',
+						description: 'Specify bullet marker, default *',
 					},
 					{
-						displayName: 'Omit Trailing Newline',
-						name: 'omitExtraWLInCodeBlocks',
+						displayName: 'Code Block Fence',
+						name: 'codeFence',
+						type: 'string',
+						default: '```',
+						description: 'Specify code block fence, default ```',
+					},
+					{
+						displayName: 'Emphasis Delimiter',
+						name: 'emDelimiter',
+						type: 'string',
+						default: '_',
+						description: 'Specify emphasis delimiter, default _',
+					},
+					{
+						displayName: 'Ignored Elements',
+						name: 'ignore',
+						type: 'string',
+						default: '',
+						description: 'Supplied elements will be ignored (ignores inner text does not parse children)',
+						placeholder: 'e.g. h1, p ...',
+						hint: 'Comma separated elements',
+					},
+					{
+						displayName: 'Max Consecutive New Lines',
+						name: 'maxConsecutiveNewlines',
+						type: 'number',
+						default: 3,
+						description: 'Specify max consecutive new lines allowed',
+					},
+					{
+						displayName: 'Keep Images With Data',
+						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to omit the trailing newline in a code block',
+						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">',
+					},
+					{
+						displayName: 'Global Escape Pattern',
+						name: 'globalEscape',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						description: 'Setting this will override the default escape settings, you might want to use textReplace option instead',
+						options: [
+							{
+								name: 'value',
+								displayName: 'Value',
+								values: [
+									{
+										displayName: 'Pattern',
+										name: 'pattern',
+										type: 'string',
+										default: '',
+										description: 'RegEx for pattern',
+									},
+									{
+										displayName: 'Replacement',
+										name: 'replacement',
+										type: 'string',
+										default: '',
+										description: 'String replacement',
+									},
+								]
+							},
+						],
+					},
+					{
+						displayName: 'Line Start Escape Pattern',
+						name: 'lineStartEscape',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						description: 'Setting this will override the default escape settings, you might want to use textReplace option instead',
+						options: [
+							{
+								name: 'value',
+								displayName: 'Value',
+								values: [
+									{
+										displayName: 'Pattern',
+										name: 'pattern',
+										type: 'string',
+										default: '',
+										description: 'RegEx for pattern',
+									},
+									{
+										displayName: 'Replacement',
+										name: 'replacement',
+										type: 'string',
+										default: '',
+										description: 'String replacement',
+									},
+								]
+							},
+						],
+					},
+					{
+						displayName: 'Text Replacement Pattern',
+						name: 'textReplace',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						description: 'User-defined text replacement pattern (Replaces matching text retrieved from nodes)',
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Pattern',
+										name: 'pattern',
+										type: 'string',
+										default: '',
+										description: 'RegEx for pattern',
+									},
+									{
+										displayName: 'Replacement',
+										name: 'replacement',
+										type: 'string',
+										default: '',
+										description: 'String replacement',
+									},
+								]
+							},
+						],
+					},
+					{
+						displayName: 'Place URLs At The Bottom',
+						name: 'useLinkReferenceDefinitions',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to Place URLS at the bottom and format links using link reference definitions',
+					},
+					{
+						displayName: 'Strong Delimiter',
+						name: 'strongDelimiter',
+						type: 'string',
+						default: '**',
+						description: 'Specify strong delimiter, default **',
+					},
+					{
+						displayName: 'Style For Code Block',
+						name: 'codeBlockStyle',
+						type: 'options',
+						default: 'fence',
+						description: 'Specify style for code block, default "fence"',
+						options: [
+							{
+								name: 'fence',
+								value: 'fence',
+							},
+							{
+								name: 'indented',
+								value: 'indented',
+							},
+						]
+					},
+					{
+						displayName: 'Treat As Blocks',
+						name: 'blockElements',
+						type: 'string',
+						default: '',
+						description: 'Supplied elements will be treated as blocks (surrounded with blank lines)',
+						placeholder: 'e.g. p, div, ...',
+						hint: 'Comma separated elements',
 					},
 				],
 			},
@@ -383,16 +538,23 @@ export class Markdown implements INodeType {
 				if (mode === 'htmlToMarkdown') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
+					const markdownOptions = {
+						...options,
+						ignore: options.ignore ? (options.ignore as string).split(',') : undefined,
+						blockElements: options.blockElements ? (options.blockElements as string).split(',') : undefined,
+					} as NodeHtmlMarkdownOptions;
 
-					converter.setFlavor(options.flavor as Flavor || 'vanilla');
-					Object.keys(options).filter(key => key !== 'flavor').forEach( key => converter.setOption(key, options[key]));
+					console.log(markdownOptions);
 
 					const html = this.getNodeParameter('html', i) as string;
-					const dom = new JSDOM();
 
-					const markdownFromHTML = converter.makeMarkdown(html, dom.window.document	);
+					const markdownFromHTML = NodeHtmlMarkdown.translate(
+						html,
+						markdownOptions,
+					);
 
 					const newItem = JSON.parse(JSON.stringify(items[i].json));
+
 					set(newItem, destinationKey, markdownFromHTML);
 
 					returnData.push(newItem);
