@@ -34,6 +34,8 @@ import {
 	noteOperations,
 	salesActivityFields,
 	salesActivityOperations,
+	searchFields,
+	searchOperations,
 	taskFields,
 	taskOperations,
 } from './descriptions';
@@ -100,6 +102,10 @@ export class FreshworksCrm implements INodeType {
 						value: 'salesActivity',
 					},
 					{
+						name: 'Search',
+						value: 'search',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 					},
@@ -118,6 +124,8 @@ export class FreshworksCrm implements INodeType {
 			...noteFields,
 			...salesActivityOperations,
 			...salesActivityFields,
+			...searchOperations,
+			...searchFields,
 			...taskOperations,
 			...taskFields,
 		],
