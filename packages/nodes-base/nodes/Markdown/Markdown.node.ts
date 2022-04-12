@@ -12,11 +12,9 @@ import {
 
 import { Converter, Flavor } from 'showdown';
 
-import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown'
+import { NodeHtmlMarkdown } from 'node-html-markdown';
 
-import { JSDOM } from 'jsdom';
-
-import { set } from 'lodash';
+import {  isEmpty, set } from 'lodash';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
@@ -168,7 +166,7 @@ export class Markdown implements INodeType {
 						name: 'globalEscape',
 						type: 'fixedCollection',
 						typeOptions: {
-							multipleValues: true,
+							multipleValues: false,
 						},
 						default: {},
 						description: 'Setting this will override the default escape settings, you might want to use textReplace option instead',
@@ -191,7 +189,7 @@ export class Markdown implements INodeType {
 										default: '',
 										description: 'String replacement',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -200,7 +198,7 @@ export class Markdown implements INodeType {
 						name: 'lineStartEscape',
 						type: 'fixedCollection',
 						typeOptions: {
-							multipleValues: true,
+							multipleValues: false,
 						},
 						default: {},
 						description: 'Setting this will override the default escape settings, you might want to use textReplace option instead',
@@ -223,7 +221,7 @@ export class Markdown implements INodeType {
 										default: '',
 										description: 'String replacement',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -234,7 +232,7 @@ export class Markdown implements INodeType {
 						typeOptions: {
 							multipleValues: true,
 						},
-						default: {},
+						default: [],
 						description: 'User-defined text replacement pattern (Replaces matching text retrieved from nodes)',
 						options: [
 							{
@@ -255,7 +253,7 @@ export class Markdown implements INodeType {
 										default: '',
 										description: 'String replacement',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -288,7 +286,7 @@ export class Markdown implements INodeType {
 								name: 'indented',
 								value: 'indented',
 							},
-						]
+						],
 					},
 					{
 						displayName: 'Treat As Blocks',
@@ -527,9 +525,6 @@ export class Markdown implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-
-		const converter = new Converter();
-
 		const mode = this.getNodeParameter('mode', 0) as string;
 
 		const { length } = items;
@@ -538,13 +533,29 @@ export class Markdown implements INodeType {
 				if (mode === 'htmlToMarkdown') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
-					const markdownOptions = {
-						...options,
-						ignore: options.ignore ? (options.ignore as string).split(',') : undefined,
-						blockElements: options.blockElements ? (options.blockElements as string).split(',') : undefined,
-					} as NodeHtmlMarkdownOptions;
 
-					console.log(markdownOptions);
+					const textReplaceOption = this.getNodeParameter('options.textReplace.values', i, []) as IDataObject[];
+					options.textReplace = !isEmpty(textReplaceOption) ?
+						textReplaceOption.map(entry => [entry.pattern, entry.replacement]) : undefined;
+
+					const lineStartEscapeOption = this.getNodeParameter('options.lineStartEscape.value', i, {}) as IDataObject;
+					options.lineStartEscape = !isEmpty(lineStartEscapeOption) ?
+						[lineStartEscapeOption.pattern, lineStartEscapeOption.replacement] : undefined;
+
+					const globalEscapeOption = this.getNodeParameter('options.globalEscape.value', i, {}) as IDataObject;
+					options.globalEscape = !isEmpty(globalEscapeOption) ?
+						[globalEscapeOption.pattern, globalEscapeOption.replacement] : undefined;
+
+					options.ignore = options.ignore ? (options.ignore as string).split(',') : undefined;
+					options.blockElements = options.blockElements ? (options.blockElements as string).split(',') : undefined;
+
+					const markdownOptions = {} as IDataObject;
+
+					Object.keys(options).forEach( option => {
+						if (options[option]) {
+							markdownOptions[option] = options[option];
+						}
+					});
 
 					const html = this.getNodeParameter('html', i) as string;
 
@@ -554,9 +565,7 @@ export class Markdown implements INodeType {
 					);
 
 					const newItem = JSON.parse(JSON.stringify(items[i].json));
-
 					set(newItem, destinationKey, markdownFromHTML);
-
 					returnData.push(newItem);
 				}
 
@@ -564,6 +573,8 @@ export class Markdown implements INodeType {
 					const markdown = this.getNodeParameter('markdown', i) as string;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const converter = new Converter();
 
 					Object.keys(options).forEach( key => converter.setOption(key, options[key]));
 					const htmlFromMarkdown = converter.makeHtml(markdown);
