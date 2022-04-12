@@ -1102,6 +1102,10 @@ export default mixins(
 			},
 
 			zoomIn() {
+				if (this.isStickyNode && this.isStickyInEditMode) {
+					return;
+				}
+
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
@@ -1109,6 +1113,10 @@ export default mixins(
 			},
 
 			zoomOut() {
+				if (this.isStickyNode && this.isStickyInEditMode) {
+					return;
+				}
+
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
