@@ -84,7 +84,7 @@ export class Xata implements INodeType {
 			//         All
 			//-------------------------
 			{
-				displayName: 'Workspace-slug',
+				displayName: 'Workspace Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
@@ -92,7 +92,7 @@ export class Xata implements INodeType {
 				description: 'The Slug of your workspace.',
 			},
 			{
-				displayName: 'Database name',
+				displayName: 'Database Name',
 				name: 'database',
 				type: 'string',
 				default: '',
@@ -100,7 +100,7 @@ export class Xata implements INodeType {
 				description: 'The Database you want to access.',
 			},
 			{
-				displayName: 'Branch name',
+				displayName: 'Branch Name',
 				name: 'branch',
 				type: 'string',
 				default: '',
@@ -108,7 +108,7 @@ export class Xata implements INodeType {
 				description: 'The Branch you want to access.',
 			},
 			{
-				displayName: 'Table name',
+				displayName: 'Table Name',
 				name: 'table',
 				type: 'string',
 				default: '',
