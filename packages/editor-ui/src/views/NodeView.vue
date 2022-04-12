@@ -800,6 +800,9 @@ export default mixins(
 
 					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
+					if (this.isStickyNode && this.isStickyInEditMode) {
+						return;
+					}
 					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					if (this.isStickyNode && this.isStickyInEditMode) {
