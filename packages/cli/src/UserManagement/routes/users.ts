@@ -377,6 +377,7 @@ export function usersNamespace(this: N8nApp): void {
 	 */
 	this.app.delete(
 		`/${this.restEndpoint}/users/:id`,
+		// @ts-ignore
 		ResponseHelper.send(async (req: UserRequest.Delete) => {
 			const { id: idToDelete } = req.params;
 

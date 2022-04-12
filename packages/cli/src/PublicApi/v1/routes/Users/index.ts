@@ -132,7 +132,7 @@ export = {
 
 			if (!user) {
 				throw new ResponseHelper.ResponseError(
-					`Could not find user with identifier: ${identifier as string}`,
+					`Could not find user with identifier: ${identifier}`,
 					undefined,
 					404,
 				);

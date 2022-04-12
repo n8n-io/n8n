@@ -18,7 +18,7 @@ const instanceOwnerSetup = (
 	next: express.NextFunction,
 ): any => {
 	if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-		return res.status(404).json({ message: 'asasas' });
+		return res.status(500).json({ message: 'Instance owner is not set up' });
 	}
 	next();
 };
@@ -29,7 +29,7 @@ const emailSetup = (
 	next: express.NextFunction,
 ): any => {
 	if (!config.getEnv('userManagement.emails.mode')) {
-		return res.status(500).json({ message: 'asasas' });
+		return res.status(500).json({ message: 'Email is not set up' });
 	}
 	next();
 };
@@ -44,7 +44,7 @@ const authorize =
 			return next();
 		}
 		return res.status(403).json({
-			message: 'asasas',
+			message: 'Unauthorized',
 		});
 	};
 

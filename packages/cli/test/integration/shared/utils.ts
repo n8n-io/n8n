@@ -113,7 +113,9 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const functionEndpoints: string[] = [];
 
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' || group === 'publicApi' ? routerEndpoints : functionEndpoints).push(group),
+		(group === 'credentials' || group === 'publicApi' ? routerEndpoints : functionEndpoints).push(
+			group,
+		),
 	);
 
 	return [routerEndpoints, functionEndpoints];
@@ -149,12 +151,13 @@ export function initConfigFile() {
 /**
  * Create a request agent, optionally with an auth cookie.
  */
-export function createAgent(app: express.Application, options?: { apiPath?: ApiPath, auth: boolean; user: User }) {
+export function createAgent(
+	app: express.Application,
+	options?: { apiPath?: ApiPath; auth: boolean; user: User },
+) {
 	const agent = request.agent(app);
 
 	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
-		agent.use(prefix(REST_PATH_SEGMENT));
-
 		if (options?.auth && options?.user) {
 			const { token } = issueJWT(options.user);
 			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -163,7 +166,8 @@ export function createAgent(app: express.Application, options?: { apiPath?: ApiP
 
 	if (options?.apiPath === 'public') {
 		agent.use(prefix(PUBLIC_API_REST_PATH_SEGMENT));
-		
+		// console.log(agent.app._events.request._router.stack.slice(-1)[0].handle);
+
 		if (options?.auth && options?.user.apiKey) {
 			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
 		}
