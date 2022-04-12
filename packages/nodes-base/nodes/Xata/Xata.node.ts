@@ -422,7 +422,7 @@ export class Xata implements INodeType {
 				}
 
 				const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
-				return [this.helpers.returnJsonArray(responseData)];
+				return [this.helpers.returnJsonArray(responseData['recordIDs'].map((el: string) => ({'id' : el})))];
 
 			} catch (error) {
 
