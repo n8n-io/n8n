@@ -22,7 +22,7 @@ export class MailerSendTrigger extends NodeVersionedType {
 
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new MailerSendTriggerV1(baseDescription),
-		}
+		};
 
 		super(nodeVersions, baseDescription);
 	}

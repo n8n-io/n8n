@@ -4,4 +4,4 @@ import { bulkEmailDescription as description } from './description';
 export {
 	description,
 	execute,
-}
+};

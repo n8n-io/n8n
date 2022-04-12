@@ -13,8 +13,8 @@ import {
 import { IAddressPair, IMail, ISubstitution, IVariables } from '../../Interfaces';
 
 const options = {
-	returnFullResponse: true
-}
+	returnFullResponse: true,
+};
 
 export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	// const body = {} as IDataObject;
@@ -30,12 +30,12 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	const emailHtml = this.getNodeParameter('html', index) as string;
 
 	const fromField: IAddressPair = {
-		email: this.getNodeParameter('fromEmail', index) as string
-	}
+		email: this.getNodeParameter('fromEmail', index) as string,
+	};
 
 	// do the same for CC, reply_to and bcc
 	if (additionalFields.fromName) {
-		fromField.name = additionalFields.fromName as string
+		fromField.name = additionalFields.fromName as string;
 	}
 
 	const subject = this.getNodeParameter('subject', index) as string;
@@ -52,13 +52,13 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	for (const variable of variablesUi) {
 		variables.push({
 			var: (variable.name as string).trim(),
-			value: (variable.value as string).trim()
+			value: (variable.value as string).trim(),
 		});
 	}
 
 	toField = {
-		email: this.getNodeParameter('toEmail', index) as string
-	}
+		email: this.getNodeParameter('toEmail', index) as string,
+	};
 
 	if (this.getNodeParameter('toName', index, '') as string) {
 		toField.name = this.getNodeParameter('toName', index) as string;
@@ -67,19 +67,19 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	if (variables.length > 0) {
 		variablesList.push({
 			email: this.getNodeParameter('toEmail', index) as string,
-			substitutions: variables.slice()
-		})
+			substitutions: variables.slice(),
+		});
 	}
 
 	const body: IMail = {
 		from: fromField,
 		to: [toField],
-		subject: subject,
+		subject,
 		text: emailText,
-	}
+	};
 
 	if (emailHtml !== '') {
-		body.html = emailHtml
+		body.html = emailHtml;
 	}
 
 	if (variables.length > 0) {
@@ -90,9 +90,9 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 
 	returnItems.push({
 		json: {
-			response: response
-		}
-	})
+			response,
+		},
+	});
 
 	return this.helpers.returnJsonArray(returnItems);
 }

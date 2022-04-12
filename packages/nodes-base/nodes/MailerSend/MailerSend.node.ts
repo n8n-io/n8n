@@ -22,7 +22,7 @@ export class MailerSend extends NodeVersionedType {
 
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new MailerSendV1(baseDescription),
-		}
+		};
 
 		super(nodeVersions, baseDescription);
 	}

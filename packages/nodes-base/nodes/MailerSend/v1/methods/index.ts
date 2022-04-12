@@ -1,2 +1,2 @@
 export * as loadOptions from './loadOptions';
-export * as validateCredentials from './credentialTest'
+export * as validateCredentials from './credentialTest';

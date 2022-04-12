@@ -31,19 +31,19 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	const emailHtml = this.getNodeParameter('html', 0) as string;
 
 	const fromField: IAddressPair = {
-		email: this.getNodeParameter('fromEmail', 0) as string
-	}
+		email: this.getNodeParameter('fromEmail', 0) as string,
+	};
 
 	// TODO do the same for CC, reply_to and bcc
 	if (additionalFields.fromName) {
-		fromField.name = additionalFields.fromName as string
+		fromField.name = additionalFields.fromName as string;
 	}
 
 	const subject = this.getNodeParameter('subject', 0) as string;
 
 	let toField:IAddressPair;
 
-	let maxRunIndex = Math.ceil(items.length / batchSize);
+	const maxRunIndex = Math.ceil(items.length / batchSize);
 	let currentRunIndex = 0;
 
 	// TODO test for any {$var_name} in emailText and emailHtml or subject error if missing from variablesUi
@@ -55,7 +55,7 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 		tmpItems = items.splice(0, batchSize);
 		body = [];
 		currentBatchIndex = (currentRunIndex * batchSize);
-		toField = {email: ''}
+		toField = {email: ''};
 
 		for (let i = 0; i < tmpItems.length; i++) {
 			// j here is the index on the input elements
@@ -65,13 +65,13 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 			for (const variable of variablesUi) {
 				variables.push({
 					var: (variable.name as string).trim(),
-					value: (variable.value as string).trim()
+					value: (variable.value as string).trim(),
 				});
 			}
 
 			toField = {
-				email: this.getNodeParameter('toEmail', j) as string
-			}
+				email: this.getNodeParameter('toEmail', j) as string,
+			};
 
 			if (this.getNodeParameter('toName', j, '') as string) {
 				toField.name = this.getNodeParameter('toName', j, '') as string;
@@ -80,21 +80,22 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 			const emailBody: IMail = {
 				from: fromField,
 				to: [toField],
-				subject: subject,
+				subject,
 				text: emailText,
-			}
+			};
 
 			if (emailHtml !== '') {
-				emailBody.html = emailHtml
+				emailBody.html = emailHtml;
 			}
 
 			if (variables.length > 0) {
 				emailBody.variables = [{
 					email: toField.email,
-					substitutions: variables.slice()
-				}]
+					substitutions: variables.slice(),
+				}];
 			}
 
+			// tslint:disable-next-line: no-any
 			body.push(emailBody as any as IDataObject);
 		} // for loop
 
@@ -102,9 +103,9 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 
 		returnItems.push({
 			json: {
-				response
-			}
-		})
+				response,
+			},
+		});
 
 		currentRunIndex += 1;
 

@@ -4,4 +4,4 @@ import { emailSendTemplateDescription as description } from './description';
 export {
 	description,
 	execute,
-}
+};

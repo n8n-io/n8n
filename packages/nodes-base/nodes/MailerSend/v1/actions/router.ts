@@ -33,7 +33,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			if (mailersend.resource === 'email') {
 				operationResult.push(...await email[mailersend.operation].execute.call(this, i));
 			} else if (mailersend.resource === 'bulkEmail') {
-				if (i == 0) {
+				if (i === 0) {
 					operationResult.push(...await bulkEmail[mailersend.operation].execute.call(this, i));
 				}
 			} else if (mailersend.resource === 'message') {

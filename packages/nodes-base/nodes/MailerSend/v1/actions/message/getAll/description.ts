@@ -7,4 +7,3 @@ import {
 /* -------------------------------------------------------------------------- */
 export const messageDescription: MessageProperties = [
 ];
-

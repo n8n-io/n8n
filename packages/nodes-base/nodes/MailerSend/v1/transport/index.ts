@@ -5,12 +5,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IHookFunctions,
 	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteSingleFunctions,
+	IHookFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	JsonObject,
@@ -47,7 +47,7 @@ import {
 		json: true,
 	};
 	if (option) {
-		Object.assign(options, option)
+		Object.assign(options, option);
 	}
 	try {
 		return this.helpers.httpRequestWithAuthentication.call(this, 'mailerSendApi', options);

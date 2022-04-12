@@ -5,8 +5,8 @@ import {
 	INodeCredentialTestResult,
 	JsonObject
 }
-from "n8n-workflow";
-import { validateCredentials } from "../transport";
+from 'n8n-workflow';
+import { validateCredentials } from '../transport';
 
 
 export async function mailersendEmailApiTest(

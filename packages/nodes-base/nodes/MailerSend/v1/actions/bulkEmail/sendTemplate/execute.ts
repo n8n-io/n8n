@@ -29,19 +29,19 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 
 	const templateId = this.getNodeParameter('templateId', 0) as string;
 	const fromField: IAddressPair = {
-		email: this.getNodeParameter('fromEmail', 0) as string
-	}
+		email: this.getNodeParameter('fromEmail', 0) as string,
+	};
 
 	// TODO do the same for CC, reply_to and bcc
 	if (additionalFields.fromName) {
-		fromField.name = additionalFields.fromName as string
+		fromField.name = additionalFields.fromName as string;
 	}
 
 	const subject = this.getNodeParameter('subject', 0) as string;
 
 	let toField:IAddressPair;
 
-	let maxRunIndex = Math.ceil(items.length / batchSize);
+	const maxRunIndex = Math.ceil(items.length / batchSize);
 	let currentRunIndex = 0;
 
 	// TODO test for any {$var_name} in subject error if missing from variablesUi
@@ -53,7 +53,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 		tmpItems = items.splice(0, batchSize);
 		body = [];
 		currentBatchIndex = (currentRunIndex * batchSize);
-		toField = {email: ''}
+		toField = {email: ''};
 
 		for (let i = 0; i < tmpItems.length; i++) {
 			// j here is the index on the input elements
@@ -63,13 +63,13 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 			for (const variable of variablesUi) {
 				variables.push({
 					var: (variable.name as string).trim(),
-					value: (variable.value as string).trim()
+					value: (variable.value as string).trim(),
 				});
 			}
 
 			toField = {
-				email: this.getNodeParameter('toEmail', j) as string
-			}
+				email: this.getNodeParameter('toEmail', j) as string,
+			};
 
 			if (this.getNodeParameter('toName', j, '') as string) {
 				toField.name = this.getNodeParameter('toName', j, '') as string;
@@ -78,15 +78,15 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 			const emailBody: IMail = {
 				from: fromField,
 				to: [toField],
-				subject: subject,
+				subject,
 				template_id: templateId,
-			}
+			};
 
 			if (variables.length > 0) {
 				emailBody.variables = [{
 					email: toField.email,
-					substitutions: variables.slice()
-				}]
+					substitutions: variables.slice(),
+				}];
 			}
 
 			body.push(emailBody as any as IDataObject);
@@ -96,9 +96,9 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 
 		returnItems.push({
 			json: {
-				response
-			}
-		})
+				response,
+			},
+		});
 
 		currentRunIndex += 1;
 

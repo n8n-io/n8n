@@ -44,7 +44,7 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Bulk Email',
 					value: 'bulkEmail',
-					description: 'Multiple asyncronous emails'
+					description: 'Multiple asyncronous emails',
 				},
 				{
 					name: 'Messages',

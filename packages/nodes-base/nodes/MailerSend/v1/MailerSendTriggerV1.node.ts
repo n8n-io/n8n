@@ -1,15 +1,15 @@
 import { createHmac } from 'crypto';
 import {
-	IWebhookFunctions,
-	IHookFunctions,
 	IDataObject,
+	IHookFunctions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IWebhookFunctions,
 	IWebhookResponseData,
 	NodeApiError,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { apiRequest } from './transport';
@@ -22,7 +22,7 @@ export class MailerSendTriggerV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...this.versionDescription,
-		}
+		};
 	}
 
 	versionDescription: INodeTypeDescription = {
@@ -128,12 +128,12 @@ export class MailerSendTriggerV1 implements INodeType {
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const response = await apiRequest.call(this, 'GET', 'domains', {});
-				const { data: domains } = response
+				const { data: domains } = response;
 				for (const domain of domains) {
 					returnData.push({
 						value: domain.id,
-						name: domain.name
-					})
+						name: domain.name,
+					});
 				}
 				return returnData;
 			},
@@ -186,9 +186,9 @@ export class MailerSendTriggerV1 implements INodeType {
 				const body = {
 					name,
 					url: webhookUrl,
-					events: events,
+					events,
 					domain_id: domainId,
-					enabled: true
+					enabled: true,
 				};
 
 				let responseData;
@@ -211,7 +211,7 @@ export class MailerSendTriggerV1 implements INodeType {
 				// API hopefully at creation time, remove the next line
 				// and uncomment the following and update accordingly
 				// Test the verification at the webhook method (check 'Note 2')
-				webhookData.webhookSecret = ''
+				webhookData.webhookSecret = '';
 				// webhookData.webhookSecret = responseData.secret as string;
 				return true;
 			},
@@ -251,9 +251,9 @@ export class MailerSendTriggerV1 implements INodeType {
 			// @ts-ignore
 			const computedSignature = createHmac('sha256', webhookData.webhookSecret).update(req.rawBody).digest('hex');
 			if (headerData['signature'] !== computedSignature) {
-				console.error("Sorry signatures don't match");
-				console.log(`Header signature: ${headerData['signature']}`)
-				console.log(`ComputedSignature: ${computedSignature}`)
+				console.error('Sorry signatures don\'t match');
+				console.log(`Header signature: ${headerData['signature']}`);
+				console.log(`ComputedSignature: ${computedSignature}`);
 				return {};
 			}
 		}

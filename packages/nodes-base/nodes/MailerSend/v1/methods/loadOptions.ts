@@ -19,4 +19,3 @@ export async function getTemplates(this: ILoadOptionsFunctions): Promise<INodePr
 	}
 	return returnData;
 }
-

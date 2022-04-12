@@ -3,7 +3,7 @@ import * as create from './create';
 import * as sendTemplate from './sendTemplate';
 
 
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 
 export {
@@ -48,4 +48,4 @@ export const descriptions: INodeProperties[] = [
 	},
 	...create.description,
 	...sendTemplate.description,
-]
+];

@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { versionDescription } from './actions/versionDescription';
-import { loadOptions, validateCredentials } from './methods'
+import { loadOptions, validateCredentials } from './methods';
 import { router } from './actions/router';
 
 export class MailerSendV1 implements INodeType {
@@ -20,12 +20,12 @@ export class MailerSendV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
-		}
+		};
 	}
 
 	methods = {
 		loadOptions,
-		credentialTest: validateCredentials
+		credentialTest: validateCredentials,
 	};
 
 	async execute(this: IExecuteFunctions) {
