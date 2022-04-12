@@ -63,8 +63,12 @@ export class I18nClass {
 	 */
 	baseText(
 		key: string,
-		options?: { interpolate: { [key: string]: string } },
+		options?: { adjustToNumber: number; interpolate: { [key: string]: string } },
 	): string {
+		if (options && options.adjustToNumber) {
+			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
+		}
+
 		return this.i18n.t(key, options && options.interpolate).toString();
 	}
 

@@ -14,9 +14,9 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 import {
 	LoggerProxy as Logger
