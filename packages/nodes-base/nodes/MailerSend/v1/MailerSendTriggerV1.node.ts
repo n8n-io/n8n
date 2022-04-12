@@ -76,49 +76,49 @@ export class MailerSendTriggerV1 implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Email is sent',
-						value: 'activity.sent',
-						description: `Fired when email is sent.`,
+						name: 'Recipient Clicked',
+						value: 'activity.clicked',
+						description: 'Fired when recipient clicks a link in the email',
 					},
 					{
-						name: 'Email is delivered',
+						name: 'Email Is Delivered',
 						value: 'activity.delivered',
-						description: `Fired when email is successfully delivered.`,
-					},
-					{
-						name: 'Recipient Soft Bounced',
-						value: 'activity.soft_bounced',
-						description: `Fired when email is not delivered because it soft bounced.`,
+						description: 'Fired when email is successfully delivered',
 					},
 					{
 						name: 'Recipient Hard Bounced',
 						value: 'activity.hard_bounced',
-						description: `Fired when email is not delivered.`,
+						description: 'Fired when email is not delivered',
 					},
 					{
 						name: 'Email Opened ',
 						value: 'activity.opened',
-						description: `Fired when recipient opens an email.`,
+						description: 'Fired when recipient opens an email',
 					},
 					{
-						name: 'Recipient Clicked',
-						value: 'activity.clicked',
-						description: `Fired when recipient clicks a link in the email.`,
+						name: 'Email Is Sent',
+						value: 'activity.sent',
+						description: 'Fired when email is sent',
 					},
 					{
-						name: 'Recipient Unsubscribed',
-						value: 'activity.unsubscribed',
-						description: 'Fired when recipient unsubscribes.',
+						name: 'Recipient Soft Bounced',
+						value: 'activity.soft_bounced',
+						description: 'Fired when email is not delivered because it soft bounced',
 					},
 					{
 						name: 'Recipient Complained',
 						value: 'activity.spam_complaint',
-						description: `Fired when recipient marks email as a spam or junk.`,
+						description: 'Fired when recipient marks email as a spam or junk',
+					},
+					{
+						name: 'Recipient Unsubscribed',
+						value: 'activity.unsubscribed',
+						description: 'Fired when recipient unsubscribes',
 					},
 				],
 				required: true,
 				default: [],
-				description: 'The event(s) to listen to.',
+				description: 'The event(s) to listen to',
 			},
 		],
 	};
@@ -207,7 +207,7 @@ export class MailerSendTriggerV1 implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhook.id as string;
 				webhookData.webhookEvents = webhook.events as string[];
-				// TODO When there's a way to obtain the secret from the
+				// T.O.D.O When there's a way to obtain the secret from the
 				// API hopefully at creation time, remove the next line
 				// and uncomment the following and update accordingly
 				// Test the verification at the webhook method (check 'Note 2')
