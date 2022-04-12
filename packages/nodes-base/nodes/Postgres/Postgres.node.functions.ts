@@ -1,6 +1,6 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import pgPromise = require('pg-promise');
-import pg = require('pg-promise/typescript/pg-subset');
+import pgPromise from 'pg-promise';
+import pg from 'pg-promise/typescript/pg-subset';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and

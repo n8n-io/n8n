@@ -22,7 +22,7 @@ export class Cron implements INodeType {
 		displayName: 'Cron',
 		name: 'cron',
 		icon: 'fa:calendar',
-		group: ['trigger'],
+		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow at a specific time',
 		eventTriggerDescription: '',

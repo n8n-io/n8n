@@ -1,4 +1,6 @@
 import {
+	IAuthenticateBearer,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -21,4 +23,15 @@ export class Magento2Api implements ICredentialType {
 			default: '',
 		},
 	];
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.host}}',
+			url: '/rest/default/V1/modules',
+		},
+	};
+
+	authenticate = {
+		type: 'bearer',
+		properties: {},
+	} as IAuthenticateBearer;
 }
