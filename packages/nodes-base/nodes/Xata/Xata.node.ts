@@ -49,27 +49,27 @@ export class Xata implements INodeType {
 					{
 						name: 'Append',
 						value: 'append',
-						description: 'Append the data to a table.',
+						description: 'Append records to a table.',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete data from a table.',
+						description: 'Delete records from a table.',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List data from a table.',
+						description: 'List records from a table.',
 					},
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Read data from a table.',
+						description: 'Read records from a table.',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update data in a table.',
+						description: 'Update records in a table.',
 					},
 
 
@@ -210,7 +210,7 @@ export class Xata implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'Filter (JSON) as specified in the documentation. If you use expressions make sure you stringify the arguments.',
+						description: 'Filter (JSON) as specified in the Xata API (the filter property is already set). If you use expressions make sure you stringify the arguments.',
 
 
 					},
@@ -336,7 +336,7 @@ export class Xata implements INodeType {
 
 				default: [],
 				placeholder: 'Name',
-				description: 'Columns in this list will be push to the table.',
+				description: 'Columns in this list will be pushed to the table.',
 
 			},
 			{
@@ -352,7 +352,7 @@ export class Xata implements INodeType {
 					},
 				},
 				default: {},
-				description: 'Additional Options. You can choose which one you want to inlcude or exclude in the records',
+				description: 'Additional Options',
 				placeholder: 'Add option',
 				options: [
 
@@ -422,7 +422,8 @@ export class Xata implements INodeType {
 				}
 
 				const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
-				return [this.helpers.returnJsonArray(responseData['recordIDs'].map((el: string) => ({'id' : el})))];
+				responseData['recordIDs'].forEach((el: string) => returnData.push({'id' : el}));
+
 
 			} catch (error) {
 
