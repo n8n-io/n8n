@@ -77,6 +77,10 @@ export default {
       type: String,
       default: '0',
     },
+    isDefaultTextChanged: {
+      type: Boolean,
+      default: false,
+    },
     isEditable: {
       type: Boolean,
       default: false,
@@ -149,8 +153,10 @@ export default {
         setTimeout(() => {
           const textArea = document.querySelector('.el-textarea__inner');
           if (textArea) {
+            if (!this.isDefaultTextChanged) {
+              textArea.select();
+            }
             textArea.focus();
-            textArea.select();
           }
         }, 100);
 

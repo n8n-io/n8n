@@ -49,6 +49,14 @@ export class Note implements INodeType {
 				description: 'Is Sticky Editable',
 			},
 			{
+				displayName: 'Is Default Text Changed',
+				name: 'isDefaultTextChanged',
+				type: 'boolean',
+				required: true,
+				default: false,
+				description: 'Is Default Text Changed',
+			},
+			{
 				displayName: 'Total Size',
 				name: 'totalSize',
 				type: 'number',

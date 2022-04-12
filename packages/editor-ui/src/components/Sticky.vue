@@ -19,6 +19,7 @@
           :content.sync="node.parameters.content"
           :height="node.parameters.height"
           :id="nodeIndex"
+					:isDefaultTextChanged="node.parameters.isDefaultTextChanged"
 					:isEditable="node.parameters.isEditable"
           :width="node.parameters.width"
           :zIndex="node.parameters.zIndex"
@@ -82,6 +83,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 						const nodeParameters = {
 							content: this.node.parameters.content,
 							height: this.stickyProp.height,
+							isDefaultTextChanged: this.node.parameters.isDefaultTextChanged,
 							isEditable: false,
 							width: this.stickyProp.width,
 							totalSize: this.stickyProp.height + this.stickyProp.width,
@@ -215,7 +217,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.$emit('onMouseHover', isMouseHoverActive);
 		},
 		onInputChange(content: string) {
-			this.setSizeParameters(content, true, 9999);
+			this.setSizeParameters(content, true, 9999, true);
 		},
 		onResizeStart(parameters: Sticky) {
 			this.isResizing = true;
@@ -250,7 +252,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
-		setSizeParameters(content: string | null = null, isEditable = false, zIndex: number | null = null) {
+		setSizeParameters(content: string | null = null, isEditable = false, zIndex: number | null = null, isDefaultTextChanged: boolean | null = null) {
 			if (this.node) {
 				
 				if (zIndex) {
@@ -263,6 +265,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					content: content ? content : this.node.parameters.content,
 					height: this.stickyProp.height,
 					width: this.stickyProp.width,
+					isDefaultTextChanged: isDefaultTextChanged ? isDefaultTextChanged : this.node.parameters.isDefaultTextChanged,
 					isEditable,
 					totalSize: this.stickyProp.height + this.stickyProp.width,
 					zIndex: this.stickyProp.zIndex,
