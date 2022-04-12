@@ -55,7 +55,7 @@ export function filterItemsColumns(item: IDataObject, filterColumns: string[], i
 
 		} else {
 
-			returnData[key] = item[key] ? item[key] : null;
+			returnData[key] = item[key];
 
 		}
 
