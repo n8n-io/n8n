@@ -61,7 +61,7 @@ export class Mqtt implements ICredentialType {
 			name: 'clean',
 			type: 'boolean',
 			default: true,
-			description: 'Set to false to receive QoS 1 and 2 messages while offline',
+			description: 'Whether to use clean session - set to false to receive QoS 1 and 2 messages while offline',
 		},
 		{
 			displayName: 'Client ID',
@@ -88,7 +88,7 @@ export class Mqtt implements ICredentialType {
 				},
 			},
 			default: true,
-			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
+			description: 'Whether to use passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
 			displayName: 'CA Certificates',
@@ -110,7 +110,7 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Reject Unauthorized Certificate',
 			name: 'rejectUnauthorized',
-			type: 'boolean',			
+			type: 'boolean',
 			displayOptions: {
 				show: {
 					ssl: [
@@ -122,7 +122,7 @@ export class Mqtt implements ICredentialType {
 				},
 			} as IDisplayOptions,
 			default: false,
-			description: 'Validate Certificate',
+			description: 'Whether to validate Certificate',
 		},
 		{
 			displayName: 'Client Certificate',

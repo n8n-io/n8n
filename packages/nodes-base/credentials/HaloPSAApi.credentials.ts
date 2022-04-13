@@ -23,7 +23,6 @@ export class HaloPSAApi implements ICredentialType {
 				},
 			],
 			default: 'onPremise',
-			description: 'Hosting Type',
 		},
 		{
 			displayName: 'HaloPSA Authorisation Server URL',
