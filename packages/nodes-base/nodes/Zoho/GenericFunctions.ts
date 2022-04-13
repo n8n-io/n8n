@@ -91,15 +91,13 @@ export async function zohoApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let uri: string | undefined;
 	qs.per_page = 200;
-	qs.page = 0;
+	qs.page = 1;
 
 	do {
-		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs, uri);
+		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
 		returnData.push(...responseData.data);
-		uri = responseData.info.more_records;
 		qs.page++;
 	} while (
 		responseData.info.more_records !== undefined &&
