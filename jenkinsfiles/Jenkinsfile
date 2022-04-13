@@ -4,7 +4,7 @@
 pipeline {
     agent {
         kubernetes {
-            yaml containers('docker-dind', 'kaniko', 'busybox', 'helm-base', 'kubectl')
+            yaml containers('docker-dind', 'kubectl-ali')
             inheritFrom 'default'
         }
     }
@@ -46,7 +46,7 @@ pipeline {
                 }
             }
             steps {
-                container ('kubectl') {
+                container ('kubectl-ali') {
                     sh "mkdir -p ~/.kube"
                     sh "cp ${K8S_CONFIG} ~/.kube/config"
                     sh "kubectl get nodes"
@@ -67,7 +67,7 @@ pipeline {
                 }
             }
             steps {
-                container ('kubectl') {
+                container ('kubectl-ali') {
                     sh "mkdir -p ~/.kube"
                     sh "cp ${K8S_CONFIG} ~/.kube/config"
                     sh "kubectl get nodes"
