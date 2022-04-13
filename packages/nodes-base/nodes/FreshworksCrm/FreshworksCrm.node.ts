@@ -862,6 +862,47 @@ export class FreshworksCrm implements INodeType {
 
 					}
 
+				} else if (resource === 'search') {
+
+					// **********************************************************************
+					//                             search
+					// **********************************************************************
+
+					// https://developers.freshworks.com/crm/api/#search
+
+					if (operation === 'lookup') {
+
+						// ----------------------------------------
+						//          search: lookup
+						// ----------------------------------------
+
+						// https://developers.freshworks.com/crm/api/#lookup_search
+
+						const query = this.getNodeParameter('query', i) as string;
+						const field = this.getNodeParameter('field', i) as string;
+						const entities = this.getNodeParameter('entities', i) as string;
+
+						const endpoint = `/lookup?q=${query}&f=${field}&entities=${entities}`;
+
+						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
+
+					} else if (operation === 'search') {
+
+						// ----------------------------------------
+						//          search: search
+						// ----------------------------------------
+
+						// https://developers.freshworks.com/crm/api/#search
+
+						const query = this.getNodeParameter('query', i) as string;
+						const entities = this.getNodeParameter('entities', i) as string;
+
+						const endpoint = `/search?q=${query}&include=${entities}`;
+
+						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
+
+					}
+
 				} else if (resource === 'task') {
 
 					// **********************************************************************

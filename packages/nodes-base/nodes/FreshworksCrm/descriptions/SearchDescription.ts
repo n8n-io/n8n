@@ -20,13 +20,13 @@ export const searchOperations: INodeProperties[] = [
 				value: 'lookup',
 				description: 'Lookup an entry by a given field value entity combination',
 			},
-			//{
-			//	name: 'Search',
-			//	value: 'search',
-			//	description: 'Runs a search',
-			//},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Runs a search',
+			},
 		],
-		default: 'lookup',
+		default: 'search',
 	},
 ];
 
@@ -40,7 +40,7 @@ export const searchFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Term to query',
+		description: 'Term to search for',
 		displayOptions: {
 			show: {
 				resource: [
@@ -48,7 +48,7 @@ export const searchFields: INodeProperties[] = [
 				],
 				operation: [
 					'lookup',
-					'search'
+					'search',
 				],
 			},
 		},
@@ -74,7 +74,7 @@ export const searchFields: INodeProperties[] = [
 	{
 		displayName: 'Entities',
 		name: 'entities',
-		description: 'Comma separated list of entities to search in',
+		description: 'Comma separated list of entities to search in or include in the resultset',
 		type: 'string',
 		required: true,
 		default: '',
@@ -85,6 +85,7 @@ export const searchFields: INodeProperties[] = [
 				],
 				operation: [
 					'lookup',
+					'search',
 				],
 			},
 		},
