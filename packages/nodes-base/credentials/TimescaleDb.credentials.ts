@@ -54,27 +54,27 @@ export class TimescaleDb implements ICredentialType {
 				},
 			},
 			options: [
-     {
-       name: 'Allow',
-       value: 'allow',
-     },
-     {
-       name: 'Disable',
-       value: 'disable',
-     },
-     {
-       name: 'Require',
-       value: 'require',
-     },
-     {
-       name: 'Verify (Not Implemented)',
-       value: 'verify',
-     },
-     {
-       name: 'Verify-Full (Not Implemented)',
-       value: 'verify-full',
-     },
-   ],
+				{
+					name: 'Allow',
+					value: 'allow',
+				},
+				{
+					name: 'Disable',
+					value: 'disable',
+				},
+				{
+					name: 'Require',
+					value: 'require',
+				},
+				{
+					name: 'Verify (Not Implemented)',
+					value: 'verify',
+				},
+				{
+					name: 'Verify-Full (Not Implemented)',
+					value: 'verify-full',
+				},
+			],
 			default: 'disable',
 		},
 		{
