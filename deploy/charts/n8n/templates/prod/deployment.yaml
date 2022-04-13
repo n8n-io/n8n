@@ -92,5 +92,5 @@ spec:
           protocol: TCP
         resources: {}
         volumeMounts:
-        - name: stage-n8n-data-pvc
+        - name: prod-n8n-data-pvc
           mountPath: /home/node/.n8n
