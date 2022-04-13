@@ -12,7 +12,7 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import * as gm from 'gm';
+import gm from 'gm';
 import { file } from 'tmp-promise';
 import {
 	parse as pathParse,

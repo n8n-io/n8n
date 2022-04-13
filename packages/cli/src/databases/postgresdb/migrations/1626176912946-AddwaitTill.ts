@@ -5,9 +5,9 @@ export class AddwaitTill1626176912946 implements MigrationInterface {
 	name = 'AddwaitTill1626176912946';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
@@ -17,9 +17,9 @@ export class AddwaitTill1626176912946 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}

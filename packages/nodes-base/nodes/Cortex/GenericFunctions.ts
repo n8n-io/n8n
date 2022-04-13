@@ -19,7 +19,7 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
