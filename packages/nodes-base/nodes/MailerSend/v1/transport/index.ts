@@ -50,7 +50,7 @@ import {
 		Object.assign(options, option);
 	}
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'mailerSendApi', options);
+		return this.helpers.httpRequestWithAuthentication.call(this, 'mailerSendApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

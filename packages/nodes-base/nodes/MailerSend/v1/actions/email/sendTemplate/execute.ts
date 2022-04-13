@@ -37,13 +37,12 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 
 	const subject = this.getNodeParameter('subject', index) as string;
 
-	let toField:IAddressPair;
+	const toField:IAddressPair = {email: ''};
 	let variablesList:IVariables[];
 
 	// TODO test for any {$var_name} in subject error if missing from variablesUi
 	let variables:ISubstitution[] = [];
 	variablesList = [];
-	toField = {email: ''};
 
 	variables = [];
 	const variablesUi = (this.getNodeParameter('variablesUi', index) as IDataObject).variablesValues as IDataObject[] || [];
@@ -53,11 +52,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 			value: (variable.value as string).trim(),
 		});
 	}
-
-	toField = {
-		email: this.getNodeParameter('toEmail', index) as string,
-	};
-
+	toField.email = this.getNodeParameter('toEmail', index) as string;
 	if (this.getNodeParameter('toName', index, '') as string) {
 		toField.name = this.getNodeParameter('toName', index, '') as string;
 	}
@@ -81,7 +76,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 	}
 
 	const response = await apiRequest.call(this, requestMethod, endpoint, body, qs, options);
-	if (response.body.length === 0){
+	if (response.body.length === 0) {
 		response.body = { success: true };
 	}
 

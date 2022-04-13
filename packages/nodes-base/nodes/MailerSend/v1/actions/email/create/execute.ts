@@ -86,9 +86,9 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 		body.variables = variablesList;
 	}
 
-	let response = await apiRequest.call(this, requestMethod, endpoint, body, qs, options);
-	if (response.length === 0){
-		response = { success: true };
+	const response = await apiRequest.call(this, requestMethod, endpoint, body, qs, options);
+	if (response.body.length === 0) {
+		response.body = { success: true };
 	}
 
 	returnItems.push({
