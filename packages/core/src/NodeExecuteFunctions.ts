@@ -1096,7 +1096,7 @@ export async function requestRenovateToken(
 			body,
 			returnFullResponse: true,
 		};
-		// ? Not sure on this bad practice with the any keyword
+
 		const test = (await this.helpers.httpRequest(
 			requestOptionsToken as IHttpRequestOptions,
 		)) as any;
