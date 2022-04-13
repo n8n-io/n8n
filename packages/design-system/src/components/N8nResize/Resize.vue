@@ -1,13 +1,13 @@
 <template>
   <div :class="$style.resize">
-    <div @mousedown="resizerMove" class="resizer right" />
-    <div @mousedown="resizerMove" class="resizer left" />
-    <div @mousedown="resizerMove" class="resizer top" />
-    <div @mousedown="resizerMove" class="resizer bottom" />
-    <div @mousedown="resizerMove" class="resizer top-left" />
-    <div @mousedown="resizerMove" class="resizer top-right" />
-    <div @mousedown="resizerMove" class="resizer bottom-left" />
-    <div @mousedown="resizerMove" class="resizer bottom-right" />
+    <div @mousedown="resizerMove" class="resizer right" :class="!isResizingEnabled ? 'no-cursor' : ''" />
+    <div @mousedown="resizerMove" class="resizer left" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+    <div @mousedown="resizerMove" class="resizer top" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+    <div @mousedown="resizerMove" class="resizer bottom" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+    <div @mousedown="resizerMove" class="resizer top-left" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+    <div @mousedown="resizerMove" class="resizer top-right" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+    <div @mousedown="resizerMove" class="resizer bottom-left" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+    <div @mousedown="resizerMove" class="resizer bottom-right" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
     <slot></slot>
   </div>
 </template>
@@ -15,7 +15,21 @@
 <script lang="ts">
 export default {
   name: 'n8n-resize',
-  props: ['resizer', 'minWidth', 'minHeight'],
+  props: {
+    resizer: {
+      type: HTMLDivElement,
+    },
+    minWidth: {
+      type: Number,
+    },
+    minHeight: {
+      type: Number,
+    },
+    isResizingEnabled: {
+      type: Boolean,
+      default: true,
+    },
+  },
   data() {
     return {
       currentResizer: null,
@@ -39,8 +53,10 @@ export default {
       this.height = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('height').replace('px', ''));
       this.width = parseInt(getComputedStyle(this.resizer, null).getPropertyValue('width').replace('px', ''));
       
-      window.addEventListener('mousemove', this.mouseMove);
-      window.addEventListener('mouseup', this.mouseUp);
+      if (this.isResizingEnabled) {
+        window.addEventListener('mousemove', this.mouseMove);
+        window.addEventListener('mouseup', this.mouseUp);
+      }
     },
     mouseMove(e) {
       if (this.currentResizer.classList.contains('bottom-right')) {
@@ -226,5 +242,9 @@ export default {
   right: -3px;
   cursor: se-resize;
   z-index: 3;
+}
+
+.no-cursor {
+  cursor: default!important;
 }
 </style>

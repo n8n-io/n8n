@@ -21,6 +21,7 @@
           :id="nodeIndex"
 					:isDefaultTextChanged="node.parameters.isDefaultTextChanged"
 					:isEditable="node.parameters.isEditable"
+					:readOnly="!showTooltip"
           :width="node.parameters.width"
           :zIndex="node.parameters.zIndex"
           @input="onInputChange"
@@ -180,7 +181,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return returnStyles;
 		},
 		showTooltip(): boolean {
-			return !this.hideActions;
+			return !this.hideActions && !this.isReadOnly && !this.workflowRunning;
+		},
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
 		},
  	},
 	data () {

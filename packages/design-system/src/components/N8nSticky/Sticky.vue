@@ -4,7 +4,8 @@
     :class="[$style.sticky, isStickyEditable ? $style.editMode : '']"
     :style="styles"
   >
-    <n8n-resize 
+    <n8n-resize
+      :isResizingEnabled="!readOnly"
       :minHeight="minHeight"
       :minWidth="minWidth"
       :resizer="resizer"
