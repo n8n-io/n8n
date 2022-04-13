@@ -63,7 +63,7 @@ export class I18nClass {
 	 */
 	baseText(
 		key: BaseTextKey,
-		options?: { adjustToNumber?: number; interpolate: { [key: string]: string } },
+		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
 		if (options && options.adjustToNumber) {
 			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
@@ -484,4 +484,4 @@ type NonArgumentKey = 'reusableBaseText' | 'reusableDynamicText';
 
 type GetBaseTextKey<T> = keyof T extends `${NonArgumentKey}.${string}` ? never : keyof T;
 
-type BaseTextKey = GetBaseTextKey<typeof englishBaseText>
+export type BaseTextKey = GetBaseTextKey<typeof englishBaseText>;
