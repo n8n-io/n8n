@@ -7,6 +7,7 @@ import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
 import * as testDb from './shared/testDb';
+import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 jest.mock('../../src/telemetry');
 
@@ -87,7 +88,7 @@ test('POST /credentials should fail with invalid inputs', async () => {
 
 test('POST /credentials should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockRejectedValue(new Error('Encryption key not found.'));
+	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
@@ -348,7 +349,7 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 
 test('PATCH /credentials/:id should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockRejectedValue(new Error('Encryption key not found.'));
+	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
 
 	const owner = await Db.collections.User!.findOneOrFail();
@@ -495,7 +496,7 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockRejectedValue(new Error('Encryption key not found.'));
+	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
 
 	const response = await authOwnerAgent

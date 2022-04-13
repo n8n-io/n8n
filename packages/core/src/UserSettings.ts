@@ -10,6 +10,7 @@ import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
 	IUserSettings,
+	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
@@ -81,7 +82,7 @@ export async function getEncryptionKey(): Promise<string> {
 	const userSettings = await getUserSettings();
 
 	if (userSettings === undefined || userSettings.encryptionKey === undefined) {
-		throw new Error('Encryption key not set');
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
 	return userSettings.encryptionKey;
