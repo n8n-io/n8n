@@ -27,7 +27,7 @@ export class GoogleFirebaseRealtimeDatabaseOAuth2Api implements ICredentialType 
 			displayName: 'Region',
 			name: 'region',
 			type: 'options',
-			default: 'us-central1',
+			default: '.firebaseio.com',
 			options: [
 				{
 					name: 'us-central1',
