@@ -485,3 +485,9 @@ type NonArgumentKey = 'reusableBaseText' | 'reusableDynamicText';
 type GetBaseTextKey<T> = keyof T extends `${NonArgumentKey}.${string}` ? never : keyof T;
 
 export type BaseTextKey = GetBaseTextKey<typeof englishBaseText>;
+
+type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}`
+	? C
+	: never;
+
+export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;
