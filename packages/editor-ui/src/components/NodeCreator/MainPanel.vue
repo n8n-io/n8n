@@ -1,7 +1,16 @@
 <template>
 	<div @click="onClickInside" class="container">
 		<SlideTransition>
-			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.properties.subcategory" :activeIndex="activeSubcategoryIndex" @close="onSubcategoryClose" @selected="selected" />
+			<SubcategoryPanel
+				v-if="activeSubcategory"
+				:elements="subcategorizedNodes"
+				:title="activeSubcategory.properties.subcategory"
+				:activeIndex="activeSubcategoryIndex"
+				@close="onSubcategoryClose"
+				@selected="selected"
+				@dragstart="emitDragEvent('nodeTypeDragStart', $event)"
+				@dragend="emitDragEvent('nodeTypeDragEnd', $event)"
+			/>
 		</SlideTransition>
 		<div class="main-panel">
 			<SearchBar
@@ -23,8 +32,8 @@
 					:activeIndex="activeIndex"
 					:transitionsEnabled="true"
 					@selected="selected"
-					@dragstart="emitNodeEvent('nodeTypeDragStart', $event)"
-					@dragend="emitNodeEvent('nodeTypeDragEnd', $event)"
+					@dragstart="emitDragEvent('nodeTypeDragStart', $event)"
+					@dragend="emitDragEvent('nodeTypeDragEnd', $event)"
 				/>
 			</div>
 			<div
@@ -35,8 +44,8 @@
 					:elements="filteredNodeTypes"
 					:activeIndex="activeIndex"
 					@selected="selected"
-					@dragstart="emitNodeEvent('nodeTypeDragStart', $event)"
-					@dragend="emitNodeEvent('nodeTypeDragEnd', $event)"
+					@dragstart="emitDragEvent('nodeTypeDragStart', $event)"
+					@dragend="emitDragEvent('nodeTypeDragEnd', $event)"
 				/>
 			</div>
 			<NoResults
@@ -62,8 +71,6 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
-import {INodeTypeDescription} from "n8n-workflow";
-
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -241,9 +248,9 @@ export default mixins(externalHooks).extend({
 				this.selected(activeNodeType);
 			}
 		},
-		selected({ element, event }: { element: INodeCreateElement, event: MouseEvent }) {
+		selected(element: INodeCreateElement) {
 			if (element.type === 'node') {
-				this.emitNodeEvent('nodeTypeSelected', { element, event });
+				this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name);
 			} else if (element.type === 'category') {
 				this.onCategorySelected(element.category);
 			} else if (element.type === 'subcategory') {
@@ -280,7 +287,7 @@ export default mixins(externalHooks).extend({
 			this.searchEventBus.$emit('focus');
 		},
 
-		emitNodeEvent(eventName: string, { element, event }: { element: INodeCreateElement, event: Event }) {
+		emitDragEvent(eventName: string, { element, event }: { element: INodeCreateElement, event: Event }) {
 			this.$emit(eventName, {
 				nodeTypeName: (element.properties as INodeItemProps).nodeType.name,
 				event,

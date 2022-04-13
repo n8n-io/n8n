@@ -1429,6 +1429,8 @@ export default mixins(
 			async addNodeButton (nodeTypeName: string, options: AddNodeOptions = {
 				openDataDisplay: true,
 			}) {
+				console.log(options.position);
+
 				if (this.editAllowedCheck() === false) {
 					return;
 				}

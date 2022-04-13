@@ -98,7 +98,7 @@ export default Vue.extend({
 				this.$emit('closeNodeCreator');
 			}
 		},
-		nodeTypeSelected ({ nodeTypeName }: { nodeTypeName: string }) {
+		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		nodeTypeDragStart (event: { nodeTypeName: string, event: DragEvent }) {
