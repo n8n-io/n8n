@@ -500,7 +500,7 @@ export class NocoDB implements INodeType {
 					try {
 						for (let i = 0; i < items.length; i++) {
 							requestMethod = 'GET';
-							endpoint = `/api/v1/db/data/bulk/noco/${projectName}/${table}`;
+							endpoint = `/api/v1/db/data/noco/${projectName}/${table}`;
 
 							returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 							qs = this.getNodeParameter('options', i, {}) as IDataObject;
