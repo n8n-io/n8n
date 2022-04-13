@@ -10,10 +10,14 @@ import {
 	normalize,
 	insertOptionsAndValues,
 } from "./utils";
+import {
+	locale,
+} from 'n8n-design-system';
 
 const englishBaseText = require('./locales/en');
 
 Vue.use(VueI18n);
+locale.use('en');
 
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
@@ -59,8 +63,12 @@ export class I18nClass {
 	 */
 	baseText(
 		key: string,
-		options?: { interpolate: { [key: string]: string } },
+		options?: { adjustToNumber: number; interpolate: { [key: string]: string } },
 	): string {
+		if (options && options.adjustToNumber) {
+			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
+		}
+
 		return this.i18n.t(key, options && options.interpolate).toString();
 	}
 
@@ -354,12 +362,17 @@ const i18nInstance = new VueI18n({
 	silentTranslationWarn: true,
 });
 
+locale.i18n((key: string, options?: {interpolate: object}) => i18nInstance.t(key, options && options.interpolate));
+
 const loadedLanguages = ['en'];
 
 function setLanguage(language: string) {
 	i18nInstance.locale = language;
 	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
+
+	// update n8n design system and element ui
+	locale.use(language);
 
 	return language;
 }

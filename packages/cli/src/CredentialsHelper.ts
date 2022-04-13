@@ -35,6 +35,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -44,8 +45,11 @@ import {
 	Db,
 	ICredentialsDb,
 	NodeTypes,
+	WhereClause,
 	WorkflowExecuteAdditionalData,
 } from '.';
+// eslint-disable-next-line import/no-cycle
+import { User } from './databases/entities/User';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -75,6 +79,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
+		defaultTimezone: string,
 	): Promise<IHttpRequestOptions> {
 		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
@@ -123,6 +128,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 						{ $credentials: credentials },
 						workflow,
 						node,
+						defaultTimezone,
 					);
 
 					const value = this.resolveValue(
@@ -131,6 +137,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 						{ $credentials: credentials },
 						workflow,
 						node,
+						defaultTimezone,
 					);
 					requestOptions.headers[key] = value;
 				} else if (authenticate.type === 'queryAuth') {
@@ -140,6 +147,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 						{ $credentials: credentials },
 						workflow,
 						node,
+						defaultTimezone,
 					);
 
 					const value = this.resolveValue(
@@ -148,6 +156,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 						{ $credentials: credentials },
 						workflow,
 						node,
+						defaultTimezone,
 					);
 					if (!requestOptions.qs) {
 						requestOptions.qs = {};
@@ -168,6 +177,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		workflow: Workflow,
 		node: INode,
+		defaultTimezone: string,
 	): string {
 		if (parameterValue.charAt(0) !== '=') {
 			return parameterValue;
@@ -177,6 +187,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			node,
 			parameterValue,
 			'internal',
+			defaultTimezone,
 			additionalKeys,
 			'',
 		);
@@ -209,32 +220,40 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
-	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
-	 * @param {string} type Type of the credentials to return instance of
+	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
+	 * @param {string} type Type of the credential to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
 	async getCredentials(
-		nodeCredentials: INodeCredentialsDetails,
+		nodeCredential: INodeCredentialsDetails,
 		type: string,
+		userId?: string,
 	): Promise<Credentials> {
-		if (!nodeCredentials.id) {
-			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
+		if (!nodeCredential.id) {
+			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		const credentials = await Db.collections.Credentials?.findOne({ id: nodeCredentials.id, type });
+		const credential = userId
+			? await Db.collections
+					.SharedCredentials!.findOneOrFail({
+						relations: ['credentials'],
+						where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+					})
+					.then((shared) => shared.credentials)
+			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
 
-		if (!credentials) {
+		if (!credential) {
 			throw new Error(
-				`Credentials with ID "${nodeCredentials.id}" don't exist for type "${type}".`,
+				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
 			);
 		}
 
 		return new Credentials(
-			{ id: credentials.id.toString(), name: credentials.name },
-			credentials.type,
-			credentials.nodesAccess,
-			credentials.data,
+			{ id: credential.id.toString(), name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
 		);
 	}
 
@@ -281,6 +300,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -295,6 +315,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal,
 			type,
 			mode,
+			defaultTimezone,
 			expressionResolveValues,
 		);
 	}
@@ -311,6 +332,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
+		defaultTimezone: string,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
@@ -330,14 +352,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (expressionResolveValues) {
+			const timezone =
+				(expressionResolveValues.workflow.settings.timezone as string) || defaultTimezone;
+
 			try {
-				const workflow = new Workflow({
-					nodes: Object.values(expressionResolveValues.workflow.nodes),
-					connections: expressionResolveValues.workflow.connectionsBySourceNode,
-					active: false,
-					nodeTypes: expressionResolveValues.workflow.nodeTypes,
-				});
-				decryptedData = workflow.expression.getParameterValue(
+				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
 					decryptedData as INodeParameters,
 					expressionResolveValues.runExecutionData,
 					expressionResolveValues.runIndex,
@@ -345,6 +364,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.node.name,
 					expressionResolveValues.connectionInputData,
 					mode,
+					timezone,
 					{},
 					false,
 					decryptedData,
@@ -375,6 +395,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				node,
 				decryptedData as INodeParameters,
 				mode,
+				defaultTimezone,
 				{},
 				undefined,
 				decryptedData,
@@ -504,6 +525,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async testCredentials(
+		user: User,
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		nodeToTestWith?: string,
@@ -602,7 +624,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
 
 		const routingNode = new RoutingNode(
 			workflow,
@@ -656,7 +678,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					};
 				}
 			}
-
+			Logger.debug('Credential test failed', error);
 			return {
 				status: 'Error',
 				message: error.message.toString(),
@@ -668,4 +690,48 @@ export class CredentialsHelper extends ICredentialsHelper {
 			message: 'Connection successful!',
 		};
 	}
+}
+
+/**
+ * Build a `where` clause for a `find()` or `findOne()` operation
+ * in the `shared_workflow` or `shared_credentials` tables.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
+
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+	}
+
+	return where;
+}
+
+/**
+ * Get a credential if it has been shared with a user.
+ */
+export async function getCredentialForUser(
+	credentialId: string,
+	user: User,
+): Promise<ICredentialsDb | null> {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
+		relations: ['credentials'],
+		where: whereClause({
+			user,
+			entityType: 'credentials',
+			entityId: credentialId,
+		}),
+	});
+
+	if (!sharedCredential) return null;
+
+	return sharedCredential.credentials as ICredentialsDb;
 }

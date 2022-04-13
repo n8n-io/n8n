@@ -7,12 +7,20 @@
 	box-sizing: border-box;
 }
 
+html {
+	height: 100%;
+	width: 100%;
+}
+
 body {
+	height: 100%;
+	width: 100%;
 	overscroll-behavior-x: none;
 	line-height: 1;
 	font-size: var(--font-size-m);
 	font-weight: var(--font-weight-regular);
 	color: var(--color-text-dark);
+	background-color: var(--color-background-xlight);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
@@ -144,19 +152,19 @@ q:after {
 a {
 	margin: 0;
 	padding: 0;
-	color: var(--color-primary);
 	text-decoration: none;
 	font-size: 100%;
 	vertical-align: baseline;
 	background: transparent;
 	cursor: pointer;
+	color: var(--color-primary);
 
 	&:active {
 		color: function.saturation(
 			--color-primary-h,
 			--color-primary-s,
 			--color-primary-l,
-			-(var.$button-active-shade-percent)
+			-(30%)
 		);
 	}
 }

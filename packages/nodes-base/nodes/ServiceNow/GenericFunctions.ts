@@ -10,15 +10,25 @@ import {
 import {
 	IDataObject,
 	INodePropertyOptions,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
 export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('serviceNowOAuth2Api');
+	const headers = {} as IDataObject;
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+
+	let credentials;
+
+	if (authenticationMethod === 'basicAuth') {
+		credentials = await this.getCredentials('serviceNowBasicApi');
+	} else {
+		credentials = await this.getCredentials('serviceNowOAuth2Api');
+	}
 
 	const options: OptionsWithUri = {
-		headers: {},
+		headers,
 		method,
 		qs,
 		body,
@@ -38,11 +48,11 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 
 	try {
-
-		return await this.helpers.requestOAuth2!.call(this, 'serviceNowOAuth2Api', options);
+		const credentialType = authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'serviceNowBasicApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), (error as JsonObject));
 	}
 }
 

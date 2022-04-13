@@ -2,12 +2,7 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import {
-	BinaryDataManager,
-	IBinaryDataConfig,
-	UserSettings,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from 'n8n-core';
+import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -27,7 +22,8 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import config = require('../config');
+import config from '../config';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -51,7 +47,7 @@ export class Execute extends Command {
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
-		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
@@ -169,11 +165,13 @@ export class Execute extends Command {
 		}
 
 		try {
+			const user = await getInstanceOwner();
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				workflowData: workflowData!,
+				userId: user.id,
 			};
 
 			const workflowRunner = new WorkflowRunner();

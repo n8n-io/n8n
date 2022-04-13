@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as pgPromise from 'pg-promise';
+import pgPromise from 'pg-promise';
 
 import { pgInsert, pgQuery, pgUpdate } from './Postgres.node.functions';
 

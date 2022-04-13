@@ -160,6 +160,7 @@ export abstract class ICredentialsHelper {
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
+		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
 
 	abstract getCredentials(
@@ -171,6 +172,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -420,6 +422,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
+	ignoreHttpStatusErrors?: boolean;
 	proxy?: {
 		host: string;
 		port: number;
@@ -682,6 +685,7 @@ export interface ITriggerFunctions {
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void;
+	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -1168,6 +1172,13 @@ export interface IWorkflowDataProxyData {
 	$parameter: any;
 	$position: any;
 	$workflow: any;
+	$: any;
+	$input: any;
+	$thisItem: any;
+	$thisRunIndex: number;
+	$thisItemIndex: number;
+	$now: any;
+	$today: any;
 }
 
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
@@ -1323,6 +1334,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
+	userId: string;
 }
 
 export type WorkflowExecuteMode =

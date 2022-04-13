@@ -37,7 +37,7 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
-	private pageEventQueue: Array<{category: string, route: Route}>;
+	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
 	private store: Store<IRootState> | null;
 
@@ -61,17 +61,28 @@ class Telemetry {
 		this.store = null;
 	}
 
-	init(options: ITelemetrySettings, props: {instanceId: string, logLevel?: ILogLevel, store: Store<IRootState>}) {
+	init(options: ITelemetrySettings, { instanceId, logLevel, userId, store }: { instanceId: string, logLevel?: ILogLevel, userId?: string, store: Store<IRootState> }) {
 		if (options.enabled && !this.telemetry) {
 			if(!options.config) {
 				return;
 			}
 
-			this.store = props.store;
-			const logging = props.logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
+			this.store = store;
+			const logging = logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
 			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
-			this.telemetry.identify(props.instanceId);
+			this.identify(instanceId, userId);
 			this.flushPageEvents();
+		}
+	}
+
+	identify(instanceId: string, userId?: string) {
+		const traits = { instance_id: instanceId };
+		if (userId) {
+			this.telemetry.identify(`${instanceId}#${userId}`, traits);
+		}
+		else {
+			this.telemetry.reset();
+			this.telemetry.identify(undefined, traits);
 		}
 	}
 
@@ -81,7 +92,7 @@ class Telemetry {
 		}
 	}
 
-	page(category: string, route: Route) {
+	page(route: Route) {
 		if (this.telemetry)	{
 			if (route.path === this.previousPath) { // avoid duplicate requests query is changed for example on search page
 				return;
@@ -93,11 +104,12 @@ class Telemetry {
 			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route, this.store);
 			}
+
+			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
 			this.telemetry.page(category, pageName, properties);
 		}
 		else {
 			this.pageEventQueue.push({
-				category,
 				route,
 			});
 		}
@@ -106,8 +118,8 @@ class Telemetry {
 	flushPageEvents() {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];
-		queue.forEach(({category, route}) => {
-			this.page(category, route);
+		queue.forEach(({route}) => {
+			this.page(route);
 		});
 	}
 
