@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,11 +8,11 @@ import {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { Converter, Flavor } from 'showdown';
+import { Converter } from 'showdown';
 
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
-import {  isEmpty, set } from 'lodash';
+import { isEmpty, set } from 'lodash';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,9 +55,7 @@ export class Markdown implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'htmlToMarkdown',
-						],
+						mode: ['htmlToMarkdown'],
 					},
 				},
 				default: '',
@@ -75,9 +71,7 @@ export class Markdown implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						mode: [
-							'markdownToHtml',
-						],
+						mode: ['markdownToHtml'],
 					},
 				},
 				default: '',
@@ -90,16 +84,14 @@ export class Markdown implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'markdownToHtml',
-							'htmlToMarkdown',
-						],
+						mode: ['markdownToHtml', 'htmlToMarkdown'],
 					},
 				},
 				default: 'data',
 				required: true,
 				placeholder: '',
-				description: 'The field to put the output in. Specify nested fields<br />using dots, e.g."level1.level2.newKey".',
+				description:
+					'The field to put the output in. Specify nested fields using dots, e.g."level1.level2.newKey".',
 			},
 
 			//============= HTML to Markdown Options ===============
@@ -111,9 +103,7 @@ export class Markdown implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						'mode': [
-							'htmlToMarkdown',
-						],
+						mode: ['htmlToMarkdown'],
 					},
 				},
 				options: [
@@ -139,29 +129,6 @@ export class Markdown implements INodeType {
 						description: 'Specify emphasis delimiter, default _',
 					},
 					{
-						displayName: 'Ignored Elements',
-						name: 'ignore',
-						type: 'string',
-						default: '',
-						description: 'Supplied elements will be ignored (ignores inner text does not parse children)',
-						placeholder: 'e.g. h1, p ...',
-						hint: 'Comma separated elements',
-					},
-					{
-						displayName: 'Max Consecutive New Lines',
-						name: 'maxConsecutiveNewlines',
-						type: 'number',
-						default: 3,
-						description: 'Specify max consecutive new lines allowed',
-					},
-					{
-						displayName: 'Keep Images With Data',
-						name: 'keepDataImages',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">',
-					},
-					{
 						displayName: 'Global Escape Pattern',
 						name: 'globalEscape',
 						type: 'fixedCollection',
@@ -169,7 +136,8 @@ export class Markdown implements INodeType {
 							multipleValues: false,
 						},
 						default: {},
-						description: 'Setting this will override the default escape settings, you might want to use textReplace option instead',
+						description:
+							'Setting this will override the default escape settings, you might want to use textReplace option instead',
 						options: [
 							{
 								name: 'value',
@@ -194,6 +162,24 @@ export class Markdown implements INodeType {
 						],
 					},
 					{
+						displayName: 'Ignored Elements',
+						name: 'ignore',
+						type: 'string',
+						default: '',
+						description:
+							'Supplied elements will be ignored (ignores inner text does not parse children)',
+						placeholder: 'e.g. h1, p ...',
+						hint: 'Comma separated elements',
+					},
+					{
+						displayName: 'Keep Images With Data',
+						name: 'keepDataImages',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">.',
+					},
+					{
 						displayName: 'Line Start Escape Pattern',
 						name: 'lineStartEscape',
 						type: 'fixedCollection',
@@ -201,7 +187,8 @@ export class Markdown implements INodeType {
 							multipleValues: false,
 						},
 						default: {},
-						description: 'Setting this will override the default escape settings, you might want to use textReplace option instead',
+						description:
+							'Setting this will override the default escape settings, you might want to use textReplace option instead',
 						options: [
 							{
 								name: 'value',
@@ -222,6 +209,45 @@ export class Markdown implements INodeType {
 										description: 'String replacement',
 									},
 								],
+							},
+						],
+					},
+					{
+						displayName: 'Max Consecutive New Lines',
+						name: 'maxConsecutiveNewlines',
+						type: 'number',
+						default: 3,
+						description: 'Specify max consecutive new lines allowed',
+					},
+					{
+						displayName: 'Place URLs At The Bottom',
+						name: 'useLinkReferenceDefinitions',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to Place URLS at the bottom and format links using link reference definitions',
+					},
+					{
+						displayName: 'Strong Delimiter',
+						name: 'strongDelimiter',
+						type: 'string',
+						default: '**',
+						description: 'Specify strong delimiter, default **',
+					},
+					{
+						displayName: 'Style For Code Block',
+						name: 'codeBlockStyle',
+						type: 'options',
+						default: 'fence',
+						description: 'Specify style for code block, default "fence"',
+						options: [
+							{
+								name: 'Fence',
+								value: 'fence',
+							},
+							{
+								name: 'Indented',
+								value: 'indented',
 							},
 						],
 					},
@@ -233,7 +259,8 @@ export class Markdown implements INodeType {
 							multipleValues: true,
 						},
 						default: [],
-						description: 'User-defined text replacement pattern (Replaces matching text retrieved from nodes)',
+						description:
+							'User-defined text replacement pattern (Replaces matching text retrieved from nodes)',
 						options: [
 							{
 								name: 'values',
@@ -258,42 +285,12 @@ export class Markdown implements INodeType {
 						],
 					},
 					{
-						displayName: 'Place URLs At The Bottom',
-						name: 'useLinkReferenceDefinitions',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to Place URLS at the bottom and format links using link reference definitions',
-					},
-					{
-						displayName: 'Strong Delimiter',
-						name: 'strongDelimiter',
-						type: 'string',
-						default: '**',
-						description: 'Specify strong delimiter, default **',
-					},
-					{
-						displayName: 'Style For Code Block',
-						name: 'codeBlockStyle',
-						type: 'options',
-						default: 'fence',
-						description: 'Specify style for code block, default "fence"',
-						options: [
-							{
-								name: 'fence',
-								value: 'fence',
-							},
-							{
-								name: 'indented',
-								value: 'indented',
-							},
-						],
-					},
-					{
 						displayName: 'Treat As Blocks',
 						name: 'blockElements',
 						type: 'string',
 						default: '',
-						description: 'Supplied elements will be treated as blocks (surrounded with blank lines)',
+						description:
+							'Supplied elements will be treated as blocks (surrounded with blank lines)',
 						placeholder: 'e.g. p, div, ...',
 						hint: 'Comma separated elements',
 					},
@@ -308,9 +305,7 @@ export class Markdown implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						'mode': [
-							'markdownToHtml',
-						],
+						mode: ['markdownToHtml'],
 					},
 				},
 				options: [
@@ -319,7 +314,8 @@ export class Markdown implements INodeType {
 						name: 'openLinksInNewWindow',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to open all links in new windows (by adding the attribute target="_blank" to <a> tags)',
+						description:
+							'Whether to open all links in new windows (by adding the attribute target="_blank" to <a> tags)',
 					},
 					{
 						displayName: 'Automatic Linking To URLs',
@@ -333,14 +329,15 @@ export class Markdown implements INodeType {
 						name: 'backslashEscapesHTMLTags',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to support for HTML Tag escaping ex: \<div>foo\</div',
+						description: 'Whether to support for HTML Tag escaping ex: <div>foo</div',
 					},
 					{
 						displayName: 'Complete HTML Document',
 						name: 'completeHTMLDocument',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to output a complete html document, including <html>, <head> and <body> tags instead of an HTML fragment',
+						description:
+							'Whether to output a complete html document, including <html>, <head> and <body> tags instead of an HTML fragment',
 					},
 					{
 						displayName: 'Customized Header ID',
@@ -354,21 +351,24 @@ export class Markdown implements INodeType {
 						name: 'emoji',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to enable emoji support. Ex: this is a :smile: emoji For more info on available emojis, see https://github.com/showdownjs/showdown/wiki/Emojis.',
+						description:
+							'Whether to enable emoji support. Ex: this is a :smile: emoji For more info on available emojis, see https://github.com/showdownjs/showdown/wiki/Emojis.',
 					},
 					{
 						displayName: 'Encode Emails',
 						name: 'encodeEmails',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to enable e-mail addresses encoding through the use of Character Entities, transforming ASCII e-mail addresses into its equivalent decimal entities',
+						description:
+							'Whether to enable e-mail addresses encoding through the use of Character Entities, transforming ASCII e-mail addresses into its equivalent decimal entities',
 					},
 					{
 						displayName: 'Exclude Trailing Punctuation From URLs',
 						name: 'excludeTrailingPunctuationFromURLs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to exclude trailing punctuation from autolinking urls. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
+						description:
+							'Whether to exclude trailing punctuation from autolinking urls. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
 					},
 					{
 						displayName: 'GitHub Code Blocks',
@@ -382,14 +382,16 @@ export class Markdown implements INodeType {
 						name: 'ghCompatibleHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to generate header ids compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
+						description:
+							'Whether to generate header ids compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
 					},
 					{
 						displayName: 'GitHub Mention Link',
 						name: 'ghMentionsLink',
 						type: 'string',
 						default: 'https://github.com/{u}',
-						description: 'Whether to change the link generated by @mentions. Showdown will replace {u} with the username. Only applies if ghMentions option is enabled.',
+						description:
+							'Whether to change the link generated by @mentions. Showdown will replace {u} with the username. Only applies if ghMentions option is enabled.',
 					},
 					{
 						displayName: 'GitHub Mentions',
@@ -424,14 +426,16 @@ export class Markdown implements INodeType {
 						name: 'literalMidWordAsterisks',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to stop showdown from interpreting asterisks in the middle of words as <em> and <strong> and instead treat them as literal asterisks',
+						description:
+							'Whether to stop showdown from interpreting asterisks in the middle of words as <em> and <strong> and instead treat them as literal asterisks',
 					},
 					{
 						displayName: 'Middle Word Underscores',
 						name: 'literalMidWordUnderscores',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to stop showdown from interpreting underscores in the middle of words as <em> and <strong> and instead treat them as literal underscores',
+						description:
+							'Whether to stop showdown from interpreting underscores in the middle of words as <em> and <strong> and instead treat them as literal underscores',
 					},
 					{
 						displayName: 'No Header ID',
@@ -445,7 +449,8 @@ export class Markdown implements INodeType {
 						name: 'parseImgDimensions',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to enable support for setting image dimensions from within markdown syntax',
+						description:
+							'Whether to enable support for setting image dimensions from within markdown syntax',
 					},
 					{
 						displayName: 'Prefix Header ID',
@@ -459,7 +464,8 @@ export class Markdown implements INodeType {
 						name: 'rawHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to remove only spaces, \' and " from generated header ids (including prefixes), replacing them with dashes (-)',
+						description:
+							'Whether to remove only spaces, \' and " from generated header ids (including prefixes), replacing them with dashes (-)',
 					},
 					{
 						displayName: 'Raw Prefix Header ID',
@@ -473,21 +479,24 @@ export class Markdown implements INodeType {
 						name: 'simpleLineBreaks',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
+						description:
+							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
 					},
 					{
 						displayName: 'Smart Indentation Fix',
 						name: 'smartIndentationFix',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to try to smartly fix indentation problems related to es6 template strings in the midst of indented code',
+						description:
+							'Whether to try to smartly fix indentation problems related to es6 template strings in the midst of indented code',
 					},
 					{
 						displayName: 'Spaces Indented Sublists',
 						name: 'disableForced4SpacesIndentedSublists',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to disable the requirement of indenting sublists by 4 spaces for them to be nested, effectively reverting to the old behavior where 2 or 3 spaces were enough',
+						description:
+							'Whether to disable the requirement of indenting sublists by 4 spaces for them to be nested, effectively reverting to the old behavior where 2 or 3 spaces were enough',
 					},
 					{
 						displayName: 'Split Adjacent Blockquotes',
@@ -535,23 +544,28 @@ export class Markdown implements INodeType {
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 
 					const textReplaceOption = this.getNodeParameter('options.textReplace.values', i, []) as IDataObject[];
-					options.textReplace = !isEmpty(textReplaceOption) ?
-						textReplaceOption.map(entry => [entry.pattern, entry.replacement]) : undefined;
+					options.textReplace = !isEmpty(textReplaceOption)
+						? textReplaceOption.map((entry) => [entry.pattern, entry.replacement])
+						: undefined;
 
 					const lineStartEscapeOption = this.getNodeParameter('options.lineStartEscape.value', i, {}) as IDataObject;
-					options.lineStartEscape = !isEmpty(lineStartEscapeOption) ?
-						[lineStartEscapeOption.pattern, lineStartEscapeOption.replacement] : undefined;
+					options.lineStartEscape = !isEmpty(lineStartEscapeOption)
+						? [lineStartEscapeOption.pattern, lineStartEscapeOption.replacement]
+						: undefined;
 
 					const globalEscapeOption = this.getNodeParameter('options.globalEscape.value', i, {}) as IDataObject;
-					options.globalEscape = !isEmpty(globalEscapeOption) ?
-						[globalEscapeOption.pattern, globalEscapeOption.replacement] : undefined;
+					options.globalEscape = !isEmpty(globalEscapeOption)
+						? [globalEscapeOption.pattern, globalEscapeOption.replacement]
+						: undefined;
 
-					options.ignore = options.ignore ? (options.ignore as string).split(',') : undefined;
-					options.blockElements = options.blockElements ? (options.blockElements as string).split(',') : undefined;
+					options.ignore = options.ignore
+						? (options.ignore as string).split(',').map(element => element.trim()) : undefined;
+					options.blockElements = options.blockElements
+						? (options.blockElements as string).split(',').map(element => element.trim()) : undefined;
 
 					const markdownOptions = {} as IDataObject;
 
-					Object.keys(options).forEach( option => {
+					Object.keys(options).forEach((option) => {
 						if (options[option]) {
 							markdownOptions[option] = options[option];
 						}
@@ -559,10 +573,7 @@ export class Markdown implements INodeType {
 
 					const html = this.getNodeParameter('html', i) as string;
 
-					const markdownFromHTML = NodeHtmlMarkdown.translate(
-						html,
-						markdownOptions,
-					);
+					const markdownFromHTML = NodeHtmlMarkdown.translate(html, markdownOptions);
 
 					const newItem = JSON.parse(JSON.stringify(items[i].json));
 					set(newItem, destinationKey, markdownFromHTML);
@@ -576,7 +587,7 @@ export class Markdown implements INodeType {
 
 					const converter = new Converter();
 
-					Object.keys(options).forEach( key => converter.setOption(key, options[key]));
+					Object.keys(options).forEach((key) => converter.setOption(key, options[key]));
 					const htmlFromMarkdown = converter.makeHtml(markdown);
 
 					const newItem = JSON.parse(JSON.stringify(items[i].json));
