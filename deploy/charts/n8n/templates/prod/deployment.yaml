@@ -45,6 +45,10 @@ spec:
       labels:
         app: prod-n8n
     spec:
+      volumes:
+        - name: prod-n8n-data-pvc
+          persistentVolumeClaim:
+            claimName: prod-n8n-data-pvc
       containers:
       - image: registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:GIT_TAG
         imagePullPolicy: IfNotPresent
@@ -87,3 +91,6 @@ spec:
         - containerPort: 5678
           protocol: TCP
         resources: {}
+        volumeMounts:
+        - name: stage-n8n-data-pvc
+          mountPath: /home/node/.n8n
