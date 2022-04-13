@@ -51,8 +51,8 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				default: '',
-				description: 'The query field accepts with gql syntax，id__s=1699,1698',
+				default: 'id__s=8,10,25',
+				description: 'The query field accepts with gql syntax，id__eq=10',
 			},
 			{
 				displayName: 'Fields',

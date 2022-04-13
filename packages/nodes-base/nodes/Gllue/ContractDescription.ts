@@ -18,6 +18,11 @@ export const contractOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete contract',
 			},
+			{
+				name: 'Simple List with IDs',
+				value: 'simple_list_with_ids',
+				description: 'Get all items with Simple List',
+			},
 		],
 		default: 'delete',
 		description: 'The operation to perform.',
@@ -40,7 +45,40 @@ export const contractFields: INodeProperties[] = [
 				],
 			},
 		},
-		default:'',
-		description:'Contract ID',
+		default: '',
+		description: 'Contract ID',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'clientcontract',
+				],
+				operation: [
+					'simple_list_with_ids',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: 'id__s=570,571',
+				description: 'The query field accepts with gql syntax，id__eq=572',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: 'id,name',
+				description: 'The fields need to return',
+			},
+		],
 	},
 ];

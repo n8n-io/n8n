@@ -34,3 +34,8 @@ interface Consent {
 export interface Consents {
 	consents: Consent[];
 }
+
+export interface GllueAPIIssueResponse {
+	message: string;
+	status: boolean;
+}

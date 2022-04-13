@@ -8,6 +8,8 @@ import {industryFields, industryOperations} from './IndustryDescription';
 import {contractFields, contractOperations} from './ContractDescription';
 import {userFields, userOperations} from './UserDescriptions';
 import {DEFAULT_PAGE, DEFAULT_PAGINATE_BY} from './constants';
+import {functionFields, functionOperations} from './FunctionDescription';
+import {isResponseIssue} from "./GenericFunctions";
 
 const helpers = require('./helpers');
 
@@ -52,6 +54,10 @@ export class Gllue implements INodeType {
 						value: 'industry',
 					},
 					{
+						name: 'Function',
+						value: 'function',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
@@ -70,6 +76,8 @@ export class Gllue implements INodeType {
 			...cityFields,
 			...industryOperations,
 			...industryFields,
+			...functionOperations,
+			...functionFields,
 			...contractOperations,
 			...contractFields,
 			...userOperations,
@@ -89,7 +97,7 @@ export class Gllue implements INodeType {
 
 		const timestamp = helpers.getCurrentTimeStamp();
 		const token = helpers.generateTokenWithAESKey(timestamp, credentials.apiUsername, credentials.apiAesKey);
-		const urlParams = new UrlParams(filters.query, filters.fields, token, paginateBy,page);
+		const urlParams = new UrlParams(filters.query, filters.fields, token, paginateBy, page);
 		const uriGenerated = helpers.gllueUrlBuilder(credentials.apiHost, resource, operation, urlParams);
 
 		if (resource === 'client') {
@@ -97,6 +105,10 @@ export class Gllue implements INodeType {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
 		} else if (resource === 'city') {
+			if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource === 'function') {
 			if (operation === 'simple_list_with_ids') {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
@@ -115,10 +127,14 @@ export class Gllue implements INodeType {
 				);
 				const body = {ids: contractIds, count: contractIds.length};
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request, 'POST', body);
+			} else if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
+		}
+		if (isResponseIssue(responseData)) {
+			throw new Error(`API Issue raised up with:${JSON.stringify(responseData)}`);
 		}
 		return [this.helpers.returnJsonArray(responseData)];
 	}
-
 }
 
