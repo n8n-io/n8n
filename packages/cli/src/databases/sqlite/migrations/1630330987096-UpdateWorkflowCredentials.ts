@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config = require('../../../../config');
+import * as config from '../../../../config';
 import { MigrationHelpers } from '../../MigrationHelpers';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
@@ -12,7 +12,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`
@@ -152,7 +152,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`

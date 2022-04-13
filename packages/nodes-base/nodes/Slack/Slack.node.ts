@@ -63,7 +63,7 @@ import {
 	IAttachment,
 } from './MessageInterface';
 
-import moment = require('moment');
+import moment from 'moment';
 
 interface Attachment {
 	fields: {

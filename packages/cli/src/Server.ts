@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/await-thenable */
@@ -28,10 +29,10 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-await-in-loop */
 
-import * as express from 'express';
-import { readFileSync } from 'fs';
+import express from 'express';
+import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
-import { cloneDeep } from 'lodash';
+import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindConditions,
@@ -46,22 +47,19 @@ import {
 	Not,
 	Raw,
 } from 'typeorm';
-import * as bodyParser from 'body-parser';
-import * as cookieParser from 'cookie-parser';
-import * as history from 'connect-history-api-fallback';
-import * as os from 'os';
+import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
+import history from 'connect-history-api-fallback';
+import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as _ from 'lodash';
-import * as clientOAuth2 from 'client-oauth2';
-import * as clientOAuth1 from 'oauth-1.0a';
-import { RequestOptions } from 'oauth-1.0a';
-import * as csrf from 'csrf';
-import * as requestPromise from 'request-promise-native';
+import clientOAuth2 from 'client-oauth2';
+import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
+import csrf from 'csrf';
+import requestPromise, { OptionsWithUrl } from 'request-promise-native';
 import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
-import * as promClient from 'prom-client';
 
 import {
 	BinaryDataManager,
@@ -90,16 +88,15 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
-import * as compression from 'compression';
-import * as jwt from 'jsonwebtoken';
-import * as jwks from 'jwks-rsa';
+import basicAuth from 'basic-auth';
+import compression from 'compression';
+import jwt from 'jsonwebtoken';
+import jwks from 'jwks-rsa';
 // @ts-ignore
-import * as timezones from 'google-timezones-json';
-import * as parseUrl from 'parseurl';
-import * as querystring from 'querystring';
-import { OptionsWithUrl } from 'request-promise-native';
-import { Registry } from 'prom-client';
+import timezones from 'google-timezones-json';
+import parseUrl from 'parseurl';
+import querystring from 'querystring';
+import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
 	ActiveExecutions,
@@ -142,7 +139,7 @@ import {
 	getCredentialForUser,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 
@@ -200,9 +197,9 @@ class App {
 
 	defaultCredentialsName: string;
 
-	saveDataErrorExecution: string;
+	saveDataErrorExecution: 'all' | 'none';
 
-	saveDataSuccessExecution: string;
+	saveDataSuccessExecution: 'all' | 'none';
 
 	saveManualExecutions: boolean;
 
@@ -237,21 +234,21 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook') as string;
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
-		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
+		this.endpointWebhook = config.getEnv('endpoints.webhook');
+		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 
-		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
-		this.defaultCredentialsName = config.get('credentials.defaultName') as string;
+		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
+		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
 
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-		this.executionTimeout = config.get('executions.timeout') as number;
-		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
-		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
-		this.timezone = config.get('generic.timezone') as string;
-		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
+		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
+		this.executionTimeout = config.getEnv('executions.timeout');
+		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
+		this.payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
+		this.timezone = config.getEnv('generic.timezone');
+		this.restEndpoint = config.getEnv('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -260,22 +257,22 @@ class App {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
 
-		this.protocol = config.get('protocol');
-		this.sslKey = config.get('ssl_key');
-		this.sslCert = config.get('ssl_cert');
+		this.protocol = config.getEnv('protocol');
+		this.sslKey = config.getEnv('ssl_key');
+		this.sslCert = config.getEnv('ssl_cert');
 
 		this.externalHooks = externalHooks;
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.get('diagnostics.enabled') as boolean,
+			enabled: config.getEnv('diagnostics.enabled'),
 		};
 
 		if (telemetrySettings.enabled) {
-			const conf = config.get('diagnostics.config.frontend') as string;
+			const conf = config.getEnv('diagnostics.config.frontend');
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
@@ -303,31 +300,31 @@ class App {
 				oauth2: `${urlBaseWebhook}${this.restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
-				enabled: config.get('versionNotifications.enabled'),
-				endpoint: config.get('versionNotifications.endpoint'),
-				infoUrl: config.get('versionNotifications.infoUrl'),
+				enabled: config.getEnv('versionNotifications.enabled'),
+				endpoint: config.getEnv('versionNotifications.endpoint'),
+				infoUrl: config.getEnv('versionNotifications.infoUrl'),
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
 			personalizationSurveyEnabled:
-				config.get('personalization.enabled') && config.get('diagnostics.enabled'),
-			defaultLocale: config.get('defaultLocale'),
+				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
+			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				enabled:
-					config.get('userManagement.disabled') === false ||
-					config.get('userManagement.isInstanceOwnerSetUp') === true,
+					config.getEnv('userManagement.disabled') === false ||
+					config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
 				showSetupOnFirstLoad:
-					config.get('userManagement.disabled') === false &&
-					config.get('userManagement.isInstanceOwnerSetUp') === false &&
-					config.get('userManagement.skipInstanceOwnerSetup') === false,
+					config.getEnv('userManagement.disabled') === false &&
+					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
+					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
-			workflowTagsDisabled: config.get('workflowTagsDisabled'),
-			logLevel: config.get('logs.level'),
-			hiringBannerEnabled: config.get('hiringBanner.enabled'),
+			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
+			logLevel: config.getEnv('logs.level'),
+			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			templates: {
-				enabled: config.get('templates.enabled'),
-				host: config.get('templates.host'),
+				enabled: config.getEnv('templates.enabled'),
+				host: config.getEnv('templates.host'),
 			},
 		};
 	}
@@ -349,23 +346,23 @@ class App {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			enabled:
-				config.get('userManagement.disabled') === false ||
-				config.get('userManagement.isInstanceOwnerSetUp') === true,
+				config.getEnv('userManagement.disabled') === false ||
+				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
 			showSetupOnFirstLoad:
-				config.get('userManagement.disabled') === false &&
-				config.get('userManagement.isInstanceOwnerSetUp') === false &&
-				config.get('userManagement.skipInstanceOwnerSetup') === false,
+				config.getEnv('userManagement.disabled') === false &&
+				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
+				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
 
 		return this.frontendSettings;
 	}
 
 	async config(): Promise<void> {
-		const enableMetrics = config.get('endpoints.metrics.enable') as boolean;
+		const enableMetrics = config.getEnv('endpoints.metrics.enable');
 		let register: Registry;
 
 		if (enableMetrics) {
-			const prefix = config.get('endpoints.metrics.prefix') as string;
+			const prefix = config.getEnv('endpoints.metrics.prefix');
 			register = new promClient.Registry();
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
@@ -378,7 +375,7 @@ class App {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
+		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
 			'healthz',
@@ -394,7 +391,7 @@ class App {
 		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
+		const basicAuthActive = config.getEnv('security.basicAuth.active');
 		if (basicAuthActive) {
 			const basicAuthUser = (await GenericHelpers.getConfigValue(
 				'security.basicAuth.user',
@@ -419,7 +416,10 @@ class App {
 			this.app.use(
 				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 					// Skip basic auth for a few listed endpoints or when instance owner has been setup
-					if (authIgnoreRegex.exec(req.url) || config.get('userManagement.isInstanceOwnerSetUp')) {
+					if (
+						authIgnoreRegex.exec(req.url) ||
+						config.getEnv('userManagement.isInstanceOwnerSetUp')
+					) {
 						return next();
 					}
 					const realm = 'n8n - Editor UI';
@@ -465,7 +465,7 @@ class App {
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive = config.get('security.jwtAuth.active') as boolean;
+		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
 		if (jwtAuthActive) {
 			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
 				'security.jwtAuth.jwtHeader',
@@ -750,7 +750,7 @@ class App {
 
 				const { tags: tagIds } = req.body;
 
-				if (tagIds?.length && !config.get('workflowTagsDisabled')) {
+				if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
 					newWorkflow.tags = await Db.collections.Tag!.findByIds(tagIds, {
 						select: ['id', 'name'],
 					});
@@ -784,7 +784,7 @@ class App {
 					throw new ResponseHelper.ResponseError('Failed to save workflow');
 				}
 
-				if (tagIds && !config.get('workflowTagsDisabled')) {
+				if (tagIds && !config.getEnv('workflowTagsDisabled')) {
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
 						requestOrder: tagIds,
 					});
@@ -868,7 +868,7 @@ class App {
 					relations: ['tags'],
 				};
 
-				if (config.get('workflowTagsDisabled')) {
+				if (config.getEnv('workflowTagsDisabled')) {
 					delete query.relations;
 				}
 
@@ -928,7 +928,7 @@ class App {
 
 				let relations = ['workflow', 'workflow.tags'];
 
-				if (config.get('workflowTagsDisabled')) {
+				if (config.getEnv('workflowTagsDisabled')) {
 					relations = relations.filter((relation) => relation !== 'workflow.tags');
 				}
 
@@ -1038,8 +1038,8 @@ class App {
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
-				if (tags && !config.get('workflowTagsDisabled')) {
-					const tablePrefix = config.get('database.tablePrefix');
+				if (tags && !config.getEnv('workflowTagsDisabled')) {
+					const tablePrefix = config.getEnv('database.tablePrefix');
 					await TagHelpers.removeRelations(workflowId, tablePrefix);
 
 					if (tags.length) {
@@ -1051,7 +1051,7 @@ class App {
 					relations: ['tags'],
 				};
 
-				if (config.get('workflowTagsDisabled')) {
+				if (config.getEnv('workflowTagsDisabled')) {
 					delete options.relations;
 				}
 
@@ -1233,11 +1233,11 @@ class App {
 					req: express.Request,
 					res: express.Response,
 				): Promise<TagEntity[] | ITagWithCountDb[]> => {
-					if (config.get('workflowTagsDisabled')) {
+					if (config.getEnv('workflowTagsDisabled')) {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (req.query.withUsageCount === 'true') {
-						const tablePrefix = config.get('database.tablePrefix');
+						const tablePrefix = config.getEnv('database.tablePrefix');
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
@@ -1251,7 +1251,7 @@ class App {
 			`/${this.restEndpoint}/tags`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
-					if (config.get('workflowTagsDisabled')) {
+					if (config.getEnv('workflowTagsDisabled')) {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					const newTag = new TagEntity();
@@ -1274,7 +1274,7 @@ class App {
 			`/${this.restEndpoint}/tags/:id`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
-					if (config.get('workflowTagsDisabled')) {
+					if (config.getEnv('workflowTagsDisabled')) {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 
@@ -1303,11 +1303,11 @@ class App {
 			`/${this.restEndpoint}/tags/:id`,
 			ResponseHelper.send(
 				async (req: TagsRequest.Delete, res: express.Response): Promise<boolean> => {
-					if (config.get('workflowTagsDisabled')) {
+					if (config.getEnv('workflowTagsDisabled')) {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (
-						config.get('userManagement.isInstanceOwnerSetUp') === true &&
+						config.getEnv('userManagement.isInstanceOwnerSetUp') === true &&
 						req.user.globalRole.name !== 'owner'
 					) {
 						throw new ResponseHelper.ResponseError(
@@ -1503,10 +1503,17 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<object | void> => {
 					const packagesPath = pathJoin(__dirname, '..', '..', '..');
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+
+					try {
+						await promises.access(`${headersPath}.js`);
+					} catch (_) {
+						return; // no headers available
+					}
+
 					try {
 						return require(headersPath);
 					} catch (error) {
-						res.status(500).send('Failed to find headers file');
+						res.status(500).send('Failed to load headers file');
 					}
 				},
 			),
@@ -1706,11 +1713,13 @@ class App {
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
+				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
+					timezone,
 					true,
 				);
 
@@ -1718,6 +1727,7 @@ class App {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
+					timezone,
 				);
 
 				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1844,17 +1854,20 @@ class App {
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
+					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
 						mode,
+						timezone,
 					);
 
 					const options: OptionsWithUrl = {
@@ -1959,11 +1972,13 @@ class App {
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
+				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
+					timezone,
 					true,
 				);
 
@@ -1971,6 +1986,7 @@ class App {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
+					timezone,
 				);
 
 				const token = new csrf();
@@ -2099,17 +2115,20 @@ class App {
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
+					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
 						mode,
+						timezone,
 					);
 
 					const token = new csrf();
@@ -2232,7 +2251,7 @@ class App {
 
 					const executingWorkflowIds: string[] = [];
 
-					if (config.get('executions.mode') === 'queue') {
+					if (config.getEnv('executions.mode') === 'queue') {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 						executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 					}
@@ -2595,7 +2614,7 @@ class App {
 			`/${this.restEndpoint}/executions-current`,
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
-					if (config.get('executions.mode') === 'queue') {
+					if (config.getEnv('executions.mode') === 'queue') {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
@@ -2704,7 +2723,7 @@ class App {
 					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
 				}
 
-				if (config.get('executions.mode') === 'queue') {
+				if (config.getEnv('executions.mode') === 'queue') {
 					// Manual executions should still be stoppable, so
 					// try notifying the `activeExecutions` to stop it.
 					const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
@@ -2831,7 +2850,7 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
-		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
+		if (!config.getEnv('endpoints.disableProductionWebhooksOnMainProcess')) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
@@ -2926,11 +2945,11 @@ class App {
 			);
 		}
 
-		if (config.get('endpoints.disableUi') !== true) {
+		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-			const n8nPath = config.get('path');
+			const n8nPath = config.getEnv('path');
 
 			let readIndexFile = readFileSync(filePath, 'utf8');
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
@@ -2962,8 +2981,8 @@ class App {
 }
 
 export async function start(): Promise<void> {
-	const PORT = config.get('port');
-	const ADDRESS = config.get('listen_address');
+	const PORT = config.getEnv('port');
+	const ADDRESS = config.getEnv('listen_address');
 
 	const app = new App();
 
@@ -2987,7 +3006,7 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		const defaultLocale = config.get('defaultLocale');
+		const defaultLocale = config.getEnv('defaultLocale');
 
 		if (defaultLocale !== 'en') {
 			console.log(`Locale: ${defaultLocale}`);
@@ -2995,13 +3014,14 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();
-		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binarDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.get('security.basicAuth.active') as boolean,
+			basicAuthActive: config.getEnv('security.basicAuth.active'),
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
-			disableProductionWebhooksOnMainProcess:
-				config.get('endpoints.disableProductionWebhooksOnMainProcess') === true,
-			notificationsEnabled: config.get('versionNotifications.enabled') === true,
+			disableProductionWebhooksOnMainProcess: config.getEnv(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
 			versionCli: versions.cli,
 			systemInfo: {
 				os: {
@@ -3016,24 +3036,26 @@ export async function start(): Promise<void> {
 				},
 			},
 			executionVariables: {
-				executions_process: config.get('executions.process'),
-				executions_mode: config.get('executions.mode'),
-				executions_timeout: config.get('executions.timeout'),
-				executions_timeout_max: config.get('executions.maxTimeout'),
-				executions_data_save_on_error: config.get('executions.saveDataOnError'),
-				executions_data_save_on_success: config.get('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.get('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.get('executions.saveDataManualExecutions'),
-				executions_data_prune: config.get('executions.pruneData'),
-				executions_data_max_age: config.get('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
+				executions_process: config.getEnv('executions.process'),
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
-			deploymentType: config.get('deployment.type'),
+			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
 			n8n_multi_user_allowed:
-				config.get('userManagement.disabled') === false ||
-				config.get('userManagement.isInstanceOwnerSetUp') === true,
-			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
+				config.getEnv('userManagement.disabled') === false ||
+				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};
 
 		void Db.collections
