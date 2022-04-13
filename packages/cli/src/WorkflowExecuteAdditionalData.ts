@@ -1034,12 +1034,7 @@ export async function getBase(
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');
 
-	let encryptionKey: string;
-	try {
-		encryptionKey = await UserSettings.getEncryptionKey();
-	} catch (error) {
-		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-	}
+	const encryptionKey = await UserSettings.getEncryptionKey();
 
 	return {
 		credentialsHelper: new CredentialsHelper(encryptionKey),
