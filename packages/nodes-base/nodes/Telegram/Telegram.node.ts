@@ -121,6 +121,11 @@ export class Telegram implements INodeType {
 						description: 'Get up to date information about a chat.',
 					},
 					{
+						name: 'Get Administrators',
+						value: 'administrators',
+						description: 'Get the Administrators of a chat.',
+					},
+					{
 						name: 'Leave',
 						value: 'leave',
 						description: 'Leave a group, supergroup or channel.',
@@ -293,6 +298,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'administrators',
 							'deleteMessage',
 							'get',
 							'leave',
@@ -1900,7 +1906,16 @@ export class Telegram implements INodeType {
 					}
 
 				} else if (resource === 'chat') {
-					if (operation === 'get') {
+					if (operation === 'administrators') {
+						// ----------------------------------
+						//         chat:member
+						// ----------------------------------
+
+						endpoint = 'getChatAdministrators';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+					} else if (operation === 'get') {
 						// ----------------------------------
 						//         chat:get
 						// ----------------------------------
