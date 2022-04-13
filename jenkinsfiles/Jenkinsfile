@@ -3,7 +3,10 @@
 
 pipeline {
     agent {
-        label 'jnlp-hasura-n8n'
+        kubernetes {
+            yaml containers('docker-dind', 'kaniko', 'busybox', 'helm-base', 'kubectl')
+            inheritFrom 'default'
+        }
     }
     environment {
         ALIYUN_CREDS = credentials('aliyun-acr')
@@ -24,7 +27,7 @@ pipeline {
                 }
             }
             steps {
-                container ('tools') {
+                container ('docker') {
                     sh "docker login -u ${ALIYUN_CREDS_USR} -p ${ALIYUN_CREDS_PSW} registry.cn-shanghai.aliyuncs.com"
                     sh "cat Dockerfile"
                     sh "ls -l"
@@ -43,7 +46,7 @@ pipeline {
                 }
             }
             steps {
-                container ('tools') {
+                container ('kubectl') {
                     sh "mkdir -p ~/.kube"
                     sh "cp ${K8S_CONFIG} ~/.kube/config"
                     sh "kubectl get nodes"
@@ -64,7 +67,7 @@ pipeline {
                 }
             }
             steps {
-                container ('tools') {
+                container ('kubectl') {
                     sh "mkdir -p ~/.kube"
                     sh "cp ${K8S_CONFIG} ~/.kube/config"
                     sh "kubectl get nodes"
