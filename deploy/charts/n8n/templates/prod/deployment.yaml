@@ -32,7 +32,7 @@ kind: Deployment
 metadata:
   labels:
     app: prod-n8n
-  name: stging-n8n
+  name: prod-n8n
   namespace: prod
 spec:
   replicas: 1
