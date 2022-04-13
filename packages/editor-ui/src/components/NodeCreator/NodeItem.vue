@@ -37,7 +37,7 @@
 
 <script lang="ts">
 
-import { getNewNodePosition } from '@/views/canvasHelpers';
+import {getNewNodePosition, NODE_SIZE} from '@/views/canvasHelpers';
 import Vue from 'vue';
 
 import NodeIcon from '../NodeIcon.vue';
@@ -108,7 +108,7 @@ export default Vue.extend({
 				return;
 			}
 
-			const [x,y] = getNewNodePosition([], [event.pageX, event.pageY]);
+			const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
 
 			this.$data.draggablePosition = { x, y };
 		},
