@@ -339,13 +339,13 @@ export class NocoDB implements INodeType {
 					} else {
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
 							fieldName: string;
-							upload: boolean;
+							binaryData: boolean;
 							fieldValue?: string;
 							binaryProperty?: string;
 						}>;
 
 						for (const field of fields) {
-							if (!field.upload) {
+							if (!field.binaryData) {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
