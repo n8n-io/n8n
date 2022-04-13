@@ -43,9 +43,11 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	query = query || {};
 
+	const tokenType = (credentials.apiToken.toString().length > 40)?'xc-auth':'xc-token';
+
 	const options: OptionsWithUri = {
 		headers: {
-			'xc-auth': credentials.apiToken,
+			[tokenType]: credentials.apiToken,
 		},
 		method,
 		body,
