@@ -2,7 +2,7 @@
 	<div class="container" v-if="workflowName">
 		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
 			<template v-slot="{ value }">
-				<WorkflowNameShort
+				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
@@ -19,7 +19,7 @@
 							class="name"
 						/>
 					</template>
-				</WorkflowNameShort>
+				</ShortenName>
 			</template>
 		</BreakpointsObserver>
 
@@ -81,7 +81,7 @@ import mixins from "vue-typed-mixins";
 import { mapGetters } from "vuex";
 import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
 
-import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
+import ShortenName from "@/components/ShortenName.vue";
 import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
@@ -105,7 +105,7 @@ export default mixins(workflowHelpers).extend({
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
-		WorkflowNameShort,
+		ShortenName,
 		WorkflowActivator,
 		SaveButton,
 		TagsDropdown,

@@ -33,7 +33,7 @@ import {
 	IEvent,
 } from './EventInterface';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
 import { moveMessagePortToContext } from 'worker_threads';

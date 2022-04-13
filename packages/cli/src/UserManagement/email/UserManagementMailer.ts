@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import { GenericHelpers } from '../..';
-import config = require('../../../config');
+import * as config from '../../../config';
 import {
 	InviteEmailData,
 	PasswordResetData,
@@ -45,7 +45,7 @@ export class UserManagementMailer {
 
 	constructor() {
 		// Other implementations can be used in the future.
-		if (config.get('userManagement.emails.mode') === 'smtp') {
+		if (config.getEnv('userManagement.emails.mode') === 'smtp') {
 			this.mailer = new NodeMailer();
 		}
 	}

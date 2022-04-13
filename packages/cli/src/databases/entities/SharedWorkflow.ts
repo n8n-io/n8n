@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { IsDate, IsOptional } from 'class-validator';
 
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType } from '../../index';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
@@ -17,7 +17,7 @@ import { Role } from './Role';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const map: { [key in DatabaseType]: string } = {
 		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
