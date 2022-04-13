@@ -1,17 +1,16 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { hashSync, genSaltSync } from 'bcryptjs';
-import * as express from 'express';
+import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { validateEntity } from '../../GenericHelpers';
 import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
-import { sanitizeUser, validatePassword } from '../UserManagementHelper';
+import { hashPassword, sanitizeUser, validatePassword } from '../UserManagementHelper';
 
 export function ownerNamespace(this: N8nApp): void {
 	/**
@@ -24,7 +23,7 @@ export function ownerNamespace(this: N8nApp): void {
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
 
-			if (config.get('userManagement.isInstanceOwnerSetUp')) {
+			if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to claim instance ownership failed because instance owner already exists',
 					{
@@ -74,7 +73,7 @@ export function ownerNamespace(this: N8nApp): void {
 				email,
 				firstName,
 				lastName,
-				password: hashSync(validPassword, genSaltSync(10)),
+				password: await hashPassword(validPassword),
 			});
 
 			await validateEntity(owner);

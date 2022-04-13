@@ -12,7 +12,7 @@ import {
 	apiRequest,
 } from '../../../transport';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 import {
 	capitalCase,
@@ -54,7 +54,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 		body.preferredName = this.getNodeParameter('preferredName', index) as string;
 		body.ssn = this.getNodeParameter('ssn', index) as string;
 	} else {
-		
+
 		if (!Object.keys(updateFields).length) {
 			throw new NodeOperationError(this.getNode(), 'At least one fields must be updated');
 		}

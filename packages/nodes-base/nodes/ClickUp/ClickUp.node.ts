@@ -101,7 +101,7 @@ import {
 	IList,
 } from './ListInterface';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {

@@ -2,16 +2,24 @@
 
 ## Base text
 
-### Interpolation
+### Pluralization
 
-Certain base text strings use [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) to allow for a variable to be passed in, signalled by curly braces:
+Certain base text strings accept [singular and plural versions](https://kazupon.github.io/vue-i18n/guide/pluralization.html) separated by a `|` character:
 
 ```json
 {
-	"stopExecution": {
-		"message": "The execution with the ID {activeExecutionId} got stopped!",
-		"title": "Execution stopped"
-	}
+	"tagsView.inUse": "{count} workflow | {count} workflows",
+}
+```
+
+### Interpolation
+
+Certain base text strings use [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) to allow for a variable between curly braces:
+
+```json
+{
+	"stopExecution.message": "The execution with the ID {activeExecutionId} got stopped!",
+	"stopExecution.title": "Execution stopped"
 }
 ```
 
@@ -19,10 +27,8 @@ When translating a string containing an interpolated variable, leave the variabl
 
 ```json
 {
-	"stopExecution": {
-		"message": "Die Ausführung mit der ID {activeExecutionId} wurde gestoppt",
-		"title": "Execution stopped"
-	}
+	"stopExecution.message": "Die Ausführung mit der ID {activeExecutionId} wurde gestoppt",
+	"stopExecution.title": "Execution stopped"
 }
 ```
 
@@ -32,18 +38,12 @@ As a convenience, the base text file may contain the special key `reusableBaseTe
 
 ```json
 {
-	"reusableBaseText": {
-		"save": "🇩🇪 Save",
-	},
-	"duplicateWorkflowDialog": {
-		"enterWorkflowName": "🇩🇪 Enter workflow name",
-		"save": "@:reusableBaseText.save",
-	},
-	"saveButton": {
-		"save": "@:reusableBaseText.save",
-		"saving": "🇩🇪 Saving",
-		"saved": "🇩🇪 Saved",
-	},
+	"reusableBaseText.save": "🇩🇪 Save",
+	"duplicateWorkflowDialog.enterWorkflowName": "🇩🇪 Enter workflow name",
+	"duplicateWorkflowDialog.save": "@:reusableBaseText.save",
+	"saveButton.save": "@:reusableBaseText.save",
+	"saveButton.saving": "🇩🇪 Saving",
+	"saveButton.saved": "🇩🇪 Saved",
 }
 ```
 
@@ -92,23 +92,27 @@ Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported 
 
 ```json
 {
-	"reusableDynamicText": {
-		"oauth2": {
-			"clientId": "🇩🇪 Client ID",
-			"clientSecret": "🇩🇪 Client Secret",
-		}
-	}
+	"reusableDynamicText.oauth2.clientId": "🇩🇪 Client ID",
+	"reusableDynamicText.oauth2.clientSecret": "🇩🇪 Client Secret",
 }
 ```
 
 ### Special cases
 
-`eventTriggerDescription` is a dynamic node property that is not part of node parameters. To translate it, set the `eventTriggerDescription` key at the root level of the `nodeView` property in the node translation file.
+`eventTriggerDescription` and `activationMessage` are dynamic node properties that are not part of node parameters. To translate them, set the key at the root level of the `nodeView` property in the node translation file.
+
+Webhook node:
 
 ```json
 {
-	"nodeView": {
-		"eventTriggerDescription": "🇩🇪 Waiting for you to call the Test URL"
-	}
+	"nodeView.eventTriggerDescription": "🇩🇪 Waiting for you to call the Test URL",
+}
+```
+
+Cron node:
+
+```json
+{
+	"nodeView.activationMessage": "🇩🇪 'Your cron trigger will now trigger executions on the schedule you have defined."
 }
 ```
