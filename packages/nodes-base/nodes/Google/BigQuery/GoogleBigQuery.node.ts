@@ -207,14 +207,22 @@ export class GoogleBigQuery implements INodeType {
 				}
 
 				body.rows = rows;
-				responseData = await googleApiRequest.call(
-					this,
-					'POST',
-					`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
-					body,
-				);
-				returnData.push(responseData);
 
+				try {
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
+						body,
+					);
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+					} else {
+						throw error;
+					}
+				}
 			} else if (operation === 'getAll') {
 
 				// ----------------------------------
@@ -241,40 +249,48 @@ export class GoogleBigQuery implements INodeType {
 				}
 
 				for (let i = 0; i < length; i++) {
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					Object.assign(qs, options);
+					try {
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						Object.assign(qs, options);
 
-					// if (qs.useInt64Timestamp !== undefined) {
-					// 	qs.formatOptions = {
-					// 		useInt64Timestamp: qs.useInt64Timestamp,
-					// 	};
-					// 	delete qs.useInt64Timestamp;
-					// }
+						// if (qs.useInt64Timestamp !== undefined) {
+						// 	qs.formatOptions = {
+						// 		useInt64Timestamp: qs.useInt64Timestamp,
+						// 	};
+						// 	delete qs.useInt64Timestamp;
+						// }
 
-					if (qs.selectedFields) {
-						fields = (qs.selectedFields as string).split(',');
-					}
+						if (qs.selectedFields) {
+							fields = (qs.selectedFields as string).split(',');
+						}
 
-					if (returnAll) {
-						responseData = await googleApiRequestAllItems.call(
-							this,
-							'rows',
-							'GET',
-							`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
-							{},
-							qs,
-						);
-						returnData.push.apply(returnData, (simple) ? simplify(responseData, fields) : responseData);
-					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
-							{},
-							qs,
-						);
-						returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
+						if (returnAll) {
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'rows',
+								'GET',
+								`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+								{},
+								qs,
+							);
+							returnData.push.apply(returnData, (simple) ? simplify(responseData, fields) : responseData);
+						} else {
+							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+								{},
+								qs,
+							);
+							returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
 				}
 			}
