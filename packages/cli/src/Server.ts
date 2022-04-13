@@ -168,7 +168,11 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
+import {
+	getInstanceBaseUrl,
+	getUserById,
+	isEmailSetUp,
+} from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -2086,6 +2090,18 @@ class App {
 							503,
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
+					}
+
+					// If the N8N_BASIC_AUTH_ACTIVE and rest/oauth2-credential/callback url is set as public url
+					// then the user will be unavaliable inside request
+					if (req.user === undefined) {
+						const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
+						let user: User;
+						if (cookieContents) {
+							// If logged in, get the user from the cookie
+							user = await resolveJwt(cookieContents);
+							req.user = await getUserById(user.id);
+						}
 					}
 
 					const credential = await getCredentialForUser(state.cid, req.user);
