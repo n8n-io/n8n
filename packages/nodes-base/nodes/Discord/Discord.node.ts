@@ -128,7 +128,7 @@ export class Discord implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const nodeInput = this.getInputData()[0].json as any,
+		const nodeInput = this.getInputData()[0].json,
 			returnData: IDataObject[] = [];
 
 		const body: DiscordWebhook = {};
