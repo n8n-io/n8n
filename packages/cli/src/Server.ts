@@ -1700,11 +1700,7 @@ class App {
 				try {
 					encryptionKey = await UserSettings.getEncryptionKey();
 				} catch (error) {
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-						undefined,
-						500,
-					);
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1838,11 +1834,7 @@ class App {
 					try {
 						encryptionKey = await UserSettings.getEncryptionKey();
 					} catch (error) {
-						throw new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							500,
-						);
+						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1955,11 +1947,7 @@ class App {
 				try {
 					encryptionKey = await UserSettings.getEncryptionKey();
 				} catch (error) {
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-						undefined,
-						500,
-					);
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -2095,11 +2083,7 @@ class App {
 					try {
 						encryptionKey = await UserSettings.getEncryptionKey();
 					} catch (error) {
-						throw new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							500,
-						);
+						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
