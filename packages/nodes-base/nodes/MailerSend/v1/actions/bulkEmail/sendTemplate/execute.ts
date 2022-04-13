@@ -18,7 +18,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 	let body: IDataObject[];
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'bulk-email';
+	const endpoint = '/bulk-email';
 
 	// Create a copy of items
 	const items: INodeExecutionData[] = this.getInputData().slice();
@@ -96,9 +96,7 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 		const response = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 		returnItems.push({
-			json: {
-				response,
-			},
+			json: response,
 		});
 
 		currentRunIndex += 1;

@@ -17,9 +17,9 @@ export async function getBulkEmail(this: IExecuteFunctions, index: number): Prom
 	const requestMethod = 'GET';
 
 	const bulkEmailID = this.getNodeParameter('bulkEmailID', index) as string;
-	const endpoint = `bulk-email/${bulkEmailID}`;
+	const endpoint = `/bulk-email/${bulkEmailID}`;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData.data);
 }

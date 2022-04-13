@@ -19,7 +19,7 @@ const options = {
 export async function sendTemplate(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'email';
+	const endpoint = '/email';
 
 	const returnItems: IDataObject[] = [];
 
@@ -81,6 +81,9 @@ export async function sendTemplate(this: IExecuteFunctions, index: number): Prom
 	}
 
 	const response = await apiRequest.call(this, requestMethod, endpoint, body, qs, options);
+	if (response.body.length === 0){
+		response.body = { success: true };
+	}
 
 	returnItems.push({
 		json: {

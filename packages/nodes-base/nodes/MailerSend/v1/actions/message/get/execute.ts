@@ -17,9 +17,9 @@ export async function getMessage(this: IExecuteFunctions, index: number): Promis
 	const requestMethod = 'GET';
 
 	const messageID = this.getNodeParameter('messageID', index) as string;
-	const endpoint = `messages/${messageID}`;
+	const endpoint = `/messages/${messageID}`;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData.data);
 }

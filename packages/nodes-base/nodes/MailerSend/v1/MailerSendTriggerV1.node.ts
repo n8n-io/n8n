@@ -127,7 +127,7 @@ export class MailerSendTriggerV1 implements INodeType {
 		loadOptions: {
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const response = await apiRequest.call(this, 'GET', 'domains', {});
+				const response = await apiRequest.call(this, 'GET', '/domains', {});
 				const { data: domains } = response;
 				for (const domain of domains) {
 					returnData.push({
@@ -153,7 +153,7 @@ export class MailerSendTriggerV1 implements INodeType {
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = `webhooks/${webhookData.webhookId}`;
+				const endpoint = `/webhooks/${webhookData.webhookId}`;
 
 				try {
 					await apiRequest.call(this, 'GET', endpoint, {});
@@ -181,7 +181,7 @@ export class MailerSendTriggerV1 implements INodeType {
 				const events = this.getNodeParameter('events', []);
 				const domainId = this.getNodeParameter('domainId') as string;
 
-				const endpoint = 'webhooks';
+				const endpoint = '/webhooks';
 
 				const body = {
 					name,
@@ -218,7 +218,7 @@ export class MailerSendTriggerV1 implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `webhooks/${webhookData.webhookId}`;
+					const endpoint = `/webhooks/${webhookData.webhookId}`;
 
 					try {
 						await apiRequest.call(this, 'DELETE', endpoint);

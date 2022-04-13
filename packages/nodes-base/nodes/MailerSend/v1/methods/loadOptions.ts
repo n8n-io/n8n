@@ -9,7 +9,7 @@ import {
 
 export async function getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await apiRequest.call(this, 'GET', 'templates', {});
+	const response = await apiRequest.call(this, 'GET', '/templates', {});
 	const { data : templates } = response;
 	for (const template of templates) {
 		returnData.push({

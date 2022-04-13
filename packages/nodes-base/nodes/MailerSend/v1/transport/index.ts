@@ -36,7 +36,7 @@ import {
 	}
 
 	const options: IHttpRequestOptions = {
-		url: `https://api.mailersend.com/v1/${path}`,
+		url: `https://api.mailersend.com/v1${path}`,
 		headers: {
 			'Accept': 'application/json',
 			'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ import {
 		Object.assign(options, option);
 	}
 	try {
-		return this.helpers.httpRequestWithAuthentication.call(this, 'mailerSendApi', options);
+		return this.helpers.requestWithAuthentication.call(this, 'mailerSendApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -67,10 +67,10 @@ export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsF
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData.data);
 		query.page++;
 	} while (
-		responseData.length !== 0
+		responseData.data.length !== 0
 	);
 	return returnData;
 }

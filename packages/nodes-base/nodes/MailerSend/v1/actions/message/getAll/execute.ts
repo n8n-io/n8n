@@ -16,7 +16,7 @@ export async function getAllMessages(this: IExecuteFunctions, index: number): Pr
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
 
-	const endpoint = `messages`;
+	const endpoint = `/messages`;
 
 	const responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 

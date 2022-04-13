@@ -20,7 +20,7 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	// const body = {} as IDataObject;
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'email';
+	const endpoint = '/email';
 
 	const returnItems: IDataObject[] = [];
 
@@ -86,7 +86,10 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 		body.variables = variablesList;
 	}
 
-	const response = await apiRequest.call(this, requestMethod, endpoint, body, qs, options);
+	let response = await apiRequest.call(this, requestMethod, endpoint, body, qs, options);
+	if (response.length === 0){
+		response = { success: true };
+	}
 
 	returnItems.push({
 		json: {
