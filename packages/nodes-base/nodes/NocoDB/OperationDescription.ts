@@ -11,8 +11,30 @@ export const operationFields: INodeProperties[] = [
 		name: 'projectId',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					'1',
+				]
+			},
+		},
 		required: true,
 		description: 'The ID of the project',
+	},
+	{
+		displayName: 'Project Name',
+		name: 'projectName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					'2',
+				]
+			},
+		},
+		required: true,
+		description: 'The NAME of the project',
 	},
 	{
 		displayName: 'Table',
