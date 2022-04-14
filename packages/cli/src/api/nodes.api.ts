@@ -104,3 +104,48 @@ nodesController.delete(
 		void (await Db.collections.InstalledPackages!.remove(installedPackage));
 	}),
 );
+
+// Update a package
+nodesController.patch(
+	'/',
+	ResponseHelper.send(async (req: NodeRequest.Update) => {
+		const installedPackage = await Db.collections.InstalledPackages!.findOne({
+			where: {
+				packageName: req.body.name,
+			},
+			relations: ['installedNodes'],
+		});
+
+		if (!installedPackage) {
+			throw new ResponseHelper.ResponseError('Package is not installed', undefined, 400);
+		}
+
+		try {
+			const installedNodes = await LoadNodesAndCredentials().updateNpmModule(
+				req.body.name,
+				installedPackage.installedNodes,
+			);
+
+			// Inform the connected frontends that new nodes are available
+			installedPackage.installedNodes.forEach((installedNode) => {
+				const pushInstance = Push.getInstance();
+				pushInstance.send('removeNodeType', {
+					name: installedNode.type,
+					version: installedNode.latestVersion,
+				});
+			});
+
+			installedNodes.forEach((nodeData) => {
+				const pushInstance = Push.getInstance();
+				pushInstance.send('reloadNodeType', nodeData);
+			});
+		} catch (error) {
+			throw new ResponseHelper.ResponseError(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+				`Error updating package "${req.body.name}": ${error.message}`,
+				undefined,
+				500,
+			);
+		}
+	}),
+);
