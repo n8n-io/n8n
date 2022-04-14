@@ -12,7 +12,7 @@ export class Interval implements INodeType {
 		displayName: 'Interval',
 		name: 'interval',
 		icon: 'fa:hourglass',
-		group: ['trigger'],
+		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow in a given interval',
 		eventTriggerDescription: '',
