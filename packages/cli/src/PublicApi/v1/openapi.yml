@@ -14,6 +14,9 @@ externalDocs:
   description: Find out more about Swagger
   url: http://swagger.io
 servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/RicardoE105/n8n/1.0.0
   - url: /api/v1
 tags:
 - name: users
@@ -29,21 +32,19 @@ paths:
       tags:
       - users
       summary: Retrieve all users
-      description: Retrieve all users from your instance. Only available for the instance owner.
+      description: Retrieve all users from your instance. Only available for the instance owner
       parameters:
       - name: limit
         in: query
         description: The maximum number of items to return
         required: false
-        style: form
-        explode: true
         schema:
           type: number
           example: 100
           default: 100
       - name: cursor
         in: query
-        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response_metadata. Default value fetches the first "page" of the collection. See pagination for more detail.
+        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail
         required: false
         style: form
         explode: true
@@ -55,16 +56,18 @@ paths:
         required: false
         style: form
         explode: true
+        description: Whether to include the role information the user object
         schema:
           type: boolean
-          example: true
+          example: false
+          default: false
       responses:
         "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/inline_response_200'
+                $ref: '#/components/schemas/UserDetailsResponse'
         "401":
           description: Unauthorized
           content:
@@ -84,7 +87,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Users'
+              $ref: '#/components/schemas/UserInformation'
         required: true
       responses:
         "200":
@@ -92,19 +95,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Users'
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInformation'
         "401":
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        "422":
-          description: Unprocessable Entity
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InputValidationError'
   /users/{identifier}:
     get:
       x-eov-operation-id: getUser
@@ -119,16 +118,12 @@ paths:
         in: path
         description: The ID or email of the user
         required: true
-        style: simple
-        explode: false
         schema:
           type: string
           format: identifier
       - name: includeRole
         in: query
         required: false
-        style: form
-        explode: true
         schema:
           type: boolean
           example: true
@@ -138,7 +133,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserInformation'
         "401":
           description: Unauthorized
           content:
@@ -158,8 +153,6 @@ paths:
         in: path
         description: The name that needs to be deleted
         required: true
-        style: simple
-        explode: false
         schema:
           type: string
           format: identifier
@@ -167,21 +160,21 @@ paths:
         in: query
         description: ID of the user to transfer workflows and credentials to.
         required: false
-        style: form
-        explode: true
         schema:
           type: string
       - name: includeRole
         in: query
         required: false
-        style: form
-        explode: true
         schema:
           type: boolean
           example: true
       responses:
         "200":
-          description: User deleted successfully
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInformation'
         "401":
           description: Unauthorized
           content:
@@ -192,19 +185,6 @@ paths:
           description: User not found
 components:
   schemas:
-    InputValidationError:
-      required:
-      - code
-      - description
-      - message
-      type: object
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-        errors:
-          $ref: '#/components/schemas/Errors'
     Error:
       required:
       - code
@@ -218,15 +198,7 @@ components:
           type: string
         description:
           type: string
-    Errors:
-      type: array
-      items:
-        $ref: '#/components/schemas/Error'
-    Users:
-      type: array
-      items:
-        $ref: '#/components/schemas/User'
-    User:
+    UserInformation:
       required:
       - email
       type: object
@@ -251,7 +223,7 @@ components:
           description: User's last name
           readOnly: true
           example: doe
-        pending:
+        isPending:
           type: boolean
           description: Whether the user finished setting up the invitation or not
           readOnly: true
@@ -265,18 +237,45 @@ components:
           description: Last time the user was updaded
           format: date-time
           readOnly: true
-    inline_response_200:
+        globalRole:
+          $ref: '#/components/schemas/RoleInformation'
+    UserDetailsResponse:
       type: object
       properties:
-        users:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/User'
+            $ref: '#/components/schemas/UserInformation'
         nextCursor:
           type: string
           description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
           nullable: true
           example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+    RoleInformation:
+      type: object
+      properties:
+        id:
+          type: number
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          example: owner
+          readOnly: true
+        scope:
+          type: string
+          readOnly: true
+          example: global
+        createdAt:
+          type: string
+          description: Time the role was created
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          description: Last time the role was updaded
+          format: date-time
+          readOnly: true
   responses:
     NotFound:
       description: The specified resource was not found
@@ -296,12 +295,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-    UnprocessableEntity:
-      description: Unprocessable Entity
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/InputValidationError'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
