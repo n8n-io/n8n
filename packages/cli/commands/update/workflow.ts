@@ -72,8 +72,7 @@ export class UpdateWorkflowCommand extends Command {
 				findQuery.active = true;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			await Db.collections.Workflow!.update(findQuery, updateQuery);
+			await Db.collections.Workflow.update(findQuery, updateQuery);
 			console.info('Done');
 		} catch (e) {
 			console.error('Error updating database. See log messages for details.');

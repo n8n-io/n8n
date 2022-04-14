@@ -1,3 +1,4 @@
+/* eslint-disable import/no-mutable-exports */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
@@ -28,18 +29,8 @@ import { postgresMigrations } from './databases/postgresdb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
 
-export const collections: IDatabaseCollections = {
-	Credentials: null,
-	Execution: null,
-	Workflow: null,
-	Webhook: null,
-	Tag: null,
-	Role: null,
-	User: null,
-	SharedCredentials: null,
-	SharedWorkflow: null,
-	Settings: null,
-};
+export let isInitialized = false;
+export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
 
@@ -201,6 +192,8 @@ export async function init(
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
+
+	isInitialized = true;
 
 	return collections;
 }
