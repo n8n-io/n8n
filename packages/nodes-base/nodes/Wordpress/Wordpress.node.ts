@@ -171,6 +171,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.sticky) {
 							body.sticky = additionalFields.sticky as boolean;
 						}
+						if (additionalFields.template) {
+							body.template = additionalFields.template as string;
+						}
 						if (additionalFields.categories) {
 							body.categories = additionalFields.categories as number[];
 						}
@@ -215,6 +218,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.sticky) {
 							body.sticky = updateFields.sticky as boolean;
+						}
+						if (updateFields.template) {
+							body.template = updateFields.template as string;
 						}
 						if (updateFields.categories) {
 							body.categories = updateFields.categories as number[];
