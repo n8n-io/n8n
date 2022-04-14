@@ -38,7 +38,7 @@ export class Discord implements INodeType {
 			},
 			{
 				displayName: 'Content',
-				name: 'content',
+				name: 'text',
 				type: 'string',
 				typeOptions: {
 					maxValue: 2000,
@@ -56,32 +56,17 @@ export class Discord implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Username',
-						name: 'username',
-						type: 'string',
-						default: '',
-						required: false,
-						placeholder: 'User',
-					},
-					{
-						displayName: 'Components',
-						name: 'components',
+						displayName: 'Allowed Mentions',
+						name: 'allowedMentions',
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
 					},
 					{
-						displayName: 'TTS',
-						name: 'tts',
-						type: 'boolean',
-						default: false,
-						required: false,
-						description: 'Should this message be sent as a Text To Speech message?',
-					},
-					{
-						displayName: 'Flags',
-						name: 'flags',
-						type: 'number',
+						displayName: 'Attachments',
+						name: 'attachments',
+						type: 'json',
+						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
 					},
 					{
@@ -92,8 +77,8 @@ export class Discord implements INodeType {
 						required: false,
 					},
 					{
-						displayName: 'Attachments',
-						name: 'attachments',
+						displayName: 'Components',
+						name: 'components',
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
@@ -107,10 +92,9 @@ export class Discord implements INodeType {
 						required: false,
 					},
 					{
-						displayName: 'Allowed Mentions',
-						name: 'allowedMentions',
-						type: 'json',
-						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+						displayName: 'Flags',
+						name: 'flags',
+						type: 'number',
 						default: '',
 					},
 					{
@@ -119,6 +103,22 @@ export class Discord implements INodeType {
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
+					},
+					{
+						displayName: 'Username',
+						name: 'username',
+						type: 'string',
+						default: '',
+						required: false,
+						placeholder: 'User',
+					},
+					{
+						displayName: 'TTS',
+						name: 'tts',
+						type: 'boolean',
+						default: false,
+						required: false,
+						description: 'Should this message be sent as a Text To Speech message?',
 					},
 				],
 			},
@@ -131,20 +131,20 @@ export class Discord implements INodeType {
 		const nodeInput = this.getInputData()[0].json,
 			returnData: IDataObject[] = [];
 
-		const body: DiscordWebhook = {};
+		let body: DiscordWebhook = {};
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
 		if (!webhookUri) throw Error('Webhook uri is required.');
 
-		body.content =
-			nodeInput['content'] ||
-			(this.getNodeParameter('content', 0, '') as string);
-
 		const items = this.getInputData();
-		const length = items.length as number;
+		const length = items.length as number
 		for (let i = 0; i < length; i++) {
+			body = {};
+			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
+			body.content = this.getNodeParameter('text', i) as string;
 			const options = this.getNodeParameter('options', i) as IDataObject;
+
 			if (!body.content && !options.embeds) {
 				throw new Error('Either content or embeds must be set.');
 			}
@@ -167,11 +167,8 @@ export class Discord implements INodeType {
 				try {
 					//@ts-expect-error
 					body.components = JSON.parse(options.components);
-					// if (!Array.isArray(options.components)) {
-					// 	throw new Error('components must be an array of components.');
-					// }
 				} catch (e) {
-					throw new Error('components must be valid JSON.');
+					throw new Error('Components must be valid JSON.');
 				}
 			}
 
