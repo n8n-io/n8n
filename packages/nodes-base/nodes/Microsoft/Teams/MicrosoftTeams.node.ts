@@ -141,16 +141,10 @@ export class MicrosoftTeams implements INodeType {
 				}
 				const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
 				for (const group of value) {
-					let displayName = group.displayName;
-					if (group.mail !== null && group.mail !== undefined) {
-						displayName = `${group.displayName} (${group.mail})`;
-					}
-					if (!displayName || displayName === '') {
-						displayName = group.id;
-					}
 					returnData.push({
-						name: displayName,
+						name: group.displayName || group.mail || group.id,
 						value: group.id,
+						description: group.mail,
 					});
 				}
 				return returnData;

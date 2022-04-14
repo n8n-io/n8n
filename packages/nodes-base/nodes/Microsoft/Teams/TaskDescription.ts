@@ -74,7 +74,7 @@ export const taskFields: INodeProperties[] = [
 			{
 				name: 'My Groups',
 				value: 'mine',
-				description: 'Only load groups that account is member of.',
+				description: 'Only load groups that account is member of',
 			},
 		],
 	},
@@ -85,7 +85,7 @@ export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Group ID',
+		displayName: 'Group',
 		name: 'groupId',
 		required: true,
 		type: 'options',
@@ -106,10 +106,10 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group ID',
+		description: 'Group',
 	},
 	{
-		displayName: 'Plan ID',
+		displayName: 'Plan',
 		name: 'planId',
 		required: true,
 		type: 'options',
@@ -130,10 +130,10 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The plan for the task to belong to.',
+		description: 'The plan for the task to belong to',
 	},
 	{
-		displayName: 'Bucket ID',
+		displayName: 'Bucket',
 		name: 'bucketId',
 		required: true,
 		type: 'options',
@@ -154,7 +154,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The bucket for the task to belong to.',
+		description: 'The bucket for the task to belong to',
 	},
 	{
 		displayName: 'Title',
@@ -172,7 +172,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title of the task.',
+		description: 'Title of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -202,7 +202,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Who the task should be assigned to.',
+				description: 'Who the task should be assigned to',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -233,7 +233,7 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
+				description: 'Percentage of task completion. When set to 100, the task is considered completed',
 			},
 		],
 	},
@@ -257,7 +257,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -279,7 +278,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -316,7 +314,7 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group',
 		name: 'groupId',
 		required: true,
 		type: 'options',
@@ -337,10 +335,9 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group ID',
 	},
 	{
-		displayName: 'Member ID',
+		displayName: 'Member',
 		name: 'memberId',
 		required: false,
 		type: 'options',
@@ -364,10 +361,9 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Member ID',
 	},
 	{
-		displayName: 'Plan ID',
+		displayName: 'Plan',
 		name: 'planId',
 		required: false,
 		type: 'options',
@@ -391,7 +387,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Return All',
@@ -431,7 +426,7 @@ export const taskFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'How many results to return.',
 	},
 
@@ -484,7 +479,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Who the task should be assigned to.',
+				description: 'Who the task should be assigned to',
 			},
 			{
 				displayName: 'Bucket ID',
@@ -497,7 +492,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The bucket for the task to belong to.',
+				description: 'The bucket for the task to belong to',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -517,7 +512,6 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Group ID',
 			},
 			{
 				displayName: 'Labels',
@@ -554,14 +548,14 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The plan for the task to belong to.',
+				description: 'The plan for the task to belong to',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the task.',
+				description: 'Title of the task',
 			},
 		],
 	},
