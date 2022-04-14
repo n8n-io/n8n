@@ -114,6 +114,13 @@ export interface ITagDb {
 	updatedAt: Date;
 }
 
+export interface ITagToImport {
+	id: string | number;
+	name: string;
+	createdAt?: string | Date;
+	updatedAt?: string | Date;
+}
+
 export type UsageCount = {
 	usageCount: number;
 };

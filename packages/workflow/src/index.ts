@@ -13,5 +13,4 @@ export * from './Workflow';
 export * from './WorkflowDataProxy';
 export * from './WorkflowErrors';
 export * from './WorkflowHooks';
-export * from './WorkflowHelpers';
 export { LoggerProxy, NodeHelpers, ObservableObject };

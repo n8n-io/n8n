@@ -10,19 +10,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Command, flags } from '@oclif/command';
 
-import { INode, INodeCredentialsDetails, ITag, LoggerProxy, setTagsForImport } from 'n8n-workflow';
+import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
-import { Db, ICredentialsDb } from '../../src';
+import { Db, ICredentialsDb, ITagToImport } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
 import { TagEntity } from '../../src/databases/entities/TagEntity';
+import { setTagsForImport } from '../../src/TagHelpers';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -115,9 +116,9 @@ export class ImportWorkflowsCommand extends Command {
 
 						// Import tags
 						await setTagsForImport(
-							workflow as { tags: ITag[] },
-							tags as ITag[],
-							async (name: string): Promise<ITag> => {
+							workflow as { tags: ITagToImport[] },
+							tags as ITagToImport[],
+							async (name: string): Promise<ITagToImport> => {
 								const tag = new TagEntity();
 								tag.name = name;
 								return this.transactionManager.save<TagEntity>(tag);
