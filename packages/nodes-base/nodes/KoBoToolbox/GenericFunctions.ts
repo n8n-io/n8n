@@ -12,7 +12,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 
 export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;

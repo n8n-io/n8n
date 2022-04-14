@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.171.1",
+  "version": "0.172.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -31,8 +31,8 @@
     "start:windows": "cd bin && n8n",
     "test": "npm run test:sqlite",
     "test:sqlite": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=sqlite; jest",
-    "test:postgres": "export DB_TYPE=postgresdb && jest",
-    "test:mysql": "export DB_TYPE=mysqldb && jest",
+    "test:postgres": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=postgresdb && jest",
+    "test:mysql": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=mysqldb && jest",
     "watch": "tsc --watch",
     "typeorm": "ts-node ../../node_modules/typeorm/cli.js"
   },
@@ -89,7 +89,7 @@
     "ts-jest": "^27.1.3",
     "ts-node": "^8.9.1",
     "tslint": "^6.1.2",
-    "typescript": "~4.3.5"
+    "typescript": "~4.6.0"
   },
   "dependencies": {
     "@oclif/command": "^1.5.18",
@@ -125,10 +125,10 @@
     "lodash.get": "^4.4.2",
     "lodash.merge": "^4.6.2",
     "mysql2": "~2.3.0",
-    "n8n-core": "~0.112.0",
-    "n8n-editor-ui": "~0.138.0",
-    "n8n-nodes-base": "~0.169.1",
-    "n8n-workflow": "~0.94.0",
+    "n8n-core": "~0.113.0",
+    "n8n-editor-ui": "~0.139.0",
+    "n8n-nodes-base": "~0.170.0",
+    "n8n-workflow": "~0.95.0",
     "nodemailer": "^6.7.1",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",

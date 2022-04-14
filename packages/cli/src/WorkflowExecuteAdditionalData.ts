@@ -39,7 +39,7 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import * as config from '../config';
+import config from '../config';
 import {
 	ActiveExecutions,
 	CredentialsHelper,
@@ -68,7 +68,7 @@ import {
 import { whereClause } from './WorkflowHelpers';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -172,8 +172,8 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		Logger.verbose('Pruning execution data from database');
 
 		throttling = true;
-		const timeout = config.get('executions.pruneDataTimeout') as number; // in seconds
-		const maxAge = config.get('executions.pruneDataMaxAge') as number; // in h
+		const timeout = config.getEnv('executions.pruneDataTimeout'); // in seconds
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
@@ -182,9 +182,7 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
 		// throttle just on success to allow for self healing on failure
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		Db.collections
-			.Execution!.delete({ stoppedAt: LessThanOrEqual(utcDate) })
+		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then((data) =>
 				setTimeout(() => {
 					throttling = false;
@@ -358,11 +356,11 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					}
 					if (
 						this.workflowData.settings.saveExecutionProgress !== true &&
-						!config.get('executions.saveExecutionProgress')
+						!config.getEnv('executions.saveExecutionProgress')
 					) {
 						return;
 					}
-				} else if (!config.get('executions.saveExecutionProgress')) {
+				} else if (!config.getEnv('executions.saveExecutionProgress')) {
 					return;
 				}
 
@@ -372,8 +370,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					const execution = await Db.collections.Execution!.findOne(this.executionId);
+					const execution = await Db.collections.Execution.findOne(this.executionId);
 
 					if (execution === undefined) {
 						// Something went badly wrong if this happens.
@@ -419,8 +416,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					await Db.collections.Execution!.update(
+					await Db.collections.Execution.update(
 						this.executionId,
 						flattenedExecutionData as IExecutionFlattedDb,
 					);
@@ -467,7 +463,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				});
 
 				// Prune old execution data
-				if (config.get('executions.pruneData')) {
+				if (config.getEnv('executions.pruneData')) {
 					pruneExecutionData.call(this);
 				}
 
@@ -493,7 +489,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
-					let saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+					let saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
 					if (
 						this.workflowData.settings !== undefined &&
 						this.workflowData.settings.saveManualExecutions !== undefined
@@ -504,7 +500,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
-						await Db.collections.Execution!.delete(this.executionId);
+						await Db.collections.Execution.delete(this.executionId);
 						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
 							this.executionId,
 						);
@@ -513,8 +509,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-					let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+					let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
+					let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
 					if (this.workflowData.settings !== undefined) {
 						saveDataErrorExecution =
 							(this.workflowData.settings.saveDataErrorExecution as string) ||
@@ -540,7 +536,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								);
 							}
 							// Data is always saved, so we remove from database
-							await Db.collections.Execution!.delete(this.executionId);
+							await Db.collections.Execution.delete(this.executionId);
 							await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
 								this.executionId,
 							);
@@ -581,7 +577,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
-					await Db.collections.Execution!.update(
+					await Db.collections.Execution.update(
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
@@ -589,7 +585,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
-						await Db.collections.Execution!.update(this.retryOf, {
+						await Db.collections.Execution.update(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
 					}
@@ -694,14 +690,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
-					await Db.collections.Execution!.update(
+					await Db.collections.Execution.update(
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						await Db.collections.Execution!.update(this.retryOf, {
+						await Db.collections.Execution.update(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
 					}
@@ -801,11 +797,11 @@ export async function getWorkflowData(
 		const user = await getUserById(userId);
 		let relations = ['workflow', 'workflow.tags'];
 
-		if (config.get('workflowTagsDisabled')) {
+		if (config.getEnv('workflowTagsDisabled')) {
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
 		}
 
-		const shared = await Db.collections.SharedWorkflow!.findOne({
+		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations,
 			where: whereClause({
 				user,
@@ -960,7 +956,7 @@ export async function executeWorkflow(
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-		await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
+		await Db.collections.Execution.update(executionId, executionData as IExecutionFlattedDb);
 		throw {
 			...error,
 			stack: error.stack,
@@ -1029,10 +1025,10 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
-	const timezone = config.get('generic.timezone') as string;
-	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting');
-	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');
+	const timezone = config.getEnv('generic.timezone');
+	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
+	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
+	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
@@ -1040,7 +1036,7 @@ export async function getBase(
 		credentialsHelper: new CredentialsHelper(encryptionKey),
 		encryptionKey,
 		executeWorkflow,
-		restApiUrl: urlBaseWebhook + config.get('endpoints.rest'),
+		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
 		timezone,
 		webhookBaseUrl,
 		webhookWaitingBaseUrl,

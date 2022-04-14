@@ -21,7 +21,7 @@ export class PaddleApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Use Sandbox environment API',
+			displayName: 'Use Sandbox Environment API',
 			name: 'sandbox',
 			type: 'boolean',
 			default: false,
