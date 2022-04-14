@@ -90,10 +90,10 @@ export default mixins(showMessage).extend({
 			return this.userToDelete && !this.userToDelete.firstName;
 		},
 		title(): string {
-			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email);
+			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email) || '';
 			return this.$locale.baseText(
 				'settings.users.deleteUser',
-				{ interpolate: { user: user || '' }},
+				{ interpolate: { user }},
 			);
 		},
 		enabled(): boolean {
