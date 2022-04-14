@@ -13,7 +13,7 @@ export class GitPassword implements ICredentialType {
 			name: 'username',
 			type: 'string',
 			default: '',
-			description: 'The username to authenticate with.',
+			description: 'The username to authenticate with',
 		},
 		{
 			displayName: 'Password',

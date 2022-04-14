@@ -10,7 +10,7 @@ export class S3 implements ICredentialType {
 	documentationUrl = 's3';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'S3 endpoint',
+			displayName: 'S3 Endpoint',
 			name: 'endpoint',
 			type: 'string',
 			default: '',
@@ -37,7 +37,7 @@ export class S3 implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'Force path style',
+			displayName: 'Force Path Style',
 			name: 'forcePathStyle',
 			type: 'boolean',
 			default: false,

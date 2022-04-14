@@ -26,7 +26,7 @@ export class AgileCrmApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'example',
-			description: 'If the domain is https://example.agilecrm.com "example" would have to be entered.',
+			description: 'If the domain is https://example.agilecrm.com "example" would have to be entered',
 		},
 	];
 }
