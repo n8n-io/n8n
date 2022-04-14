@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -8,13 +9,11 @@ import express = require('express');
 import { UserRequest } from '../../../../requests';
 
 import { User } from '../../../../databases/entities/User';
-import { Role } from '../../../../databases/entities/Role';
 
 import {
 	clean,
 	deleteDataAndSendTelemetry,
 	getAllUsersAndCount,
-	getGlobalMemberRole,
 	encodeNextCursor,
 	getUser,
 	getUsers,
@@ -23,8 +22,6 @@ import {
 	saveUsersWithRole,
 	transferWorkflowsAndCredentials,
 } from '../../../helpers';
-
-import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
 
 import { ResponseHelper } from '../../../..';
 
@@ -36,31 +33,7 @@ export = {
 		ResponseHelper.send(async (req: UserRequest.Invite, res: express.Response) => {
 			const tokenOwnerId = req.user.id;
 			const emailsInBody = req.body.map((data) => data.email);
-
-			let mailer: UserManagementMailer.UserManagementMailer | undefined;
-			try {
-				mailer = await UserManagementMailer.getInstance();
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new ResponseHelper.ResponseError(
-						'Email sending must be set up in order to request a password reset email',
-						undefined,
-						500,
-					);
-				}
-			}
-
-			let role: Role | undefined;
-
-			try {
-				role = await getGlobalMemberRole();
-			} catch (error) {
-				throw new ResponseHelper.ResponseError(
-					'Members role not found in database - inconsistent state',
-					undefined,
-					500,
-				);
-			}
+			const { mailer, globalMemberRole: role } = req;
 
 			const { usersToSave, pendingUsers } = await getUsersToSaveAndInvite(emailsInBody);
 
@@ -69,40 +42,45 @@ export = {
 			try {
 				savedUsers = await saveUsersWithRole(usersToSave, role!, tokenOwnerId);
 			} catch (error) {
-				throw new ResponseHelper.ResponseError('An error occurred during user creation');
+				return res.status(500).json({
+					message: 'An error occurred during user creation',
+				});
 			}
 
 			const userstoInvite = [...savedUsers, ...pendingUsers];
 
 			await inviteUsers(userstoInvite, mailer, tokenOwnerId);
 
-			return clean(userstoInvite);
+			return res.json(clean(userstoInvite));
 		}),
 	],
 	deleteUser: [
 		...middlewares.deleteUsers,
-		async (req: UserRequest.Delete, res: express.Response): Promise<any> => {
+		async (req: UserRequest.Delete, res: express.Response) => {
 			const { identifier: idToDelete } = req.params;
-			const { transferId, includeRole } = req.query;
+			const { transferId = '', includeRole = false } = req.query;
 			const apiKeyUserOwner = req.user;
 
 			const users = await getUsers({
-				withIdentifiers: [idToDelete, transferId ?? ''],
+				withIdentifiers: [idToDelete, transferId],
 				includeRole,
 			});
 
-			if (!users?.length || (transferId && users.length !== 2)) {
-				throw new ResponseHelper.ResponseError(
-					'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
-					undefined,
-					400,
-				);
+			if (!users?.length || (transferId !== '' && users.length !== 2)) {
+				return res.status(400).json({
+					message:
+						'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
+				});
 			}
 
-			const userToDelete = users?.find((user) => user.id === req.params.identifier) as User;
+			const userToDelete = users?.find(
+				(user) => user.id === req.params.identifier || user.email === req.params.identifier,
+			) as User;
 
 			if (transferId) {
-				const transferee = users?.find((user) => user.id === transferId) as User;
+				const transferee = users?.find(
+					(user) => user.id === transferId || user.email === transferId,
+				) as User;
 
 				await transferWorkflowsAndCredentials({
 					fromUser: userToDelete,
@@ -118,34 +96,30 @@ export = {
 				transferId,
 			});
 
-			return clean(userToDelete);
+			return clean(userToDelete, { includeRole });
 		},
 	],
 	getUser: [
 		...middlewares.getUser,
-		// @ts-ignore
-		ResponseHelper.send(async (req: UserRequest.Get, res: express.Response) => {
-			const { includeRole } = req.query;
+		async (req: UserRequest.Get, res: express.Response) => {
+			const { includeRole = false } = req.query;
 			const { identifier } = req.params;
 
 			const user = await getUser({ withIdentifier: identifier, includeRole });
 
 			if (!user) {
-				throw new ResponseHelper.ResponseError(
-					`Could not find user with identifier: ${identifier}`,
-					undefined,
-					404,
-				);
+				return res.status(404).json({
+					message: `Could not find user with identifier: ${identifier}`,
+				});
 			}
 
-			return clean(user, { includeRole });
-		}, true),
+			return res.json(clean(user, { includeRole }));
+		},
 	],
 	getUsers: [
 		...middlewares.getUsers,
-		// @ts-ignore
-		ResponseHelper.send(async (req: UserRequest.Get, res: express.Response) => {
-			const { offset, limit, includeRole = false } = req.query;
+		async (req: UserRequest.Get, res: express.Response) => {
+			const { offset = 0, limit = 100, includeRole = false } = req.query;
 
 			const [users, count] = await getAllUsersAndCount({
 				includeRole,
@@ -153,10 +127,10 @@ export = {
 				offset,
 			});
 
-			return {
-				users: clean(users, { includeRole }),
+			return res.json({
+				data: clean(users, { includeRole }),
 				nextCursor: encodeNextCursor(offset, limit, count),
-			};
-		}, true),
+			});
+		},
 	],
 };

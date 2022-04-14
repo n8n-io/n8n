@@ -10,15 +10,12 @@ import { Role } from '../../../src/databases/entities/Role';
 import {
 	randomApiKey,
 	randomEmail,
-	randomInvalidPassword,
 	randomName,
 	randomValidPassword,
 } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-
-// import * from './../../../src/PublicApi/helpers'
 
 let app: express.Application;
 let testDbName = '';
@@ -54,14 +51,6 @@ beforeEach(async () => {
 	// do not combine calls - shared tables must be cleared first and separately
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
 	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
-
-	// jest.isolateModules(() => {
-	// 	jest.mock('../../../config');
-	// 	jest.mock('./../../../src/PublicApi/helpers', () => ({
-	// 		...jest.requireActual('./../../../src/PublicApi/helpers'),
-	// 		connectionName: jest.fn(() => testDbName),
-	// 	}));
-	// });
 
 	await testDb.createUser({
 		id: INITIAL_TEST_USER.id,
@@ -107,7 +96,6 @@ test('GET /users should fail due to invalid API Key', async () => {
 });
 
 test('GET /users should fail due to member trying to access owner only endpoint', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 
 	const member = await testDb.createUser();
 
@@ -125,16 +113,7 @@ test('GET /users should fail due no instance owner not setup', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
 
-	// console.log(authOwnerAgent);
-
 	const response = await authOwnerAgent.get('/v1/users');
-	// const response2 = await authOwnerAgent.get('/v1/spec');
-	// const response3 = await authOwnerAgent.get('/v1/hello');
-
-	// console.log(response.body);
-	// console.log(response.statusCode);
-
-	// console.log(authOwnerAgent.app);
 
 	expect(response.statusCode).toBe(500);
 });

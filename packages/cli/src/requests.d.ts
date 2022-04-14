@@ -11,8 +11,10 @@ import {
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
+import { Role } from './databases/entities/Role';
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
+import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -28,6 +30,8 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
+	mailer?: UserManagementMailer.UserManagementMailer;
+	globalMemberRole?: Role;
 };
 
 // ----------------------------------
@@ -209,7 +213,7 @@ export declare namespace UserRequest {
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit: number; offset: number; cursor: string; includeRole: boolean }
+		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
 	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;

@@ -14,7 +14,7 @@ externalDocs:
   description: Find out more about Swagger
   url: http://swagger.io
 servers:
-  - url: /api/v1
+  - url: /api/v2
 tags:
 - name: users
   description: Operations about user
@@ -71,44 +71,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    post:
-      x-eov-operation-id: createUsers
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-      - users
-      summary: Invite a user
-      description: Invites a user to your instance. Only available for the instance owner.
-      operationId: createUser
-      requestBody:
-        description: Created user object
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Users'
-        required: true
-      responses:
-        "200":
-          description: A User object
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Users'
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        "422":
-          description: Unprocessable Entity
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InputValidationError'
   /users/{identifier}:
     get:
       x-eov-operation-id: getUser
-      x-eov-operation-handler: v1/handlers/Users
+      x-eov-operation-handler: v2/handlers/Users
       tags:
       - users
       summary: Get user by ID/Email
@@ -123,7 +89,6 @@ paths:
         explode: false
         schema:
           type: string
-          format: identifier
       - name: includeRole
         in: query
         required: false
@@ -145,51 +110,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    delete:
-      x-eov-operation-id: deleteUser
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-      - users
-      summary: Delete user by ID/Email
-      description: Deletes a user from your instance. Only available for the instance owner.
-      operationId: deleteUser
-      parameters:
-      - name: identifier
-        in: path
-        description: The name that needs to be deleted
-        required: true
-        style: simple
-        explode: false
-        schema:
-          type: string
-          format: identifier
-      - name: transferId
-        in: query
-        description: ID of the user to transfer workflows and credentials to.
-        required: false
-        style: form
-        explode: true
-        schema:
-          type: string
-      - name: includeRole
-        in: query
-        required: false
-        style: form
-        explode: true
-        schema:
-          type: boolean
-          example: true
-      responses:
-        "200":
-          description: User deleted successfully
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        "404":
-          description: User not found
 components:
   schemas:
     InputValidationError:
@@ -237,7 +157,6 @@ components:
           example: 123e4567-e89b-12d3-a456-426614174000
         email:
           type: string
-          format: email
           example: jhon.doe@company.com
         firstName:
           maxLength: 32

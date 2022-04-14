@@ -2,11 +2,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable import/no-cycle */
-import * as querystring from 'querystring';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
 import { In } from 'typeorm';
 import { validate as uuidValidate } from 'uuid';
+import { OpenAPIV3, Format } from 'express-openapi-validator/dist/framework/types';
+import express = require('express');
+import validator from 'validator';
 import { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
 import { ActiveWorkflowRunner, Db, InternalHooksManager, ITelemetryUserDeletionData } from '..';
@@ -23,11 +25,10 @@ interface IPaginationOffsetDecoded {
 export type OperationID = 'getUsers' | 'getUser';
 
 export const decodeCursor = (cursor: string): IPaginationOffsetDecoded => {
-	const data = JSON.parse(Buffer.from(cursor, 'base64').toString()) as string;
-	const unserializedData = querystring.decode(data) as { offset: string; limit: string };
+	const { offset, limit } = JSON.parse(Buffer.from(cursor, 'base64').toString());
 	return {
-		offset: parseInt(unserializedData.offset, 10),
-		limit: parseInt(unserializedData.limit, 10),
+		offset,
+		limit,
 	};
 };
 
@@ -213,7 +214,7 @@ export async function transferWorkflowsAndCredentials(data: {
 			{ user: data.fromUser },
 			{ user: data.toUser },
 		);
-		await transactionManager.delete(User, { id: data.fromUser });
+		await transactionManager.delete(User, { id: data.fromUser.id });
 	});
 }
 
@@ -258,7 +259,7 @@ async function deleteWorkflowsAndCredentials(data: { fromUser: User }): Promise<
 		const ownedWorkflows = await Promise.all(sharedWorkflows.map(desactiveWorkflow));
 		await transactionManager.remove(ownedWorkflows);
 		await transactionManager.remove(sharedCredentials.map(({ credentials }) => credentials));
-		await transactionManager.delete(User, { id: data.fromUser });
+		await transactionManager.delete(User, { id: data.fromUser.id });
 	});
 }
 
@@ -310,4 +311,42 @@ export function clean(
 		users,
 		getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : []),
 	);
+}
+
+export async function authenticationHandler(
+	req: express.Request,
+	scopes: any,
+	schema: OpenAPIV3.ApiKeySecurityScheme,
+): Promise<boolean> {
+	const apiKey = req.headers[schema.name.toLowerCase()];
+	const user = await Db.collections.User?.findOne({
+		where: {
+			apiKey,
+		},
+		relations: ['globalRole'],
+	});
+
+	if (!user) {
+		return false;
+	}
+
+	req.user = user;
+
+	return true;
+}
+
+export function specFormats(): Format[] {
+	return [
+		{
+			name: 'email',
+			type: 'string',
+			validate: (email: string) => validator.isEmail(email),
+		},
+		{
+			name: 'identifier',
+			type: 'string',
+			validate: (identifier: string) =>
+				validator.isUUID(identifier) || validator.isEmail(identifier),
+		},
+	];
 }
