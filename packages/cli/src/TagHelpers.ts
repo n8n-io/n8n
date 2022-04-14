@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
-import { getConnection } from 'typeorm';
+import { EntityManager, getConnection } from 'typeorm';
 
 import { TagEntity } from './databases/entities/TagEntity';
 
@@ -89,38 +89,51 @@ export async function removeRelations(workflowId: string, tablePrefix: string) {
 		.execute();
 }
 
+const createTag = async (transactionManager: EntityManager, name: string): Promise<ITagToImport> => {
+	const tag = new TagEntity();
+	tag.name = name;
+	return transactionManager.save<TagEntity>(tag);
+};
 
-// Set tag ids to use existing tags, creates a new tag if no matching tag could be found
+const findOrCreateTag = async (transactionManager: EntityManager,  importTag: ITagToImport, tagsEntities: TagEntity[]) => {
+	// Assume tag is identical if createdAt date is the same to preserve a changed tag name
+	const identicalMatch = tagsEntities.find(
+		(existingTag) =>
+			importTag.id &&
+			existingTag.id.toString() === importTag.id.toString() &&
+			existingTag.createdAt &&
+			importTag.createdAt &&
+			new Date(existingTag.createdAt) === new Date(importTag.createdAt),
+	);
+	if (identicalMatch) {
+		return identicalMatch;
+	}
+
+	// Find tag with identical name
+	const nameMatch = tagsEntities.find((existingTag) => existingTag.name === importTag.name);
+	if (nameMatch) {
+		return nameMatch;
+	}
+
+	// Create new Tag
+	const createdTag = await createTag(transactionManager, importTag.name);
+	return createdTag;
+};
+
+/**
+ * Set tag ids to use existing tags, creates a new tag if no matching tag could be found
+ *
+ * @param transactionManager
+ * @param workflow
+ * @param tagsEntities
+ * @returns
+ */
 export async function setTagsForImport(
+	transactionManager: EntityManager,
 	workflow: { tags: ITagToImport[] },
-	tagsEntities: ITagToImport[],
-	createTag: (name: string) => Promise<ITagToImport>,
+	tags: TagEntity[],
 ): Promise<void> {
-	const findOrCreateTag = async (importTag: ITagToImport) => {
-		// Assume tag is identical if createdAt date is the same to preserve a changed tag name
-		const identicalMatch = tagsEntities.find(
-			(existingTag) =>
-				existingTag.id.toString() === importTag.id.toString() &&
-				existingTag.createdAt &&
-				importTag.createdAt &&
-				new Date(existingTag.createdAt) === new Date(importTag.createdAt),
-		);
-		if (identicalMatch) {
-			return identicalMatch;
-		}
 
-		// Find tag with identical name
-		const nameMatch = tagsEntities.find((existingTag) => existingTag.name === importTag.name);
-		if (nameMatch) {
-			return nameMatch;
-		}
-
-		// Create new Tag
-		const createdTag = await createTag(importTag.name);
-		// add new tag to available tags
-		tagsEntities.push(createdTag);
-		return createdTag;
-	};
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const workflowTags = workflow.tags;
 	if (!workflowTags || !Array.isArray(workflowTags) || workflowTags.length === 0) {
@@ -128,11 +141,13 @@ export async function setTagsForImport(
 	}
 	for (let i = 0; i < workflowTags.length; i++) {
 		// eslint-disable-next-line no-await-in-loop
-		const tag = await findOrCreateTag(workflowTags[i]);
-		workflowTags[i] = {
-			id: tag.id,
-			name: tag.name,
-		};
+		if (workflowTags[i] && workflowTags[i].name) {
+			const tag = await findOrCreateTag(transactionManager, workflowTags[i], tags);
+			workflowTags[i] = {
+				id: tag.id,
+				name: tag.name,
+			};
+		}
 	}
 }
 

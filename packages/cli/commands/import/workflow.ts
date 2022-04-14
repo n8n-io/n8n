@@ -22,7 +22,6 @@ import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
-import { TagEntity } from '../../src/databases/entities/TagEntity';
 import { setTagsForImport } from '../../src/TagHelpers';
 
 const FIX_INSTRUCTION =
@@ -116,13 +115,9 @@ export class ImportWorkflowsCommand extends Command {
 
 						// Import tags
 						await setTagsForImport(
+							transactionManager,
 							workflow as { tags: ITagToImport[] },
-							tags as ITagToImport[],
-							async (name: string): Promise<ITagToImport> => {
-								const tag = new TagEntity();
-								tag.name = name;
-								return this.transactionManager.save<TagEntity>(tag);
-							},
+							tags,
 						);
 
 						await this.storeWorkflow(workflow, user);
