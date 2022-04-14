@@ -570,7 +570,7 @@ class App {
 		this.app.post('/token', async (req: express.Request, res: express.Response) => {
 			const ramdonToken = randomBytes(20).toString('hex');
 			// @ts-ignore
-			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: ramdonToken });
+			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: `n8n_api_${ramdonToken}` });
 			return ResponseHelper.sendSuccessResponse(res, { token: ramdonToken }, true, 200);
 		});
 
