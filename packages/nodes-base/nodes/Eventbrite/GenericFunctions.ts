@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, JsonObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -38,13 +38,12 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-
 			return await this.helpers.request!(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
