@@ -1,7 +1,7 @@
 <template functional>
-	<span :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
+	<component :is="props.tag" :class="$options.methods.getClasses(props, $style)" :style="$options.methods.getStyles(props)">
 		<slot></slot>
-	</span>
+	</component>
 </template>
 
 <script lang="ts">
@@ -16,7 +16,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['xsmall', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
+			validator: (value: string): boolean => ['xsmall', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
@@ -30,10 +30,14 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		tag: {
+			type: String,
+			default: 'span',
+		},
 	},
 	methods: {
-		getClass(props: {size: string, bold: boolean}) {
-			return `body-${props.size}${props.bold ? '-bold' : '-regular'}`;
+		getClasses(props: {size: string, bold: boolean}, $style: any) {
+			return {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
 		},
 		getStyles(props: {color: string, align: string, compact: false}) {
 			const styles = {} as any;
@@ -61,80 +65,29 @@ export default Vue.extend({
 	font-weight: var(--font-weight-regular);
 }
 
-.body-xlarge {
+.size-xlarge {
 	font-size: var(--font-size-xl);
 	line-height: var(--font-line-height-xloose);
 }
 
-.body-xlarge-regular {
-	composes: regular;
-	composes: body-xlarge;
-}
-
-.body-xlarge-bold {
-	composes: bold;
-	composes: body-xlarge;
-}
-
-
-.body-large {
+.size-large {
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
 }
 
-.body-large-regular {
-	composes: regular;
-	composes: body-large;
-}
-
-.body-large-bold {
-	composes: bold;
-	composes: body-large;
-}
-
-.body-medium {
+.size-medium {
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
 }
 
-.body-medium-regular {
-	composes: regular;
-	composes: body-medium;
-}
-
-.body-medium-bold {
-	composes: bold;
-	composes: body-medium;
-}
-
-.body-small {
+.size-small {
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 }
 
-.body-small-regular {
-	composes: regular;
-	composes: body-small;
-}
-
-.body-small-bold {
-	composes: bold;
-	composes: body-small;
-}
-
-.body-xsmall {
+.size-xsmall {
 	font-size: var(--font-size-3xs);
 	line-height: var(--font-line-height-compact);
-}
-
-.body-xsmall-regular {
-	composes: regular;
-	composes: body-xsmall;
-}
-
-.body-xsmall-bold {
-	composes: bold;
-	composes: body-xsmall;
 }
 
 </style>

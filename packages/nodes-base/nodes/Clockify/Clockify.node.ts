@@ -49,7 +49,7 @@ import {
 	timeEntryOperations,
 } from './TimeEntryDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {

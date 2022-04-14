@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -412,17 +413,22 @@ export class GraphQL implements INodeType {
 				} else {
 					if (typeof response === 'string') {
 						try {
-							returnItems.push({ json: JSON.parse(response) });
+							response = JSON.parse(response);
 						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 						}
-					} else {
-						returnItems.push({ json: response });
 					}
+
+					if (response.errors) {
+						const message = response.errors?.map((error: IDataObject) => error.message).join(', ') || 'Unexpected error';
+						throw new NodeApiError(this.getNode(), response.errors, { message });
+					}
+
+					returnItems.push({ json: response });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({ json: { error: error.message } });
+					returnItems.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;

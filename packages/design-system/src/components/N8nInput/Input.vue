@@ -5,6 +5,7 @@
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
 		:ref="data.ref"
+		:autoComplete="props.autocomplete"
 		v-on="listeners"
 	>
 		<template v-slot:prepend>
@@ -36,13 +37,13 @@ export default {
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
-				['text', 'textarea', 'number', 'password'].indexOf(value) !== -1,
+				['text', 'textarea', 'number', 'password', 'email'].includes(value),
 		},
 		size: {
 			type: String,
 			default: 'large',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		placeholder: {
 			type: String,
@@ -61,6 +62,10 @@ export default {
 		},
 		title: {
 			type: String,
+		},
+		autocomplete: {
+			type: String,
+			default: 'off',
 		},
 	},
 	methods: {

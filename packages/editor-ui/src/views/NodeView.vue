@@ -33,7 +33,7 @@
 				></node>
 			</div>
 		</div>
-		<DataDisplay @valueChanged="valueChanged"/>
+		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$locale.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
 			<n8n-icon-button size="xlarge" icon="plus" />
 		</div>
@@ -114,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -170,7 +170,6 @@ import {
 import { mapGetters } from 'vuex';
 
 import {
-	loadLanguage,
 	addNodeTranslation,
 	addHeaders,
 } from '@/plugins/i18n';
@@ -232,9 +231,6 @@ export default mixins(
 				deep: true,
 			},
 
-			async defaultLocale (newLocale, oldLocale) {
-				loadLanguage(newLocale);
-			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
@@ -271,7 +267,7 @@ export default mixins(
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
 			},
-			englishLocale(): boolean {
+			isEnglishLocale(): boolean {
 				return this.defaultLocale === 'en';
 			},
 			...mapGetters(['nativelyNumberSuffixedDefaults']),
@@ -282,7 +278,7 @@ export default mixins(
 				return this.$store.getters.executionWaitingForWebhook;
 			},
 			isDemo (): boolean {
-				return this.$route.name === 'WorkflowDemo';
+				return this.$route.name === VIEWS.DEMO;
 			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
@@ -348,6 +344,7 @@ export default mixins(
 				pullConnActiveNodeName: null as string | null,
 				pullConnActive: false,
 				dropPrevented: false,
+				renamingActive: false,
 			};
 		},
 		beforeDestroy () {
@@ -378,7 +375,7 @@ export default mixins(
 				type?: string,
 			}) {
 				const allNodeNamesOnCanvas = this.$store.getters.allNodes.map((n: INodeUi) => n.name);
-				originalName = this.englishLocale ? originalName : this.translateName(type, originalName);
+				originalName = this.isEnglishLocale ? originalName : this.translateName(type, originalName);
 
 				if (
 					!allNodeNamesOnCanvas.includes(originalName) &&
@@ -388,7 +385,7 @@ export default mixins(
 				}
 
 				let natives: string[] = this.nativelyNumberSuffixedDefaults;
-				natives = this.englishLocale ? natives : natives.map(name => {
+				natives = this.isEnglishLocale ? natives : natives.map(name => {
 					const type = name.toLowerCase().replace('_', '');
 					return this.translateName(type, name);
 				});
@@ -547,14 +544,14 @@ export default mixins(
 					}
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.replace({ name: 'NodeViewNew' });
+					this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 					return;
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 
 				this.blankRedirect = true;
-				this.$router.replace({ name: 'NodeViewNew', query: { templateId } });
+				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -742,10 +739,10 @@ export default mixins(
 						return;
 					}
 
-					if (this.$router.currentRoute.name === 'NodeViewNew') {
+					if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 						this.$root.$emit('newWorkflow');
 					} else {
-						this.$router.push({ name: 'NodeViewNew' });
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 
 					this.$showMessage({
@@ -1260,15 +1257,10 @@ export default mixins(
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
-					message: this.$locale.baseText(
-						maxNodes === 1
-							? 'nodeView.showMessage.showMaxNodeTypeError.message.singular'
-							: 'nodeView.showMessage.showMaxNodeTypeError.message.plural',
+					message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message',
 						{
-							interpolate: {
-								maxNodes: maxNodes!.toString(),
-								nodeTypeDataDisplayName: nodeTypeData.displayName,
-							},
+							adjustToNumber: maxNodes,
+							interpolate: { nodeTypeDataDisplayName: nodeTypeData.displayName },
 						},
 					),
 					type: 'error',
@@ -1788,11 +1780,11 @@ export default mixins(
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
-				else if (this.$route.name === 'WorkflowTemplate') {
+				else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
 				}
-				else if (this.$route.name === 'ExecutionById') {
+				else if (this.$route.name === VIEWS.EXECUTION) {
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
@@ -1826,11 +1818,11 @@ export default mixins(
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
 							this.$router.push({
-								name: "NodeViewNew",
+								name: VIEWS.NEW_WORKFLOW,
 							});
 							this.$showMessage({
 								title: 'Error',
-								message: 'Could not find workflow',
+								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
 								type: 'error',
 							});
 						} else {
@@ -2244,6 +2236,13 @@ export default mixins(
 				if (currentName === newName) {
 					return;
 				}
+
+				const activeNodeName = this.activeNode && this.activeNode.name;
+				const isActive = activeNodeName === currentName;
+				if (isActive) {
+					this.renamingActive = true;
+				}
+
 				// Check if node-name is unique else find one that is
 				newName = this.getUniqueNodeName({
 					originalName: newName,
@@ -2271,6 +2270,11 @@ export default mixins(
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
+
+				if (isActive) {
+					this.$store.commit('setActiveNode', newName);
+					this.renamingActive = false;
+				}
 			},
 			deleteEveryEndpoint () {
 				// Check as it does not exist on first load
@@ -2703,10 +2707,10 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({command: 'error', message: 'Could not import workflow'}), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
 							}
 							this.$showMessage({
-								title: 'Could not import workflow',
+								title: this.$locale.baseText('openWorkflow.workflowImportError'),
 								message: (e as Error).message,
 								type: 'error',
 							});
@@ -2744,15 +2748,6 @@ export default mixins(
 
 			try {
 				await Promise.all(loadPromises);
-
-				if (this.defaultLocale !== 'en') {
-					try {
-						const headers = await this.restApi().getNodeTranslationHeaders();
-						addHeaders(headers, this.defaultLocale);
-					} catch (_) {
-						// no headers available
-					}
-				}
 			} catch (error) {
 				this.$showError(
 					error,
@@ -2779,6 +2774,7 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(() => {
+					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
 				}, 0);
 			});
@@ -2848,6 +2844,7 @@ export default mixins(
 	left: 0;
 	top: 0;
 	overflow: hidden;
+	background-color: var(--color-canvas-background);
 }
 
 .node-view-wrapper {

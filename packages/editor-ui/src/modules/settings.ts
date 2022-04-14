@@ -4,14 +4,12 @@ import {
 	IN8nPrompts,
 	IN8nUISettings,
 	IN8nValueSurveyData,
-	IPersonalizationSurveyAnswers,
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey, submitContactInfo } from '../api/settings';
+import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
 import Vue from 'vue';
-import { getPersonalizedNodeTypes } from './helper';
-import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
 
@@ -20,19 +18,31 @@ const module: Module<ISettingsState, IRootState> = {
 	state: {
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
+		userManagement: {
+			enabled: false,
+			showSetupOnFirstLoad: false,
+			smtpSetup: false,
+		},
 		templatesEndpointHealthy: false,
 	},
 	getters: {
-		personalizedNodeTypes(state: ISettingsState): string[] {
-			const answers = state.settings.personalizationSurvey && state.settings.personalizationSurvey.answers;
-			if (!answers) {
-				return [];
-			}
-
-			return getPersonalizedNodeTypes(answers);
+		versionCli(state: ISettingsState) {
+			return state.settings.versionCli;
+		},
+		isUserManagementEnabled(state: ISettingsState): boolean {
+			return state.userManagement.enabled;
+		},
+		showSetupPage(state: ISettingsState) {
+			return state.userManagement.showSetupOnFirstLoad;
 		},
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
+		},
+		isSmtpSetup(state: ISettingsState) {
+			return state.userManagement.smtpSetup;
+		},
+		isPersonalizationSurveyEnabled(state: ISettingsState) {
+			return state.settings.telemetry.enabled && state.settings.personalizationSurveyEnabled;
 		},
 		telemetry: (state): ITelemetrySettings => {
 			return state.settings.telemetry;
@@ -42,6 +52,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		isTelemetryEnabled: (state) => {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
+		},
+		areTagsEnabled: (state) => {
+			return state.settings.workflowTagsDisabled !== undefined ? !state.settings.workflowTagsDisabled : true;
 		},
 		isHiringBannerEnabled: (state): boolean => {
 			return state.settings.hiringBannerEnabled;
@@ -59,12 +72,12 @@ const module: Module<ISettingsState, IRootState> = {
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
 			state.settings = settings;
+			state.userManagement.enabled = settings.userManagement.enabled;
+			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
+			state.userManagement.smtpSetup = settings.userManagement.smtpSetup;
 		},
-		setPersonalizationAnswers(state: ISettingsState, answers: IPersonalizationSurveyAnswers) {
-			Vue.set(state.settings, 'personalizationSurvey', {
-				answers,
-				shouldShow: false,
-			});
+		stopShowingSetupPage(state: ISettingsState) {
+			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
 		},
 		setPromptsData(state: ISettingsState, promptsData: IN8nPrompts) {
 			Vue.set(state, 'promptsData', promptsData);
@@ -94,18 +107,6 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
-
-			const showPersonalizationsModal = settings.personalizationSurvey && settings.personalizationSurvey.shouldShow && !settings.personalizationSurvey.answers;
-
-			if (showPersonalizationsModal) {
-				context.commit('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
-			}
-			return settings;
-		},
-		async submitPersonalizationSurvey(context: ActionContext<ISettingsState, IRootState>, results: IPersonalizationSurveyAnswers) {
-			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
-
-			context.commit('setPersonalizationAnswers', results);
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			if (!context.getters.isTelemetryEnabled) {
@@ -113,7 +114,9 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 
 			try {
-				const promptsData: IN8nPrompts = await getPromptsData(context.state.settings.instanceId);
+				const instanceId = context.state.settings.instanceId;
+				const userId = context.rootGetters['users/currentUserId'];
+				const promptsData: IN8nPrompts = await getPromptsData(instanceId, userId);
 
 				if (promptsData && promptsData.showContactPrompt) {
 					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
@@ -129,14 +132,18 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		async submitContactInfo(context: ActionContext<ISettingsState, IRootState>, email: string) {
 			try {
-				return await submitContactInfo(context.state.settings.instanceId, email);
+				const instanceId = context.state.settings.instanceId;
+				const userId = context.rootGetters['users/currentUserId'];
+				return await submitContactInfo(instanceId, userId, email);
 			} catch (e) {
 				return e;
 			}
 		},
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
-				return await submitValueSurvey(context.state.settings.instanceId, params);
+				const instanceId = context.state.settings.instanceId;
+				const userId = context.rootGetters['users/currentUserId'];
+				return await submitValueSurvey(instanceId, userId, params);
 			} catch (e) {
 				return e;
 			}

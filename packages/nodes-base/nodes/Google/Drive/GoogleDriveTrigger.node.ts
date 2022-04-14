@@ -18,7 +18,7 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {

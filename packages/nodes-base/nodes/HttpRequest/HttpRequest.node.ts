@@ -162,6 +162,10 @@ export class HttpRequest implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'OPTIONS',
+						value: 'OPTIONS',
+					},
+					{
 						name: 'PATCH',
 						value: 'PATCH',
 					},
@@ -470,6 +474,7 @@ export class HttpRequest implements INodeType {
 							'PATCH',
 							'POST',
 							'PUT',
+							'DELETE',
 						],
 					},
 				},
@@ -493,6 +498,7 @@ export class HttpRequest implements INodeType {
 							'PATCH',
 							'POST',
 							'PUT',
+							'DELETE',
 						],
 					},
 				},
