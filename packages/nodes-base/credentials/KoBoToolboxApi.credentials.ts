@@ -10,7 +10,7 @@ export class KoBoToolboxApi implements ICredentialType {
 	documentationUrl = 'koBoToolbox';
 	properties = [
 		{
-			displayName: 'API root URL',
+			displayName: 'API Root URL',
 			name: 'URL',
 			type: 'string' as NodePropertyTypes,
 			default: 'https://kf.kobotoolbox.org/',
