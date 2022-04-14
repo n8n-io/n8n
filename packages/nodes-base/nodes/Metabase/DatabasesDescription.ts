@@ -38,6 +38,13 @@ export const databasesOperations: INodeProperties[] = [
 						): INodeExecutionData[] {
 							// @ts-ignore
 							return response.body.data.map((metabaseDatabase) => {
+								if(!this.getNode().parameters.simple){
+									return {
+										json: {
+											...metabaseDatabase,
+									},
+								};
+								} else{
 								return {
 									json: {
 										name: metabaseDatabase.name,
@@ -56,6 +63,7 @@ export const databasesOperations: INodeProperties[] = [
 										is_full_sync: metabaseDatabase.details.is_full_sync,
 									},
 								};
+							}
 							});
 						},
 						],
@@ -384,6 +392,22 @@ export const databasesFields: INodeProperties[] = [
 				type: 'body',
 			},
 		},
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'databases',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: true,
 	},
 ];
 

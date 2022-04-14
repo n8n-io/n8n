@@ -50,6 +50,12 @@ export const questionsOperations: INodeProperties[] = [
 											database_id: metabaseQuestion.database_id,
 										},
 									};
+								}	else if(!this.getNode().parameters.simple){
+										return {
+											json: {
+												...metabaseQuestion,
+										},
+									};
 								} else{
 									return {
 										json: {
@@ -88,7 +94,7 @@ export const questionsOperations: INodeProperties[] = [
 							items.push(response.body);
 							// @ts-ignore
 							return items.map((metabaseQuestion) => {
-								if(metabaseQuestion.result_metadata[0].fingerprint){
+								if(metabaseQuestion.result_metadata[0].fingerprint && this.getNode().parameters.simple){
 									return {
 										json: {
 											name: metabaseQuestion.name,
@@ -99,6 +105,12 @@ export const questionsOperations: INodeProperties[] = [
 											max: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].max,
 											creator_id: metabaseQuestion.creator_id,
 											database_id: metabaseQuestion.database_id,
+										},
+									};
+								} else if(!this.getNode().parameters.simple){
+										return {
+											json: {
+												...metabaseQuestion,
 										},
 									};
 								} else{
@@ -190,6 +202,23 @@ export const questionsFields: INodeProperties[] = [
 								],
 			},
 		},
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'questions',
+				],
+				operation: [
+					'get',
+					'getAll',
+				],
+			},
+		},
+		default: true,
 	},
 ];
 
