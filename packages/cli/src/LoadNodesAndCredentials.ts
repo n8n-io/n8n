@@ -233,7 +233,15 @@ class LoadNodesAndCredentialsClass {
 			throw error;
 		}
 
-		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
+		const packageNameWithoutVersion = packageName.includes('@')
+			? packageName.split('@')[0]
+			: packageName;
+
+		const finalNodeUnpackedPath = path.join(
+			downloadFolder,
+			'node_modules',
+			packageNameWithoutVersion,
+		);
 
 		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
 
@@ -246,10 +254,10 @@ class LoadNodesAndCredentialsClass {
 					const promises = [];
 
 					const installedPackage = Object.assign(new InstalledPackages(), {
-						packageName,
+						packageName: packageNameWithoutVersion,
 						installedVersion: packageFile.version,
 					});
-					promises.push(transactionManager.save<InstalledPackages>(installedPackage));
+					await transactionManager.save<InstalledPackages>(installedPackage);
 
 					promises.push(
 						...loadedNodes.map(async (loadedNode) => {
@@ -257,7 +265,7 @@ class LoadNodesAndCredentialsClass {
 								name: loadedNode.name,
 								type: loadedNode.name,
 								latestVersion: loadedNode.version,
-								package: packageName,
+								package: packageNameWithoutVersion,
 							});
 							return transactionManager.save<InstalledNodes>(installedNode);
 						}),
@@ -300,6 +308,85 @@ class LoadNodesAndCredentialsClass {
 		installedNodes.forEach((installedNode) => {
 			delete this.nodeTypes[installedNode.name];
 		});
+	}
+
+	async updateNpmModule(
+		packageName: string,
+		installedNodes: InstalledNodes[],
+	): Promise<INodeTypeNameVersion[]> {
+		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+
+		const command = `npm update ${packageName}`;
+		const execOptions = {
+			cwd: downloadFolder,
+			env: {
+				NODE_PATH: process.env.NODE_PATH,
+				PATH: process.env.PATH,
+			},
+		};
+
+		try {
+			await execAsync(command, execOptions);
+		} catch (error) {
+			if (error.message.includes('404 Not Found')) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
+			}
+			throw error;
+		}
+
+		installedNodes.forEach((installedNode) => {
+			delete this.nodeTypes[installedNode.name];
+		});
+
+		const folderName = packageName.includes('@') ? packageName.split('@')[0] : packageName;
+
+		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', folderName);
+
+		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
+
+		if (loadedNodes.length > 0) {
+			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
+
+			// Save info to DB
+			try {
+				await Db.transaction(async (transactionManager) => {
+					const promises = [];
+
+					const previousVersionPackage = Object.assign(new InstalledPackages(), {
+						packageName,
+					});
+
+					await transactionManager.remove(previousVersionPackage);
+
+					const installedPackage = Object.assign(new InstalledPackages(), {
+						packageName,
+						installedVersion: packageFile.version,
+					});
+					await transactionManager.save<InstalledPackages>(installedPackage);
+
+					promises.push(
+						...loadedNodes.map(async (loadedNode) => {
+							const installedNode = Object.assign(new InstalledNodes(), {
+								name: loadedNode.name,
+								type: loadedNode.name,
+								latestVersion: loadedNode.version,
+								package: packageName,
+							});
+							return transactionManager.save<InstalledNodes>(installedNode);
+						}),
+					);
+
+					await Promise.all(promises);
+				});
+			} catch (error) {
+				LoggerProxy.error('Failed to save installed packages and nodes', { error });
+				throw error;
+			}
+		} else {
+			// Remove this package since it contains no loadable nodes
+		}
+
+		return loadedNodes;
 	}
 
 	/**
