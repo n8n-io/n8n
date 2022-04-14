@@ -56,6 +56,8 @@ spec:
         env:
         - name: DB_POSTGRESDB_DATABASE
           value: "staging_n8n"
+        - name: HASURA_URL
+          value: "staging-hasura-svc:8080"
         - name: DB_POSTGRESDB_HOST
           valueFrom: 
             secretKeyRef: 
