@@ -35,7 +35,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 		} else {
 
-		return item;
+			return item;
 
 		}
 
@@ -71,11 +71,11 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 
 	for (const key in additionalOptions) {
 
-		if (key === 'ignoreColumns' && additionalOptions[key] !=='') {
+		if (key === 'ignoreColumns' && additionalOptions[key] !== '') {
 
 			body[key] = (additionalOptions[key] as string[]).map(el => typeof el === 'string' ? el.trim() : null);
 
-		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key] !=='') {
+		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key] !== '') {
 
 			try {
 
@@ -99,31 +99,29 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 
 export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, option: IDataObject = {}, url?: string): Promise<any> { // tslint:disable-line:no-any
 
+	const options: IHttpRequestOptions = {
+
+		url: url || `https://${slug}.xata.sh/db/${database}:${branch}/tables/${table}/${resource}`,
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${apiKey}`,
+		},
+		method,
+		body,
+		json: true,
+
+	};
+
+	if (Object.keys(option).length !== 0) {
+
+		Object.assign(options, option);
+
+	}
+
 	try {
-
-
-		const options: IHttpRequestOptions = {
-
-			url: url || `https://${slug}.xata.sh/db/${database}:${branch}/tables/${table}/${resource}`,
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${apiKey}`,
-			},
-			method,
-			body,
-			json: true,
-
-		};
-
-		if (Object.keys(option).length !== 0) {
-
-			Object.assign(options, option);
-
-		}
 
 		const res = await this.helpers.httpRequest(options);
 		return res;
-
 
 	} catch (error) {
 
@@ -134,28 +132,39 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 export async function xataApiList(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, returnAll: boolean, url?: string): Promise<any> { // tslint:disable-line:no-any
 
-	try {
+	const options: IHttpRequestOptions = {
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${apiKey}`,
+		},
+		method,
+		body,
+		url: url || `https://${slug}.xata.sh/db/${database}:${branch}/tables/${table}/${resource}`,
+		json: true,
 
-		const options: IHttpRequestOptions = {
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${apiKey}`,
-			},
-			method,
-			body,
-			url: url || `https://${slug}.xata.sh/db/${database}:${branch}/tables/${table}/${resource}`,
-			json: true,
+	};
 
-		};
+	const results = new Array();
 
-		const results = new Array();
+	if (returnAll) {
 
-		if (returnAll) {
+		try {
 
 			await xataApiFetchAll.call(this, options, results);
 
-		} else {
-			const limit = this.getNodeParameter('limit',0) as number;
+		} catch (error) {
+
+			throw new NodeApiError(this.getNode(), error);
+
+		}
+
+
+	} else {
+
+		const limit = this.getNodeParameter('limit', 0) as number;
+
+		try {
+
 			const response = await this.helpers.httpRequest(options);
 			const records = response.records;
 			let numRecords = 0;
@@ -173,17 +182,20 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 			}
 
+		} catch (error) {
+
+			throw new NodeApiError(this.getNode(), error);
+
 		}
 
-		return results;
-
-	} catch (error) {
-
-		throw new NodeApiError(this.getNode(), error);
 
 	}
 
+	return results;
+
 }
+
+
 
 export async function xataApiFetchAll(this: IExecuteFunctions, options: IHttpRequestOptions, results: IDataObject[], cursor?: string): Promise<any> { // tslint:disable-line:no-any
 
