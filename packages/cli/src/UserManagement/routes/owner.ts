@@ -55,7 +55,7 @@ export function ownerNamespace(this: N8nApp): void {
 				);
 			}
 
-			let owner = await Db.collections.User!.findOne(userId, {
+			let owner = await Db.collections.User.findOne(userId, {
 				relations: ['globalRole'],
 			});
 
@@ -78,11 +78,11 @@ export function ownerNamespace(this: N8nApp): void {
 
 			await validateEntity(owner);
 
-			owner = await Db.collections.User!.save(owner);
+			owner = await Db.collections.User.save(owner);
 
 			Logger.info('Owner was set up successfully', { userId: req.user.id });
 
-			await Db.collections.Settings!.update(
+			await Db.collections.Settings.update(
 				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: JSON.stringify(true) },
 			);
@@ -108,7 +108,7 @@ export function ownerNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/owner/skip-setup`,
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		ResponseHelper.send(async (_req: AuthenticatedRequest, _res: express.Response) => {
-			await Db.collections.Settings!.update(
+			await Db.collections.Settings.update(
 				{ key: 'userManagement.skipInstanceOwnerSetup' },
 				{ value: JSON.stringify(true) },
 			);
