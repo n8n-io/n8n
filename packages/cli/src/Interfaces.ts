@@ -115,10 +115,10 @@ export interface ITagDb {
 }
 
 export interface ITagToImport {
-	id?: string | number;
+	id: string | number;
 	name: string;
-	createdAt?: string | Date;
-	updatedAt?: string | Date;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export type UsageCount = {

@@ -89,17 +89,16 @@ export async function removeRelations(workflowId: string, tablePrefix: string) {
 		.execute();
 }
 
-const createTag = async (transactionManager: EntityManager, name: string): Promise<ITagToImport> => {
+const createTag = async (transactionManager: EntityManager, name: string): Promise<TagEntity> => {
 	const tag = new TagEntity();
 	tag.name = name;
 	return transactionManager.save<TagEntity>(tag);
 };
 
-const findOrCreateTag = async (transactionManager: EntityManager,  importTag: ITagToImport, tagsEntities: TagEntity[]) => {
+const findOrCreateTag = async (transactionManager: EntityManager, importTag: ITagToImport, tagsEntities: TagEntity[]): Promise<TagEntity> => {
 	// Assume tag is identical if createdAt date is the same to preserve a changed tag name
 	const identicalMatch = tagsEntities.find(
 		(existingTag) =>
-			importTag.id &&
 			existingTag.id.toString() === importTag.id.toString() &&
 			existingTag.createdAt &&
 			importTag.createdAt &&
@@ -141,7 +140,7 @@ export async function setTagsForImport(
 	}
 	for (let i = 0; i < workflowTags.length; i++) {
 		// eslint-disable-next-line no-await-in-loop
-		if (workflowTags[i] && workflowTags[i].name) {
+		if (workflowTags[i] && typeof workflowTags[i].name !== 'undefined' && typeof workflowTags[i].id !== 'undefined') {
 			const tag = await findOrCreateTag(transactionManager, workflowTags[i], tags);
 			workflowTags[i] = {
 				id: tag.id,
