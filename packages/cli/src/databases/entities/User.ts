@@ -125,6 +125,7 @@ export class User {
 	}
 
 	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
 	apiKey?: string | null;
 
 	/**
