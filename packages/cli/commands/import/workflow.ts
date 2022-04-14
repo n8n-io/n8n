@@ -149,6 +149,14 @@ export class ImportWorkflowsCommand extends Command {
 						});
 					}
 
+					if (workflow.hasOwnProperty('tags')) {
+						await setTagsForImport(
+							transactionManager,
+							workflow as { tags: ITagToImport[] },
+							tags,
+						);
+					}
+
 					await this.storeWorkflow(workflow, user);
 				}
 			});
