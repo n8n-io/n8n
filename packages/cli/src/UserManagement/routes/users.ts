@@ -6,6 +6,7 @@ import { In } from 'typeorm';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
+import { randomBytes } from 'crypto';
 import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { AuthenticatedRequest, UserRequest } from '../../requests';
@@ -23,7 +24,6 @@ import * as UserManagementMailer from '../email/UserManagementMailer';
 
 import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
-import { randomBytes } from 'crypto';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
