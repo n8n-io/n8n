@@ -144,6 +144,7 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
+	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
@@ -168,6 +169,7 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 		);
 	} catch (e) {
@@ -253,6 +255,7 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -286,6 +289,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					{},
 				);
 				return dataProxy.getDataProxy();
@@ -445,6 +449,7 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -466,6 +471,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					{},
 				);
 				return dataProxy.getDataProxy();

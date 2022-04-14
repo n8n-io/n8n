@@ -41,7 +41,6 @@ export class GetResponseOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'header',
-			description: 'Resource to consume.',
 		},
 	];
 }

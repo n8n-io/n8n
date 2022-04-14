@@ -1,8 +1,8 @@
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import config = require('../../config');
+import * as config from '../../config';
 import * as utils from './shared/utils';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';

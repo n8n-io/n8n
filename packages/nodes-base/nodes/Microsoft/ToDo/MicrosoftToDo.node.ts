@@ -32,7 +32,7 @@ import {
 	listOperations,
 } from './ListDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {

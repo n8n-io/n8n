@@ -14,15 +14,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import * as fs from 'fs';
+import fs from 'fs';
 
-import * as formidable from 'formidable';
+import formidable from 'formidable';
 
-import * as isbot from 'isbot';
+import isbot from 'isbot';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {

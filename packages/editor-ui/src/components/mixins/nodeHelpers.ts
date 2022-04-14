@@ -287,6 +287,9 @@ export const nodeHelpers = mixins(
 					return [];
 				}
 				const executionData: IRunExecutionData = this.$store.getters.getWorkflowExecution.data;
+				if (!executionData || !executionData.resultData) { // unknown status
+					return [];
+				}
 				const runData = executionData.resultData.runData;
 
 				if (runData === null || runData[node.name] === undefined ||
