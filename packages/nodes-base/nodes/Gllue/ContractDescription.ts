@@ -19,6 +19,11 @@ export const contractOperations: INodeProperties[] = [
 				description: 'Delete contract',
 			},
 			{
+				name: 'add',
+				value: 'add',
+				description: 'Add/Update contract',
+			},
+			{
 				name: 'Simple List with IDs',
 				value: 'simple_list_with_ids',
 				description: 'Get all items with Simple List',
@@ -37,16 +42,34 @@ export const contractFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
 				resource: [
 					'clientcontract',
+				],
+				operation: [
+					'delete', 'add',
 				],
 			},
 		},
 		default: '',
 		description: 'Contract ID',
+	},
+	{
+		displayName: 'Payload',
+		name: 'payload',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'clientcontract',
+				],
+				operation: [
+					'add',
+				],
+			},
+		},
+		default: '{"_approval_status": "Pass"}',
+		description: 'JSON of payload, for example {"status": "approved"}',
 	},
 	{
 		displayName: 'Filters',
