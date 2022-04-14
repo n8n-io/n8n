@@ -36,12 +36,12 @@ export class ZohoOAuth2Api implements ICredentialType {
 			type: 'options',
 			options: [
 				{
-					name: 'US - https://accounts.zoho.com/oauth/v2/token',
-					value: 'https://accounts.zoho.com/oauth/v2/token',
-				},
-				{
 					name: 'AU - https://accounts.zoho.com.au/oauth/v2/token',
 					value: 'https://accounts.zoho.com.au/oauth/v2/token',
+				},
+				{
+					name: 'CN - https://accounts.zoho.com.cn/oauth/v2/token',
+					value: 'https://accounts.zoho.com.cn/oauth/v2/token',
 				},
 				{
 					name: 'EU - https://accounts.zoho.eu/oauth/v2/token',
@@ -52,8 +52,8 @@ export class ZohoOAuth2Api implements ICredentialType {
 					value: 'https://accounts.zoho.in/oauth/v2/token',
 				},
 				{
-					name: 'CN - https://accounts.zoho.com.cn/oauth/v2/token',
-					value: 'https://accounts.zoho.com.cn/oauth/v2/token',
+					name: 'US - https://accounts.zoho.com/oauth/v2/token',
+					value: 'https://accounts.zoho.com/oauth/v2/token',
 				},
 			],
 			default: 'https://accounts.zoho.com/oauth/v2/token',
