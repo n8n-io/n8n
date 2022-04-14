@@ -88,7 +88,7 @@ export async function getUsersToSaveAndInvite(
 
 export async function saveUsersWithRole(
 	users: string[],
-	role: Role,
+	role: Role | undefined,
 	tokenOwnerId: string,
 ): Promise<User[]> {
 	const savedUsers = await Db.transaction(async (transactionManager) => {
@@ -96,7 +96,7 @@ export async function saveUsersWithRole(
 			users.map(async (email) => {
 				const newUser = Object.assign(new User(), {
 					email,
-					globalRole: role.id,
+					globalRole: role?.id,
 				});
 				const savedUser = await transactionManager.save<User>(newUser);
 				return savedUser;

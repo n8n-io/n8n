@@ -40,7 +40,7 @@ export = {
 			let savedUsers;
 
 			try {
-				savedUsers = await saveUsersWithRole(usersToSave, role!, tokenOwnerId);
+				savedUsers = await saveUsersWithRole(usersToSave, role, tokenOwnerId);
 			} catch (error) {
 				return res.status(500).json({
 					message: 'An error occurred during user creation',
