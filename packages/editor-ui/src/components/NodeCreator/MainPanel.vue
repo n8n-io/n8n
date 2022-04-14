@@ -1,5 +1,9 @@
 <template>
-	<div @click="onClickInside" class="container">
+	<div
+		class="container"
+		ref="mainPanelContainer"
+		@click="onClickInside"
+	>
 		<SlideTransition>
 			<SubcategoryPanel
 				v-if="activeSubcategory"
@@ -287,7 +291,15 @@ export default mixins(externalHooks).extend({
 			this.searchEventBus.$emit('focus');
 		},
 
-		emitDragEvent(eventName: string, { element, event }: { element: INodeCreateElement, event: Event }) {
+		emitDragEvent(eventName: string, { element, event }: { element: INodeCreateElement, event: DragEvent }) {
+			// Abort drag end event propagation if dropped inside nodes panel
+			if (eventName === 'nodeTypeDragEnd') {
+				const mainPanelContainerBoundingRect = (this.$refs.mainPanelContainer as Element).getBoundingClientRect();
+				if (event.pageX >= mainPanelContainerBoundingRect.x && event.pageY >= mainPanelContainerBoundingRect.y) {
+					return;
+				}
+			}
+
 			this.$emit(eventName, {
 				nodeTypeName: (element.properties as INodeItemProps).nodeType.name,
 				event,

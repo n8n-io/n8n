@@ -184,8 +184,8 @@ import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 
 interface AddNodeOptions {
-	openDataDisplay?: boolean;
 	position?: XYPosition;
+	dragAndDrop?: boolean;
 }
 
 export default mixins(
@@ -1243,6 +1243,7 @@ export default mixins(
 			nodeTypeDragEnd ({ nodeTypeName, event }: { nodeTypeName: string, event: DragEvent }) {
 				this.addNodeButton(nodeTypeName, {
 					position: this.getMousePositionWithinNodeView(event),
+					dragAndDrop: true,
 				});
 				this.createNodeActive = false;
 			},
@@ -1383,7 +1384,11 @@ export default mixins(
 				this.$store.commit('setStateDirty', true);
 
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+					node_type: nodeTypeName,
+					workflow_id: this.$store.getters.workflowId,
+					drag_and_drop: options.dragAndDrop,
+				} as IDataObject);
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1426,11 +1431,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNodeButton (nodeTypeName: string, options: AddNodeOptions = {
-				openDataDisplay: true,
-			}) {
-				console.log(options.position);
-
+			async addNodeButton (nodeTypeName: string, options: AddNodeOptions = {}) {
 				if (this.editAllowedCheck() === false) {
 					return;
 				}

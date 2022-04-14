@@ -28,9 +28,16 @@
 			</div>
 
 			<div :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />
-			<div :class="$style.draggable" :style="{ top: `${draggablePosition.y}px`, left: `${draggablePosition.x}px` }" ref="draggable" v-show="dragging">
-				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
-			</div>
+			<transition name="node-item-transition">
+				<div
+					:class="$style.draggable"
+					:style="draggableStyle"
+					ref="draggable"
+					v-show="dragging"
+				>
+					<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
+				</div>
+			</transition>
 		</div>
 	</div>
 </template>
@@ -78,6 +85,12 @@ export default Vue.extend({
 		isTrigger (): boolean {
 			return this.nodeType.group.includes('trigger');
 		},
+		draggableStyle(): { top: string; left: string; } {
+			return {
+				top: `${this.draggablePosition.y}px`,
+				left: `${this.draggablePosition.x}px`,
+			};
+		},
 	},
 	mounted() {
 		/**
@@ -100,8 +113,8 @@ export default Vue.extend({
 				event.dataTransfer.setDragImage(this.$refs.draggableDataTransfer as Element, 0, 0);
 			}
 
-			this.$data.dragging = true;
-			this.$data.draggablePosition = { x, y };
+			this.dragging = true;
+			this.draggablePosition = { x, y };
 		},
 		onDragOver(event: DragEvent): void {
 			if (!this.dragging || event.pageX === 0 && event.pageY === 0) {
@@ -110,7 +123,7 @@ export default Vue.extend({
 
 			const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
 
-			this.$data.draggablePosition = { x, y };
+			this.draggablePosition = { x, y };
 		},
 		onDragEnd(event: DragEvent): void {
 			this.$emit('dragend', {
@@ -118,12 +131,14 @@ export default Vue.extend({
 
 				// Safari and Firefox return incorrect values for "dragend" event,
 				// override with last known value
-				pageX: this.$data.draggablePosition.x,
-				pageY: this.$data.draggablePosition.y,
+				pageX: this.draggablePosition.x,
+				pageY: this.draggablePosition.y,
 			});
 
-			this.$data.dragging = false;
-			this.$data.draggablePosition = { x: -100, y: -100 };
+			this.dragging = false;
+			setTimeout(() => {
+				this.draggablePosition = { x: -100, y: -100 };
+			}, 300);
 		},
 	},
 });
@@ -190,5 +205,22 @@ export default Vue.extend({
 .draggable-data-transfer {
 	width: 1px;
 	height: 1px;
+}
+</style>
+
+<style lang="scss" scoped>
+.node-item-transition {
+	&-enter-active,
+	&-leave-active {
+		transition-property: opacity, transform;
+		transition-duration: 300ms;
+		transition-timing-function: ease;
+	}
+
+	&-enter,
+	&-leave-to {
+		opacity: 0;
+		transform: scale(0);
+	}
 }
 </style>
