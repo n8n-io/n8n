@@ -211,7 +211,7 @@ export default {
   position: absolute;
   background-color: var(--color-sticky-default-background);
   border: 1px solid var(--color-sticky-default-border);
-  border-radius: var(--border-radius-large);
+  border-radius: var(--border-radius-base);
   cursor: pointer;
 }
 
@@ -229,7 +229,7 @@ export default {
     bottom: 0;
     position: absolute;
     background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
-    border-radius: var(--border-radius-large);
+    border-radius: var(--border-radius-base);
   }
 }
 

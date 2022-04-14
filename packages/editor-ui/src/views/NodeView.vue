@@ -13,49 +13,60 @@
 			>
 			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
-				<node
-				v-for="nodeData in nodes"
-				@duplicateNode="duplicateNode"
-				@deselectAllNodes="deselectAllNodes"
-				@deselectNode="nodeDeselectedByName"
-				@nodeSelected="nodeSelectedByName"
-				@removeNode="removeNode"
-				@runWorkflow="runWorkflow"
-				@moved="onNodeMoved"
-				@run="onNodeRun"
-				:id="'node-' + getNodeIndex(nodeData.name)"
-				:key="getNodeIndex(nodeData.name)"
-				:name="nodeData.name"
-				:isReadOnly="isReadOnly"
-				:instance="instance"
-				:isActive="!!activeNode && activeNode.name === nodeData.name"
-				:hideActions="pullConnActive"
-				></node>
-				<Sticky
-          v-for="nodeData in stickies"
-          @duplicateNode="duplicateNode"
-          @deselectAllNodes="deselectAllNodes"
-          @deselectNode="nodeDeselectedByName"
-          @nodeSelected="nodeSelectedByName"
-          @removeNode="removeNode"
-          @moved="onNodeMoved"
-          @run="onNodeRun"
-					@onChangeMode="onStickyChangeMode"
-					@onMouseHover="onMouseHover"
-          @onResizeChange="onResizeChange"
-          :id="'node-' + getNodeIndex(nodeData.name)"
-          :key="getNodeIndex(nodeData.name)"
-          :name="nodeData.name"
-          :isReadOnly="isResizing"
-          :instance="instance"
-          :isActive="!!activeNode && activeNode.name === nodeData.name"
-          :hideActions="pullConnActive"
-        />
+				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
+					<node
+					v-if="nodeData.type !== 'n8n-nodes-base.note'"
+					@duplicateNode="duplicateNode"
+					@deselectAllNodes="deselectAllNodes"
+					@deselectNode="nodeDeselectedByName"
+					@nodeSelected="nodeSelectedByName"
+					@removeNode="removeNode"
+					@runWorkflow="runWorkflow"
+					@moved="onNodeMoved"
+					@run="onNodeRun"
+					:id="'node-' + getNodeIndex(nodeData.name)"
+					:key="getNodeIndex(nodeData.name)"
+					:name="nodeData.name"
+					:isReadOnly="isReadOnly"
+					:instance="instance"
+					:isActive="!!activeNode && activeNode.name === nodeData.name"
+					:hideActions="pullConnActive"
+					></node>
+					<Sticky
+						v-else
+						@duplicateNode="duplicateNode"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="removeNode"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						@onChangeMode="onStickyChangeMode"
+						@onMouseHover="onMouseHover"
+						@onResizeChange="onResizeChange"
+						:id="'node-' + getNodeIndex(nodeData.name)"
+						:name="nodeData.name"
+						:isReadOnly="isResizing"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:hideActions="pullConnActive"
+					/>
+				</div>
 			</div>
 		</div>
 		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
-		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$locale.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
-			<n8n-icon-button size="xlarge" icon="plus" />
+		<div 
+			class="node-buttons-wrapper"
+			v-if="!createNodeActive && !isReadOnly"
+			@mouseover="isAddStickyButtonVisible = true"
+			@mouseleave="isAddStickyButtonVisible = false"
+		>
+			<div class="node-creator-button">
+				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
+				<div class="add-sticky-button" @click="nodeTypeSelected('n8n-nodes-base.note')">
+					<n8n-icon-button v-if="isAddStickyButtonVisible" size="medium" icon="plus" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+				</div>
+			</div>
 		</div>
 		<node-creator
 			:active="createNodeActive"
@@ -309,9 +320,7 @@ export default mixins(
 				return this.$store.getters.lastSelectedNode;
 			},
 			nodes (): INodeUi[] {
-				return this.$store.getters.allNodes.filter((node: INodeUi) => {
-					return node.type !== 'n8n-nodes-base.note';
-				});
+				return this.$store.getters.allNodes;
 			},
 			stickies(): INodeUi[] {
 				return this.$store.getters.allNodes.filter((node: INodeUi) => {
@@ -378,6 +387,7 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				isResizing: false,
+				isAddStickyButtonVisible: false,
 				isStickyInEditMode: false,
 				shouldPreventScrolling: false,
 			};
@@ -2954,15 +2964,30 @@ export default mixins(
 	bottom: 10px;
 }
 
+.node-buttons-wrapper {
+	position: fixed;
+  width: 150px;
+  height: 200px;
+	top: 0;
+  right: 0;
+  display: flex;
+}
+
 .node-creator-button {
 	position: fixed;
 	text-align: center;
 	top: 80px;
 	right: 20px;
+	display: flex;
+	flex-direction: column;
 }
 
 .node-creator-button button {
 	position: relative;
+}
+
+.add-sticky-button {
+	margin-top: var(--spacing-2xs);
 }
 
 .node-view-root {
