@@ -107,7 +107,7 @@ export class I18nClass {
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
-						key: `reusableDynamicText.oauth2.${parameterName}`,
+						key: `_reusableDynamicText.oauth2.${parameterName}`,
 						fallback: displayName,
 					});
 				}
