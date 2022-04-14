@@ -1,4 +1,4 @@
-import moment = require('moment');
+import moment from 'moment';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,

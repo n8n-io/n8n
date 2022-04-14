@@ -10,7 +10,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 

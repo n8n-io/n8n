@@ -24,7 +24,7 @@ import {
 	IRowResponse,
 } from './Interfaces';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class SeaTableTrigger implements INodeType {
 	description: INodeTypeDescription = {

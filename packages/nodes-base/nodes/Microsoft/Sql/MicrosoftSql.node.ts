@@ -15,7 +15,7 @@ import {
 	flatten,
 } from '../../utils/utilities';
 
-import * as mssql from 'mssql';
+import mssql from 'mssql';
 
 import {
 	ITables,

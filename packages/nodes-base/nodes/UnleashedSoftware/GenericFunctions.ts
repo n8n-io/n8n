@@ -18,7 +18,7 @@ import {
 	createHmac,
 } from 'crypto';
 
-import * as qs from 'qs';
+import qs from 'qs';
 
 export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, query: IDataObject = {}, pageNumber?: number, headers?: object): Promise<any> { // tslint:disable-line:no-any
 

@@ -40,7 +40,7 @@ import {
 	omit,
 } from 'lodash';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
 

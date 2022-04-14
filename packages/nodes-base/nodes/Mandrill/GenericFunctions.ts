@@ -8,7 +8,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any

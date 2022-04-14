@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 // @ts-ignore
-import * as mysql2 from 'mysql2/promise';
+import mysql2 from 'mysql2/promise';
 
 import { copyInputItems } from './GenericFunctions';
 

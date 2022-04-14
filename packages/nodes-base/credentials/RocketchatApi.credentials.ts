@@ -10,7 +10,7 @@ export class RocketchatApi implements ICredentialType {
 	documentationUrl = 'rocketchat';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'User Id',
+			displayName: 'User ID',
 			name: 'userId',
 			type: 'string',
 			default: '',

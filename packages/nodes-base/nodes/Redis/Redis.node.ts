@@ -9,9 +9,9 @@ import {
 } from 'n8n-workflow';
 
 import { set } from 'lodash';
-import * as redis from 'redis';
+import redis from 'redis';
 
-import * as util from 'util';
+import util from 'util';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {

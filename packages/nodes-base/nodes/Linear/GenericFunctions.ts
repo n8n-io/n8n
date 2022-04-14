@@ -17,7 +17,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import get = require('lodash.get');
+import get from 'lodash.get';
 
 import {
 	query,

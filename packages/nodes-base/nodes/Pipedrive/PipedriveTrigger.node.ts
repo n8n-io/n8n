@@ -14,7 +14,7 @@ import {
 	pipedriveApiRequest,
 } from './GenericFunctions';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import {
 	Response,

@@ -30,7 +30,7 @@ import {
 	filters,
 } from './Filters';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 

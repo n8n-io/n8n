@@ -24,9 +24,9 @@ import {
 	IEmail,
 } from './Gmail.node';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 interface IGoogleAuthCredentials {
 	delegatedEmail?: string;

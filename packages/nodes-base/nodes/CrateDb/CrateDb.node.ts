@@ -16,7 +16,7 @@ import {
 	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
 
-import * as pgPromise from 'pg-promise';
+import pgPromise from 'pg-promise';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {

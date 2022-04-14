@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
-import SMTPTransport = require('nodemailer/lib/smtp-transport');
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 export class EmailSend implements INodeType {
 	description: INodeTypeDescription = {

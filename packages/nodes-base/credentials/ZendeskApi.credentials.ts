@@ -12,7 +12,7 @@ export class ZendeskApi implements ICredentialType {
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
-			description: 'The subdomain of your Zendesk work environment.',
+			description: 'The subdomain of your Zendesk work environment',
 			placeholder: 'company',
 			default: '',
 		},

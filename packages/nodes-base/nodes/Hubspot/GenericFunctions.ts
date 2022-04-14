@@ -17,7 +17,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
