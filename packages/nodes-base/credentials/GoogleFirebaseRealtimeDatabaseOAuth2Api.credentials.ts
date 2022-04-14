@@ -27,19 +27,19 @@ export class GoogleFirebaseRealtimeDatabaseOAuth2Api implements ICredentialType 
 			displayName: 'Region',
 			name: 'region',
 			type: 'options',
-			default: '.firebaseio.com',
+			default: 'firebaseio.com',
 			options: [
 				{
 					name: 'us-central1',
-					value: '.firebaseio.com',
+					value: 'firebaseio.com',
 				},
 				{
 					name: 'europe-west1',
-					value: '.europe-west1.firebasedatabase.app',
+					value: 'europe-west1.firebasedatabase.app',
 				},
 				{
 					name: 'asia-southeast1',
-					value: '.asia-southeast1.firebasedatabase.app',
+					value: 'asia-southeast1.firebasedatabase.app',
 				},
 			],
 		},

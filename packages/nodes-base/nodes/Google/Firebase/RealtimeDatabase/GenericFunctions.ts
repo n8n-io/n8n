@@ -23,7 +23,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
-		url: uri || `https://${projectId}${region}/${resource}.json`,
+		url: uri || `https://${projectId}.${region}/${resource}.json`,
 		json: true,
 	};
 
