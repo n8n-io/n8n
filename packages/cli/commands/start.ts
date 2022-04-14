@@ -217,7 +217,7 @@ export class Start extends Command {
 				}
 
 				// Load settings from database and set them to config.
-				const databaseSettings = await Db.collections.Settings!.find({ loadOnStartup: true });
+				const databaseSettings = await Db.collections.Settings.find({ loadOnStartup: true });
 				databaseSettings.forEach((setting) => {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
@@ -287,8 +287,8 @@ export class Start extends Command {
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 					if (shouldRunVacuum) {
-						// eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-non-null-assertion
-						await Db.collections.Execution!.query('VACUUM;');
+						// eslint-disable-next-line @typescript-eslint/no-floating-promises
+						await Db.collections.Execution.query('VACUUM;');
 					}
 				}
 
