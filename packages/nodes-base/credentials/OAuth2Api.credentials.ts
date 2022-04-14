@@ -51,7 +51,7 @@ export class OAuth2Api implements ICredentialType {
 			name: 'authQueryParameters',
 			type: 'string',
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here.',
+			description: 'For some services additional query parameters have to be set which can be defined here',
 			placeholder: 'access_type=offline',
 		},
 		{
@@ -71,7 +71,6 @@ export class OAuth2Api implements ICredentialType {
 				},
 			],
 			default: 'header',
-			description: 'Resource to consume.',
 		},
 	];
 }

@@ -46,7 +46,7 @@ export class Kafka implements ICredentialType {
 				},
 			},
 			default: '',
-			description: 'Optional username if authenticated is required.',
+			description: 'Optional username if authenticated is required',
 		},
 		{
 			displayName: 'Password',
@@ -63,10 +63,10 @@ export class Kafka implements ICredentialType {
 				password: true,
 			},
 			default: '',
-			description: 'Optional password if authenticated is required.',
+			description: 'Optional password if authenticated is required',
 		},
 		{
-			displayName: 'SASL mechanism',
+			displayName: 'SASL Mechanism',
 			name: 'saslMechanism',
 			type: 'options',
 			displayOptions: {
@@ -78,7 +78,7 @@ export class Kafka implements ICredentialType {
 			},
 			options: [
 				{
-					name: 'plain',
+					name: 'Plain',
 					value: 'plain',
 				},
 				{
@@ -91,7 +91,7 @@ export class Kafka implements ICredentialType {
 				},
 			],
 			default: 'plain',
-			description: 'The SASL mechanism.',
+			description: 'The SASL mechanism',
 		},
 	];
 }
