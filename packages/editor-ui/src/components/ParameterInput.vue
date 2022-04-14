@@ -771,7 +771,8 @@ export default mixins(
 					let value = this.expressionValueComputed;
 
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
-						value = (value || '').split(',');
+						value = (value || '').split(',')
+							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
 					}
 
 					this.valueChanged(typeof value !== 'undefined' ? value : null);
