@@ -66,6 +66,12 @@ export = {
 				includeRole,
 			});
 
+			if (apiKeyUserOwner.id === idToDelete) {
+				return res.status(400).json({
+					message: 'Cannot delete your own user',
+				});
+			}
+
 			if (!users?.length || (transferId !== '' && users.length !== 2)) {
 				return res.status(400).json({
 					message:

@@ -108,7 +108,7 @@ const getMailerInstance = async (
 	} catch (error) {
 		if (error instanceof Error) {
 			return res.status(500).json({
-				message: 'Email sending must be set up in order to request a password reset email',
+				message: 'There is a problem with your SMTP setup',
 			});
 		}
 	}
