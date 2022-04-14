@@ -132,7 +132,7 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 }
 
-export async function xataApiFetchAllWrapper(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, returnAll: boolean, limit: any, url?: string): Promise<any> { // tslint:disable-line:no-any
+export async function xataApiList(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, returnAll: boolean, url?: string): Promise<any> { // tslint:disable-line:no-any
 
 	try {
 
@@ -155,7 +155,7 @@ export async function xataApiFetchAllWrapper(this: IExecuteFunctions, apiKey: st
 			await xataApiFetchAll.call(this, options, results);
 
 		} else {
-
+			const limit = this.getNodeParameter('limit',0) as number;
 			const response = await this.helpers.httpRequest(options);
 			const records = response.records;
 			let numRecords = 0;

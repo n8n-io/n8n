@@ -13,7 +13,7 @@ import {
 import {
 	getAdditionalOptions,
 	getItem,
-	xataApiFetchAllWrapper,
+	xataApiList,
 	xataApiRequest
 } from './GenericFunctions';
 
@@ -480,8 +480,7 @@ export class Xata implements INodeType {
 				const resource = 'query';
 				const body = getAdditionalOptions.call(this, this.getNodeParameter('additionalOptions', 0, {}) as IDataObject) as IDataObject;
 				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-				const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number) as any;  // tslint:disable-line:no-any
-				const responseData = await xataApiFetchAllWrapper.call(this, apiKey, 'POST', slug, database, branch, table, resource, body, returnAll, limit);
+				const responseData = await xataApiList.call(this, apiKey, 'POST', slug, database, branch, table, resource, body, returnAll);
 
 				return [this.helpers.returnJsonArray(responseData)];
 
@@ -527,8 +526,6 @@ export class Xata implements INodeType {
 				}
 			}
 		} else if (operation === 'update') {
-
-			//const columnsRequest = await xataApiRequest.call(this,apiKey,'GET',slug,database,branch,table,'columns',{});
 
 			for (let i = 0; i < items.length; i++) {
 
