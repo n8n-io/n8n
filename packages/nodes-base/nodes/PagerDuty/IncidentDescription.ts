@@ -121,6 +121,13 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Incident details',
+				name: 'details',
+				type: 'string',
+				default: '',
+				description: 'Provide additional details about the incident which will go in the body',
+			},
+			{
 				displayName: 'Escalation Policy ID',
 				name: 'escalationPolicyId',
 				type: 'options',
