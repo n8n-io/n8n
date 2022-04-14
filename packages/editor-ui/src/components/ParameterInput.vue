@@ -391,10 +391,6 @@ export default mixins(
 					}
 				}
 
-				if (this.parameter.type === 'multiOptions' && typeof returnValue === 'string' && !this.isValueExpression) {
-					returnValue = (returnValue || '').split(',');
-				}
-
 				return returnValue;
 			},
 			expressionDisplayValue (): string {
@@ -425,7 +421,7 @@ export default mixins(
 
 				return false;
 			},
-			expressionValueComputed (): NodeParameterValue | null {
+			expressionValueComputed (): NodeParameterValue | string[] | null {
 				if (this.areExpressionsDisabled) {
 					return this.value;
 				}
@@ -737,7 +733,7 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string | number | boolean | Date | null) {
+			valueChanged (value: string[] | string | number | boolean | Date | null) {
 				if (value instanceof Date) {
 					value = value.toISOString();
 				}
@@ -772,7 +768,13 @@ export default mixins(
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
 				} else if (command === 'removeExpression') {
-					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
+					let value = this.expressionValueComputed;
+
+					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
+						value = (value || '').split(',');
+					}
+
+					this.valueChanged(typeof value !== 'undefined' ? value : null);
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}
