@@ -128,10 +128,7 @@ export class Discord implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const nodeInput = this.getInputData()[0].json,
-			returnData: IDataObject[] = [];
-
-		let body: DiscordWebhook = {};
+		const returnData: IDataObject[] = [];
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
@@ -140,7 +137,8 @@ export class Discord implements INodeType {
 		const items = this.getInputData();
 		const length = items.length as number
 		for (let i = 0; i < length; i++) {
-			body = {};
+			const body: DiscordWebhook = {};
+
 			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
 			body.content = this.getNodeParameter('text', i) as string;
 			const options = this.getNodeParameter('options', i) as IDataObject;
@@ -198,69 +196,68 @@ export class Discord implements INodeType {
 				//@ts-expect-error
 				body.attachments = JSON.parse(options.attachments as DiscordAttachment[]);
 			}
-		}
 
+			//* Not used props, delete them from the payload as Discord won't need them :^
+			if (!body.content) delete body.content;
+			if (!body.username) delete body.username;
+			if (!body.avatar_url) delete body.avatar_url;
+			if (!body.embeds) delete body.embeds;
+			if (!body.allowed_mentions) delete body.allowed_mentions;
+			if (!body.flags) delete body.flags;
+			if (!body.components) delete body.components;
+			if (!body.payload_json) delete body.payload_json;
+			if (!body.attachments) delete body.attachments;
 
-		//* Not used props, delete them from the payload as Discord won't need them :^
-		if (!body.content) delete body.content;
-		if (!body.username) delete body.username;
-		if (!body.avatar_url) delete body.avatar_url;
-		if (!body.embeds) delete body.embeds;
-		if (!body.allowed_mentions) delete body.allowed_mentions;
-		if (!body.flags) delete body.flags;
-		if (!body.components) delete body.components;
-		if (!body.payload_json) delete body.payload_json;
-		if (!body.attachments) delete body.attachments;
+			let requestOptions;
 
-		let options;
-
-		if(!body.payload_json){
-			 options = {
-				method: 'POST',
-				body,
-				uri: webhookUri,
-				headers: {
-					'content-type': 'application/json; charset=utf-8',
-				},
-				json: true,
-			};
-		}else {
-			 options = {
-				method: 'POST',
-				body,
-				uri: webhookUri,
-				headers: {
-					'content-type': 'multipart/form-data; charset=utf-8',
-				},
-			};
-		}
-		let maxTries = 5;
-		do {
-			try {
-				await this.helpers.request(options);
-				break;
-			} catch (error) {
-				if (error.statusCode === 429) {
-					//* Await ratelimit to be over
-					await new Promise<void>((resolve) =>
-						setTimeout(resolve, error.response.body.retry_after || 150),
-					);
-
-					continue;
-				}
-
-				//* Different Discord error, throw it
-				throw error;
+			if(!body.payload_json){
+				requestOptions = {
+					method: 'POST',
+					body,
+					uri: webhookUri,
+					headers: {
+						'content-type': 'application/json; charset=utf-8',
+					},
+					json: true,
+				};
+			}else {
+				requestOptions = {
+					method: 'POST',
+					body,
+					uri: webhookUri,
+					headers: {
+						'content-type': 'multipart/form-data; charset=utf-8',
+					},
+				};
 			}
-		} while (--maxTries);
+			let maxTries = 5;
+			do {
+				try {
+					await this.helpers.request(requestOptions);
+					break;
+				} catch (error) {
+					if (error.statusCode === 429) {
+						//* Await ratelimit to be over
+						await new Promise<void>((resolve) =>
+							setTimeout(resolve, error.response.body.retry_after || 150),
+						);
 
-		if (maxTries <= 0) {
-			throw new Error(
-				'Could not send Webhook message. Max. amount of rate-limit retries reached.',
-			);
+						continue;
+					}
+
+					//* Different Discord error, throw it
+					throw error;
+				}
+			} while (--maxTries);
+
+			if (maxTries <= 0) {
+				throw new Error(
+					'Could not send Webhook message. Max. amount of rate-limit retries reached.',
+				);
+			}
+			returnData.push({ success: true });
 		}
 
-		returnData.push({ success: true });
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
