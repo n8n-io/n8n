@@ -432,8 +432,8 @@ export class Xata implements INodeType {
 			try {
 
 				let records = [];
-				const options = this.getNodeParameter('additionalOptions', 0) as IDataObject;
-				const bulkSize = options['bulkSize'] ? options['bulkSize'] : items.length as number;
+				const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
+				const bulkSize = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] : items.length as number;
 				let itemsCount = 0 as number;
 				for (let i = 0; i < items.length; i++) {
 
