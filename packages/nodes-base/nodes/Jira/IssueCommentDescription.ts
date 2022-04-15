@@ -7,6 +7,7 @@ export const issueCommentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const issueCommentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'issueComment Key',
+		description: 'Issue Comment Key',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -152,7 +152,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: 'renderedBody',
 				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 			{
@@ -160,7 +160,7 @@ export const issueCommentFields: INodeProperties[] = [
 				name: 'internal',
 				type: 'boolean',
 				default: false,
-				description: 'Create internal comment',
+				description: 'Whether to make comment internal',
 			},
 		],
 	},
@@ -184,7 +184,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID or key of the issue.',
+		description: 'The ID or key of the issue',
 	},
 	{
 		displayName: 'Comment ID',
@@ -261,7 +261,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID or key of the issue.',
+		description: 'The ID or key of the issue',
 	},
 	{
 		displayName: 'Return All',
@@ -278,7 +278,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -302,7 +302,7 @@ export const issueCommentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -331,7 +331,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: 'renderedBody',
 				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
@@ -356,7 +356,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID or key of the issue.',
+		description: 'The ID or key of the issue',
 	},
 	{
 		displayName: 'Comment ID',
@@ -374,7 +374,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment.',
+		description: 'The ID of the comment',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -396,7 +396,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The Issue Comment key.',
+		description: 'The Issue Comment key',
 	},
 	{
 		displayName: 'Comment ID',
@@ -414,7 +414,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment.',
+		description: 'The ID of the comment',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -450,7 +450,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Comment's text.`,
+		description: `Comment's text`,
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -499,7 +499,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: 'renderedBody',
 				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 			{
@@ -507,7 +507,7 @@ export const issueCommentFields: INodeProperties[] = [
 				name: 'internal',
 				type: 'boolean',
 				default: false,
-				description: 'Create internal comment',
+				description: 'Whether to create internal comment',
 			},
 		],
 	},
