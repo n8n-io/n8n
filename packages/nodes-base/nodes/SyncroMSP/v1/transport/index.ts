@@ -26,10 +26,6 @@ export async function apiRequest(
 ) {
 	const credentials = await this.getCredentials('syncroMspApi');
 
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
-
 	query['api_key'] = credentials.apiKey;
 
 	const options: IHttpRequestOptions = {

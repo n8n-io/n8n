@@ -42,10 +42,6 @@ export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookF
 	try {
 		if ( authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('surveyMonkeyApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 			// @ts-ignore
 			options.headers['Authorization'] = `bearer ${credentials.accessToken}`;
 

@@ -24,10 +24,6 @@ export async function apiRequest(
 ) {
 	const credentials = await this.getCredentials('mattermostApi');
 
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
-
 	const options: IHttpRequestOptions = {
 		method,
 		body,

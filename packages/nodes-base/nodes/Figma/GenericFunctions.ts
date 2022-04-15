@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 export async function figmaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('figmaApi') as { accessToken: string };
+	const credentials = await this.getCredentials('figmaApi');
 
 	let options: OptionsWithUri = {
 		headers: { 'X-FIGMA-TOKEN': credentials.accessToken },
