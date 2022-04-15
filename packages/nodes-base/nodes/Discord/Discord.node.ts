@@ -4,9 +4,6 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -135,7 +132,7 @@ export class Discord implements INodeType {
 		if (!webhookUri) throw Error('Webhook uri is required.');
 
 		const items = this.getInputData();
-		const length = items.length as number
+		const length = items.length as number;
 		for (let i = 0; i < length; i++) {
 			const body: DiscordWebhook = {};
 
