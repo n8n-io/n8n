@@ -98,7 +98,7 @@ export class Discord implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Json Payload',
+						displayName: 'JSON Payload',
 						name: 'payloadJson',
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
