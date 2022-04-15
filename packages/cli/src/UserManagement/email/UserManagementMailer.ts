@@ -12,6 +12,7 @@ import {
 } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
+// TODO: make function fully async (remove sync functions)
 async function getTemplate(configKeyName: string, defaultFilename: string) {
 	const templateOverride = (await GenericHelpers.getConfigValue(
 		`userManagement.emails.templates.${configKeyName}`,
