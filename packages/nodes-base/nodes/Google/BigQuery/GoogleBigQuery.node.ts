@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -78,7 +79,7 @@ export class GoogleBigQuery implements INodeType {
 						value: 'oAuth2',
 					},
 				],
-				default: 'serviceAccount',
+				default: 'oAuth2',
 			},
 			{
 				displayName: 'Resource',
@@ -220,7 +221,7 @@ export class GoogleBigQuery implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.message });
 					} else {
-						throw error;
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			} else if (operation === 'getAll') {
@@ -290,7 +291,7 @@ export class GoogleBigQuery implements INodeType {
 							returnData.push({ error: error.message });
 							continue;
 						}
-						throw error;
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}

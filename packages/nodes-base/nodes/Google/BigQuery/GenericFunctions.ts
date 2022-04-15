@@ -9,7 +9,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, JsonObject, NodeApiError, NodeOperationError
+	IDataObject,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -53,17 +56,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errors = error.response.body.error.errors;
-
-			errors = errors.map((e: IDataObject) => e.message);
-			// Try to return the error prettier
-			throw new Error(
-				`Google BigQuery error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}
