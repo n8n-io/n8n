@@ -53,14 +53,6 @@ import TriggerIcon from '../TriggerIcon.vue';
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
 
-interface Data {
-	dragging: boolean;
-	draggablePosition: {
-		x: number;
-		y: number;
-	};
-}
-
 export default Vue.extend({
 	name: 'NodeItem',
 	props: [
@@ -69,7 +61,7 @@ export default Vue.extend({
 		'nodeType',
 		'bordered',
 	],
-	data(): Data {
+	data() {
 		return {
 			dragging: false,
 			draggablePosition: {
@@ -98,10 +90,10 @@ export default Vue.extend({
 		 * All browsers attach the correct page coordinates to the "dragover" event.
 		 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
 		 */
-		document.addEventListener("dragover", this.onDragOver);
+		document.body.addEventListener("dragover", this.onDragOver);
 	},
 	destroyed() {
-		document.removeEventListener("dragover", this.onDragOver);
+		document.body.removeEventListener("dragover", this.onDragOver);
 	},
 	methods: {
 		onDragStart(event: DragEvent): void {
@@ -110,6 +102,9 @@ export default Vue.extend({
 			this.$emit('dragstart', event);
 
 			if (event.dataTransfer) {
+				event.dataTransfer.effectAllowed = "copy";
+				event.dataTransfer.dropEffect = "copy";
+				event.dataTransfer.setData('nodeTypeName', this.nodeType.name);
 				event.dataTransfer.setDragImage(this.$refs.draggableDataTransfer as Element, 0, 0);
 			}
 
@@ -126,14 +121,7 @@ export default Vue.extend({
 			this.draggablePosition = { x, y };
 		},
 		onDragEnd(event: DragEvent): void {
-			this.$emit('dragend', {
-				...event,
-
-				// Safari and Firefox return incorrect values for "dragend" event,
-				// override with last known value
-				pageX: this.draggablePosition.x,
-				pageY: this.draggablePosition.y,
-			});
+			this.$emit('dragend', event);
 
 			this.dragging = false;
 			setTimeout(() => {

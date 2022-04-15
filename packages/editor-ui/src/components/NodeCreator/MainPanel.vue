@@ -12,8 +12,6 @@
 				:activeIndex="activeSubcategoryIndex"
 				@close="onSubcategoryClose"
 				@selected="selected"
-				@dragstart="emitDragEvent('nodeTypeDragStart', $event)"
-				@dragend="emitDragEvent('nodeTypeDragEnd', $event)"
 			/>
 		</SlideTransition>
 		<div class="main-panel">
@@ -36,8 +34,6 @@
 					:activeIndex="activeIndex"
 					:transitionsEnabled="true"
 					@selected="selected"
-					@dragstart="emitDragEvent('nodeTypeDragStart', $event)"
-					@dragend="emitDragEvent('nodeTypeDragEnd', $event)"
 				/>
 			</div>
 			<div
@@ -48,8 +44,6 @@
 					:elements="filteredNodeTypes"
 					:activeIndex="activeIndex"
 					@selected="selected"
-					@dragstart="emitDragEvent('nodeTypeDragStart', $event)"
-					@dragend="emitDragEvent('nodeTypeDragEnd', $event)"
 				/>
 			</div>
 			<NoResults
@@ -289,21 +283,6 @@ export default mixins(externalHooks).extend({
 
 		onClickInside() {
 			this.searchEventBus.$emit('focus');
-		},
-
-		emitDragEvent(eventName: string, { element, event }: { element: INodeCreateElement, event: DragEvent }) {
-			// Abort drag end event propagation if dropped inside nodes panel
-			if (eventName === 'nodeTypeDragEnd') {
-				const mainPanelContainerBoundingRect = (this.$refs.mainPanelContainer as Element).getBoundingClientRect();
-				if (event.pageX >= mainPanelContainerBoundingRect.x && event.pageY >= mainPanelContainerBoundingRect.y) {
-					return;
-				}
-			}
-
-			this.$emit(eventName, {
-				nodeTypeName: (element.properties as INodeItemProps).nodeType.name,
-				event,
-			});
 		},
 	},
 	async mounted() {

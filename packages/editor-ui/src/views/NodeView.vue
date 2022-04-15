@@ -1,5 +1,9 @@
 <template>
-	<div class="node-view-root">
+	<div
+		class="node-view-root"
+	 	@dragover="onDragOver"
+	 	@drop="onDrop"
+	>
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -44,7 +48,6 @@
 		<node-creator
 			:active="createNodeActive"
 			@nodeTypeSelected="nodeTypeSelected"
-			@nodeTypeDragEnd="nodeTypeDragEnd"
 			@closeNodeCreator="closeNodeCreator"
 		/>
 		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
@@ -1237,12 +1240,25 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 
-			nodeTypeDragEnd ({ nodeTypeName, event }: { nodeTypeName: string, event: DragEvent }) {
-				this.addNodeButton(nodeTypeName, {
-					position: this.getMousePositionWithinNodeView(event),
-					dragAndDrop: true,
-				});
-				this.createNodeActive = false;
+			onDragOver(event: Event) {
+				event.preventDefault();
+			},
+
+			onDrop(event: DragEvent) {
+				if (!event.dataTransfer) {
+					return;
+				}
+
+				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+				if (nodeTypeName) {
+					const mousePosition = this.getMousePositionWithinNodeView(event);
+
+					this.addNodeButton(nodeTypeName, {
+						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						dragAndDrop: true,
+					});
+					this.createNodeActive = false;
+				}
 			},
 
 			nodeDeselectedByName (nodeName: string) {
