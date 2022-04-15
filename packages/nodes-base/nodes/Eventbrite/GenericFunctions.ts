@@ -33,9 +33,6 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 	try {
 		if (authenticationMethod === 'privateKey') {
 			const credentials = await this.getCredentials('eventbriteApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
 			return await this.helpers.request!(options);

@@ -12,7 +12,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { 
+import {
 	IContactUpdate,
 } from './ContactInterface';
 
@@ -31,11 +31,11 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 			'Accept': 'application/json',
 		},
 		auth: {
-			username: credentials!.email as string,
-			password: credentials!.apiKey as string,
+			username: credentials.email as string,
+			password: credentials.apiKey as string,
 		},
 		qs: query,
-		uri: uri || `https://${credentials!.subdomain}.agilecrm.com/dev/${endpoint}`,
+		uri: uri || `https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,
 	};
 
@@ -83,7 +83,7 @@ export async function agileCrmApiRequestAllItems(this: IHookFunctions | ILoadOpt
 export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('agileCrmApi');
-	const baseUri = `https://${credentials!.subdomain}.agilecrm.com/dev/`;
+	const baseUri = `https://${credentials.subdomain}.agilecrm.com/dev/`;
 	const options: OptionsWithUri = {
 		method,
 		headers: {
@@ -91,8 +91,8 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 		},
 		body: { id: body.id },
 		auth: {
-			username: credentials!.email as string,
-			password: credentials!.apiKey as string,
+			username: credentials.email as string,
+			password: credentials.apiKey as string,
 		},
 		uri: uri || baseUri,
 		json: true,

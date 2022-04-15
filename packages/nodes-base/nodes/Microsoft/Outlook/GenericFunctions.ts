@@ -19,8 +19,8 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 
 	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
 	// If accessing shared mailbox
-	if (credentials!.useShared && credentials!.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials!.userPrincipalName}${resource}`;
+	if (credentials.useShared && credentials.userPrincipalName) {
+		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
 	const options: OptionsWithUri = {
