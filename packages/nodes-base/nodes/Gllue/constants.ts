@@ -11,7 +11,7 @@ export const EMAIL_CHANNEL = 'email';
 
 export const VALID_GLLUE_SOURCES = [BLUE_GLLUE_SOURCE];
 
-export const CONSENT_FROM_EMAIL = 'no-reply@cgpo2o.com';
+export const CONSENT_FROM_EMAIL = 'no-reply@cgpo2o.cn';
 export const CONSENT_FROM_NAME = 'No Reply';
 export const CONSENT_EMAIL_TYPE = 'CandidateConsentRequestEmail';
 export const CONSENT_EMAIL_CATEGORY = 'candidate,consent,n8n,tracking';

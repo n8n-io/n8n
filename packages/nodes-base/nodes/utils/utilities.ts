@@ -60,3 +60,11 @@ export function getStageFromEnv(): string {
 	const stage = process.env.NODE_ENV as string;
 	return stage === undefined ? 'dev' : stage;
 }
+
+export function getHasuraUrl(): string {
+	const data = process.env.HASURA_URL as string;
+	if (data === undefined) {
+		throw new TypeError('missing HASURA_URL in env');
+	}
+	return data;
+}
