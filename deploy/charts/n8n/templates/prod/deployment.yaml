@@ -54,6 +54,8 @@ spec:
         imagePullPolicy: IfNotPresent
         name: prod-n8n
         env:
+        - name: DB_TYPE
+          value: "postgresdb"
         - name: DB_POSTGRESDB_DATABASE
           value: "prod_n8n"
         - name: HASURA_URL
