@@ -326,7 +326,7 @@ export class Xata implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						'operation':['append','update'],
+						'operation': ['append', 'update'],
 						'sendAll': [
 							false,
 						],
@@ -381,6 +381,24 @@ export class Xata implements INodeType {
 						placeholder: 'Name',
 						description: 'Columns in this list will be not pushed to the table.',
 
+					},
+					{
+						displayName: 'Bulk Size',
+						name: 'bulkSize',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 10,
+						displayOptions: {
+							show: {
+								'/operation': [
+									'append',
+								],
+
+							},
+						},
+
 					}],
 			},
 
@@ -412,17 +430,36 @@ export class Xata implements INodeType {
 
 			try {
 
-				const records = [];
-
+				let records = [];
+				const options = this.getNodeParameter('additionalOptions', 0) as IDataObject;
+				const bulkSize = options['bulkSize'] ? options['bulkSize'] : items.length as number;
+				let itemsCount = 0 as number;
 				for (let i = 0; i < items.length; i++) {
 
 					const item = getItem.call(this, i, items[i].json, `${slug}/${database}:${branch}/${table}`);
 					records.push(item);
+					itemsCount++;
+
+					if (itemsCount === bulkSize) {
+
+						const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
+						responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
+						itemsCount = 0;
+						records = [];
+
+					}
 
 				}
 
-				const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
-				responseData['recordIDs'].forEach((el: string) => returnData.push({'id' : el}));
+				if (itemsCount !== 0) {
+
+					const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
+					responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
+
+				}
+
+
+
 
 
 			} catch (error) {
@@ -506,7 +543,7 @@ export class Xata implements INodeType {
 
 					const id = this.getNodeParameter('id', i) as string;
 					const resource = `data/${id}` as string;
-					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el=> typeof el === 'string' ? el.trim() : null);
+					const columns = (this.getNodeParameter('pullAllColumns', i) as boolean ? undefined : this.getNodeParameter('columns', i) as string[])?.map(el => typeof el === 'string' ? el.trim() : null);
 					const body = columns ? { 'columns': columns } : {} as IDataObject;
 					const responseData = await xataApiRequest.call(this, apiKey, 'GET', slug, database, branch, table, resource, body);
 					returnData.push(responseData);
