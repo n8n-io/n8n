@@ -135,7 +135,7 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const secret = getAutomaticSecret(credentials!);
+				const secret = getAutomaticSecret(credentials);
 				const endpoint = '/webhooks';
 				const body: IDataObject = {
 					delivery_url: webhookUrl,

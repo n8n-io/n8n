@@ -774,10 +774,6 @@ export class FileMaker implements INodeType {
 
 		const credentials = await this.getCredentials('fileMaker');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		let token;
 		try {
 			token = await getToken.call(this);

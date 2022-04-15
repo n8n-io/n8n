@@ -207,10 +207,6 @@ export class QuestDb implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('questDb');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const pgp = pgPromise();
 
 		const config = {

@@ -392,10 +392,6 @@ export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions =
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
-	if (!encryptionKey) {
-		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-	}
-
 	const coreCredential = new Credentials(
 		{ id: null, name: credential.name },
 		credential.type,

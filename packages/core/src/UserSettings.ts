@@ -10,6 +10,7 @@ import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
 	IUserSettings,
+	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
@@ -73,19 +74,15 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
  * @returns
  */
 
-export async function getEncryptionKey(): Promise<string | undefined> {
+export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
 	}
 
 	const userSettings = await getUserSettings();
 
-	if (userSettings === undefined) {
-		return undefined;
-	}
-
-	if (userSettings.encryptionKey === undefined) {
-		return undefined;
+	if (userSettings === undefined || userSettings.encryptionKey === undefined) {
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
 	return userSettings.encryptionKey;
