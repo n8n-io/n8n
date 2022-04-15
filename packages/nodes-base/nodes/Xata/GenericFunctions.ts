@@ -24,7 +24,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 	} else {
 
-		const additionalOptions = (this.getNodeParameter('additionalOptions', index, {}) as IDataObject) as IDataObject;
+		const additionalOptions = this.getNodeParameter('additionalOptions', index, {}) as IDataObject;
 
 		if (additionalOptions['ignoreColumns'] && additionalOptions['ignoreColumns'] !== '') {
 
