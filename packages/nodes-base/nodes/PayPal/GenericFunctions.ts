@@ -16,7 +16,7 @@ import {
 export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials!.env as string);
+	const env = getEnvironment(credentials.env as string);
 	const tokenInfo =  await getAccessToken.call(this);
 	const headerWithAuthentication = Object.assign({ },
 		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' });
@@ -45,9 +45,6 @@ function getEnvironment(env: string): string {
 
 async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('payPalApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	const env = getEnvironment(credentials!.env as string);
 	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
 	const headerWithAuthentication = Object.assign({},

@@ -481,13 +481,15 @@ test('POST /users should fail if user management is disabled', async () => {
 	expect(response.statusCode).toBe(500);
 });
 
-test('POST /users should email invites and create user shells', async () => {
+test('POST /users should email invites and create user shells but ignore existing', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	const memberShell = await testDb.createUserShell(globalMemberRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	await utils.configureSmtp();
 
-	const testEmails = [randomEmail(), randomEmail(), randomEmail()];
+	const testEmails = [randomEmail(), randomEmail().toUpperCase(), memberShell.email, member.email];
 
 	const payload = testEmails.map((e) => ({ email: e }));
 
@@ -495,27 +497,31 @@ test('POST /users should email invites and create user shells', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	await Promise.all(
-		response.body.data.map(async ({ user, error }: { user: User; error: Error }) => {
-			const { id, email: receivedEmail } = user;
+	for (const {
+		user: { id, email: receivedEmail },
+		error,
+	} of response.body.data) {
+		expect(validator.isUUID(id)).toBe(true);
+		expect(id).not.toBe(member.id);
 
-			expect(validator.isUUID(id)).toBe(true);
-			expect(testEmails.some((e) => e === receivedEmail)).toBe(true);
-			if (error) {
-				expect(error).toBe('Email could not be sent');
-			}
+		const lowerCasedEmail = receivedEmail.toLowerCase();
+		expect(receivedEmail).toBe(lowerCasedEmail);
+		expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
 
-			const storedUser = await Db.collections.User!.findOneOrFail(id);
-			const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
-				storedUser;
+		if (error) {
+			expect(error).toBe('Email could not be sent');
+		}
 
-			expect(firstName).toBeNull();
-			expect(lastName).toBeNull();
-			expect(personalizationAnswers).toBeNull();
-			expect(password).toBeNull();
-			expect(resetPasswordToken).toBeNull();
-		}),
-	);
+		const storedUser = await Db.collections.User!.findOneOrFail(id);
+		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
+			storedUser;
+
+		expect(firstName).toBeNull();
+		expect(lastName).toBeNull();
+		expect(personalizationAnswers).toBeNull();
+		expect(password).toBeNull();
+		expect(resetPasswordToken).toBeNull();
+	}
 });
 
 test('POST /users should fail with invalid inputs', async () => {

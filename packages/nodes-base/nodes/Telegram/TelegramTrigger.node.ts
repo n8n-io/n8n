@@ -211,7 +211,7 @@ export class TelegramTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		const credentials = await this.getCredentials('telegramApi') as IDataObject;
+		const credentials = await this.getCredentials('telegramApi');
 
 		const bodyData = this.getBodyData() as IEvent;
 
