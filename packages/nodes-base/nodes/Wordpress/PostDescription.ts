@@ -240,9 +240,23 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Template',
 				name: 'template',
-				type: 'string',
-				default: 'Standard-Template',
-				description: 'The template to use.',
+				type: 'options',
+				options: [
+					{
+						name: 'Elementor Canvas',
+						value: 'elementor_canvas',
+					},
+					{
+						name: 'Elementor Header Footer',
+						value: 'elementor_header_footer',
+					},
+					{
+						name: 'Elementor Theme',
+						value: 'elementor_theme',
+					},
+				],
+				default: 'elementor_canvas',
+				description: 'The Elementor template to use.',
 			},
 			{
 				displayName: 'Categories',
@@ -467,9 +481,23 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Template',
 				name: 'template',
-				type: 'string',
-				default: 'Standard-Template',
-				description: 'The template to use.',
+				type: 'options',
+				options: [
+					{
+						name: 'Elementor Canvas',
+						value: 'elementor_canvas',
+					},
+					{
+						name: 'Elementor Header Footer',
+						value: 'elementor_header_footer',
+					},
+					{
+						name: 'Elementor Theme',
+						value: 'elementor_theme',
+					},
+				],
+				default: 'elementor_canvas',
+				description: 'The Elementor template to use.',
 			},
 			{
 				displayName: 'Categories',
