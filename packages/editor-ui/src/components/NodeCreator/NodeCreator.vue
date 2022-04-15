@@ -107,14 +107,7 @@ export default Vue.extend({
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onDragOver(event: DragEvent) {
-			if (!event.dataTransfer) {
-				return;
-			}
-
-			const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
-			if (nodeTypeName) {
-				event.preventDefault();
-			}
+			event.preventDefault();
 		},
 		onDrop(event: DragEvent) {
 			if (!event.dataTransfer) {
