@@ -13,6 +13,8 @@ services:
       - POSTGRES_NON_ROOT_PASSWORD
     volumes:
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    ports:
+      - 5432:5432
 
   n8n:
     image: n8nio/n8n

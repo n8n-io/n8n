@@ -21,6 +21,10 @@
 				}}
 			</n8n-text>
 		</div>
+		<div v-if="framework">
+			<!-- <BasicReactComponent /> -->
+			<BasicReactComponent5 />
+		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
 				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
@@ -55,6 +59,12 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
+import BasicReactComponent5 from "@/components/BasicReactComponent/react_app/BasicReactComponent.jsx";
+// import BasicReactComponent from "@/components/BasicReactComponent/BasicReactComponent.vue";
+import { Button } from '@mantine/core';
+
+import {applyReactInVue} from 'vuereact-combined';
+
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -69,6 +79,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+
+// console.log({BasicReactComponent5});
 
 export default mixins(
 	externalHooks,
@@ -85,8 +97,18 @@ export default mixins(
 			NodeTabs,
 			NodeWebhooks,
 			NodeExecuteButton,
+			BasicReactComponent5: applyReactInVue(BasicReactComponent5),
 		},
 		computed: {
+			framework (): INodeTypeDescription["framework"] | null {
+				if(this.nodeType) {
+					return this.nodeType.framework;
+				}
+
+				return null;
+			},
+
+
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -169,7 +191,6 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
-
 				nodeSettings: [
 					{
 						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
@@ -460,6 +481,10 @@ export default mixins(
 				}
 
 				if (this.nodeType !== null) {
+					if(this.nodeType.framework === 'react') {
+						console.log('HELLOOOOO from react');
+					}
+
 					this.nodeValid = true;
 
 					const foundNodeSettings = [];
@@ -520,6 +545,10 @@ export default mixins(
 				} else {
 					this.nodeValid = false;
 				}
+			},
+
+			log(message:string) {
+				console.log(message);
 			},
 		},
 		mounted () {
