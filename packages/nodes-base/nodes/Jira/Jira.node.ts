@@ -924,9 +924,20 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {};
+
 					if (options.expand) {
 						qs.expand = options.expand as string;
 						delete options.expand;
+					}
+
+					if (options.internal) {
+						body.properties = [{
+							key: 'sd.public.comment',
+							value: {
+								internal: true,
+							},
+						}];
+						delete options.internal;
 					}
 
 					Object.assign(body, options);
@@ -1017,6 +1028,15 @@ export class Jira implements INodeType {
 					if (options.expand) {
 						qs.expand = options.expand as string;
 						delete options.expand;
+					}
+					if (options.internal) {
+						body.properties = [{
+							key: 'sd.public.comment',
+							value: {
+								internal: true,
+							},
+						}];
+						delete options.internal;
 					}
 					Object.assign(qs, options);
 					if (jsonParameters === false) {

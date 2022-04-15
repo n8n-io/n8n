@@ -155,6 +155,13 @@ export const issueCommentFields: INodeProperties[] = [
 				default: '',
 				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
+			{
+				displayName: 'Internal',
+				name: 'internal',
+				type: 'boolean',
+				default: false,
+				description: 'Create internal comment',
+			},
 		],
 	},
 
@@ -489,6 +496,13 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 				default: '',
 				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+			},
+			{
+				displayName: 'Internal',
+				name: 'internal',
+				type: 'boolean',
+				default: false,
+				description: 'Create internal comment',
 			},
 		],
 	},
