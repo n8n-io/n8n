@@ -23,7 +23,7 @@ import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/U
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
-import { publicApi } from '../../../src/PublicApi/';
+import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import type { User } from '../../../src/databases/entities/User';
 import { Telemetry } from '../../../src/telemetry';
 import type { ApiPath, EndpointGroup, SmtpTestAccount } from './types';
@@ -66,7 +66,7 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router | express.Router[]> = {
 			credentials: credentialsController,
-			publicApi,
+			//publicApi,
 		};
 
 		for (const group of routerEndpoints) {
