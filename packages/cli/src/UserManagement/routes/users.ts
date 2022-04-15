@@ -104,7 +104,7 @@ export function usersNamespace(this: N8nApp): void {
 						400,
 					);
 				}
-				createUsers[invite.email] = null;
+				createUsers[invite.email.toLowerCase()] = null;
 			});
 
 			const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
