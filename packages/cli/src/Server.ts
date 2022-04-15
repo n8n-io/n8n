@@ -1703,13 +1703,11 @@ class App {
 					);
 				}
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (!encryptionKey) {
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-						undefined,
-						500,
-					);
+				let encryptionKey: string;
+				try {
+					encryptionKey = await UserSettings.getEncryptionKey();
+				} catch (error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1842,15 +1840,11 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const encryptionKey = await UserSettings.getEncryptionKey();
-
-					if (!encryptionKey) {
-						const errorResponse = new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							503,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
+					let encryptionKey: string;
+					try {
+						encryptionKey = await UserSettings.getEncryptionKey();
+					} catch (error) {
+						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1962,13 +1956,11 @@ class App {
 					);
 				}
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (!encryptionKey) {
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-						undefined,
-						500,
-					);
+				let encryptionKey: string;
+				try {
+					encryptionKey = await UserSettings.getEncryptionKey();
+				} catch (error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -2103,15 +2095,11 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const encryptionKey = await UserSettings.getEncryptionKey();
-
-					if (!encryptionKey) {
-						const errorResponse = new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							503,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
+					let encryptionKey: string;
+					try {
+						encryptionKey = await UserSettings.getEncryptionKey();
+					} catch (error) {
+						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';

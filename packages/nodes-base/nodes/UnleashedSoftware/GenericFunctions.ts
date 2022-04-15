@@ -42,10 +42,6 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	const credentials = await this.getCredentials('unleashedSoftwareApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const signature = createHmac('sha256', (credentials.apiKey as string))
 		.update(qs.stringify(query))
 		.digest('base64');

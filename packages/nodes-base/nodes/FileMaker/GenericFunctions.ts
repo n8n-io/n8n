@@ -41,9 +41,6 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
 
@@ -92,9 +89,6 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
 
@@ -128,9 +122,6 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
 
@@ -163,9 +154,6 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
 
@@ -208,9 +196,6 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 
 export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('fileMaker');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;
@@ -257,9 +242,6 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 
 export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions, token: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('fileMaker');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;

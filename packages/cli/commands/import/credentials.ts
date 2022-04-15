@@ -85,9 +85,6 @@ export class ImportCredentialsCommand extends Command {
 			await UserSettings.prepareUserSettings();
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
-				throw new Error('No encryption key found to encrypt the credentials!');
-			}
 
 			if (flags.separate) {
 				const files = await glob(
