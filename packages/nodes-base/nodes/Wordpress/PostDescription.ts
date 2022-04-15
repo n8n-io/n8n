@@ -238,6 +238,13 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky.',
 			},
 			{
+				displayName: 'Template',
+				name: 'template',
+				type: 'string',
+				default: 'Standard-Template',
+				description: 'The template to use.',
+			},
+			{
 				displayName: 'Categories',
 				name: 'categories',
 				type: 'multiOptions',
@@ -456,6 +463,13 @@ export const postFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not the object should be treated as sticky.',
+			},
+			{
+				displayName: 'Template',
+				name: 'template',
+				type: 'string',
+				default: 'Standard-Template',
+				description: 'The template to use.',
 			},
 			{
 				displayName: 'Categories',

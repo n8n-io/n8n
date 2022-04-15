@@ -11,7 +11,7 @@ export interface IPost {
 	ping_status?: string;
 	format?: string;
 	sticky?: boolean;
-	template?:string;
+	template?: string;
 	categories?: number[];
 	tags?: number[];
 }
