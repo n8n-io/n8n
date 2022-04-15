@@ -1,4 +1,5 @@
 import {getHasuraUrl, getStageFromEnv} from '../../../nodes/utils/utilities';
+import {DEFAULT_DEV_HASURA_URL} from '../../../nodes/utils/constants';
 
 describe('get stage', () => {
 	const OLD_ENV = process.env;
@@ -38,7 +39,7 @@ describe('get hasura url', () => {
 
 	it('should raise error on undefined', () => {
 		process.env.HASURA_URL = undefined;
-		expect(getHasuraUrl).toThrow('missing HASURA_URL in env');
+		expect(getHasuraUrl()).toEqual(DEFAULT_DEV_HASURA_URL);
 	});
 	it('should get staging', () => {
 		process.env.HASURA_URL = 'staging-hasura-svc:8080';

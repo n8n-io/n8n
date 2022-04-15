@@ -14,6 +14,8 @@
  * chunk(['a', 'b', 'c', 'd'], 3)
  * // => [['a', 'b', 'c'], ['d']]
  */
+import {DEFAULT_DEV_HASURA_URL} from './constants';
+
 export function chunk(array: any[], size = 1) { // tslint:disable-line:no-any
 	const length = array == null ? 0 : array.length;
 	if (!length || size < 1) {
@@ -64,7 +66,7 @@ export function getStageFromEnv(): string {
 export function getHasuraUrl(): string {
 	const data = process.env.HASURA_URL as string;
 	if (data === undefined) {
-		throw new TypeError('missing HASURA_URL in env');
+		return DEFAULT_DEV_HASURA_URL;
 	}
 	return data;
 }

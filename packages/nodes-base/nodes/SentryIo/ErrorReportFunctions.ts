@@ -75,7 +75,7 @@ function guessErrorType(errorStack: string) {
 
 export function parseStacktraceLine(traceLine: string) {
 	let groups;
-	for (var regex of TRACE_LINE_REGEXPs) {
+	for (const regex of TRACE_LINE_REGEXPs) {
 		groups = traceLine.match(regex);
 		if (groups) {
 			break;
@@ -98,7 +98,7 @@ export function parseStacktraceLine(traceLine: string) {
 
 export function extractStacktrace(errorInfo: IDataObject) {
 	const stackString = errorInfo.stack as string;
-	const traceLines = stackString.split("\n");
+	const traceLines = stackString.split('\n');
 	const frames: IDataObject[] = [];
 	traceLines.map((line, index) => {
 		if (index === 0) {
@@ -107,7 +107,7 @@ export function extractStacktrace(errorInfo: IDataObject) {
 		// @ts-ignore
 		frames.unshift(parseStacktraceLine(line));
 	});
-	return {frames: frames};
+	return {frames};
 }
 
 function convertToErrorPayload(errorInfo: IDataObject) {
