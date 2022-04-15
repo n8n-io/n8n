@@ -4,6 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -267,7 +268,13 @@ export class PipedriveTrigger implements INodeType {
 				};
 
 				if (incomingAuthentication === 'basicAuth') {
-					const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					let httpBasicAuth;
+
+					try {
+						httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					} catch (error) {
+						// Do nothing
+					}
 
 					if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 						// Data is not defined on node so can not authenticate
@@ -323,7 +330,13 @@ export class PipedriveTrigger implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate

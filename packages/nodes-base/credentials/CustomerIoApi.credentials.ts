@@ -14,7 +14,7 @@ export class CustomerIoApi implements ICredentialType {
 			name: 'trackingApiKey',
 			type: 'string',
 			default: '',
-			description: 'Required for tracking API.',
+			description: 'Required for tracking API',
 			required: true,
 		},
 		{
@@ -22,14 +22,14 @@ export class CustomerIoApi implements ICredentialType {
 			name: 'trackingSiteId',
 			type: 'string',
 			default: '',
-			description: 'Required for tracking API.',
+			description: 'Required for tracking API',
 		},
 		{
 			displayName: 'App API Key',
 			name: 'appApiKey',
 			type: 'string',
 			default: '',
-			description: 'Required for App API.',
+			description: 'Required for App API',
 		},
 	];
 }
