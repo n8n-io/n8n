@@ -229,10 +229,15 @@ export const issueCommentFields: INodeProperties[] = [
 					{
 						name: 'Rendered Body',
 						value: 'renderedBody',
+						description: 'Returns the comment body rendered in HTML',
+					},
+					{
+						name: 'Properties',
+						value: 'properties',
+						description: 'Returns the comment\'s properties',
 					},
 				],
-				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				default: 'properties',
 			},
 		],
 	},
