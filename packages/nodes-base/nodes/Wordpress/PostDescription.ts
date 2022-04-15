@@ -243,6 +243,10 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Standard',
+						value: '',
+					},
+					{
 						name: 'Elementor Canvas',
 						value: 'elementor_canvas',
 					},
@@ -255,7 +259,7 @@ export const postFields: INodeProperties[] = [
 						value: 'elementor_theme',
 					},
 				],
-				default: 'elementor_canvas',
+				default: '',
 				description: 'The Elementor template to use.',
 			},
 			{
