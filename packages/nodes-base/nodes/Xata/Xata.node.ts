@@ -385,6 +385,7 @@ export class Xata implements INodeType {
 					{
 						displayName: 'Bulk Size',
 						name: 'bulkSize',
+						description: 'Number of records to process at once.',
 						type: 'number',
 						typeOptions: {
 							minValue: 1,
