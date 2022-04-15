@@ -107,7 +107,14 @@ export default Vue.extend({
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onDragOver(event: DragEvent) {
-			event.preventDefault();
+			if (!event.dataTransfer) {
+				return;
+			}
+
+			const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+			if (nodeTypeName) {
+				event.preventDefault();
+			}
 		},
 		onDrop(event: DragEvent) {
 			if (!event.dataTransfer) {
@@ -120,7 +127,6 @@ export default Vue.extend({
 			// Abort drag end event propagation if dropped inside nodes panel
 			if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
 				event.stopPropagation();
-				return;
 			}
 		},
 	},

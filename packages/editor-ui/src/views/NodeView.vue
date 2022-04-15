@@ -1240,8 +1240,15 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 
-			onDragOver(event: Event) {
-				event.preventDefault();
+			onDragOver(event: DragEvent) {
+				if (!event.dataTransfer) {
+					return;
+				}
+
+				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+				if (nodeTypeName) {
+					event.preventDefault();
+				}
 			},
 
 			onDrop(event: DragEvent) {
