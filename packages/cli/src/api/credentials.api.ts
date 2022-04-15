@@ -115,13 +115,15 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials, nodeToTestWith } = req.body;
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
-			return {
-				status: 'Error',
-				message: RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-			};
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+				undefined,
+				500,
+			);
 		}
 
 		const helper = new CredentialsHelper(encryptionKey);
@@ -149,9 +151,10 @@ credentialsController.post(
 			nodeAccess.date = new Date();
 		}
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 				undefined,
@@ -285,9 +288,10 @@ credentialsController.patch(
 			}
 		}
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 				undefined,
@@ -393,9 +397,10 @@ credentialsController.get(
 
 		const { data, id, ...rest } = credential;
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 				undefined,

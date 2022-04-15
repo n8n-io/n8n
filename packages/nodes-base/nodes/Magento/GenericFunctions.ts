@@ -25,7 +25,7 @@ import {
 } from './Types';
 
 export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('magento2Api') as IDataObject;
+	const credentials = await this.getCredentials('magento2Api');
 
 	let options: OptionsWithUri = {
 		method,

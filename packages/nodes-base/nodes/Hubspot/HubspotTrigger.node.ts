@@ -282,7 +282,7 @@ export class HubspotTrigger implements INodeType {
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const currentWebhookUrl = this.getNodeWebhookUrl('default') as string;
-				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 
 				try {
 					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
@@ -309,7 +309,7 @@ export class HubspotTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 				const events = (this.getNodeParameter('eventsUi') as IDataObject || {}).eventValues as IDataObject[] || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
@@ -341,7 +341,7 @@ export class HubspotTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 
 				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
 
@@ -361,7 +361,7 @@ export class HubspotTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		const credentials = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+		const credentials = await this.getCredentials('hubspotDeveloperApi');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials found!');

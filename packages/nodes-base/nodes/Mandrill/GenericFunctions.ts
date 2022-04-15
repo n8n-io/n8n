@@ -14,10 +14,6 @@ import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('mandrillApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const data = Object.assign({}, body, { key: credentials.apiKey });
 
 	const endpoint = 'mandrillapp.com/api/1.0';

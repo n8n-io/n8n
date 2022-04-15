@@ -1101,16 +1101,8 @@ export class Gitlab implements INodeType {
 		try {
 			if (authenticationMethod === 'accessToken') {
 				credentials = await this.getCredentials('gitlabApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 			} else {
 				credentials = await this.getCredentials('gitlabOAuth2Api');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
