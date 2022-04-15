@@ -13,6 +13,7 @@
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"useUnknownInCatchVariables": false,
+		"resolveJsonModule": true,
 		"sourceMap": true,
 		"baseUrl": ".",
 		"types": [
