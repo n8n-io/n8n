@@ -54,6 +54,8 @@ spec:
         imagePullPolicy: IfNotPresent
         name: staging-n8n
         env:
+        - name: DB_TYPE
+          value: "postgresdb"
         - name: DB_POSTGRESDB_DATABASE
           value: "staging_n8n"
         - name: HASURA_URL
