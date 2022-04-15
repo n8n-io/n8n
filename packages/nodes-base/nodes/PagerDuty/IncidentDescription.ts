@@ -131,6 +131,13 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given.',
 			},
 			{
+				displayName: 'Incident Details',
+				name: 'details',
+				type: 'string',
+				default: '',
+				description: 'Additional details about the incident which will go in the body',
+			},
+			{
 				displayName: 'Incident Key',
 				name: 'incidentKey',
 				type: 'string',
