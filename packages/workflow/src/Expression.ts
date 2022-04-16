@@ -138,8 +138,13 @@ export class Expression {
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (returnValue instanceof ExpressionError) {
-				if (typeof window !== 'undefined') {
-					throw new Error(returnValue.message);
+				if (returnValue.failExecution) {
+					let errorMessage = `${returnValue.message} [Item Index: ${returnValue.itemIndex}]`;
+					if (returnValue.runIndex !== 0) {
+						errorMessage += `[Run Index: ${returnValue.runIndex}]`;
+					}
+
+					throw new Error(errorMessage);
 				}
 				return undefined;
 			}
