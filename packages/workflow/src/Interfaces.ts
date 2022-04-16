@@ -817,11 +817,12 @@ export interface INodeExecutionData {
 		| IPairedItemData[]
 		| NodeApiError
 		| NodeOperationError
+		| number
 		| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
-	pairedItem?: IPairedItemData | IPairedItemData[];
+	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 }
 
 export interface INodeExecuteFunctions {

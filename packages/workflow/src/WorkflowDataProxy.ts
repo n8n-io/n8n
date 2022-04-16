@@ -549,11 +549,9 @@ export class WorkflowDataProxy {
 				const itemPreviousNode: INodeExecutionData =
 					taskData.data!.main[sourceData.previousNodeOutput || 0]![pairedItem.item];
 
-				if (!itemPreviousNode.pairedItem) {
+				if (itemPreviousNode.pairedItem === undefined) {
 					throw new ExpressionError(
-						`Could not resolve, as pairedItem data is missing on node "${
-							sourceData.previousNodeOutput || 0
-						}"`,
+						`Could not resolve, as pairedItem data is missing on node "${sourceData.previousNode}"`,
 						that.itemIndex,
 						that.runIndex,
 						true,
@@ -587,7 +585,13 @@ export class WorkflowDataProxy {
 				}
 
 				// pairedItem is not an array
-				pairedItem = itemPreviousNode.pairedItem;
+				if (typeof itemPreviousNode.pairedItem === 'number') {
+					pairedItem = {
+						item: itemPreviousNode.pairedItem,
+					};
+				} else {
+					pairedItem = itemPreviousNode.pairedItem;
+				}
 
 				sourceData = taskData.source[pairedItem.input || 0] || null;
 			}
