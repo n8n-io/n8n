@@ -7,8 +7,8 @@ import { Credentials, UserSettings } from 'n8n-core';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDecryptedDb } from '../../src';
 
@@ -119,13 +119,10 @@ export class ExportCredentialsCommand extends Command {
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const credentials = await Db.collections.Credentials!.find(findQuery);
+			const credentials = await Db.collections.Credentials.find(findQuery);
 
 			if (flags.decrypted) {
 				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
-					throw new Error('No encryption key got found to decrypt the credentials!');
-				}
 
 				for (let i = 0; i < credentials.length; i++) {
 					const { name, type, nodesAccess, data } = credentials[i];

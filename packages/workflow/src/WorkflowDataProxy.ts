@@ -7,7 +7,7 @@
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
 // eslint-disable-next-line import/no-cycle
@@ -54,6 +54,10 @@ export class WorkflowDataProxy {
 
 	private executeData: IExecuteData | undefined;
 
+	private defaultTimezone: string;
+
+	private timezone: string;
+
 	constructor(
 		workflow: Workflow,
 		runExecutionData: IRunExecutionData | null,
@@ -63,6 +67,7 @@ export class WorkflowDataProxy {
 		connectionInputData: INodeExecutionData[],
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
+		defaultTimezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
@@ -77,9 +82,12 @@ export class WorkflowDataProxy {
 		this.connectionInputData = connectionInputData;
 		this.siblingParameters = siblingParameters;
 		this.mode = mode;
+		this.defaultTimezone = defaultTimezone;
+		this.timezone = (this.workflow.settings.timezone as string) || this.defaultTimezone;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
 		this.executeData = executeData;
+		Settings.defaultZone = this.timezone;
 	}
 
 	private isExpressionError(data: INodeExecutionData[] | ExpressionError): boolean {
@@ -204,6 +212,7 @@ export class WorkflowDataProxy {
 						that.activeNodeName,
 						that.connectionInputData,
 						that.mode,
+						that.timezone,
 						that.additionalKeys,
 						that.executeData,
 					);
@@ -752,6 +761,7 @@ export class WorkflowDataProxy {
 					that.activeNodeName,
 					that.connectionInputData,
 					that.mode,
+					that.timezone,
 					that.additionalKeys,
 					that.executeData,
 				);
@@ -767,6 +777,7 @@ export class WorkflowDataProxy {
 					this.connectionInputData,
 					that.siblingParameters,
 					that.mode,
+					that.defaultTimezone,
 					that.additionalKeys,
 					that.executeData,
 					defaultReturnRunIndex,

@@ -78,10 +78,6 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('formstackApi') as IDataObject;
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 			return await this.helpers.request!(options);
 		} else {

@@ -13,7 +13,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
-import * as express from 'express';
+import express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
@@ -133,26 +133,6 @@ export function encodeWebhookResponse(
 }
 
 /**
- * Returns all the webhooks which should be created for the give workflow
- *
- * @export
- * @param {string} workflowId
- * @param {Workflow} workflow
- * @returns {IWebhookData[]}
- */
-export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
-	// Check all the nodes in the workflow if they have webhooks
-
-	const returnData: IWebhookData[] = [];
-
-	for (const node of Object.values(workflow.nodes)) {
-		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooksBasic(workflow, node));
-	}
-
-	return returnData;
-}
-
-/**
  * Executes a webhook
  *
  * @export
@@ -194,42 +174,6 @@ export async function executeWebhook(
 		$executionId: executionId,
 	};
 
-	// Get the responseMode
-	const responseMode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseMode,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'onReceived',
-	);
-	const responseCode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseCode,
-		executionMode,
-		additionalKeys,
-		undefined,
-		200,
-	) as number;
-
-	const responseData = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseData,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'firstEntryJson',
-	);
-
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
-		// If the mode is not known we error. Is probably best like that instead of using
-		// the default that people know as early as possible (probably already testing phase)
-		// that something does not resolve properly.
-		const errorMessage = `The response mode ${responseMode} is not valid!`;
-		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
-	}
-
 	let user: User;
 	if (
 		(workflowData as WorkflowEntity).shared?.length &&
@@ -246,6 +190,45 @@ export async function executeWebhook(
 
 	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+
+	// Get the responseMode
+	const responseMode = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseMode,
+		executionMode,
+		additionalData.timezone,
+		additionalKeys,
+		undefined,
+		'onReceived',
+	);
+	const responseCode = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseCode,
+		executionMode,
+		additionalData.timezone,
+		additionalKeys,
+		undefined,
+		200,
+	) as number;
+
+	const responseData = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseData,
+		executionMode,
+		additionalData.timezone,
+		additionalKeys,
+		undefined,
+		'firstEntryJson',
+	);
+
+	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
+		// If the mode is not known we error. Is probably best like that instead of using
+		// the default that people know as early as possible (probably already testing phase)
+		// that something does not resolve properly.
+		const errorMessage = `The response mode ${responseMode} is not valid!`;
+		responseCallback(new Error(errorMessage), {});
+		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
+	}
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -305,6 +288,7 @@ export async function executeWebhook(
 				workflowStartNode,
 				webhookData.webhookDescription.responseHeaders,
 				executionMode,
+				additionalData.timezone,
 				additionalKeys,
 				undefined,
 				undefined,
@@ -556,6 +540,7 @@ export async function executeWebhook(
 						if (returnData.data!.main[0]![0] === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						data = returnData.data!.main[0]![0].json;
@@ -564,6 +549,7 @@ export async function executeWebhook(
 							workflowStartNode,
 							webhookData.webhookDescription.responsePropertyName,
 							executionMode,
+							additionalData.timezone,
 							additionalKeys,
 							undefined,
 							undefined,
@@ -577,6 +563,7 @@ export async function executeWebhook(
 							workflowStartNode,
 							webhookData.webhookDescription.responseContentType,
 							executionMode,
+							additionalData.timezone,
 							additionalKeys,
 							undefined,
 							undefined,
@@ -609,17 +596,20 @@ export async function executeWebhook(
 						if (data === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						if (data.binary === undefined) {
 							responseCallback(new Error('No binary data to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
 							workflowStartNode,
 							webhookData.webhookDescription.responseBinaryPropertyName,
 							executionMode,
+							additionalData.timezone,
 							additionalKeys,
 							undefined,
 							'data',

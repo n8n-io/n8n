@@ -2172,6 +2172,8 @@ export class Telegram implements INodeType {
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
 
+					body.disable_notification = body.disable_notification?.toString() || 'false';
+
 					const formData = {
 						...body,
 						[propertyName]: {
@@ -2192,10 +2194,6 @@ export class Telegram implements INodeType {
 						const filePath = responseData.result.file_path;
 
 						const credentials = await this.getCredentials('telegramApi');
-
-						if (credentials === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-						}
 						const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`, resolveWithFullResponse: true });
 
 						const fileName = filePath.split('/').pop();

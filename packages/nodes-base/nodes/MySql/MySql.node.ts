@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 // @ts-ignore
-import * as mysql2 from 'mysql2/promise';
+import mysql2 from 'mysql2/promise';
 
 import { copyInputItems } from './GenericFunctions';
 
@@ -213,10 +213,6 @@ export class MySql implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		// Destructuring SSL configuration
 		const {

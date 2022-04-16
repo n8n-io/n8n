@@ -1,4 +1,4 @@
-import * as EventSource from 'eventsource';
+import EventSource from 'eventsource';
 import { ITriggerFunctions } from 'n8n-core';
 import {
 	INodeType,

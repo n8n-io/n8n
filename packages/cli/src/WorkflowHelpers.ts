@@ -33,13 +33,13 @@ import {
 	WorkflowRunner,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 /**
  * Returns the data of the last executed node
@@ -107,9 +107,9 @@ export async function executeErrorWorkflow(
 			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
 
 			if (user.globalRole.name === 'owner') {
-				workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+				workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
 			} else {
-				const sharedWorkflowData = await Db.collections.SharedWorkflow!.findOne({
+				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
 					where: {
 						workflow: { id: workflowId },
 						user,
@@ -121,7 +121,7 @@ export async function executeErrorWorkflow(
 				}
 			}
 		} else {
-			workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+			workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
 		}
 
 		if (workflowData === undefined) {
@@ -428,7 +428,7 @@ export async function saveStaticDataById(
 	workflowId: string | number,
 	newStaticData: IDataObject,
 ): Promise<void> {
-	await Db.collections.Workflow!.update(workflowId, {
+	await Db.collections.Workflow.update(workflowId, {
 		staticData: newStaticData,
 	});
 }
@@ -442,7 +442,7 @@ export async function saveStaticDataById(
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
-	const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+	const workflowData = await Db.collections.Workflow.findOne(workflowId, {
 		select: ['staticData'],
 	});
 
@@ -588,7 +588,7 @@ export function whereClause({
  * Get the IDs of the workflows that have been shared with the user.
  */
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
-	const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		relations: ['workflow'],
 		where: whereClause({
 			user,

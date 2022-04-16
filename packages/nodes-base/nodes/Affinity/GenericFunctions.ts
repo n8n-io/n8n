@@ -20,10 +20,6 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 
 	const credentials = await this.getCredentials('affinityApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const apiKey = `:${credentials.apiKey}`;
 
 	const endpoint = 'https://api.affinity.co';

@@ -150,6 +150,7 @@ describe('WorkflowDataProxy', () => {
 			renameNodeConnectionInputData || [],
 			{},
 			'manual',
+			'America/New_York',
 			{},
 		);
 		const proxy = dataProxy.getDataProxy();

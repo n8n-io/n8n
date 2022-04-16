@@ -160,6 +160,7 @@ export abstract class ICredentialsHelper {
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
+		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
 
 	abstract getCredentials(
@@ -171,6 +172,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -496,10 +498,7 @@ export interface IExecuteFunctions {
 		inputData?: INodeExecutionData[],
 	): Promise<any>;
 	getContext(type: string): IContextObject;
-	getCredentials(
-		type: string,
-		itemIndex?: number,
-	): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -547,7 +546,7 @@ export interface IExecuteSingleFunctions {
 		itemIndex: number | undefined,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	getContext(type: string): IContextObject;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -598,7 +597,7 @@ export interface ICredentialTestFunctions {
 }
 
 export interface ILoadOptionsFunctions {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
 	getNodeParameter(
 		parameterName: string,
@@ -639,7 +638,7 @@ export interface ILoadOptionsFunctions {
 }
 
 export interface IHookFunctions {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -669,7 +668,7 @@ export interface IHookFunctions {
 
 export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -700,7 +699,8 @@ export interface ITriggerFunctions {
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -728,7 +728,7 @@ export interface ITriggerFunctions {
 
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
