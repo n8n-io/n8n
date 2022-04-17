@@ -51,7 +51,6 @@ import {
 	listFields,
 	listOperations,
 } from './ListDescription';
-import { OptionsWithUri } from 'request-promise-native';
 
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {
