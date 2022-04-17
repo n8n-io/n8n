@@ -90,10 +90,6 @@ export class WorkflowDataProxy {
 		Settings.defaultZone = this.timezone;
 	}
 
-	private isExpressionError(data: INodeExecutionData[] | ExpressionError): boolean {
-		return data && data.constructor.name === 'ExpressionError';
-	}
-
 	/**
 	 * Returns a proxy which allows to query context data of a given node
 	 *
@@ -239,7 +235,7 @@ export class WorkflowDataProxy {
 		shortSyntax = false,
 		outputIndex?: number,
 		runIndex?: number,
-	): INodeExecutionData[] | ExpressionError {
+	): INodeExecutionData[] {
 		const that = this;
 
 		let executionData: INodeExecutionData[];
@@ -363,13 +359,7 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (['binary', 'data', 'json'].includes(name)) {
-						let executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
-
-						if (that.isExpressionError(executionData)) {
-							return executionData;
-						}
-						executionData = executionData as INodeExecutionData[];
-
+						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 						if (executionData.length <= that.itemIndex) {
 							throw new ExpressionError(
 								`No data found for item-index: "${that.itemIndex}"`,
@@ -510,7 +500,7 @@ export class WorkflowDataProxy {
 		const that = this;
 
 		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
-			let executionData: INodeExecutionData[] | ExpressionError;
+			let executionData: INodeExecutionData[];
 
 			if (nodeName === undefined) {
 				executionData = that.connectionInputData;
@@ -535,7 +525,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			pairedItem: IPairedItemData,
-		): INodeExecutionData | ExpressionError | null => {
+		): INodeExecutionData | null => {
 			let taskData: ITaskData;
 
 			let sourceData: ISourceData | null = incomingSourceData;
@@ -675,12 +665,7 @@ export class WorkflowDataProxy {
 										branchIndex = 0;
 										runIndex = that.runIndex;
 									}
-									let executionData = getNodeOutput(nodeName, branchIndex, runIndex);
-
-									if (that.isExpressionError(executionData)) {
-										return executionData;
-									}
-									executionData = executionData as INodeExecutionData[];
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 
 									if (executionData[itemIndex]) {
 										return executionData[itemIndex];
@@ -718,22 +703,14 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'first') {
 								return (branchIndex?: number, runIndex?: number) => {
-									let executionData = getNodeOutput(nodeName, branchIndex, runIndex);
-									if (that.isExpressionError(executionData)) {
-										return executionData;
-									}
-									executionData = executionData as INodeExecutionData[];
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (executionData[0]) return executionData[0];
 									return undefined;
 								};
 							}
 							if (property === 'last') {
 								return (branchIndex?: number, runIndex?: number) => {
-									let executionData = getNodeOutput(nodeName, branchIndex, runIndex);
-									if (that.isExpressionError(executionData)) {
-										return executionData;
-									}
-									executionData = executionData as INodeExecutionData[];
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
@@ -844,7 +821,7 @@ export class WorkflowDataProxy {
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-				let executionData: INodeExecutionData[] | ExpressionError;
+				let executionData: INodeExecutionData[];
 
 				if (nodeName === undefined) {
 					executionData = that.connectionInputData;
