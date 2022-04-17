@@ -1440,7 +1440,7 @@ export function getNodeParameter(
 			executeData,
 		);
 	} catch (e) {
-		e.message += `[Parameter: "${parameterName}"]`;
+		e.parameter = parameterName;
 		throw e;
 	}
 

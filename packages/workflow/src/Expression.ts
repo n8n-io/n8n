@@ -23,10 +23,11 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 tmpl.brackets.set('{{ }}');
 
-// Make sure that it does not always print an error when it could not resolve
-// a variable
+// Make sure that error get forwarded
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-tmpl.tmpl.errorHandler = () => {};
+tmpl.tmpl.errorHandler = (error: Error) => {
+	throw error;
+};
 
 export class Expression {
 	workflow: Workflow;
@@ -132,36 +133,31 @@ export class Expression {
 		data.constructor = {};
 
 		// Execute the expression
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let returnValue;
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const returnValue = tmpl.tmpl(parameterValue, data);
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (returnValue instanceof ExpressionError) {
-				if (returnValue.failExecution) {
-					let errorMessage = `${returnValue.message} [Item Index: ${returnValue.itemIndex}]`;
-					if (returnValue.runIndex !== 0) {
-						errorMessage += `[Run Index: ${returnValue.runIndex}]`;
-					}
-
-					throw new Error(errorMessage);
-				}
-				return undefined;
-			}
-
-			if (typeof returnValue === 'function') {
-				throw new Error('Expression resolved to a function. Please add "()"');
-			} else if (returnValue !== null && typeof returnValue === 'object') {
-				if (returnObjectAsString) {
-					return this.convertObjectValueToString(returnValue);
+			returnValue = tmpl.tmpl(parameterValue, data);
+		} catch (error) {
+			if (error instanceof ExpressionError) {
+				// Ignore all errors except if they are ExpressionErrors and they are supposed
+				// to fail the execution
+				if (error.failExecution) {
+					throw error;
 				}
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return returnValue;
-		} catch (e) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			throw new Error(`Expression error: ${e.message}`);
 		}
+
+		if (typeof returnValue === 'function') {
+			throw new Error('Expression resolved to a function. Please add "()"');
+		} else if (returnValue !== null && typeof returnValue === 'object') {
+			if (returnObjectAsString) {
+				return this.convertObjectValueToString(returnValue);
+			}
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return returnValue;
 	}
 
 	/**

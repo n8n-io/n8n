@@ -3,6 +3,20 @@
 		<div class="error-header">
 			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + error.message }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
+
+			<div v-if="error.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
+				<span class="error-details__summary">Item Index:</span>
+				{{error.itemIndex}}
+				<span v-if="error.runIndex">
+					| <span class="error-details__summary">Run Index:</span>
+					{{error.runIndex}}
+				</span>
+				<span v-if="error.parameter">
+					| <span class="error-details__summary">Requested Parameter:</span>
+					"{{error.parameter}}"
+				</span>
+			</div>
+
 		</div>
 		<details>
 			<summary class="error-details__summary">

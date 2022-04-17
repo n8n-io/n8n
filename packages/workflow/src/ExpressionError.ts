@@ -8,11 +8,19 @@ export class ExpressionError extends Error {
 
 	runIndex: number;
 
-	constructor(message: string, itemIndex: number, runIndex: number, failExecution = false) {
+	parameter: string | undefined;
+
+	constructor(
+		message: string,
+		runIndex: number,
+		itemIndex: number,
+		failExecution = false,
+		parameter?: string,
+	) {
 		super(message);
-		this.name = this.constructor.name;
-		this.itemIndex = itemIndex;
 		this.runIndex = runIndex;
+		this.itemIndex = itemIndex;
 		this.failExecution = failExecution;
+		this.parameter = parameter;
 	}
 }
