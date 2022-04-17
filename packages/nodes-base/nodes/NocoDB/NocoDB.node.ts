@@ -15,6 +15,7 @@ import {
 import {
 	apiRequest,
 	apiRequestAllItems,
+	apiRequestAllItemsV2,
 	downloadRecordAttachments,
 } from './GenericFunctions';
 
@@ -515,7 +516,7 @@ export class NocoDB implements INodeType {
 							}
 
 							if (returnAll === true) {
-								responseData = (await apiRequest.call(this, requestMethod, endpoint, {}, qs)).list;
+								responseData = await apiRequestAllItemsV2.call(this, requestMethod, endpoint, {}, qs);
 							} else {
 								qs.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = (await apiRequest.call(this, requestMethod, endpoint, {}, qs)).list;

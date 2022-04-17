@@ -109,6 +109,30 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	return returnData;
 }
 
+export async function apiRequestAllItemsV2(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+
+	if (query === undefined) {
+		query = {};
+	}
+	query.limit = 100;
+	query.offset = query?.offset ? query.offset as number : 0;
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	do {
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		returnData.push(...responseData.list);
+
+		query.offset += query.limit;
+
+	} while (
+		responseData.pageInfo.isLastPage !== true
+	);
+
+	return returnData;
+}
+
 export async function downloadRecordAttachments(this: IExecuteFunctions | IPollFunctions, records: IDataObject[], fieldNames: string[]): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 
