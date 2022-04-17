@@ -17,9 +17,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 interface IGoogleAuthCredentials {
 	delegatedEmail?: string;
@@ -56,10 +56,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			responseData = await this.helpers.request(options);
 		} else{
 			const credentials = await this.getCredentials('googleApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 			options.headers!.Authorization = `Bearer ${access_token}`;

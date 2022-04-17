@@ -137,7 +137,7 @@ export class AwsS3 implements INodeType {
 						if (additionalFields.grantWriteAcp) {
 							headers['x-amz-grant-write-acp'] = '';
 						}
-						let region = credentials!.region as string;
+						let region = credentials.region as string;
 
 						if (additionalFields.region) {
 							region = additionalFields.region as string;

@@ -285,8 +285,8 @@
 	);
 
 	--color-background-light-h: 220;
-	--color-background-light-s: 27.3%;
-	--color-background-light-l: 97.8%;
+	--color-background-light-s: 60%;
+	--color-background-light-l: 99%;
 	--color-background-light: hsl(
 		var(--color-background-light-h),
 		var(--color-background-light-s),
@@ -328,6 +328,17 @@
 		var(--color-canvas-background-s),
 		var(--color-canvas-background-l)
 	);
+
+	--color-json-default: #5045A1;
+	--color-json-null:  var(--color-danger);
+	--color-json-boolean: #1d8ce0;
+	--color-json-number: #1d8ce0;
+	--color-json-string: #5045A1;
+	--color-json-key: var(--color-text-dark);
+	--color-json-brackets: var(--color-text-dark);
+	--color-json-brackets-hover: #1890ff;
+	--color-json-line: #bfcbd9;
+	--color-json-highlight: #E2E5EE;
 
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
