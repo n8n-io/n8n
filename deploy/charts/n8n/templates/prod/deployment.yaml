@@ -10,6 +10,7 @@ data:
   DB_POSTGRESDB_PASSWORD: S3kwUDZ6RjNEd3BZUHRObA==
   N8N_BASIC_AUTH_USER: bjhuYmFzaWM=
   N8N_BASIC_AUTH_PASSWORD: M3lQcW4xRDdNRHJhNDd2bA==
+  X_HASURA_ADMIN_SECRET: N1IzWkNFbHh1UGhtRWZxTw==
 ---
 apiVersion: v1
 kind: Service
@@ -82,6 +83,11 @@ spec:
             secretKeyRef: 
               name: prod-n8n-secrets
               key: N8N_BASIC_AUTH_USER
+        - name: X_HASURA_ADMIN_SECRET
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: X_HASURA_ADMIN_SECRET
         - name: N8N_BASIC_AUTH_PASSWORD
           valueFrom: 
             secretKeyRef: 
