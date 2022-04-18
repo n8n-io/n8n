@@ -70,7 +70,6 @@ export class Discourse implements INodeType {
 			{
 				name: 'discourseApi',
 				required: true,
-				testedBy: 'discourseApiTest',
 			},
 		],
 		properties: [

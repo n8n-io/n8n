@@ -39,13 +39,19 @@ export class DiscourseApi implements ICredentialType {
 			'Api-Key': credentials.apiKey,
 			'Api-Username': credentials.username,
 		};
+
+		if (requestOptions.method === 'GET') {
+			delete requestOptions.body;
+		}
+
 		return requestOptions;
 	}
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credential!.url}}',
-			url: 'admin/groups.json',
+			baseURL: '={{$credentials.url}}',
+			url: '/admin/groups.json',
+			method: 'GET',
 		},
 	};
 }
