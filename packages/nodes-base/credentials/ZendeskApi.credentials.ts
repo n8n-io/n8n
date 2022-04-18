@@ -1,5 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -29,4 +32,17 @@ export class ZendeskApi implements ICredentialType {
 			default: '',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		requestOptions.auth = {
+			username: `${credentials.email}/token`,
+			password: credentials.apiToken as string,
+		};
+		return requestOptions;
+ }
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{$credentials.subdomain}}.zendesk.com/api/v2',
+			url: '/ticket_fields.json',
+		},
+	};
 }
