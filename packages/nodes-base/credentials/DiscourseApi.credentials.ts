@@ -1,5 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -30,4 +33,25 @@ export class DiscourseApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		requestOptions.headers = {
+			'Api-Key': credentials.apiKey,
+			'Api-Username': credentials.username,
+		};
+
+		if (requestOptions.method === 'GET') {
+			delete requestOptions.body;
+		}
+
+		return requestOptions;
+	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url}}',
+			url: '/admin/groups.json',
+			method: 'GET',
+		},
+	};
 }
