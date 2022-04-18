@@ -614,6 +614,7 @@ class App {
 					explicitArray: false, // Only put properties in array if length > 1
 				},
 				verify: (req: express.Request, res: any, buf: any) => {
+					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
