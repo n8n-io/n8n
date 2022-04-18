@@ -1,4 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -131,7 +133,6 @@ export class Slack implements INodeType {
 						],
 					},
 				},
-				testedBy: 'testSlackTokenAuth',
 			},
 			{
 				name: 'slackOAuth2Api',
@@ -286,41 +287,6 @@ export class Slack implements INodeType {
 					});
 				}
 				return returnData;
-			},
-		},
-		credentialTest: {
-			async testSlackTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-
-				const options = {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json; charset=utf-8',
-						Authorization: `Bearer ${credential.data!.accessToken}`,
-					},
-					uri: 'https://slack.com/api/users.profile.get',
-					json: true,
-				};
-
-				try {
-					const response = await this.helpers.request(options);
-
-					if (!response.ok) {
-						return {
-							status: 'Error',
-							message: `${response.error}`,
-						};
-					}
-				} catch (err) {
-					return {
-						status: 'Error',
-						message: `${(err as JsonObject).message}`,
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
 			},
 		},
 	};
