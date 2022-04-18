@@ -157,7 +157,7 @@ export default mixins(
 	padding: 1em 0 0.5em 1.8em;
 	border-top-left-radius: 8px;
 
-	background-color: $--custom-window-sidebar-top;
+	background-color: var(--color-background-base);
 	color: #555;
 	border-bottom: 1px solid $--color-primary;
 	margin-bottom: 1em;

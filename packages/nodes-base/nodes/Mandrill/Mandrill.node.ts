@@ -21,9 +21,9 @@ import {
 	validateJSON
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 
 interface Attachments {
 	type: string;

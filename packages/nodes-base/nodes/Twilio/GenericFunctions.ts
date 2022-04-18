@@ -29,10 +29,6 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 		apiKeySecret: string;
 	};
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	if (query === undefined) {
 		query = {};
 	}

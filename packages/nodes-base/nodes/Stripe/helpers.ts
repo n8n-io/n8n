@@ -37,9 +37,6 @@ export async function stripeApiRequest(
 	query?: object,
 ) {
 	const credentials = await this.getCredentials('stripeApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	const options = {
 		method,

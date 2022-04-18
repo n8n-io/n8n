@@ -37,10 +37,6 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 		if (authenticationMethod === 'apiToken') {
 			const credentials = await this.getCredentials('zendeskApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
 			const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
 
 			if (resource.includes('webhooks')) {

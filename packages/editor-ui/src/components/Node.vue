@@ -125,13 +125,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
 				const nodeName = this.$locale.shortNodeType(this.nodeType.name);
 				const { eventTriggerDescription } = this.nodeType;
-				return this.$locale.nodeText().eventTriggerDescription(nodeName, eventTriggerDescription);
+				return this.$locale.nodeText().eventTriggerDescription(
+					nodeName,
+					eventTriggerDescription || '',
+				);
 			} else {
 				return this.$locale.baseText(
 					'node.waitingForYouToCreateAnEventIn',
 					{
 						interpolate: {
-							nodeType: this.nodeType && getTriggerNodeServiceName(this.nodeType.displayName),
+							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName) : '',
 						},
 					},
 				);

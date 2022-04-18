@@ -32,9 +32,6 @@ import {
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('aws');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	const endpoint = new URL(((credentials.sesEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 

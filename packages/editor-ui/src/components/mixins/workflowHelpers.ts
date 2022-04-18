@@ -249,9 +249,9 @@ export const workflowHelpers = mixins(
 				const workflowName = this.$store.getters.workflowName;
 
 				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				}
 			},
 
@@ -408,7 +408,7 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
