@@ -50,7 +50,7 @@ import {
 } from './UserGroupDescription';
 import { OptionsWithUri } from 'request';
 
-//import * as moment from 'moment';
+//import moment from 'moment';
 
 export class Discourse implements INodeType {
 	description: INodeTypeDescription = {

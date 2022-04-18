@@ -19,7 +19,7 @@ import {
 	activityOperations,
 } from './ActivityDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Strava implements INodeType {
 	description: INodeTypeDescription = {
@@ -128,6 +128,15 @@ export class Strava implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
+					}
+					//https://developers.strava.com/docs/reference/#api-Streams-getActivityStreams
+					if (operation === 'getStreams') {
+						const activityId = this.getNodeParameter('activityId', i) as string;
+						const keys = this.getNodeParameter('keys', i) as string[];
+						qs.keys = keys.toString();
+						qs.key_by_type = true;
+
+						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/streams`, {}, qs);
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {

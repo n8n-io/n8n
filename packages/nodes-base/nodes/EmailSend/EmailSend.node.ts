@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
-import SMTPTransport = require('nodemailer/lib/smtp-transport');
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 export class EmailSend implements INodeType {
 	description: INodeTypeDescription = {
@@ -145,10 +145,6 @@ export class EmailSend implements INodeType {
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
 				const credentials = await this.getCredentials('smtp');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				const connectionOptions: SMTPTransport.Options = {
 					host: credentials.host as string,

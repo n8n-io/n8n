@@ -489,10 +489,6 @@ export class Chargebee implements INodeType {
 
 		const credentials = await this.getCredentials('chargebeeApi');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const baseUrl = `https://${credentials.accountName}.chargebee.com/api/v2`;
 
 		// For Post

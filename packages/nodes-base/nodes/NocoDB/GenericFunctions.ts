@@ -36,11 +36,6 @@ interface IAttachment {
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('nocoDb');
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	query = query || {};
 
 	const options: OptionsWithUri = {
@@ -96,13 +91,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-
 		returnData.push(...responseData);
 
 		query.offset += query.limit;
 
 	} while (
-		responseData.length === 0
+		responseData.length !== 0
 	);
 
 	return returnData;

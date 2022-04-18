@@ -11,7 +11,7 @@ const DEFAULT_WORKFLOW_NAME_LIMIT = 25;
 const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default Vue.extend({
-	name: "WorkflowNameShort",
+	name: "ShortenName",
 	props: ["name", "limit"],
 	computed: {
 		shortenedName(): string {

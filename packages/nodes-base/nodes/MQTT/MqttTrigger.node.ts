@@ -10,7 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as mqtt from 'mqtt';
+import mqtt from 'mqtt';
 
 import {
 	IClientOptions, ISubscriptionMap,
@@ -72,10 +72,6 @@ export class MqttTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 
 		const credentials = await this.getCredentials('mqtt');
-
-		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
-		}
 
 		const topics = (this.getNodeParameter('topics') as string).split(',');
 

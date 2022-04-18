@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -304,12 +305,44 @@ export class GraphQL implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
-		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		const httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		const oAuth1Api = await this.getCredentials('oAuth1Api');
-		const oAuth2Api = await this.getCredentials('oAuth2Api');
+		let httpBasicAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+
+		try {
+			httpBasicAuth = await this.getCredentials('httpBasicAuth');
+		} catch(error) {
+			// Do nothing
+		}
+		try {
+			httpDigestAuth = await this.getCredentials('httpDigestAuth');
+		} catch(error) {
+			// Do nothing
+		}
+		try {
+			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		} catch(error) {
+			// Do nothing
+		}
+		try {
+			httpQueryAuth = await this.getCredentials('httpQueryAuth');
+		} catch(error) {
+			// Do nothing
+		}
+		try {
+			oAuth1Api = await this.getCredentials('oAuth1Api');
+		} catch(error) {
+			// Do nothing
+		}
+		try {
+			oAuth2Api = await this.getCredentials('oAuth2Api');
+		} catch(error) {
+			// Do nothing
+		}
+
 
 		let requestOptions: OptionsWithUri & RequestPromiseOptions;
 
@@ -412,17 +445,22 @@ export class GraphQL implements INodeType {
 				} else {
 					if (typeof response === 'string') {
 						try {
-							returnItems.push({ json: JSON.parse(response) });
+							response = JSON.parse(response);
 						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 						}
-					} else {
-						returnItems.push({ json: response });
 					}
+
+					if (response.errors) {
+						const message = response.errors?.map((error: IDataObject) => error.message).join(', ') || 'Unexpected error';
+						throw new NodeApiError(this.getNode(), response.errors, { message });
+					}
+
+					returnItems.push({ json: response });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({ json: { error: error.message } });
+					returnItems.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;
