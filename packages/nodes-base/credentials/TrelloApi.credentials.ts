@@ -1,8 +1,10 @@
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class TrelloApi implements ICredentialType {
 	name = 'trelloApi';
@@ -13,12 +15,14 @@ export class TrelloApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
@@ -28,4 +32,16 @@ export class TrelloApi implements ICredentialType {
 			default: '',
 		},
 	];
-}
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		requestOptions.qs = Object.assign(requestOptions.qs, {
+			key: credentials.apiKey,
+			token: credentials.apiToken,
+		});
+		return requestOptions;
+	}
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.trello.com/1',
+			url: '/members/me/boards',
+		},
+	};}

@@ -12,11 +12,7 @@ import {
 
 import {
 	apiRequest,
-	trelloApiTest,
 } from './GenericFunctions';
-
-// import { createHmac } from 'crypto';
-
 
 export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,7 +31,6 @@ export class TrelloTrigger implements INodeType {
 			{
 				name: 'trelloApi',
 				required: true,
-				testedBy: 'trelloApiTest',
 			},
 		],
 		webhooks: [
@@ -64,12 +59,6 @@ export class TrelloTrigger implements INodeType {
 			},
 		],
 
-	};
-
-	methods = {
-		credentialTest: {
-			trelloApiTest,
-		},
 	};
 
 	// @ts-ignore (because of request)
@@ -151,8 +140,6 @@ export class TrelloTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
 
@@ -166,8 +153,6 @@ export class TrelloTrigger implements INodeType {
 		}
 
 		const bodyData = this.getBodyData();
-
-		const credentials = await this.getCredentials('trelloApi');
 
 		// TODO: Check why that does not work as expected even though it gets done as described
 		//       https://developers.trello.com/page/webhooks

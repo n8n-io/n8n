@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -14,7 +15,6 @@ import {
 import {
 	apiRequest,
 	apiRequestAllItems,
-	trelloApiTest,
 } from './GenericFunctions';
 
 import {
@@ -70,7 +70,6 @@ export class Trello implements INodeType {
 			{
 				name: 'trelloApi',
 				required: true,
-				testedBy: 'trelloApiTest',
 			},
 		],
 		properties: [
@@ -137,12 +136,6 @@ export class Trello implements INodeType {
 		],
 	};
 
-	methods = {
-		credentialTest: {
-			trelloApiTest,
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -155,7 +148,7 @@ export class Trello implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 		let responseData;
