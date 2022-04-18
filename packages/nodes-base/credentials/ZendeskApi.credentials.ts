@@ -38,7 +38,7 @@ export class ZendeskApi implements ICredentialType {
 			password: credentials.apiToken as string,
 		};
 		return requestOptions;
- }
+	}
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.subdomain}}.zendesk.com/api/v2',
