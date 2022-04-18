@@ -59,7 +59,7 @@ spec:
         - name: DB_POSTGRESDB_DATABASE
           value: "staging_n8n"
         - name: HASURA_URL
-          value: "staging-hasura-svc:8080"
+          value: "staging-hasura-svc:80"
         - name: DB_POSTGRESDB_HOST
           valueFrom: 
             secretKeyRef: 
