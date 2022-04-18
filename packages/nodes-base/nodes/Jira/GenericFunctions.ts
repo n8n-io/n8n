@@ -30,6 +30,11 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 
 	const options: OptionsWithUri = {
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			'X-Atlassian-Token': 'no-check',
+		},
 		method,
 		qs: query,
 		uri: uri || `${domain}/rest${endpoint}`,

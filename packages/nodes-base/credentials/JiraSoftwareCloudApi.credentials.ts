@@ -1,4 +1,5 @@
 import {
+	IAuthenticateBasicAuth,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -31,19 +32,13 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			placeholder: 'https://example.atlassian.net',
 		},
 	];
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		const data = Buffer.from(`${credentials!.email}:${credentials!.apiToken}`).toString('base64');
-		requestOptions.headers = {
-			Authorization: `Basic ${data}`,
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			'X-Atlassian-Token': 'no-check',
-		};
-		return requestOptions;
-	}
+	authenticate: IAuthenticateBasicAuth = {
+		type: 'basicAuth',
+		properties: {
+		 userPropertyName: 'email',
+		 passwordPropertyName: 'apiToken',
+	 },
+ };
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.domain}}',
