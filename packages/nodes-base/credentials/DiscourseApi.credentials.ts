@@ -33,6 +33,7 @@ export class DiscourseApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 		requestOptions.headers = {
 			'Api-Key': credentials.apiKey,
@@ -40,4 +41,11 @@ export class DiscourseApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credential!.url}}',
+			url: 'admin/groups.json',
+		},
+	};
 }
