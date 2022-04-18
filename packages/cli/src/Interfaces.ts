@@ -21,7 +21,7 @@ import {
 import { WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as PCancelable from 'p-cancelable';
+import PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
@@ -72,16 +72,16 @@ export interface ICredentialsOverwrite {
 }
 
 export interface IDatabaseCollections {
-	Credentials: Repository<ICredentialsDb> | null;
-	Execution: Repository<IExecutionFlattedDb> | null;
-	Workflow: Repository<WorkflowEntity> | null;
-	Webhook: Repository<IWebhookDb> | null;
-	Tag: Repository<TagEntity> | null;
-	Role: Repository<Role> | null;
-	User: Repository<User> | null;
-	SharedCredentials: Repository<SharedCredentials> | null;
-	SharedWorkflow: Repository<SharedWorkflow> | null;
-	Settings: Repository<Settings> | null;
+	Credentials: Repository<ICredentialsDb>;
+	Execution: Repository<IExecutionFlattedDb>;
+	Workflow: Repository<WorkflowEntity>;
+	Webhook: Repository<IWebhookDb>;
+	Tag: Repository<TagEntity>;
+	Role: Repository<Role>;
+	User: Repository<User>;
+	SharedCredentials: Repository<SharedCredentials>;
+	SharedWorkflow: Repository<SharedWorkflow>;
+	Settings: Repository<Settings>;
 }
 
 export interface IWebhookDb {
@@ -329,7 +329,7 @@ export interface IDiagnosticInfo {
 		};
 	};
 	executionVariables: {
-		[key: string]: string | number | undefined;
+		[key: string]: string | number | boolean | undefined;
 	};
 	deploymentType: string;
 	binaryDataMode: string;
@@ -458,7 +458,7 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	workflowTagsDisabled: boolean;
-	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;

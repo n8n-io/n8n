@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Request, Response } from 'express';
-import { compare } from 'bcryptjs';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
+import { compareHash, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
+import config = require('../../../config');
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -32,7 +31,7 @@ export function authenticationMethods(this: N8nApp): void {
 
 			let user;
 			try {
-				user = await Db.collections.User!.findOne(
+				user = await Db.collections.User.findOne(
 					{
 						email: req.body.email,
 					},
@@ -43,7 +42,8 @@ export function authenticationMethods(this: N8nApp): void {
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
-			if (!user || !user.password || !(await compare(req.body.password, user.password))) {
+
+			if (!user || !user.password || !(await compareHash(req.body.password, user.password))) {
 				// password is empty until user signs up
 				const error = new Error('Wrong username or password. Do you have caps lock on?');
 				// @ts-ignore
@@ -71,13 +71,18 @@ export function authenticationMethods(this: N8nApp): void {
 				// If logged in, return user
 				try {
 					user = await resolveJwt(cookieContents);
+
+					if (!config.get('userManagement.isInstanceOwnerSetUp')) {
+						res.cookie(AUTH_COOKIE_NAME, cookieContents);
+					}
+
 					return sanitizeUser(user);
 				} catch (error) {
 					res.clearCookie(AUTH_COOKIE_NAME);
 				}
 			}
 
-			if (await isInstanceOwnerSetup()) {
+			if (config.get('userManagement.isInstanceOwnerSetUp')) {
 				const error = new Error('Not logged in');
 				// @ts-ignore
 				error.httpStatusCode = 401;
@@ -85,7 +90,7 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			try {
-				user = await Db.collections.User!.findOneOrFail({ relations: ['globalRole'] });
+				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'] });
 			} catch (error) {
 				throw new Error(
 					'No users found in database - did you wipe the users table? Create at least one user.',

@@ -19,7 +19,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as iconv from 'iconv-lite';
+import iconv from 'iconv-lite';
 iconv.encodingExists('utf8');
 
 // Create options for bomAware and encoding
