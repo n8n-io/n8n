@@ -34,7 +34,6 @@ export class DiscourseApi implements ICredentialType {
 		},
 	];
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.baseURL = credentials.url as string;
 		requestOptions.headers = {
 			'Api-Key': credentials.apiKey,
 			'Api-Username': credentials.username,

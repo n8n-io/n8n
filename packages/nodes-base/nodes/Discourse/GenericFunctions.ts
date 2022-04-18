@@ -14,11 +14,13 @@ import {
 
 export async function discourseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
+	const credentials = await this.getCredentials('discourseApi') as { url: string };
+
 	const options: OptionsWithUri = {
 		method,
 		body,
 		qs,
-		uri: path,
+		uri: `${credentials.url}${path}`,
 		json: true,
 	};
 
