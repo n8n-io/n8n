@@ -789,7 +789,7 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | undefined;
 	if (workflowInfo.id !== undefined) {
-		if (Db.collections.Workflow === null) {
+		if (!Db.isInitialized) {
 			// The first time executeWorkflow gets called the Database has
 			// to get initialized first
 			await Db.init();
