@@ -14,17 +14,11 @@ import {
 
 export async function discourseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('discourseApi') as IDataObject;
-
 	const options: OptionsWithUri = {
-		headers: {
-			'Api-Key': credentials.apiKey,
-			'Api-Username': credentials.username,
-		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.url}${path}`,
+		uri: path,
 		json: true,
 	};
 
@@ -32,8 +26,7 @@ export async function discourseApiRequest(this: IExecuteFunctions | IExecuteSing
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'discourseApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

@@ -1,5 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -30,4 +33,12 @@ export class DiscourseApi implements ICredentialType {
 			default: '',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		requestOptions.baseURL = credentials.url as string;
+		requestOptions.headers = {
+			'Api-Key': credentials.apiKey,
+			'Api-Username': credentials.username,
+		};
+		return requestOptions;
+	}
 }
