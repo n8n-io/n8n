@@ -229,6 +229,11 @@ export async function configureSmtp() {
 	config.set('userManagement.emails.smtp.auth.pass', pass);
 }
 
+/**
+ * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
+ */
+export const SMTP_TEST_TIMEOUT = 30_000;
+
 // ----------------------------------
 //              misc
 // ----------------------------------

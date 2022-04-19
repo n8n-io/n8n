@@ -40,35 +40,40 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
-
-	jest.setTimeout(30000); // fake SMTP service might be slow
 });
 
 afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
-test('POST /forgot-password should send password reset email', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+test(
+	'POST /forgot-password should send password reset email',
+	async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authlessAgent = utils.createAgent(app);
-	const member = await testDb.createUser({ email: 'test@test.com', globalRole: globalMemberRole });
+		const authlessAgent = utils.createAgent(app);
+		const member = await testDb.createUser({
+			email: 'test@test.com',
+			globalRole: globalMemberRole,
+		});
 
-	await utils.configureSmtp();
+		await utils.configureSmtp();
 
-	await Promise.all(
-		[{ email: owner.email }, { email: member.email.toUpperCase() }].map(async (payload) => {
-			const response = await authlessAgent.post('/forgot-password').send(payload);
+		await Promise.all(
+			[{ email: owner.email }, { email: member.email.toUpperCase() }].map(async (payload) => {
+				const response = await authlessAgent.post('/forgot-password').send(payload);
 
-			expect(response.statusCode).toBe(200);
-			expect(response.body).toEqual({});
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual({});
 
-			const user = await Db.collections.User!.findOneOrFail({ email: payload.email });
-			expect(user.resetPasswordToken).toBeDefined();
-			expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
-		}),
-	);
-});
+				const user = await Db.collections.User!.findOneOrFail({ email: payload.email });
+				expect(user.resetPasswordToken).toBeDefined();
+				expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
+			}),
+		);
+	},
+	utils.SMTP_TEST_TIMEOUT,
+);
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
