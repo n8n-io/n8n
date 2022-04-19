@@ -21,6 +21,11 @@ export const userOperations: INodeProperties[] = [
 				description: `Get information about a user`,
 			},
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: `Get a list of all users`,
+			},
+			{
 				name: 'Get Presence',
 				value: 'getPresence',
 				description: `Get online status of a user`,
@@ -56,6 +61,50 @@ export const userFields: INodeProperties[] = [
 		},
 		required: true,
 		description: 'The ID of the user to get information about.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:getAll                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */

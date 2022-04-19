@@ -1039,6 +1039,17 @@ export class Slack implements INodeType {
 						responseData = await slackApiRequest.call(this, 'GET', '/users.info', {}, qs);
 						responseData = responseData.user;
 					}
+					//https://api.slack.com/methods/users.list
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === true) {
+							responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list', {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await slackApiRequest.call(this, 'GET', '/users.list', {}, qs);
+							responseData = responseData.members;
+						}
+					}
 					//https://api.slack.com/methods/users.getPresence
 					if (operation === 'getPresence') {
 						qs.user = this.getNodeParameter('user', i) as string;
