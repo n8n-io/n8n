@@ -87,7 +87,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserInformation'
+              type: array
+              items:
+                $ref: '#/components/schemas/UserInformation'
         required: true
       responses:
         "200":
