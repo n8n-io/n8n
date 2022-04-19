@@ -340,6 +340,24 @@
 	--color-json-line: #bfcbd9;
 	--color-json-highlight: #E2E5EE;
 
+	--color-sticky-default-background-h: 46;
+  --color-sticky-default-background-s: 100%;
+  --color-sticky-default-background-l: 92%;
+  --color-sticky-default-background: hsl(
+    var(--color-sticky-default-background-h),
+    var(--color-sticky-default-background-s),
+    var(--color-sticky-default-background-l)
+  );
+
+  --color-sticky-default-border-h: 43;
+  --color-sticky-default-border-s: 75%;
+  --color-sticky-default-border-l: 80%;
+  --color-sticky-default-border: hsl(
+    var(--color-sticky-default-border-h),
+    var(--color-sticky-default-border-s),
+    var(--color-sticky-default-border-l)
+  );
+
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
 	--border-radius-base: 4px;

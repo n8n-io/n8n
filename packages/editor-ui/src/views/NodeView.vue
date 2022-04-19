@@ -13,29 +13,60 @@
 			>
 			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
-				<node
-				v-for="nodeData in nodes"
-				@duplicateNode="duplicateNode"
-				@deselectAllNodes="deselectAllNodes"
-				@deselectNode="nodeDeselectedByName"
-				@nodeSelected="nodeSelectedByName"
-				@removeNode="removeNode"
-				@runWorkflow="runWorkflow"
-				@moved="onNodeMoved"
-				@run="onNodeRun"
-				:id="'node-' + getNodeIndex(nodeData.name)"
-				:key="getNodeIndex(nodeData.name)"
-				:name="nodeData.name"
-				:isReadOnly="isReadOnly"
-				:instance="instance"
-				:isActive="!!activeNode && activeNode.name === nodeData.name"
-				:hideActions="pullConnActive"
-				></node>
+				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
+					<node
+					v-if="nodeData.type !== 'n8n-nodes-base.note'"
+					@duplicateNode="duplicateNode"
+					@deselectAllNodes="deselectAllNodes"
+					@deselectNode="nodeDeselectedByName"
+					@nodeSelected="nodeSelectedByName"
+					@removeNode="removeNode"
+					@runWorkflow="runWorkflow"
+					@moved="onNodeMoved"
+					@run="onNodeRun"
+					:id="'node-' + getNodeIndex(nodeData.name)"
+					:key="getNodeIndex(nodeData.name)"
+					:name="nodeData.name"
+					:isReadOnly="isReadOnly"
+					:instance="instance"
+					:isActive="!!activeNode && activeNode.name === nodeData.name"
+					:hideActions="pullConnActive"
+					></node>
+					<Sticky
+						v-else
+						@duplicateNode="duplicateNode"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="removeNode"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						@onChangeMode="onStickyChangeMode"
+						@onMouseHover="onMouseHover"
+						@onResizeChange="onResizeChange"
+						:id="'node-' + getNodeIndex(nodeData.name)"
+						:name="nodeData.name"
+						:isReadOnly="isResizing"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:hideActions="pullConnActive"
+					/>
+				</div>
 			</div>
 		</div>
 		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
-		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$locale.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
-			<n8n-icon-button size="xlarge" icon="plus" />
+		<div 
+			class="node-buttons-wrapper"
+			v-if="!createNodeActive && !isReadOnly"
+			@mouseover="isAddStickyButtonVisible = true"
+			@mouseleave="isAddStickyButtonVisible = false"
+		>
+			<div class="node-creator-button">
+				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
+				<div class="add-sticky-button" @click="nodeTypeSelected('n8n-nodes-base.note')">
+					<n8n-icon-button v-if="isAddStickyButtonVisible" size="medium" icon="sticky-note" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+				</div>
+			</div>
 		</div>
 		<node-creator
 			:active="createNodeActive"
@@ -133,6 +164,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
+import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -198,6 +230,7 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			RunData,
+			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -280,11 +313,19 @@ export default mixins(
 			isDemo (): boolean {
 				return this.$route.name === VIEWS.DEMO;
 			},
+			isStickyNode (): boolean {
+				return this.$store.getters.isStickyNode;
+			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
 			nodes (): INodeUi[] {
 				return this.$store.getters.allNodes;
+			},
+			stickies(): INodeUi[] {
+				return this.$store.getters.allNodes.filter((node: INodeUi) => {
+					return node.type === 'n8n-nodes-base.note';
+				});
 			},
 			runButtonText (): string {
 				if (this.workflowRunning === false) {
@@ -345,6 +386,10 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
+				isResizing: false,
+				isAddStickyButtonVisible: false,
+				isStickyInEditMode: false,
+				shouldPreventScrolling: false,
 			};
 		},
 		beforeDestroy () {
@@ -355,6 +400,15 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onMouseHover(shouldPreventScrolling: boolean) {
+				this.shouldPreventScrolling = shouldPreventScrolling;
+			},
+			onResizeChange(isResizing: boolean) {
+				this.isResizing = isResizing;
+			},
+			onStickyChangeMode(isStickyInEditMode: boolean) {
+				this.isStickyInEditMode = isStickyInEditMode;
+			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -613,6 +667,10 @@ export default mixins(
 				}
 			},
 			mouseDown (e: MouseEvent | TouchEvent) {
+				if (this.shouldPreventScrolling) {
+					return;
+				}
+
 				// Save the location of the mouse click
 				this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
@@ -623,11 +681,19 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			mouseUp (e: MouseEvent) {
+				if (this.shouldPreventScrolling) {
+					return;
+				}
+
 				this.mouseUpMouseSelect(e);
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
 				//* Control + scroll zoom
+				if (this.shouldPreventScrolling) {
+					return;
+				}
+
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
 						this.zoomOut();
@@ -671,20 +737,46 @@ export default mixins(
 						this.$store.commit('setActiveNode', null);
 					}
 
+					if (this.lastSelectedNode && this.isStickyNode) {
+						const nodeParameters = {
+							content: this.lastSelectedNode.parameters.content,
+							height: this.lastSelectedNode.parameters.height,
+							isDefaultTextChanged: this.lastSelectedNode.parameters.isDefaultTextChanged,
+							isEditable: false,
+							totalSize: this.lastSelectedNode.parameters.totalSize,
+							width: this.lastSelectedNode.parameters.width,
+							zIndex: this.lastSelectedNode.parameters.zIndex,
+						};
+
+						const updateInformation = {
+							name: this.lastSelectedNode.name,
+							value: nodeParameters,
+						};
+
+						this.$store.commit('setNodeParameters', updateInformation);
+					}
+
 					return;
 				}
 
-				// node modal is open
-				if (this.activeNode) {
-					return;
+			
+				if (!this.isStickyNode) {
+					// node modal is open
+					if (this.activeNode) {
+						return;
+					}
 				}
 
 				if (e.key === 'd') {
 					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
-					e.stopPropagation();
-					e.preventDefault();
+					if (this.isStickyInEditMode && this.isStickyNode) {
+						return;
+					} else {
+						e.stopPropagation();
+						e.preventDefault();
+					}
 
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
@@ -710,13 +802,23 @@ export default mixins(
 					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
+					if (this.isStickyNode && this.isStickyInEditMode) {
+						return;
+					}
+
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
+					if (this.isStickyNode && this.isStickyInEditMode) {
+						return;
+					}
 					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
+					if (this.isStickyNode && this.isStickyInEditMode) {
+						return;
+					}
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
@@ -765,6 +867,26 @@ export default mixins(
 
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
+					}
+					
+
+					if (this.lastSelectedNode && this.isStickyNode) {
+						const nodeParameters = {
+							content: this.lastSelectedNode.parameters.content,
+							height: this.lastSelectedNode.parameters.height,
+							isDefaultTextChanged: this.lastSelectedNode.parameters.isDefaultTextChanged,
+							isEditable: true,
+							totalSize: this.lastSelectedNode.parameters.totalSize,
+							width: this.lastSelectedNode.parameters.width,
+							zIndex: this.lastSelectedNode.parameters.zIndex,
+						};
+
+						const updateInformation = {
+							name: this.lastSelectedNode.name,
+							value: nodeParameters,
+						};
+
+						this.$store.commit('setNodeParameters', updateInformation);
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
 					// Select all downstream nodes
@@ -992,6 +1114,10 @@ export default mixins(
 			},
 
 			zoomIn() {
+				if (this.isStickyNode && this.isStickyInEditMode) {
+					return;
+				}
+
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
@@ -999,6 +1125,10 @@ export default mixins(
 			},
 
 			zoomOut() {
+				if (this.isStickyNode && this.isStickyInEditMode) {
+					return;
+				}
+
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
@@ -1352,8 +1482,12 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
-				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+				if(nodeTypeName === 'n8n-nodes-base.note') {
+					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
+				} else {
+					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+				}
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -2131,9 +2265,13 @@ export default mixins(
 					}
 				}
 
-				this.$externalHooks().run('node.deleteNode', { node });
-				this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
-
+				if(node.type === 'n8n-nodes-base.note') {
+					this.$telemetry.track('User deleted workflow note', { workflow_id: this.$store.getters.workflowId });
+				} else {
+					this.$externalHooks().run('node.deleteNode', { node });
+					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
+				}
+				
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
 				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
@@ -2826,15 +2964,30 @@ export default mixins(
 	bottom: 10px;
 }
 
+.node-buttons-wrapper {
+	position: fixed;
+  width: 150px;
+  height: 200px;
+	top: 0;
+  right: 0;
+  display: flex;
+}
+
 .node-creator-button {
 	position: fixed;
 	text-align: center;
 	top: 80px;
 	right: 20px;
+	display: flex;
+	flex-direction: column;
 }
 
 .node-creator-button button {
 	position: relative;
+}
+
+.add-sticky-button {
+	margin-top: var(--spacing-2xs);
 }
 
 .node-view-root {

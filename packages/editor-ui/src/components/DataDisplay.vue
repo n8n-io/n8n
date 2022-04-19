@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="!!node || renaming"
+		:visible="(!!node || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
@@ -76,10 +76,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 			return null;
 		},
+		isActiveStickyNode(): boolean | null {
+			if (this.$store.getters.activeNode) {
+				return this.$store.getters.activeNode.type === 'n8n-nodes-base.note';
+			}
+			return null;
+		},
 	},
 	watch: {
 		node (node, oldNode) {
-			if(node && !oldNode) {
+			if(node && !oldNode && !this.isActiveStickyNode) {
 				this.triggerWaitingWarningEnabled = false;
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
