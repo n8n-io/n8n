@@ -56,7 +56,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 					multipleValues: true,
 					multipleValueButtonText: 'Add Poll Time',
 				},
-				default: {},
+				default: { item: [{ mode: 'everyMinute' }] },
 				description: 'Time at which polling should occur',
 				placeholder: 'Add Poll Time',
 				options: [
@@ -782,7 +782,6 @@ export function getNodeParameters(
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
 				// Set only if value got found
-
 				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
@@ -868,6 +867,7 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.path,
 			mode,
+			additionalData.timezone,
 			{},
 		);
 		if (nodeWebhookPath === undefined) {
@@ -891,6 +891,7 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.isFullPath,
 			'internal',
+			additionalData.timezone,
 			{},
 			false,
 		) as boolean;
@@ -898,6 +899,7 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.restartWebhook,
 			'internal',
+			additionalData.timezone,
 			{},
 			false,
 		) as boolean;
@@ -907,6 +909,7 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.httpMethod,
 			mode,
+			additionalData.timezone,
 			{},
 			'GET',
 		);
@@ -932,86 +935,6 @@ export function getNodeWebhooks(
 			workflowId,
 			workflowExecuteAdditionalData: additionalData,
 			webhookId,
-		});
-	}
-
-	return returnData;
-}
-
-export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookData[] {
-	if (node.disabled === true) {
-		// Node is disabled so webhooks will also not be enabled
-		return [];
-	}
-
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
-
-	if (nodeType.description.webhooks === undefined) {
-		// Node does not have any webhooks so return
-		return [];
-	}
-
-	const workflowId = workflow.id || '__UNSAVED__';
-
-	const mode = 'internal';
-
-	const returnData: IWebhookData[] = [];
-	for (const webhookDescription of nodeType.description.webhooks) {
-		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
-			node,
-			webhookDescription.path,
-			mode,
-			{},
-		);
-		if (nodeWebhookPath === undefined) {
-			// TODO: Use a proper logger
-			console.error(
-				`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
-			);
-			continue;
-		}
-
-		nodeWebhookPath = nodeWebhookPath.toString();
-
-		if (nodeWebhookPath.startsWith('/')) {
-			nodeWebhookPath = nodeWebhookPath.slice(1);
-		}
-		if (nodeWebhookPath.endsWith('/')) {
-			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
-		}
-
-		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
-			node,
-			webhookDescription.isFullPath,
-			mode,
-			{},
-			false,
-		) as boolean;
-
-		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
-
-		const httpMethod = workflow.expression.getSimpleParameterValue(
-			node,
-			webhookDescription.httpMethod,
-			mode,
-			{},
-		);
-
-		if (httpMethod === undefined) {
-			// TODO: Use a proper logger
-			console.error(
-				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
-			);
-			continue;
-		}
-
-		// @ts-ignore
-		returnData.push({
-			httpMethod: httpMethod.toString() as WebhookHttpMethod,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
 		});
 	}
 

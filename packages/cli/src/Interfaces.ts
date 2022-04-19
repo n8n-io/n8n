@@ -5,7 +5,6 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
-	ICredentialType,
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -22,7 +21,7 @@ import {
 import { WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as PCancelable from 'p-cancelable';
+import PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
@@ -30,6 +29,11 @@ import { Url } from 'url';
 import { Request } from 'express';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { TagEntity } from './databases/entities/TagEntity';
+import { Role } from './databases/entities/Role';
+import { User } from './databases/entities/User';
+import { SharedCredentials } from './databases/entities/SharedCredentials';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import { Settings } from './databases/entities/Settings';
 
 export interface IActivationError {
 	time: number;
@@ -57,7 +61,10 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: ICredentialType;
+	[key: string]: {
+		className: string;
+		sourcePath: string;
+	};
 }
 
 export interface ICredentialsOverwrite {
@@ -65,11 +72,16 @@ export interface ICredentialsOverwrite {
 }
 
 export interface IDatabaseCollections {
-	Credentials: Repository<ICredentialsDb> | null;
-	Execution: Repository<IExecutionFlattedDb> | null;
-	Workflow: Repository<WorkflowEntity> | null;
-	Webhook: Repository<IWebhookDb> | null;
-	Tag: Repository<TagEntity> | null;
+	Credentials: Repository<ICredentialsDb>;
+	Execution: Repository<IExecutionFlattedDb>;
+	Workflow: Repository<WorkflowEntity>;
+	Webhook: Repository<IWebhookDb>;
+	Tag: Repository<TagEntity>;
+	Role: Repository<Role>;
+	User: Repository<User>;
+	SharedCredentials: Repository<SharedCredentials>;
+	SharedWorkflow: Repository<SharedWorkflow>;
+	Settings: Repository<Settings>;
 }
 
 export interface IWebhookDb {
@@ -79,6 +91,16 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
+}
+
+// ----------------------------------
+//               settings
+// ----------------------------------
+
+export interface ISettingsDb {
+	key: string;
+	value: string | boolean | IDataObject | number;
+	loadOnStartup: boolean;
 }
 
 // ----------------------------------
@@ -307,10 +329,20 @@ export interface IDiagnosticInfo {
 		};
 	};
 	executionVariables: {
-		[key: string]: string | number | undefined;
+		[key: string]: string | number | boolean | undefined;
 	};
 	deploymentType: string;
 	binaryDataMode: string;
+	n8n_multi_user_allowed: boolean;
+	smtp_set_up: boolean;
+}
+
+export interface ITelemetryUserDeletionData {
+	user_id: string;
+	target_user_old_status: 'active' | 'invited';
+	migration_strategy?: 'transfer_data' | 'delete_data';
+	target_user_id?: string;
+	migration_user_id?: string;
 }
 
 export interface IInternalHooksClass {
@@ -319,15 +351,29 @@ export interface IInternalHooksClass {
 		diagnosticInfo: IDiagnosticInfo,
 		firstWorkflowCreatedAt?: Date,
 	): Promise<unknown[]>;
-	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
-	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
-	onWorkflowDeleted(workflowId: string): Promise<void>;
-	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
+	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
+	onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void>;
+	onWorkflowDeleted(userId: string, workflowId: string): Promise<void>;
+	onWorkflowSaved(userId: string, workflow: IWorkflowBase): Promise<void>;
 	onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
+		userId?: string,
 	): Promise<void>;
+	onUserDeletion(userId: string, userDeletionData: ITelemetryUserDeletionData): Promise<void>;
+	onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void>;
+	onUserReinvite(userReinviteData: { user_id: string; target_user_id: string }): Promise<void>;
+	onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void>;
+	onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void>;
+	onUserPasswordResetEmailClick(userPasswordResetData: { user_id: string }): Promise<void>;
+	onUserTransactionalEmail(userTransactionalEmailData: {
+		user_id: string;
+		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+	}): Promise<void>;
+	onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void>;
+	onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void>;
+	onUserSignup(userSignupData: { user_id: string }): Promise<void>;
 }
 
 export interface IN8nConfig {
@@ -400,6 +446,7 @@ export interface IN8nUISettings {
 	};
 	timezone: string;
 	urlBaseWebhook: string;
+	urlBaseEditor: string;
 	versionCli: string;
 	n8nMetadata?: {
 		[key: string]: string | number | undefined;
@@ -407,8 +454,16 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
-	personalizationSurvey: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
+	userManagement: IUserManagementSettings;
+	workflowTagsDisabled: boolean;
+	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
@@ -420,9 +475,10 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
+export interface IUserManagementSettings {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
 }
 
 export interface IPackageVersions {
@@ -548,6 +604,7 @@ export interface IWorkflowExecutionDataProcess {
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
+	userId: string;
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
@@ -555,6 +612,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
+	userId: string;
 }
 
 export interface IWorkflowExecuteProcess {
@@ -562,3 +620,5 @@ export interface IWorkflowExecuteProcess {
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
 }
+
+export type WhereClause = Record<string, { id: string }>;

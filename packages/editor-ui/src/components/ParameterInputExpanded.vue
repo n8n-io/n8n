@@ -20,21 +20,29 @@
 			@valueChanged="valueChanged"
 			inputSize="large"
 		/>
-		<div class="errors" v-if="showRequiredErrors">
-			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</a>
+		<div :class="$style.errors" v-if="showRequiredErrors">
+			<n8n-text color="danger" size="small">
+				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				<n8n-link v-if="documentationUrl" :to="documentationUrl" size="small" :underline="true" @click="onDocumentationUrlClick">
+					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+				</n8n-link>
+			</n8n-text>
 		</div>
+		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
+import InputHint from './ParameterInputHint.vue';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,
+		InputHint,
 	},
 	props: {
 		parameter: {
@@ -94,3 +102,12 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+	.errors {
+		margin-top: var(--spacing-2xs);
+	}
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
+</style>

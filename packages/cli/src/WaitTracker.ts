@@ -24,6 +24,7 @@ import {
 	WorkflowCredentials,
 	WorkflowRunner,
 } from '.';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
@@ -70,7 +71,7 @@ export class WaitTrackerClass {
 			);
 		}
 
-		const executions = await Db.collections.Execution!.find(findQuery);
+		const executions = await Db.collections.Execution.find(findQuery);
 
 		if (executions.length === 0) {
 			return;
@@ -106,7 +107,7 @@ export class WaitTrackerClass {
 		}
 
 		// Also check in database
-		const execution = await Db.collections.Execution!.findOne(executionId);
+		const execution = await Db.collections.Execution.findOne(executionId);
 
 		if (execution === undefined || !execution.waitTill) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
@@ -126,7 +127,7 @@ export class WaitTrackerClass {
 		fullExecutionData.stoppedAt = new Date();
 		fullExecutionData.waitTill = undefined;
 
-		await Db.collections.Execution!.update(
+		await Db.collections.Execution.update(
 			executionId,
 			ResponseHelper.flattenExecutionData(fullExecutionData),
 		);
@@ -145,7 +146,7 @@ export class WaitTrackerClass {
 
 		(async () => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(executionId);
+			const fullExecutionDataFlatted = await Db.collections.Execution.findOne(executionId);
 
 			if (fullExecutionDataFlatted === undefined) {
 				throw new Error(`The execution with the id "${executionId}" does not exist.`);
@@ -157,10 +158,16 @@ export class WaitTrackerClass {
 				throw new Error('The execution did succeed and can so not be started again.');
 			}
 
+			if (!fullExecutionData.workflowData.id) {
+				throw new Error('Only saved workflows can be resumed.');
+			}
+			const user = await getWorkflowOwner(fullExecutionData.workflowData.id.toString());
+
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
+				userId: user.id,
 			};
 
 			// Start the execution again

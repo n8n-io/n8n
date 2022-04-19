@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import {DateTime} from 'luxon';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -88,6 +89,7 @@ export default mixins(
 			if (!this.$refs.code) return;
 
 			this.monacoInstance = monaco.editor.create(this.$refs.code as HTMLElement, {
+				automaticLayout: true,
 				value: this.value,
 				language: this.type === 'code' ? 'javascript' : 'json',
 				tabSize: 2,
@@ -169,19 +171,45 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, additionalProxyKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, this.$store.getters.timezone, additionalProxyKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				const autoCompleteItems = [
 					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
 					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
-					`function getWorkflowStaticData(type: string): object {};`,
-					`function $item(itemIndex: number, runIndex?: number) {};`,
-					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number) {};`,
+					`function getWorkflowStaticData(type: string): {};`,
+					`function $item(itemIndex: number, runIndex?: number): {};`,
+					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};`,
 				];
 
-				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
-				const additionalKeys = ['$json', '$binary'];
+				const baseKeys = [
+					'$env',
+					'$executionId',
+					'$mode',
+					'$parameter',
+					'$resumeWebhookUrl',
+					'$workflow',
+					'$now',
+					'$today',
+					'$thisRunIndex',
+					'DateTime',
+					'Duration',
+					'Interval',
+				];
+
+				const functionItemKeys = [
+					'$json',
+					'$binary',
+					'$position',
+					'$thisItem',
+					'$thisItemIndex',
+				];
+
+				const additionalKeys: string[] = [];
+				if (this.codeAutocomplete === 'functionItem') {
+					additionalKeys.push(...functionItemKeys);
+				}
+
 				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);
 				} else {
@@ -215,6 +243,7 @@ export default mixins(
 					} catch(error) {}
 				}
 				autoCompleteItems.push(`const $node = ${JSON.stringify(nodes)}`);
+				autoCompleteItems.push(`function $jmespath(jsonDoc: object, query: string): {};`);
 
 				if (this.codeAutocomplete === 'function') {
 					if (connectionInputData) {

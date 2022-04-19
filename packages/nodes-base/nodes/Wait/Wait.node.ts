@@ -5,6 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,15 +15,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import * as fs from 'fs';
+import fs from 'fs';
 
-import * as formidable from 'formidable';
+import formidable from 'formidable';
 
-import * as isbot from 'isbot';
+import isbot from 'isbot';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -251,6 +252,10 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
 						name: 'GET',
 						value: 'GET',
 					},
@@ -259,8 +264,16 @@ export class Wait implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -514,6 +527,8 @@ export class Wait implements INodeType {
 						displayOptions: {
 							show: {
 								'/httpMethod': [
+									'PATCH',
+									'PUT',
 									'POST',
 								],
 							},
@@ -672,7 +687,13 @@ export class Wait implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -692,7 +713,13 @@ export class Wait implements INodeType {
 			}
 		} else if (incomingAuthentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate

@@ -4,6 +4,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	VIEWS,
 } from '@/constants';
 
 import {
@@ -24,7 +25,6 @@ import {
 	IRunExecutionData,
 	IWorfklowIssues,
 	IWorkflowDataProxyAdditionalKeys,
-	TelemetryHelpers,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -224,17 +224,6 @@ export const workflowHelpers = mixins(
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType) as INodeTypeDescription | null;
-
-						if (nodeTypeDescription === null) {
-							return undefined;
-						}
-
-						return {
-							description: nodeTypeDescription,
-						};
-					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version) as INodeTypeDescription | null;
 
@@ -260,9 +249,9 @@ export const workflowHelpers = mixins(
 				const workflowName = this.$store.getters.workflowName;
 
 				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				}
 			},
 
@@ -419,7 +408,7 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
@@ -437,10 +426,36 @@ export const workflowHelpers = mixins(
 				return returnData['__xxxxxxx__'];
 			},
 
-			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
+			async updateWorkflow({workflowId, active}: {workflowId: string, active?: boolean}) {
+				let data: IWorkflowDataUpdate = {};
+
+				const isCurrentWorkflow = workflowId === this.$store.getters.workflowId;
+				if (isCurrentWorkflow) {
+					data = await this.getWorkflowDataToSave();
+				}
+
+				if (active !== undefined) {
+					data.active = active;
+				}
+
+				const workflow = await this.restApi().updateWorkflow(workflowId, data);
+
+				if (isCurrentWorkflow) {
+					this.$store.commit('setActive', !!workflow.active);
+					this.$store.commit('setStateDirty', false);
+				}
+
+				if (workflow.active) {
+					this.$store.commit('setWorkflowActive', workflowId);
+				} else {
+					this.$store.commit('setWorkflowInactive', workflowId);
+				}
+			},
+
+			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
-					return this.saveAsNewWorkflow({name, tags});
+					return this.saveAsNewWorkflow({name, tags}, redirect);
 				}
 
 				// Workflow exists already so update it
@@ -474,12 +489,12 @@ export const workflowHelpers = mixins(
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
-				} catch (e) {
+				} catch (error) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
+						message: error.message,
 						type: 'error',
 					});
 
@@ -487,7 +502,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}, redirect = true): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -514,7 +529,7 @@ export const workflowHelpers = mixins(
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 					if (openInNewWindow) {
-						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
+						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
 						window.open(routeData.href, '_blank');
 						this.$store.commit('removeActiveAction', 'workflowSaving');
 						return true;
@@ -538,10 +553,21 @@ export const workflowHelpers = mixins(
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);
 
-					this.$router.push({
-						name: 'NodeViewExisting',
-						params: { name: workflowData.id as string, action: 'workflowSave' },
-					});
+					const templateId = this.$route.query.templateId;
+					if (templateId) {
+						this.$telemetry.track('User saved new workflow from template', {
+							template_id: templateId,
+							workflow_id: workflowData.id,
+							wf_template_repo_session_id: this.$store.getters['templates/previousSessionId'],
+						});
+					}
+
+					if (redirect) {
+						this.$router.push({
+							name: VIEWS.WORKFLOW,
+							params: { name: workflowData.id as string, action: 'workflowSave' },
+						});
+					}
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 					this.$store.commit('setStateDirty', false);
@@ -553,7 +579,7 @@ export const workflowHelpers = mixins(
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
+						message: (e as Error).message,
 						type: 'error',
 					});
 

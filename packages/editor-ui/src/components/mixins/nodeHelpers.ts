@@ -148,7 +148,7 @@ export const nodeHelpers = mixins(
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 				}
 
 				if (nodeType === null) {
@@ -179,7 +179,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 				}
 
 				if (nodeType === null || nodeType!.credentials === undefined) {
@@ -287,6 +287,9 @@ export const nodeHelpers = mixins(
 					return [];
 				}
 				const executionData: IRunExecutionData = this.$store.getters.getWorkflowExecution.data;
+				if (!executionData || !executionData.resultData) { // unknown status
+					return [];
+				}
 				const runData = executionData.resultData.runData;
 
 				if (runData === null || runData[node.name] === undefined ||

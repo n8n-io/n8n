@@ -12,6 +12,7 @@ import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 import {
 	CodexData,
 	ICredentialType,
+	ICredentialTypeData,
 	ILogger,
 	INodeType,
 	INodeTypeData,
@@ -25,23 +26,21 @@ import {
 	readFile as fsReadFile,
 	stat as fsStat,
 } from 'fs/promises';
-import * as glob from 'fast-glob';
-import * as path from 'path';
+import glob from 'fast-glob';
+import path from 'path';
 import { getLogger } from './Logger';
-import * as config from '../config';
+import config from '../config';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
 
-	credentialTypes: {
-		[key: string]: ICredentialType;
-	} = {};
+	credentialTypes: ICredentialTypeData = {};
 
-	excludeNodes: string[] | undefined = undefined;
+	excludeNodes: string | undefined = undefined;
 
-	includeNodes: string[] | undefined = undefined;
+	includeNodes: string | undefined = undefined;
 
 	nodeModulesPath = '';
 
@@ -77,8 +76,8 @@ class LoadNodesAndCredentialsClass {
 			throw new Error('Could not find "node_modules" folder!');
 		}
 
-		this.excludeNodes = config.get('nodes.exclude');
-		this.includeNodes = config.get('nodes.include');
+		this.excludeNodes = config.getEnv('nodes.exclude');
+		this.includeNodes = config.getEnv('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
 		const packages = await this.getN8nNodePackages();
@@ -170,7 +169,10 @@ class LoadNodesAndCredentialsClass {
 			}
 		}
 
-		this.credentialTypes[tempCredential.name] = tempCredential;
+		this.credentialTypes[tempCredential.name] = {
+			type: tempCredential,
+			sourcePath: filePath,
+		};
 	}
 
 	/**

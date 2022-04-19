@@ -55,14 +55,14 @@ export class MicrosoftSql implements ICredentialType {
 			name: 'connectTimeout',
 			type: 'number',
 			default: 15000,
-			description: 'Connection timeout in ms.',
+			description: 'Connection timeout in ms',
 		},
 		{
 			displayName: 'Request Timeout',
 			name: 'requestTimeout',
 			type: 'number',
 			default: 15000,
-			description: ' Request timeout in ms.',
+			description: 'Request timeout in ms',
 		},
 	];
 }

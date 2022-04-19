@@ -52,7 +52,7 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 
 			const credentials = await this.getCredentials(credentialName);
 
-			if (credentials?.url) {
+			if (credentials.url) {
 				options.uri = `${credentials?.url}${resource}`;
 			}
 

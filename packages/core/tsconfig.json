@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2019"
 		],
 		"types": [
 			"node",
@@ -16,8 +16,10 @@
 		"preserveConstEnums": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "es2017",
-		"sourceMap": true
+		"target": "es2019",
+		"sourceMap": true,
+		"esModuleInterop": true,
+		"useUnknownInCatchVariables": false,
 	},
 	"include": [
 		"**/*.d.ts",
