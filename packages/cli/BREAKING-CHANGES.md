@@ -1,7 +1,18 @@
 # n8n Breaking Changes
 
 This list shows all the versions which include breaking changes and how to upgrade.
+## 0.172.0
 
+### What changed?
+
+Renamed credentials in the NocoDB node from nocoDb to nocoDbUserToken.
+### When is action necessary?
+
+If you are using the NocoDB node,
+
+### How to upgrade:
+
+Go to the workflows that use the NocoDB node and reintroduce the credentials.
 ## 0.171.0
 
 ### What changed?
