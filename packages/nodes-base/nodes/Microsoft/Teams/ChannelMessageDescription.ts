@@ -7,6 +7,7 @@ export const channelMessageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const channelMessageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -55,7 +55,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -78,7 +77,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Message Type',
@@ -105,7 +103,7 @@ export const channelMessageFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'text',
 		description: 'The type of the content',
 	},
 	{
@@ -127,7 +125,7 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The content of the item.',
+		description: 'The content of the item',
 	},
 	{
 		displayName: 'Options',
@@ -151,7 +149,7 @@ export const channelMessageFields: INodeProperties[] = [
 				name: 'makeReply',
 				type: 'string',
 				default: '',
-				description: 'An optional ID of the message you want to reply to.',
+				description: 'An optional ID of the message you want to reply to',
 			},
 		],
 	},
@@ -177,7 +175,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -200,7 +197,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Return All',
@@ -217,7 +213,7 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -240,7 +236,7 @@ export const channelMessageFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 ];

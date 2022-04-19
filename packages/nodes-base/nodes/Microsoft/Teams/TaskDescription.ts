@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -85,7 +85,7 @@ export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Group',
+		displayName: 'Group ID',
 		name: 'groupId',
 		required: true,
 		type: 'options',
@@ -106,10 +106,9 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group',
 	},
 	{
-		displayName: 'Plan',
+		displayName: 'Plan ID',
 		name: 'planId',
 		required: true,
 		type: 'options',
@@ -133,7 +132,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The plan for the task to belong to',
 	},
 	{
-		displayName: 'Bucket',
+		displayName: 'Bucket ID',
 		name: 'bucketId',
 		required: true,
 		type: 'options',
@@ -233,7 +232,7 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: 'Percentage of task completion. When set to 100, the task is considered completed',
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 		],
 	},
@@ -314,7 +313,7 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group',
+		displayName: 'Group ID',
 		name: 'groupId',
 		required: true,
 		type: 'options',
@@ -337,7 +336,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Member',
+		displayName: 'Member ID',
 		name: 'memberId',
 		required: false,
 		type: 'options',
@@ -363,7 +362,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Plan',
+		displayName: 'Plan ID',
 		name: 'planId',
 		required: false,
 		type: 'options',
@@ -403,7 +402,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -427,7 +426,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -449,7 +448,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Task.',
+		description: 'The ID of the Task',
 	},
 	{
 		displayName: 'Update Fields',

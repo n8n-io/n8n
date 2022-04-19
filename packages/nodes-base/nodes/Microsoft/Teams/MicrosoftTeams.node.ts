@@ -62,6 +62,7 @@ export class MicrosoftTeams implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -81,7 +82,7 @@ export class MicrosoftTeams implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			// CHANNEL
 			...channelOperations,
