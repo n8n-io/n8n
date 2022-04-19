@@ -1187,7 +1187,7 @@ return 0;`,
 				return this.prepareOutputData(newItems);
 
 			} else if (operation === 'createArray') {
-				let newItems: IDataObject[] = items.map(item => item.json);;
+				let newItems: IDataObject[] = items.map(item => item.json);
 				const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
 				const fieldsToExclude = (this.getNodeParameter('options.fieldsToExclude.fields', 0, []) as IDataObject[]).map(entry => entry.fieldName);
 				const fieldsToInclude = (this.getNodeParameter('options.fieldsToInclude.fields', 0, []) as IDataObject[]).map(entry => entry.fieldName);
