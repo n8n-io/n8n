@@ -66,6 +66,7 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -181,9 +182,7 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
 		// throttle just on success to allow for self healing on failure
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		Db.collections
-			.Execution!.delete({ stoppedAt: LessThanOrEqual(utcDate) })
+		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then((data) =>
 				setTimeout(() => {
 					throttling = false;
@@ -371,8 +370,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					const execution = await Db.collections.Execution!.findOne(this.executionId);
+					const execution = await Db.collections.Execution.findOne(this.executionId);
 
 					if (execution === undefined) {
 						// Something went badly wrong if this happens.
@@ -418,8 +416,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					await Db.collections.Execution!.update(
+					await Db.collections.Execution.update(
 						this.executionId,
 						flattenedExecutionData as IExecutionFlattedDb,
 					);
@@ -503,7 +500,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
-						await Db.collections.Execution!.delete(this.executionId);
+						await Db.collections.Execution.delete(this.executionId);
 						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
 							this.executionId,
 						);
@@ -539,7 +536,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								);
 							}
 							// Data is always saved, so we remove from database
-							await Db.collections.Execution!.delete(this.executionId);
+							await Db.collections.Execution.delete(this.executionId);
 							await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
 								this.executionId,
 							);
@@ -580,7 +577,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
-					await Db.collections.Execution!.update(
+					await Db.collections.Execution.update(
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
@@ -588,7 +585,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
-						await Db.collections.Execution!.update(this.retryOf, {
+						await Db.collections.Execution.update(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
 					}
@@ -693,14 +690,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
-					await Db.collections.Execution!.update(
+					await Db.collections.Execution.update(
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						await Db.collections.Execution!.update(this.retryOf, {
+						await Db.collections.Execution.update(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
 					}
@@ -804,7 +801,7 @@ export async function getWorkflowData(
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
 		}
 
-		const shared = await Db.collections.SharedWorkflow!.findOne({
+		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations,
 			where: whereClause({
 				user,
@@ -959,7 +956,7 @@ export async function executeWorkflow(
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-		await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
+		await Db.collections.Execution.update(executionId, executionData as IExecutionFlattedDb);
 		throw {
 			...error,
 			stack: error.stack,
@@ -1034,9 +1031,6 @@ export async function getBase(
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
-	if (encryptionKey === undefined) {
-		throw new Error('No encryption key got found to decrypt the credentials!');
-	}
 
 	return {
 		credentialsHelper: new CredentialsHelper(encryptionKey),

@@ -49,10 +49,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 				privateKey: string;
 			};
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
 			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;

@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -22,7 +23,7 @@ export class RealtimeDatabase implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Realtime Database',
 		name: 'googleFirebaseRealtimeDatabase',
-		icon: 'file:googleFirebaseRealtimeDatabase.png',
+		icon: 'file:googleFirebaseRealtimeDatabase.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
@@ -53,6 +54,7 @@ export class RealtimeDatabase implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
@@ -81,7 +83,6 @@ export class RealtimeDatabase implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 				required: true,
 			},
 			{
@@ -89,9 +90,28 @@ export class RealtimeDatabase implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
-				placeholder: '/app/users',
-				description: 'Object path on database. With leading slash. Do not append .json.',
+				placeholder: 'e.g. /app/users',
+				description: 'Object path on database. Do not append .json.',
 				required: true,
+				displayOptions: {
+					hide: {
+						'operation': [ 'get' ],
+					},
+				},
+			},
+			{
+				displayName: 'Object Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. /app/users',
+				description: 'Object path on database. Do not append .json.',
+				hint: 'Leave blank to get a whole database object',
+				displayOptions: {
+					show: {
+						'operation': [ 'get' ],
+					},
+				},
 			},
 			{
 				displayName: 'Columns / Attributes',
@@ -121,7 +141,7 @@ export class RealtimeDatabase implements INodeType {
 			): Promise<INodePropertyOptions[]> {
 				const projects = await googleApiRequestAllItems.call(
 					this,
-					'projects',
+					'',
 					'GET',
 					'results',
 					{},
@@ -129,20 +149,30 @@ export class RealtimeDatabase implements INodeType {
 					{},
 					'https://firebase.googleapis.com/v1beta1/projects',
 				);
-				const returnData = projects.map((o: IDataObject) => ({ name: o.projectId, value: o.projectId })) as INodePropertyOptions[];
+
+				const returnData = projects
+				// select only realtime database projects
+					.filter((project: IDataObject) => (project.resources as IDataObject).realtimeDatabaseInstance )
+					.map((project: IDataObject) => (
+						{
+							name: project.projectId,
+							value: (project.resources as IDataObject).realtimeDatabaseInstance,
+						}
+						)) as INodePropertyOptions[];
+
 				return returnData;
 			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//https://firebase.google.com/docs/reference/rest/database
+
 
 		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
 			throw new NodeOperationError(this.getNode(), `The ${operation} operation needs input data`);
@@ -151,6 +181,7 @@ export class RealtimeDatabase implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				const projectId = this.getNodeParameter('projectId', i) as string;
+
 				let method = 'GET', attributes = '';
 				const document: IDataObject = {};
 				if (operation === 'create') {
@@ -194,7 +225,7 @@ export class RealtimeDatabase implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
