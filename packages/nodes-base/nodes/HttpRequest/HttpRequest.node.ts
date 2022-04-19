@@ -3,8 +3,8 @@ import {
 } from 'n8n-core';
 import {
 	IBinaryData,
-	IDataObject,
-	INodeExecutionData,
+	IDataObject, ILoadOptionsFunctions,
+	INodeExecutionData, INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
@@ -40,11 +40,25 @@ export class HttpRequest implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'httpNodeCredentialAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'nodeCredential',
+						],
+					},
+				},
+			},
+			{
 				name: 'httpBasicAuth',
 				required: true,
 				displayOptions: {
 					show: {
 						authentication: [
+							'genericAuth',
+						],
+						genericAuthType: [
 							'basicAuth',
 						],
 					},
@@ -56,6 +70,9 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
+							'genericAuth',
+						],
+						genericAuthType: [
 							'digestAuth',
 						],
 					},
@@ -67,6 +84,9 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
+							'genericAuth',
+						],
+						genericAuthType: [
 							'headerAuth',
 						],
 					},
@@ -78,6 +98,9 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
+							'genericAuth',
+						],
+						genericAuthType: [
 							'queryAuth',
 						],
 					},
@@ -89,6 +112,9 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
+							'genericAuth',
+						],
+						genericAuthType: [
 							'oAuth1',
 						],
 					},
@@ -100,6 +126,9 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
+							'genericAuth',
+						],
+						genericAuthType: [
 							'oAuth2',
 						],
 					},
@@ -108,9 +137,52 @@ export class HttpRequest implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
+				name: 'authenticationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: [
+							'nodeCredential',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				options: [
+					{
+						name: 'Node Credential',
+						value: 'nodeCredential',
+						description: 'Easiest. Use a credential from another node, like Google Sheets.',
+					},
+					{
+						name: 'Generic Auth',
+						value: 'genericAuth',
+						description: 'Fully customizable. Choose between Basic, Header, OAuth2 and more.',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The authentication mechanism.',
+			},
+			{
+				displayName: 'Generic Auth Type',
+				name: 'genericAuthType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						authentication: [
+							'genericAuth',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Basic Auth',
@@ -642,6 +714,14 @@ export class HttpRequest implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			getNodeCredentialTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				// @TODO Get list of all available node credentials
+				return Promise.resolve([]);
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -658,12 +738,22 @@ export class HttpRequest implements INodeType {
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
+		// const authentication = this.getNodeParameter('authentication', 0) as 'nodeCredential' | 'genericAuth';
+
+		let nodeCredentialAuth;
 		let httpBasicAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
 		let oAuth1Api;
 		let oAuth2Api;
+
+		try {
+			nodeCredentialAuth = await this.getCredentials('httpNodeCredentialAuth');
+		} catch (error) {
+			// Do nothing
+		}
+		console.log(nodeCredentialAuth);
 
 		try {
 			httpBasicAuth = await this.getCredentials('httpBasicAuth');
