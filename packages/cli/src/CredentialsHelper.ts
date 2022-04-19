@@ -6,7 +6,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { get } from 'lodash';
 import { NodeVersionedType } from 'n8n-nodes-base';
 
 import {
@@ -633,8 +634,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 		);
 
+		let response: INodeExecutionData[][] | null | undefined;
+
 		try {
-			await routingNode.runNode(
+			response = await routingNode.runNode(
 				inputData,
 				runIndex,
 				nodeTypeCopy,
@@ -681,6 +684,24 @@ export class CredentialsHelper extends ICredentialsHelper {
 				status: 'Error',
 				message: error.message.toString(),
 			};
+		}
+
+		if (
+			credentialTestFunction.testRequest.rules &&
+			Array.isArray(credentialTestFunction.testRequest.rules)
+		) {
+			// Special testing rules are defined so check all in order
+			for (const rule of credentialTestFunction.testRequest.rules) {
+				if (rule.type === 'responseSuccessBody') {
+					const responseData = response![0][0].json;
+					if (get(responseData, rule.properties.key) === rule.properties.value) {
+						return {
+							status: 'Error',
+							message: rule.properties.message,
+						};
+					}
+				}
+			}
 		}
 
 		return {
