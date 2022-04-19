@@ -4,6 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -19,6 +20,11 @@ import {
 	serviceNowRequestAllItems,
 	sortData
 } from './GenericFunctions';
+
+import {
+	attachmentFields,
+	attachmentOperations,
+} from './AttachmentDescription';
 
 import {
 	businessServiceFields,
@@ -128,6 +134,10 @@ export class ServiceNow implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Attachment',
+						value: 'attachment',
+					},
+					{
 						name: 'Business Service',
 						value: 'businessService',
 					},
@@ -167,7 +177,9 @@ export class ServiceNow implements INodeType {
 				default: 'user',
 				description: 'Resource to consume',
 			},
-
+			// ATTACHMENT SERVICE
+			...attachmentOperations,
+			...attachmentFields,
 			// BUSINESS SERVICE
 			...businessServiceOperations,
 			...businessServiceFields,
@@ -457,7 +469,90 @@ export class ServiceNow implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'businessService') {
+				if (resource === 'attachment') {
+					if (operation === 'get') {
+
+						const attachmentsSysId = this.getNodeParameter('attachments_sys_id', i) as string;
+						const download = this.getNodeParameter('download', i) as boolean;
+						let endpoint = `/now/attachment/${attachmentsSysId}`;
+
+						const response = await serviceNowApiRequest.call(this, 'GET', endpoint, {});
+						const fileMetadata = response.result;
+
+						responseData = {
+							json: fileMetadata,
+						};
+
+						// Cannot get this encoding to work correctly :(
+						if (download) {
+							endpoint = `${endpoint}/file`;
+							const fileData = await serviceNowApiRequest.call(this, 'GET', endpoint, {}, {}, '', {json: false});
+							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(fileData), fileMetadata.file_name);
+							responseData = {
+								...responseData,
+								binary: {
+									data: binaryData,
+								},
+							};
+						}
+
+					} else if (operation === 'getAll') {
+
+						const tableName = this.getNodeParameter('tableName', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const queryFilter = this.getNodeParameter('sysparm_query', i) as string;
+
+						qs = {} as IDataObject;
+
+						qs.sysparm_query = `table_name=${tableName}`;
+
+						if (queryFilter) {
+							qs.sysparm_query = `${qs.sysparm_query}^${queryFilter}`;
+						}
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.sysparm_limit = limit;
+							const response = await serviceNowApiRequest.call(this, 'GET', '/now/attachment', {}, qs);
+							responseData = response.result;
+						} else {
+							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/attachment', {}, qs);
+						}
+					} else if (operation === 'upload') {
+						const tableName = this.getNodeParameter('tableName', i) as string;
+						const recordId = this.getNodeParameter('table_sys_id', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						let binaryData: IBinaryData;
+
+						if (items[i].binary && items[i].binary![binaryPropertyName]) {
+							binaryData = items[i].binary![binaryPropertyName];
+						} else {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+
+						const headers: IDataObject = {
+							'Content-Type': binaryData.mimeType,
+						};
+
+						const qs: IDataObject = {
+							table_name: tableName,
+							table_sys_id: recordId,
+							file_name: binaryData.fileName ? binaryData.fileName : `${binaryPropertyName}.${binaryData.fileExtension}`,
+							...options,
+						};
+
+						const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName) as Buffer;
+
+						const response = await serviceNowApiRequest.call(this, 'POST', '/now/attachment/file', body, qs, '', {headers});
+						responseData = response.result;
+					} else if (operation === 'delete') {
+						const attachmentsSysId = this.getNodeParameter('attachments_sys_id', i) as string;
+						const response = await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
+						responseData = {'success': true};
+					}
+				} else if (resource === 'businessService') {
 
 					if (operation === 'getAll') {
 
@@ -818,6 +913,10 @@ export class ServiceNow implements INodeType {
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
+		}
+
+		if (resource === 'attachment' && operation === 'get') {
+			return this.prepareOutputData(returnData as INodeExecutionData[]);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

@@ -85,6 +85,7 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 
 export const mapEndpoint = (resource: string, operation: string) => {
 	const resourceEndpoint = new Map([
+		['attachment', 'sys_dictionary'],
 		['tableRecord', 'sys_dictionary'],
 		['businessService', 'cmdb_ci_service'],
 		['configurationItems', 'cmdb_ci'],
