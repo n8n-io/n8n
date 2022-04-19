@@ -694,7 +694,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const rule of credentialTestFunction.testRequest.rules) {
 				if (rule.type === 'responseSuccessBody') {
 					const responseData = response![0][0].json;
-					if (get(responseData, rule.properties.key) === rule.properties.value) {
+					const key = get(responseData, rule.properties.key);
+					// if key is not present in the response or it's but matches the condition
+					if (key === undefined || key === rule.properties.value) {
 						return {
 							status: 'Error',
 							message: rule.properties.message,

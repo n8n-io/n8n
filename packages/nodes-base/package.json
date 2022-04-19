@@ -206,7 +206,7 @@
       "dist/credentials/NetlifyApi.credentials.js",
       "dist/credentials/NextCloudApi.credentials.js",
       "dist/credentials/NextCloudOAuth2Api.credentials.js",
-      "dist/credentials/NocoDb.credentials.js",
+      "dist/credentials/NocoDbUserToken.credentials.js",
       "dist/credentials/NocoDbApiToken.credentials.js",
       "dist/credentials/NotionApi.credentials.js",
       "dist/credentials/NotionOAuth2Api.credentials.js",

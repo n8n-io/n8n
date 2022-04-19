@@ -35,7 +35,7 @@ export class NocoDbApiToken implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials?.host}}',
-			url: '/users/me',
+			url: '/user/me',
 		},
 		rules: [
 			{

@@ -39,23 +39,21 @@ export class NocoDB implements INodeType {
 		credentials: [
 			{
 				name: 'nocoDbUserToken',
-				required: true,
 				displayOptions: {
 					show: {
-							authentication: [
-									'userToken',
-							],
+						authentication: [
+							'userToken',
+						],
 					},
 				},
 			},
 			{
 				name: 'nocoDbApiToken',
-				required: true,
 				displayOptions: {
 					show: {
-							authentication: [
-									'apiToken',
-							],
+						authentication: [
+							'apiToken',
+						],
 					},
 				},
 			},

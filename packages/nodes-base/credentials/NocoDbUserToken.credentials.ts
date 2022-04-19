@@ -28,14 +28,14 @@ export class NocoDbUserToken implements ICredentialType {
 	authenticate: IAuthenticateHeaderAuth = {
 		type: 'headerAuth',
 		properties: {
-			name: 'xc-token',
+			name: 'xc-auth',
 			value: '={{$credentials.userToken}}',
 		},
 	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{$credentials?.host}}',
-			url: '/users/me',
+			baseURL: '={{$credentials?.host}}',
+			url: '/user/me',
 		},
 		rules: [
 			{
