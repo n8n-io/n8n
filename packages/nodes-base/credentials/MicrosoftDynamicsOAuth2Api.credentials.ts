@@ -11,7 +11,7 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 	displayName = 'Microsoft Dynamics OAuth2 API';
 	documentationUrl = 'microsoft';
 	properties: INodeProperties[] = [
-		//https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
+		//	https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
 		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
@@ -20,6 +20,8 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			placeholder: 'organization',
 			default: '',
 		},
+		//	https://docs.microsoft.com/en-us/power-platform/admin/new-datacenter-regions
+		//	https://arunpotti.com/2021/03/15/dynamics-365-crm-online-regions-list/
 		{
 			displayName: 'Region',
 			name: 'region',
@@ -27,76 +29,76 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			default: 'crm.dynamics.com',
 			options: [
 				{
-					name: 'NAM',
-					value: 'crm.dynamics.com',
-				},
-				{
-					name: 'DEU',
-					value: 'crm.microsoftdynamics.de',
-				},
-				{
-					name: 'SAM',
-					value: 'crm2.dynamics.com',
-				},
-				{
-					name: 'CAN',
-					value: 'crm3.dynamics.com',
-				},
-				{
-					name: 'EUR',
-					value: 'crm4.dynamics.com',
-				},
-				{
-					name: 'FRA',
-					value: 'crm12.dynamics.com',
-				},
-				{
-					name: 'APJ',
+					name: 'Asia Pacific (APAC/ APJ)',
 					value: 'crm5.dynamics.com',
 				},
 				{
-					name: 'OCE',
+					name: 'Australia (OCE)',
 					value: 'crm6.dynamics.com',
 				},
 				{
-					name: 'JPN',
-					value: 'crm7.dynamics.com',
+					name: 'Canada (CAN)',
+					value: 'crm3.dynamics.com',
 				},
 				{
-					name: 'IND',
-					value: 'crm8.dynamics.com',
+					name: 'China (CHN)',
+					value: 'crm.dynamics.cn',
 				},
 				{
-					name: 'GCC',
-					value: 'crm9.dynamics.com',
+					name: 'Europe, Middle East, Africa (EMEA/ EUR)',
+					value: 'crm4.dynamics.com',
 				},
 				{
-					name: 'GCC High',
-					value: 'crm.microsoftdynamics.us',
+					name: 'France (FRA)',
+					value: 'crm12.dynamics.com',
 				},
 				{
-					name: 'GBR',
-					value: 'crm11.dynamics.com',
-				},
-				{
-					name: 'ZAF',
-					value: 'crm14.dynamics.com',
-				},
-				{
-					name: 'UAE',
-					value: 'crm15.dynamics.com',
-				},
-				{
-					name: 'GER',
+					name: 'Germany (GER)',
 					value: 'crm16.dynamics.com',
 				},
 				{
-					name: 'CHE',
+					name: 'India (IND)',
+					value: 'crm8.dynamics.com',
+				},
+				{
+					name: 'Japan (JPN)',
+					value: 'crm7.dynamics.com',
+				},
+				{
+					name: 'Microsoft Cloud Germany (DEU)',
+					value: 'crm.microsoftdynamics.de',
+				},
+				{
+					name: 'North America (NAM)',
+					value: 'crm.dynamics.com',
+				},
+				{
+					name: 'North America 2 (US Gov GCC)',
+					value: 'crm9.dynamics.com',
+				},
+				{
+					name: 'South Africa (ZAF)',
+					value: 'crm14.dynamics.com',
+				},
+				{
+					name: 'South America (LATAM/ SAM)',
+					value: 'crm2.dynamics.com',
+				},
+				{
+					name: 'Switzerland (CHE)',
 					value: 'crm17.dynamics.com',
 				},
 				{
-					name: 'CHN',
-					value: 'crm.dynamics.cn',
+					name: 'United Arab Emirates (UAE)',
+					value: 'crm15.dynamics.com',
+				},
+				{
+					name: 'United Kingdom  (UK/ GBR)',
+					value: 'crm11.dynamics.com',
+				},
+				{
+					name: 'United States Government Community Cloud (GCC High)',
+					value: 'crm.microsoftdynamics.us',
 				},
 			],
 		},
