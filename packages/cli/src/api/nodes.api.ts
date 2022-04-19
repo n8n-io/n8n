@@ -25,7 +25,7 @@ nodesController.post(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Post) => {
 		const { name } = req.body;
-		if (name === undefined) {
+		if (!name) {
 			throw new ResponseHelper.ResponseError(`The parameter "name" is missing!`, undefined, 400);
 		}
 
@@ -56,7 +56,7 @@ nodesController.post(
 nodesController.get(
 	'/',
 	ResponseHelper.send(async () => {
-		const packages = await Db.collections.InstalledPackages!.find({
+		const packages = await Db.collections.InstalledPackages.find({
 			relations: ['installedNodes'],
 		});
 		return packages;
@@ -67,9 +67,13 @@ nodesController.get(
 nodesController.delete(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Delete) => {
-		const installedPackage = await Db.collections.InstalledPackages!.findOne({
+		const { name } = req.body;
+		if (!name) {
+			throw new ResponseHelper.ResponseError(`The parameter "name" is missing!`, undefined, 400);
+		}
+		const installedPackage = await Db.collections.InstalledPackages.findOne({
 			where: {
-				packageName: req.body.name,
+				packageName: name,
 			},
 			relations: ['installedNodes'],
 		});
@@ -79,10 +83,7 @@ nodesController.delete(
 		}
 
 		try {
-			void (await LoadNodesAndCredentials().removeNpmModule(
-				req.body.name,
-				installedPackage.installedNodes,
-			));
+			void (await LoadNodesAndCredentials().removeNpmModule(name, installedPackage.installedNodes));
 
 			// Inform the connected frontends that new nodes are available
 			installedPackage.installedNodes.forEach((installedNode) => {
@@ -95,13 +96,13 @@ nodesController.delete(
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				`Error removing package "${req.body.name}": ${error.message}`,
+				`Error removing package "${name}": ${error.message}`,
 				undefined,
 				500,
 			);
 		}
 
-		void (await Db.collections.InstalledPackages!.remove(installedPackage));
+		void (await Db.collections.InstalledPackages.remove(installedPackage));
 	}),
 );
 
@@ -109,9 +110,13 @@ nodesController.delete(
 nodesController.patch(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Update) => {
-		const installedPackage = await Db.collections.InstalledPackages!.findOne({
+		const { name } = req.body;
+		if (!name) {
+			throw new ResponseHelper.ResponseError(`The parameter "name" is missing!`, undefined, 400);
+		}
+		const installedPackage = await Db.collections.InstalledPackages.findOne({
 			where: {
-				packageName: req.body.name,
+				packageName: name,
 			},
 			relations: ['installedNodes'],
 		});
@@ -122,7 +127,7 @@ nodesController.patch(
 
 		try {
 			const installedNodes = await LoadNodesAndCredentials().updateNpmModule(
-				req.body.name,
+				name,
 				installedPackage.installedNodes,
 			);
 
@@ -142,7 +147,7 @@ nodesController.patch(
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				`Error updating package "${req.body.name}": ${error.message}`,
+				`Error updating package "${name}": ${error.message}`,
 				undefined,
 				500,
 			);
