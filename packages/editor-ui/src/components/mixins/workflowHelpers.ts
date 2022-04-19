@@ -4,6 +4,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	VIEWS,
 } from '@/constants';
 
 import {
@@ -248,9 +249,9 @@ export const workflowHelpers = mixins(
 				const workflowName = this.$store.getters.workflowName;
 
 				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				}
 			},
 
@@ -407,7 +408,7 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
@@ -528,7 +529,7 @@ export const workflowHelpers = mixins(
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 					if (openInNewWindow) {
-						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
+						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
 						window.open(routeData.href, '_blank');
 						this.$store.commit('removeActiveAction', 'workflowSaving');
 						return true;
@@ -563,7 +564,7 @@ export const workflowHelpers = mixins(
 
 					if (redirect) {
 						this.$router.push({
-							name: 'NodeViewExisting',
+							name: VIEWS.WORKFLOW,
 							params: { name: workflowData.id as string, action: 'workflowSave' },
 						});
 					}

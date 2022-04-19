@@ -20,5 +20,12 @@ export class MailjetEmailApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'Sandbox Mode',
+			name: 'sandboxMode',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to allow to run the API call in a Sandbox mode, where all validations of the payload will be done without delivering the message',
+		},
 	];
 }

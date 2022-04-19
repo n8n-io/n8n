@@ -37,6 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+// Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;
@@ -138,7 +139,8 @@ return item;`,
 						// Try to find the line number which contains the error and attach to error message
 						const stackLines = error.stack.split('\n');
 						if (stackLines.length > 0) {
-							const lineParts = stackLines[1].split(':');
+							stackLines.shift();
+							const lineParts = stackLines.find((line: string) => line.includes('FunctionItem')).split(':');
 							if (lineParts.length > 2) {
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber)) {

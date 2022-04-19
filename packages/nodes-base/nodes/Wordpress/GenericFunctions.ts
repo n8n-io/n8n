@@ -14,9 +14,6 @@ import {
 
 export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('wordpressApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -60,6 +57,7 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&
+		responseData.headers['x-wp-totalpages'] !== '0' &&
 		parseInt(responseData.headers['x-wp-totalpages'], 10) !== query.page
 	);
 

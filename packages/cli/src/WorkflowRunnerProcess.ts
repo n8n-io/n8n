@@ -5,13 +5,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import {
-	BinaryDataManager,
-	IBinaryDataConfig,
-	IProcessMessage,
-	UserSettings,
-	WorkflowExecute,
-} from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -50,8 +44,9 @@ import {
 
 import { getLogger } from './Logger';
 
-import * as config from '../config';
+import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -88,6 +83,7 @@ export class WorkflowRunnerProcess {
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
+		const { userId } = inputData;
 
 		logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
@@ -174,7 +170,7 @@ export class WorkflowRunnerProcess {
 		const { cli } = await GenericHelpers.getVersions();
 		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
 		// Credentials should now be loaded from database.
@@ -202,27 +198,27 @@ export class WorkflowRunnerProcess {
 		} else if (
 			inputData.workflowData.settings !== undefined &&
 			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.getEnv('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		} else if (
 			inputData.workflowData.settings === undefined &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.getEnv('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
 
 		// Start timeout for the execution
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
 		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
 			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
 		this.workflow = new Workflow({
@@ -235,7 +231,9 @@ export class WorkflowRunnerProcess {
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
 		});
+		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -273,8 +271,15 @@ export class WorkflowRunnerProcess {
 			additionalData: IWorkflowExecuteAdditionalData,
 			inputData?: INodeExecutionData[] | undefined,
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
-			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
-			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
+				workflowInfo,
+				userId,
+			);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(
+				workflowData,
+				additionalData.userId,
+				inputData,
+			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
 				this.executionIdCallback = (executionId: string) => {
@@ -300,6 +305,7 @@ export class WorkflowRunnerProcess {
 					executionId,
 					workflowData,
 					result,
+					additionalData.userId,
 				);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];

@@ -40,7 +40,7 @@ export class TimescaleDb implements ICredentialType {
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,
-			description: 'Connect even if SSL certificate validation is not possible.',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 		{
 			displayName: 'SSL',
@@ -55,23 +55,23 @@ export class TimescaleDb implements ICredentialType {
 			},
 			options: [
 				{
-					name: 'disable',
-					value: 'disable',
-				},
-				{
-					name: 'allow',
+					name: 'Allow',
 					value: 'allow',
 				},
 				{
-					name: 'require',
+					name: 'Disable',
+					value: 'disable',
+				},
+				{
+					name: 'Require',
 					value: 'require',
 				},
 				{
-					name: 'verify (not implemented)',
+					name: 'Verify (Not Implemented)',
 					value: 'verify',
 				},
 				{
-					name: 'verify-full (not implemented)',
+					name: 'Verify-Full (Not Implemented)',
 					value: 'verify-full',
 				},
 			],

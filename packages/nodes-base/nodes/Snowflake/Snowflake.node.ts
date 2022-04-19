@@ -16,7 +16,7 @@ import {
 	execute,
 } from './GenericFunctions';
 
-import * as snowflake from 'snowflake-sdk';
+import snowflake from 'snowflake-sdk';
 
 export class Snowflake implements INodeType {
 	description: INodeTypeDescription = {

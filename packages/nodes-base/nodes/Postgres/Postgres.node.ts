@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as pgPromise from 'pg-promise';
+import pgPromise from 'pg-promise';
 
 import { pgInsert, pgQuery, pgUpdate } from './Postgres.node.functions';
 
@@ -249,10 +249,6 @@ export class Postgres implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('postgres');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const pgp = pgPromise();
 

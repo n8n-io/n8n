@@ -11,7 +11,13 @@ const Template = (args, { argTypes }) => ({
 		N8nInfoTip,
 	},
 	template:
-		'<n8n-info-tip>Need help doing something? <a href="/docs" target="_blank">Open docs</a></n8n-info-tip>',
+		'<n8n-info-tip v-bind="$props">Need help doing something? <a href="/docs" target="_blank">Open docs</a></n8n-info-tip>',
 });
 
-export const InputLabel = Template.bind({});
+export const Note = Template.bind({});
+
+export const Tooltip = Template.bind({});
+Tooltip.args = {
+	type: 'tooltip',
+	tooltipPlacement: 'right',
+};

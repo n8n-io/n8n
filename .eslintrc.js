@@ -258,6 +258,11 @@ module.exports = {
 		'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
 
 		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.33.0/packages/eslint-plugin/docs/rules/no-namespace.md
+		 */
+		'@typescript-eslint/no-namespace': 'off',
+
+		/**
 		 * https://eslint.org/docs/1.0.0/rules/no-throw-literal
 		 */
 		'@typescript-eslint/no-throw-literal': 'error',

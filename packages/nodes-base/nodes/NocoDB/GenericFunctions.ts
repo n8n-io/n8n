@@ -109,13 +109,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-
 		returnData.push(...responseData);
 
 		query.offset += query.limit;
 
 	} while (
-		responseData.length === 0
+		responseData.length !== 0
 	);
 
 	return returnData;
