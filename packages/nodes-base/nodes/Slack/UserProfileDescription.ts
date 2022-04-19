@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { text } from 'express';
 
 export const userProfileOperations: INodeProperties[] = [
 	{
