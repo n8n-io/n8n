@@ -42,13 +42,10 @@
 					/>
 					<Sticky
 						v-else
-						@duplicateNode="duplicateNode"
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						@moved="onNodeMoved"
-						@run="onNodeRun"
 						@onChangeMode="onStickyChangeMode"
 						@onMouseHover="onMouseHover"
 						@onResizeChange="onResizeChange"

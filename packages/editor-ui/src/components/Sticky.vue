@@ -1,7 +1,7 @@
 <template>
   <div class="sticky-wrapper" :style="stickyPosition">
     <div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
-    <div 
+    <div
       :class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
       :style="stickySize"
     >
@@ -15,7 +15,7 @@
         v-touch:start="touchStart"
         v-touch:end="touchEnd"
       >
-        <n8n-sticky 
+        <n8n-sticky
           :content.sync="node.parameters.content"
           :height="node.parameters.height"
           :id="nodeIndex"
@@ -100,7 +100,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					}
 					this.$emit('onChangeMode', false);
 				}
-			},	
+			},
 		},
 	},
 	computed: {
@@ -214,7 +214,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			} else {
 				this.setSizeParameters(null, isStickyInEditMode);
 			}
-			
+
 			this.$emit('onChangeMode', isStickyInEditMode);
 		},
 		onMouseHover(isMouseHoverActive: boolean) {
@@ -227,7 +227,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.isResizing = true;
 			this.stickyProp.height = parameters.height;
 			this.stickyProp.width = parameters.width;
-			
+
 			if(parameters.top) {
 				this.stickyProp.top = parameters.top;
 			}
@@ -235,7 +235,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (parameters.left) {
 				this.stickyProp.left = parameters.left;
 			}
-	
+
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName);
@@ -250,7 +250,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					this.setSizeParameters(null, isStickyInEditMode);
 				}
 			}
-			
+
 			this.__makeInstanceDraggable(this.data);
 		},
 		setNodeActive () {
@@ -258,7 +258,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		setSizeParameters(content: string | null = null, isEditable = false, zIndex: number | null = null, isDefaultTextChanged: boolean | null = null) {
 			if (this.node) {
-				
+
 				if (zIndex) {
 					this.stickyProp.zIndex = zIndex;
 				} else {
