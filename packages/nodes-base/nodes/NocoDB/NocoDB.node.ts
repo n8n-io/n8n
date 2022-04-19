@@ -4,11 +4,7 @@ import {
 
 import {
 	IBinaryData,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -26,10 +22,6 @@ import {
 	operationFields
 } from './OperationDescription';
 
-import {
-	validateCredentials
-} from './GenericFunctions';
-
 export class NocoDB implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'NocoDB',
@@ -46,16 +38,15 @@ export class NocoDB implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'nocoDb',
+				name: 'nocoDbUserToken',
 				required: true,
 				displayOptions: {
 					show: {
 							authentication: [
-									'nocoDb',
+									'userToken',
 							],
 					},
 				},
-				testedBy: 'nocoDbCredentialTest',
 			},
 			{
 				name: 'nocoDbApiToken',
@@ -63,11 +54,10 @@ export class NocoDB implements INodeType {
 				displayOptions: {
 					show: {
 							authentication: [
-									'nocoDbApiToken',
+									'apiToken',
 							],
 					},
 				},
-				testedBy: 'nocoDbCredentialTest',
 			},
 		],
 		properties: [
@@ -78,14 +68,14 @@ export class NocoDB implements INodeType {
 				options: [
 					{
 						name: 'User Token',
-						value: 'nocoDb',
+						value: 'userToken',
 					},
 					{
 						name: 'API Token',
-						value: 'nocoDbApiToken',
+						value: 'apiToken',
 					},
 				],
-				default: 'nocoDb',
+				default: 'userToken',
 				description: 'The resource to operate on',
 			},
 			{
@@ -144,32 +134,6 @@ export class NocoDB implements INodeType {
 			},
 			...operationFields,
 		],
-	};
-
-	methods = {
-		credentialTest: {
-			async nocoDbCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					let responseData;
-					responseData = await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-					if (responseData.isAuthorized) {
-						return {
-							status: 'OK',
-							message: 'Authentication successful!',
-						};
-					}
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'Invalid credentials',
-					};
-				}
-				return {
-					status: 'Error',
-					message: 'Invalid credentials',
-				};
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

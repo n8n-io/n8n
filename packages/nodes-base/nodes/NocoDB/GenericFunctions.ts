@@ -10,8 +10,6 @@ import {
 
 import {
 	IBinaryKeyData,
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
@@ -39,10 +37,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 	let credentials;
 
-	if (authenticationMethod === 'nocoDbApiToken') {
+	if (authenticationMethod === 'apiToken') {
 		credentials = await this.getCredentials('nocoDbApiToken');
-	} else if (authenticationMethod === 'nocoDb') {
-		credentials = await this.getCredentials('nocoDb');
+	} else if (authenticationMethod === 'userToken') {
+		credentials = await this.getCredentials('nocoDbUserToken');
 	}
 
 	if (credentials === undefined) {
@@ -62,12 +60,6 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
-	if (credentials.apiToken) {
-		options.headers = { 'xc-auth': credentials.apiToken };
-	} else {
-		options.headers = { 'xc-token': credentials.nocoDbApiToken };
-	}
-
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
@@ -76,8 +68,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		delete options.body;
 	}
 
+	const credentialType = authenticationMethod === 'apiToken' ? 'nocoDbApiToken' : 'nocoDbUserToken';
+
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -140,33 +134,4 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 		elements.push(element);
 	}
 	return elements;
-}
-
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = decryptedCredentials;
-
-	const {
-		apiToken,
-		nocoDbApiToken,
-		host,
-	} = credentials as {
-		apiToken: string,
-		nocoDbApiToken: string,
-		host: string,
-	};
-
-	const options: OptionsWithUri = {
-		method: 'GET',
-		headers: {},
-		uri: host.endsWith('/') ? `${host}user/me` : `${host}/user/me`,
-		json: true,
-	};
-
-	if (apiToken) {
-		options.headers = { 'xc-auth': apiToken };
-	} else {
-		options.headers = { 'xc-token': nocoDbApiToken };
-	}
-
-	return await this.helpers.request(options);
 }
