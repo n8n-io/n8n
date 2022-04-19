@@ -601,9 +601,6 @@ export class CiscoWebexTrigger implements INodeType {
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
 				const credentials = await this.getCredentials('ciscoWebexOAuth2Api');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-				}
 				const secret = getAutomaticSecret(credentials);
 				const filter = [];
 				for (const key of Object.keys(filters)) {

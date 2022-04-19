@@ -1014,10 +1014,6 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 

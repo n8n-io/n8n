@@ -214,10 +214,6 @@ export class MySql implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		// Destructuring SSL configuration
 		const {
 			ssl,

@@ -15,7 +15,7 @@ import {
 import _ from 'lodash';
 
 export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
+	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Set up pagination / scrolling
 	const returnAll = !!option.returnAll;
@@ -165,7 +165,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 		binary: {},
 	};
 
-	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
+	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Look for attachment links - there can be more than one
 	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[];  // tslint:disable-line:no-any

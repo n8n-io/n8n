@@ -307,10 +307,6 @@ export class Beeminder implements INodeType {
 
 				const credentials = await this.getCredentials('beeminderApi');
 
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
-
 				const endpoint = `/users/${credentials.user}/goals.json`;
 
 				const returnData: INodePropertyOptions[] = [];
