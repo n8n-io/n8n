@@ -5,9 +5,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -19,14 +21,13 @@ export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github Trigger',
 		name: 'githubTrigger',
-		icon: 'file:github.png',
+		icon: 'file:github.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when Github events occur',
 		defaults: {
 			name: 'Github Trigger',
-			color: '#885577',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -171,7 +172,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'installation',
 						value: 'installation',
-						description: 'Triggered when someone installs (created) , uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
+						description: 'Triggered when someone installs (created), uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
 					},
 					{
 						name: 'installation_repositories',
@@ -312,7 +313,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'team',
 						value: 'team',
-						description: 'Triggered when an organization\'s team is created,<br/>deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
+						description: 'Triggered when an organization\'s team is created, deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
 					},
 					{
 						name: 'team_add',
@@ -350,8 +351,8 @@ export class GithubTrigger implements INodeType {
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.message.includes('[404]:')) {
+				} catch (error) {
+					if (error.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -360,7 +361,7 @@ export class GithubTrigger implements INodeType {
 					}
 
 					// Some error occured
-					throw e;
+					throw error;
 				}
 
 				// If it did not error then the webhook exists
@@ -370,7 +371,7 @@ export class GithubTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
-					throw new Error('The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
+					throw new NodeOperationError(this.getNode(), 'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
 				}
 
 				const owner = this.getNodeParameter('owner') as string;
@@ -396,8 +397,8 @@ export class GithubTrigger implements INodeType {
 				let responseData;
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
-				} catch (e) {
-					if (e.message.includes('[422]:')) {
+				} catch (error) {
+					if (error.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook
@@ -416,15 +417,15 @@ export class GithubTrigger implements INodeType {
 							}
 						}
 
-						throw new Error('A webhook with the identical URL probably exists already. Please delete it manually on Github!');
+						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually on Github!');
 					}
 
-					throw e;
+					throw error;
 				}
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
-					throw new Error('Github webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'Github webhook creation response did not contain the expected data.' });
 				}
 
 				webhookData.webhookId = responseData.id as string;
@@ -443,7 +444,7 @@ export class GithubTrigger implements INodeType {
 
 					try {
 						await githubApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
@@ -469,7 +470,7 @@ export class GithubTrigger implements INodeType {
 			// but do not start the workflow.
 
 			return {
-				webhookResponse: 'OK'
+				webhookResponse: 'OK',
 			};
 		}
 
@@ -483,12 +484,12 @@ export class GithubTrigger implements INodeType {
 				body: bodyData,
 				headers: this.getHeaderData(),
 				query: this.getQueryData(),
-			}
+			},
 		);
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData)
+				this.helpers.returnJsonArray(returnData),
 			],
 		};
 	}

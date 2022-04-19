@@ -1,12 +1,14 @@
 import { IPollFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 import { togglApiRequest } from './GenericFunctions';
 
 export class TogglTrigger implements INodeType {
@@ -16,16 +18,15 @@ export class TogglTrigger implements INodeType {
 		icon: 'file:toggl.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Toggl events occure',
+		description: 'Starts the workflow when Toggl events occur',
 		defaults: {
 			name: 'Toggl',
-			color: '#00FF00',
 		},
 		credentials: [
 			{
 				name: 'togglApi',
 				required: true,
-			}
+			},
 		],
 		polling: true,
 		inputs: [],
@@ -39,12 +40,12 @@ export class TogglTrigger implements INodeType {
 					{
 						name: 'New Time Entry',
 						value: 'newTimeEntry',
-					}
+					},
 				],
 				required: true,
 				default: 'newTimeEntry',
 			},
-		]
+		],
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
@@ -55,7 +56,7 @@ export class TogglTrigger implements INodeType {
 		if (event === 'newTimeEntry') {
 			endpoint = '/time_entries';
 		} else {
-			throw new Error(`The defined event "${event}" is not supported`);
+			throw new NodeOperationError(this.getNode(), `The defined event "${event}" is not supported`);
 		}
 
 		const qs: IDataObject = {};
@@ -66,8 +67,8 @@ export class TogglTrigger implements INodeType {
 		try {
 			timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
 			webhookData.lastTimeChecked = qs.end_date;
-		} catch (err) {
-			throw new Error(`Toggl Trigger Error: ${err}`);
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
 		}
 		if (Array.isArray(timeEntries) && timeEntries.length !== 0) {
 			return [this.helpers.returnJsonArray(timeEntries)];

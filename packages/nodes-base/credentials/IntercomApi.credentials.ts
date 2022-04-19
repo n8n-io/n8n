@@ -1,17 +1,18 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class IntercomApi implements ICredentialType {
 	name = 'intercomApi';
 	displayName = 'Intercom API';
-	properties = [
+	documentationUrl = 'intercom';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

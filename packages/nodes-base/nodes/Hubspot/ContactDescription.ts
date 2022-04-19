@@ -1,8 +1,8 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -40,17 +40,22 @@ export const contactOperations = [
 				value: 'getRecentlyCreatedUpdated',
 				description: 'Get recently created/updated contacts',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search contacts',
+			},
 		],
 		default: 'upsert',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                contact:upsert                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:upsert                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -83,7 +88,7 @@ export const contactFields = [
 			},
 		},
 		default: true,
-		description: 'By default the response only includes the ID. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -116,10 +121,10 @@ export const contactFields = [
 				name: 'associatedCompanyId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:'getCompanies' ,
+					loadOptionsMethod: 'getCompanies',
 				},
 				default: '',
-				description: 'Companies associated with the ticket'
+				description: 'Companies associated with the ticket',
 			},
 			{
 				displayName: 'City',
@@ -165,6 +170,41 @@ export const contactFields = [
 				name: 'country',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Date of Birth',
@@ -276,7 +316,7 @@ export const contactFields = [
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getContactLifeCycleStages'
+					loadOptionsMethod: 'getContactLifeCycleStages',
 				},
 				default: '',
 				description: `The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis.`,
@@ -340,7 +380,7 @@ export const contactFields = [
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: `A contact's primary phone number`
+				description: `A contact's primary phone number`,
 			},
 			{
 				displayName: 'Properties',
@@ -357,17 +397,14 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Postal Code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
-				description: `The contact's zip code. This might be set via import, form, or integration.`
+				description: `The contact's zip code. This might be set via import, form, or integration.`,
 			},
 			{
 				displayName: 'Preffered Language',
@@ -377,49 +414,49 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactPrefferedLanguages',
 				},
 				default: '',
-				description: `Set your contact's preferred language for communications. This property can be changed from an import, form, or integration.`
+				description: `Set your contact's preferred language for communications. This property can be changed from an import, form, or integration.`,
 			},
 			{
 				displayName: 'Relationship Status',
 				name: 'relationshipStatus',
 				type: 'string',
 				default: '',
-				description: `A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
 				default: '',
-				description: `The title used to address a contact`
+				description: `The title used to address a contact`,
 			},
 			{
 				displayName: 'School',
 				name: 'school',
 				type: 'string',
 				default: '',
-				description: `A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'Seniority',
 				name: 'seniority',
 				type: 'string',
 				default: '',
-				description: `A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: `A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'State/Region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
-				description: `The contact's state of residence. This might be set via import, form, or integration.`
+				description: `The contact's state of residence. This might be set via import, form, or integration.`,
 			},
 			{
 				displayName: 'Status',
@@ -429,41 +466,42 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				default: '',
-				description: `The status of the contact's content membership.`
+				description: `The status of the contact's content membership.`,
 			},
 			{
 				displayName: 'Street Address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
-				description: `A contact's street address, including apartment or unit #`
+				description: `A contact's street address, including apartment or unit #`,
 			},
 			{
 				displayName: 'Twitter Username',
 				name: 'twitterUsername',
 				type: 'string',
 				default: '',
-				description: `The contact's Twitter handle. This is set by HubSpot using the contact's email address.`
+				description: `The contact's Twitter handle. This is set by HubSpot using the contact's email address.`,
 			},
 			{
 				displayName: 'Website URL',
 				name: 'websiteUrl',
 				type: 'string',
 				default: '',
-				description: `The contact's company website`
+				description: `The contact's company website`,
 			},
 			{
 				displayName: 'Work Email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
-				description: `A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  contact:get                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  contact:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -539,10 +577,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -563,9 +598,10 @@ export const contactFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contact:getAll                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -664,10 +700,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -688,9 +721,10 @@ export const contactFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contact:delete                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -709,9 +743,10 @@ export const contactFields = [
 		default: '',
 		description: 'Unique identifier for a particular contact',
 	},
-/* -------------------------------------------------------------------------- */
-/*               contact:getRecentlyCreatedUpdated                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*               contact:getRecentlyCreatedUpdated                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -810,10 +845,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -834,4 +866,236 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+
+	//*-------------------------------------------------------------------------- */
+	/*                                 contact:search                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filter Groups',
+		name: 'filterGroupsUi',
+		type: 'fixedCollection',
+		default: '',
+		placeholder: 'Add Filter Group',
+		typeOptions: {
+			multipleValues: true,
+		},
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'filterGroupsValues',
+				displayName: 'Filter Group',
+				values: [
+					{
+						displayName: 'Filters',
+						name: 'filtersUi',
+						type: 'fixedCollection',
+						default: '',
+						placeholder: 'Add Filter',
+						typeOptions: {
+							multipleValues: true,
+						},
+						required: false,
+						options: [
+							{
+								name: 'filterValues',
+								displayName: 'Filter',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'propertyName',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getContactProperties',
+										},
+										default: '',
+									},
+									{
+										displayName: 'Operator',
+										name: 'operator',
+										type: 'options',
+										options: [
+											{
+												name: 'Equal',
+												value: 'EQ',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+											{
+												name: 'Less Than',
+												value: 'LT',
+											},
+											{
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Greater Than',
+												value: 'GT',
+											},
+											{
+												name: 'Greater Than Or Equal',
+												value: 'GTE',
+											},
+											{
+												name: 'Is Known',
+												value: 'HAS_PROPERTY',
+											},
+											{
+												name: 'Is Unknown',
+												value: 'NOT_HAS_PROPERTY',
+											},
+											{
+												name: 'Contains Exactly',
+												value: 'CONSTAIN_TOKEN',
+											},
+											{
+												name: `Doesn't Contain Exactly`,
+												value: 'NOT_CONSTAIN_TOKEN',
+											},
+										],
+										default: 'EQ',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										displayOptions: {
+											hide: {
+												operator: [
+													'HAS_PROPERTY',
+													'NOT_HAS_PROPERTY',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+					},
+				],
+			},
+		],
+		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Direction',
+				name: 'direction',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'ASCENDING',
+					},
+					{
+						name: 'DESC',
+						value: 'DESCENDING',
+					},
+				],
+				default: 'DESCENDING',
+				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: [
+					'firstname',
+					'lastname',
+					'email',
+				],
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Perform a text search against all property values for an object type',
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: 'createdate',
+			},
+		],
+	},
+];

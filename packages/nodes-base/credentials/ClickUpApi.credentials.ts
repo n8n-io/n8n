@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class ClickUpApi implements ICredentialType {
 	name = 'clickUpApi';
 	displayName = 'ClickUp API';
-	properties = [
+	documentationUrl = 'clickUp';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

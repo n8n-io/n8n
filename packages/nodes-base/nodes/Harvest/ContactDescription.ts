@@ -1,8 +1,12 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['contact'];
+const resource = [
+	'contact',
+];
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,12 +47,12 @@ export const contactOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:getAll                            */
+	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -116,12 +120,12 @@ export const contactFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Only return clients that have been updated since the given date and time.',
-			}
-		]
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:get                            */
+	/*                                contact:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -141,7 +145,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:delete                            */
+	/*                                contact:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -161,7 +165,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:create                           */
+	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'First Name',
@@ -211,52 +215,53 @@ export const contactFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Last Name',
-				name: 'last_name',
-				type: 'string',
-				default: '',
-				description: 'The last name of the contact.'
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The title of the contact.'
-			},
-			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The contact’s email address.'
-			},
-			{
-				displayName: 'Phone Office',
-				name: 'phone_office',
-				type: 'string',
-				default: '',
-				description: 'The contact’s office phone number.'
-			},
-			{
-				displayName: 'Phone Mobile',
-				name: 'phone_mobile',
-				type: 'string',
-				default: '',
-				description: 'The contact’s mobile phone number.'
+				description: 'The contact’s email address.',
 			},
 			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'The contact’s fax number.'
+				description: 'The contact’s fax number.',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'last_name',
+				type: 'string',
+				default: '',
+				description: 'The last name of the contact.',
+			},
+			{
+				displayName: 'Phone Mobile',
+				name: 'phone_mobile',
+				type: 'string',
+				default: '',
+				description: 'The contact’s mobile phone number.',
+			},
+			{
+				displayName: 'Phone Office',
+				name: 'phone_office',
+				type: 'string',
+				default: '',
+				description: 'The contact’s office phone number.',
+			},
+
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the contact.',
 			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:update                           */
+	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -297,6 +302,20 @@ export const contactFields = [
 				description: 'The ID of the client associated with this contact.',
 			},
 			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				description: 'The contact’s email address.',
+			},
+			{
+				displayName: 'Fax',
+				name: 'fax',
+				type: 'string',
+				default: '',
+				description: 'The contact’s fax number.',
+			},
+			{
 				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
@@ -308,44 +327,30 @@ export const contactFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'The last name of the contact.'
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The title of the contact.'
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				default: '',
-				description: 'The contact’s email address.'
-			},
-			{
-				displayName: 'Phone Office',
-				name: 'phone_office',
-				type: 'string',
-				default: '',
-				description: 'The contact’s office phone number.'
+				description: 'The last name of the contact.',
 			},
 			{
 				displayName: 'Phone Mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
-				description: 'The contact’s mobile phone number.'
+				description: 'The contact’s mobile phone number.',
 			},
 			{
-				displayName: 'Fax',
-				name: 'fax',
+				displayName: 'Phone Office',
+				name: 'phone_office',
 				type: 'string',
 				default: '',
-				description: 'The contact’s fax number.'
+				description: 'The contact’s office phone number.',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the contact.',
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

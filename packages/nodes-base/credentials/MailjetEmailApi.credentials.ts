@@ -1,23 +1,31 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MailjetEmailApi implements ICredentialType {
 	name = 'mailjetEmailApi';
 	displayName = 'Mailjet Email API';
-	properties = [
+	documentationUrl = 'mailjet';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Secret Key',
 			name: 'secretKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
+		},
+		{
+			displayName: 'Sandbox Mode',
+			name: 'sandboxMode',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to allow to run the API call in a Sandbox mode, where all validations of the payload will be done without delivering the message',
 		},
 	];
 }

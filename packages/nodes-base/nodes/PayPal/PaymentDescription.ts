@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const payoutOperations = [
+export const payoutOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const payoutOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const payoutFields = [
+export const payoutFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                payout:create                               */
@@ -62,11 +62,11 @@ export const payoutFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payout'
+					'payout',
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 	},
@@ -84,8 +84,8 @@ export const payoutFields = [
 					'create',
 				],
 				jsonParameters: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -127,7 +127,7 @@ export const payoutFields = [
 						type: 'string',
 						required: true,
 						default: '',
-						description: 'The receiver of the payment. Corresponds to the recipient_type value<br />in the request. Max length: 127 characters.',
+						description: 'The receiver of the payment. Corresponds to the recipient_type value in the request. Max length: 127 characters.',
 					},
 					{
 						displayName: 'Currency',
@@ -136,32 +136,32 @@ export const payoutFields = [
 						options: [
 							{
 								name: 'Australian dollar',
-								value: 'AUD'
+								value: 'AUD',
 							},
 							{
 								name: 'Brazilian real',
-								value: 'BRL'
+								value: 'BRL',
 							},
 							{
 								name: 'Canadian dollar',
-								value: 'CAD'
+								value: 'CAD',
 							},
 							{
 								name: 'Czech koruna',
-								value: 'CZK'
+								value: 'CZK',
 							},
 							{
 								name: 'Danish krone',
-								value: 'DKK'
+								value: 'DKK',
 							},
 							{
 								name: 'Euro',
-								value: 'EUR'
+								value: 'EUR',
 							},
 							{
 								name: 'United States dollar',
-								value: 'USD'
-							}
+								value: 'USD',
+							},
 						],
 						default: 'USD',
 						description: 'Currency',
@@ -180,7 +180,7 @@ export const payoutFields = [
 						type: 'string',
 						required: false,
 						default: '',
-						description: 'The sender-specified note for notifications. Supports up to<br />4000 ASCII characters and 1000 non-ASCII characters.',
+						description: 'The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters.',
 					},
 					{
 						displayName: 'Sender Item ID',
@@ -208,7 +208,7 @@ export const payoutFields = [
 						default: 'paypal',
 						description: 'The recipient wallet',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -216,6 +216,7 @@ export const payoutFields = [
 		displayName: 'Items',
 		name: 'itemsJson',
 		type: 'json',
+		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -223,14 +224,14 @@ export const payoutFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payout'
+					'payout',
 				],
 				operation: [
 					'create',
 				],
 				jsonParameters: [
 					true,
-				]
+				],
 			},
 		},
 	},
@@ -256,21 +257,21 @@ export const payoutFields = [
 				name: 'emailSubject',
 				type: 'string',
 				default: '',
-				description: 'The subject line for the email that PayPal sends when payment<br />for a payout item completes. The subject line is the same for all<br />recipients. Max length: 255 characters.',
+				description: 'The subject line for the email that PayPal sends when payment for a payout item completes. The subject line is the same for all recipients. Max length: 255 characters.',
 			},
 			{
 				displayName: 'Email Message',
 				name: 'emailMessage',
 				type: 'string',
 				default: '',
-				description: 'The email message that PayPal sends when the payout item completes.<br />The message is the same for all recipients.',
+				description: 'The email message that PayPal sends when the payout item completes. The message is the same for all recipients.',
 			},
 			{
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'The payouts and item-level notes are concatenated in the email.<br />Max length: 1000 characters.',
+				description: 'The payouts and item-level notes are concatenated in the email. Max length: 1000 characters.',
 			},
 		],
 	},
@@ -283,6 +284,7 @@ export const payoutFields = [
 		displayName: 'Payout Batch Id',
 		name: 'payoutBatchId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -319,7 +321,7 @@ export const payoutFields = [
 		type: 'number',
 		typeOptions: {
 			maxValue: 1000,
-			minValue: 1
+			minValue: 1,
 		},
 		default: 100,
 		displayOptions: {
@@ -338,10 +340,10 @@ export const payoutFields = [
 		description: 'If all results should be returned or only up to a given limit.',
 	},
 
-] as INodeProperties[];
+];
 
 
-export const payoutItemOperations = [
+export const payoutItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -368,9 +370,9 @@ export const payoutItemOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const payoutItemFields = [
+export const payoutItemFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 payoutItem:get                                 */
@@ -416,4 +418,4 @@ export const payoutItemFields = [
 		},
 		description: 'The ID of the payout item to cancel.',
 	},
-] as INodeProperties[];
+];

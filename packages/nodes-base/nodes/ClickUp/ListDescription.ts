@@ -1,8 +1,8 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const listOperations = [
+export const listOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -41,6 +41,11 @@ export const listOperations = [
 				description: 'Get all lists',
 			},
 			{
+				name: 'Member',
+				value: 'member',
+				description: 'Get list members',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
@@ -49,13 +54,13 @@ export const listOperations = [
 		default: 'customFields',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const listFields = [
+export const listFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                list:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                list:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -95,7 +100,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -218,19 +223,82 @@ export const listFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: '',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                list:customFields                           */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                list:member                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'List ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		description: 'Task ID',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		default: true,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'member',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                list:customFields                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team',
 		name: 'team',
@@ -270,7 +338,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'teamId',
-			]
+			],
 		},
 		required: true,
 	},
@@ -365,13 +433,14 @@ export const listFields = [
 			loadOptionsMethod: 'getLists',
 			loadOptionsDependsOn: [
 				'folder',
-			]
+			],
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                list:delete                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                list:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -411,7 +480,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -475,9 +544,10 @@ export const listFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                list:get                                    */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                list:get                                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -517,7 +587,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -581,9 +651,10 @@ export const listFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                list:getAll                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                list:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -623,7 +694,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -716,9 +787,10 @@ export const listFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                list:update                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                list:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -758,7 +830,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -843,11 +915,11 @@ export const listFields = [
 				displayName: 'Assignee',
 				name: 'assignee',
 				type: 'options',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 
 				default: '',
@@ -898,4 +970,4 @@ export const listFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

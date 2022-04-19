@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class BitlyApi implements ICredentialType {
 	name = 'bitlyApi';
 	displayName = 'Bitly API';
-	properties = [
+	documentationUrl = 'bitly';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

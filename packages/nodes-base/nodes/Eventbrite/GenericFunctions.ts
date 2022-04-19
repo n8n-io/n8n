@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, JsonObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -21,7 +21,7 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 		qs,
 		body,
 		uri: uri ||`https://www.eventbriteapi.com/v3${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
@@ -32,23 +32,15 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 
 	try {
 		if (authenticationMethod === 'privateKey') {
-			const credentials = this.getCredentials('eventbriteApi');
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
+			const credentials = await this.getCredentials('eventbriteApi');
 
 			options.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-
 			return await this.helpers.request!(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body && error.response.body.error_description) {
-			errorMessage = error.response.body.error_description;
-		}
-		throw new Error('Eventbrite Error: ' + errorMessage);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const fileOperations = [
+export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const fileOperations = [
 		default: 'download',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fileFields = [
+export const fileFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                file:copy                                   */
@@ -113,19 +113,19 @@ export const fileFields = [
 				options: [
 					{
 						name: 'Authenticated Read',
-						value: 'authenticatedRead'
+						value: 'authenticatedRead',
 					},
 					{
 						name: 'AWS Exec Read',
-						value: 'awsExecRead'
+						value: 'awsExecRead',
 					},
 					{
 						name: 'Bucket Owner Full Control',
-						value: 'bucketOwnerFullControl'
+						value: 'bucketOwnerFullControl',
 					},
 					{
 						name: 'Bucket Owner Read',
-						value: 'bucketOwnerRead'
+						value: 'bucketOwnerRead',
 					},
 					{
 						name: 'Private',
@@ -133,15 +133,15 @@ export const fileFields = [
 					},
 					{
 						name: 'Public Read',
-						value: 'publicRead'
+						value: 'publicRead',
 					},
 					{
 						name: 'Public Read Write',
-						value: 'publicReadWrite'
+						value: 'publicReadWrite',
 					},
 				],
 				default: 'private',
-				description: 'The canned ACL to apply to the object.'
+				description: 'The canned ACL to apply to the object.',
 			},
 			{
 				displayName: 'Grant Full Control',
@@ -399,7 +399,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -416,13 +416,13 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					false
+					false,
 				],
 			},
 		},
@@ -438,19 +438,19 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					true
+					true,
 				],
 			},
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -476,19 +476,19 @@ export const fileFields = [
 				options: [
 					{
 						name: 'Authenticated Read',
-						value: 'authenticatedRead'
+						value: 'authenticatedRead',
 					},
 					{
 						name: 'AWS Exec Read',
-						value: 'awsExecRead'
+						value: 'awsExecRead',
 					},
 					{
 						name: 'Bucket Owner Full Control',
-						value: 'bucketOwnerFullControl'
+						value: 'bucketOwnerFullControl',
 					},
 					{
 						name: 'Bucket Owner Read',
-						value: 'bucketOwnerRead'
+						value: 'bucketOwnerRead',
 					},
 					{
 						name: 'Private',
@@ -496,15 +496,15 @@ export const fileFields = [
 					},
 					{
 						name: 'Public Read',
-						value: 'publicRead'
+						value: 'publicRead',
 					},
 					{
 						name: 'Public Read Write',
-						value: 'publicReadWrite'
+						value: 'publicReadWrite',
 					},
 				],
 				default: 'private',
-				description: 'The canned ACL to apply to the object.'
+				description: 'The canned ACL to apply to the object.',
 			},
 			{
 				displayName: 'Grant Full Control',
@@ -705,7 +705,7 @@ export const fileFields = [
 						description: '',
 					},
 				],
-			}
+			},
 		],
 		description: 'Optional extra headers to add to the message (most headers are allowed).',
 	},
@@ -755,14 +755,14 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'download'
+					'download',
 				],
 				resource: [
 					'file',
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                file:delete                                 */
@@ -919,4 +919,4 @@ export const fileFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

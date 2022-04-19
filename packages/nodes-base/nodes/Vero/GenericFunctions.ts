@@ -1,16 +1,13 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('veroApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('veroApi');
 
 	let options: OptionsWithUri = {
 		method,
@@ -21,7 +18,7 @@ export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			...body,
 		},
 		uri: uri ||`https://api.getvero.com/api/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
@@ -30,12 +27,7 @@ export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		}
-
-		throw new Error(errorMessage);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

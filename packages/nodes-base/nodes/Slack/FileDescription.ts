@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const fileOperations = [
+export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,13 +32,13 @@ export const fileOperations = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fileFields = [
+export const fileFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                file:upload                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                file:upload                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Binary Data',
 		name: 'binaryData',
@@ -47,7 +47,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -64,13 +64,13 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					false
+					false,
 				],
 			},
 
@@ -87,19 +87,19 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					true
+					true,
 				],
 			},
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded.',
 	},
 	{
 		displayName: 'Options',
@@ -108,7 +108,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -159,9 +159,10 @@ export const fileFields = [
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 file:getAll                             */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 file:getAll                             */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -210,7 +211,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll'
+					'getAll',
 				],
 				resource: [
 					'file',
@@ -238,14 +239,14 @@ export const fileFields = [
 				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit.',
 			},
 			{
-				displayName: 'TS From',
+				displayName: 'Timestamp From',
 				name: 'tsFrom',
 				type: 'string',
 				default: '',
 				description: 'Filter files created after this timestamp (inclusive).',
 			},
 			{
-				displayName: 'TS To',
+				displayName: 'Timestamp To',
 				name: 'tsTo',
 				type: 'string',
 				default: '',
@@ -261,28 +262,28 @@ export const fileFields = [
 						value: 'all',
 					},
 					{
-						name: 'Spaces',
-						value: 'spaces',
-					},
-					{
-						name: 'Snippets',
-						value: 'snippets',
+						name: 'Google Docs',
+						value: 'gdocs',
 					},
 					{
 						name: 'Images',
 						value: 'images',
 					},
 					{
-						name: 'Google Docs',
-						value: 'gdocs',
+						name: 'Snippets',
+						value: 'snippets',
 					},
 					{
-						name: 'Zips',
-						value: 'zips',
+						name: 'Spaces',
+						value: 'spaces',
 					},
 					{
 						name: 'pdfs',
 						value: 'pdfs',
+					},
+					{
+						name: 'Zips',
+						value: 'zips',
 					},
 				],
 				default: ['all'],
@@ -300,9 +301,10 @@ export const fileFields = [
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 file:get                                */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 file:get                                */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
@@ -319,4 +321,4 @@ export const fileFields = [
 		},
 		default: '',
 	},
-] as INodeProperties[];
+];

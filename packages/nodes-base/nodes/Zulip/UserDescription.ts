@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const userOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  user:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -154,7 +154,7 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'get', 'getAll'
+					'get', 'getAll',
 				],
 			},
 		},
@@ -173,7 +173,7 @@ export const userFields = [
 				default: false,
 				description: 'Whether the client wants custom profile field data to be included in the response.',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -209,7 +209,7 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'update'
+					'update',
 				],
 			},
 		},
@@ -226,14 +226,14 @@ export const userFields = [
 				name: 'isAdmin',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the target user is an administrator.',
+				description: 'Whether the target user is an administrator',
 			},
 			{
 				displayName: 'Is Guest',
 				name: 'isGuest',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the target user is a guest.',
+				description: 'Whether the target user is a guest',
 			},
 			{
 				displayName: 'Profile Data',
@@ -263,12 +263,41 @@ export const userFields = [
 								type: 'string',
 								default: '',
 								description: 'Value of custom profile data.',
-							}
+							},
 						],
 					},
 				],
 			},
-		]
+			{
+				displayName: 'Role',
+				name: 'role',
+				type: 'options',
+				options: [
+					{
+						name: 'Organization Owner',
+						value: 100,
+					},
+					{
+						name: 'Organization Administrator',
+						value: 200,
+					},
+					{
+						name: 'Organization Moderator',
+						value: 300,
+					},
+					{
+						name: 'Member',
+						value: 400,
+					},
+					{
+						name: 'Guest',
+						value: 600,
+					},
+				],
+				default: '',
+				description: 'Role for the user',
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -292,4 +321,4 @@ export const userFields = [
 		default: '',
 		description: 'The ID of user to deactivate.',
 	},
-] as INodeProperties[];
+];

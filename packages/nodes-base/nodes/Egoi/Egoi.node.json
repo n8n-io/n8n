@@ -1,0 +1,21 @@
+{
+	"node": "n8n-nodes-base.egoi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication",
+		"Marketing & Content"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/egoi"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.egoi/"
+			}
+		]
+	}
+}

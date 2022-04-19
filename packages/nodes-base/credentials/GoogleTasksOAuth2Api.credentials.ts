@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 const scopes = [
@@ -11,12 +11,13 @@ export class GoogleTasksOAuth2Api implements ICredentialType {
 	name = 'googleTasksOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Tasks OAuth2 API';
-	properties = [
+	documentationUrl = 'google';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join(' ')
+			type: 'hidden',
+			default: scopes.join(' '),
 		},
 	];
 }

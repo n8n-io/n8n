@@ -1,14 +1,12 @@
-import {
-	IExecuteFunctions,
-	BINARY_ENCODING,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IBinaryKeyData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -23,10 +21,9 @@ export class Signl4 implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume SIGNL4 API.',
+		description: 'Consume SIGNL4 API',
 		defaults: {
 			name: 'SIGNL4',
-			color: '#53afe8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,7 +62,12 @@ export class Signl4 implements INodeType {
 					{
 						name: 'Send',
 						value: 'send',
-						description: 'Send an alert.',
+						description: 'Send an alert',
+					},
+					{
+						name: 'Resolve',
+						value: 'resolve',
+						description: 'Resolve an alert',
 					},
 				],
 				default: 'send',
@@ -117,7 +119,7 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Single ACK',
 								value: 'single_ack',
-								description: 'In case only one person needs to confirm this Signl.'
+								description: 'In case only one person needs to confirm this Signl.',
 							},
 							{
 								name: 'Multi ACK',
@@ -159,18 +161,14 @@ export class Signl4 implements INodeType {
 						name: 'externalId',
 						type: 'string',
 						default: '',
-						description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
-						the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
-						which is great for correlation/synchronization of that record with the alert.`,
+						description: `If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.`,
 					},
 					{
 						displayName: 'Filtering',
 						name: 'filtering',
 						type: 'boolean',
 						default: 'false',
-						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. <br/>
-						If set to true, the event will only trigger a notification to the team, if it contains at least one keyword <br/>
-						from one of your services and system categories (i.e. it is whitelisted)`,
+						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)`,
 					},
 					{
 						displayName: 'Location',
@@ -201,7 +199,7 @@ export class Signl4 implements INodeType {
 										default: '',
 									},
 								],
-							}
+							},
 						],
 					},
 					{
@@ -216,8 +214,28 @@ export class Signl4 implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
+						description: 'The title or subject of this alert.',
 					},
 				],
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'resolve',
+						],
+						resource: [
+							'alert',
+						],
+					},
+				},
+				description: `If the event originates from a record in a 3rd party system, use this parameter to pass
+				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.`,
 			},
 		],
 	};
@@ -231,94 +249,125 @@ export class Signl4 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'alert') {
-				//https://connect.signl4.com/webhook/docs/index.html
-				if (operation === 'send') {
-					const message = this.getNodeParameter('message', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
+			try {
+				if (resource === 'alert') {
+					//https://connect.signl4.com/webhook/docs/index.html
+					// Send alert
+					if (operation === 'send') {
+						const message = this.getNodeParameter('message', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const data: IDataObject = {
-						message,
-					};
+						const data: IDataObject = {
+							message,
+						};
 
-					if (additionalFields.alertingScenario) {
-						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
-					}
-					if (additionalFields.externalId) {
-						data['X-S4-ExternalID'] = additionalFields.externalId as string;
-					}
-					if (additionalFields.filtering) {
-						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
-					}
-					if (additionalFields.locationFieldsUi) {
-						const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
-						if (locationUi) {
-							data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
+						if (additionalFields.title) {
+							data.title = additionalFields.title as string;
 						}
-					}
-					if (additionalFields.service) {
-						data['X-S4-Service'] = additionalFields.service as string;
-					}
-					if (additionalFields.title) {
-						data['title'] = additionalFields.title as string;
-					}
 
-					const attachments = additionalFields.attachmentsUi as IDataObject;
-
-					if (attachments) {
-						if (attachments.attachmentsBinary && items[i].binary) {
-
-							const propertyName = (attachments.attachmentsBinary as IDataObject).property as string;
-
-							const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
-
-							if (binaryProperty) {
-
-								const supportedFileExtension = ['png', 'jpg', 'txt'];
-
-								if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
-
-									throw new Error(`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
-								}
-
-								data['file'] = {
-									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
-									options: {
-										filename: binaryProperty.fileName,
-										contentType: binaryProperty.mimeType,
-									},
-								};
-
-							} else {
-								throw new Error(`Binary property ${propertyName} does not exist on input`);
+						if (additionalFields.service) {
+							data.service = additionalFields.service as string;
+						}
+						if (additionalFields.locationFieldsUi) {
+							const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+							if (locationUi) {
+								data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
 							}
 						}
-					}
 
-					const credentials = this.getCredentials('signl4Api');
+						if (additionalFields.alertingScenario) {
+							data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
+						}
 
-					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+						if (additionalFields.filtering) {
+							data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+						}
 
-					responseData = await SIGNL4ApiRequest.call(
-						this,
-						'POST',
-						'',
-						{},
-						{},
-						endpoint,
-						{
-							formData: {
-								...data,
+						if (additionalFields.externalId) {
+							data['X-S4-ExternalID'] = additionalFields.externalId as string;
+						}
+
+						data['X-S4-Status'] = 'new';
+
+						data['X-S4-SourceSystem'] = 'n8n';
+
+						// Attachments
+						const attachments = additionalFields.attachmentsUi as IDataObject;
+						if (attachments) {
+							if (attachments.attachmentsBinary && items[i].binary) {
+
+								const propertyName = (attachments.attachmentsBinary as IDataObject).property as string;
+
+								const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
+
+								if (binaryProperty) {
+
+									const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
+
+									if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
+
+										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
+									}
+
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
+									data.attachment = {
+										value: binaryDataBuffer,
+										options: {
+											filename: binaryProperty.fileName,
+											contentType: binaryProperty.mimeType,
+										},
+									};
+
+								} else {
+									throw new NodeOperationError(this.getNode(), `Binary property ${propertyName} does not exist on input`);
+								}
+							}
+						}
+
+						responseData = await SIGNL4ApiRequest.call(
+							this,
+							'POST',
+							'',
+							{},
+							{
+								formData: data,
 							},
-						},
-					);
+						);
+					}
+					// Resolve alert
+					if (operation === 'resolve') {
+
+						const data: IDataObject = {};
+
+						data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
+
+						data['X-S4-Status'] = 'resolved';
+
+						data['X-S4-SourceSystem'] = 'n8n';
+
+						responseData = await SIGNL4ApiRequest.call(
+							this,
+							'POST',
+							'',
+							{},
+							{
+								formData: data,
+							},
+						);
+					}
 				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

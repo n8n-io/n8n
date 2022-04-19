@@ -1,0 +1,32 @@
+{
+	"node": "n8n-nodes-base.mindee",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/mindee"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mindee/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Building an expense tracking app in 10 minutes",
+				"icon": "📱",
+				"url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"
+			},
+			{
+				"label": "Learn to Build Powerful API Endpoints Using Webhooks",
+				"icon": "🧰",
+				"url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/"
+			}
+		]
+	}
+}

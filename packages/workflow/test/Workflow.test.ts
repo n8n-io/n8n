@@ -16,11 +16,8 @@ interface StubNode {
 	parameters: INodeParameters;
 }
 
-
 describe('Workflow', () => {
-
 	describe('renameNodeInExpressions', () => {
-
 		const tests = [
 			{
 				description: 'do nothing if there is no expression',
@@ -30,7 +27,7 @@ describe('Workflow', () => {
 					parameters: {
 						value1: 'value1Node1',
 						value2: 'value2Node1',
-					}
+					},
 				},
 				output: {
 					value1: 'value1Node1',
@@ -43,13 +40,13 @@ describe('Workflow', () => {
 					currentName: 'Node1',
 					newName: 'NewName',
 					parameters: {
-						value1: '={{$node.Node1.data.value1 + \'Node1\'}}',
-						value2: '={{$node.Node1.data.value2 + \' - \' + $node.Node1.data.value2}}',
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
 					},
 				},
 				output: {
-					value1: '={{$node.NewName.data.value1 + \'Node1\'}}',
-					value2: '={{$node.NewName.data.value2 + \' - \' + $node.NewName.data.value2}}',
+					value1: "={{$node.NewName.data.value1 + 'Node1'}}",
+					value2: "={{$node.NewName.data.value2 + ' - ' + $node.NewName.data.value2}}",
 				},
 			},
 			{
@@ -59,27 +56,31 @@ describe('Workflow', () => {
 					newName: 'NewName',
 					parameters: {
 						value1: '={{$node["Node1"]["data"]["value1"] + \'Node1\'}}',
-						value2: '={{$node["Node1"]["data"]["value2"] + \' - \' + $node["Node1"]["data"]["value2"]}}',
+						value2:
+							'={{$node["Node1"]["data"]["value2"] + \' - \' + $node["Node1"]["data"]["value2"]}}',
 					},
 				},
 				output: {
 					value1: '={{$node["NewName"]["data"]["value1"] + \'Node1\'}}',
-					value2: '={{$node["NewName"]["data"]["value2"] + \' - \' + $node["NewName"]["data"]["value2"]}}',
+					value2:
+						'={{$node["NewName"]["data"]["value2"] + \' - \' + $node["NewName"]["data"]["value2"]}}',
 				},
 			},
 			{
-				description: 'should work with [\'nodeName\']',
+				description: "should work with ['nodeName']",
 				input: {
 					currentName: 'Node1',
 					newName: 'NewName',
 					parameters: {
-						value1: '={{$node[\'Node1\'][\'data\'][\'value1\'] + \'Node1\'}}',
-						value2: '={{$node[\'Node1\'][\'data\'][\'value2\'] + \' - \' + $node[\'Node1\'][\'data\'][\'value2\']}}',
+						value1: "={{$node['Node1']['data']['value1'] + 'Node1'}}",
+						value2:
+							"={{$node['Node1']['data']['value2'] + ' - ' + $node['Node1']['data']['value2']}}",
 					},
 				},
 				output: {
-					value1: '={{$node[\'NewName\'][\'data\'][\'value1\'] + \'Node1\'}}',
-					value2: '={{$node[\'NewName\'][\'data\'][\'value2\'] + \' - \' + $node[\'NewName\'][\'data\'][\'value2\']}}',
+					value1: "={{$node['NewName']['data']['value1'] + 'Node1'}}",
+					value2:
+						"={{$node['NewName']['data']['value2'] + ' - ' + $node['NewName']['data']['value2']}}",
 				},
 			},
 			{
@@ -88,51 +89,51 @@ describe('Workflow', () => {
 					currentName: 'Node1',
 					newName: 'NewName',
 					parameters: {
-						level1a: '={{$node.Node1.data.value1 + \'Node1\'}}',
+						level1a: "={{$node.Node1.data.value1 + 'Node1'}}",
 						level1b: [
 							{
-								value2a: '={{$node.Node1.data.value1 + \'Node1\'}}',
-								value2b: '={{$node.Node1.data.value1 + \'Node1\'}}',
-							}
+								value2a: "={{$node.Node1.data.value1 + 'Node1'}}",
+								value2b: "={{$node.Node1.data.value1 + 'Node1'}}",
+							},
 						],
 						level1c: {
 							value2a: {
-								value3a: '={{$node.Node1.data.value1 + \'Node1\'}}',
+								value3a: "={{$node.Node1.data.value1 + 'Node1'}}",
 								value3b: [
 									{
-										value4a: '={{$node.Node1.data.value1 + \'Node1\'}}',
+										value4a: "={{$node.Node1.data.value1 + 'Node1'}}",
 										value4b: {
-											value5a: '={{$node.Node1.data.value1 + \'Node1\'}}',
-											value5b: '={{$node.Node1.data.value1 + \'Node1\'}}',
+											value5a: "={{$node.Node1.data.value1 + 'Node1'}}",
+											value5b: "={{$node.Node1.data.value1 + 'Node1'}}",
 										},
-									}
-								]
+									},
+								],
 							},
-						}
+						},
 					} as INodeParameters,
 				},
 				output: {
-					level1a: '={{$node.NewName.data.value1 + \'Node1\'}}',
+					level1a: "={{$node.NewName.data.value1 + 'Node1'}}",
 					level1b: [
 						{
-							value2a: '={{$node.NewName.data.value1 + \'Node1\'}}',
-							value2b: '={{$node.NewName.data.value1 + \'Node1\'}}',
-						}
+							value2a: "={{$node.NewName.data.value1 + 'Node1'}}",
+							value2b: "={{$node.NewName.data.value1 + 'Node1'}}",
+						},
 					],
 					level1c: {
 						value2a: {
-							value3a: '={{$node.NewName.data.value1 + \'Node1\'}}',
+							value3a: "={{$node.NewName.data.value1 + 'Node1'}}",
 							value3b: [
 								{
-									value4a: '={{$node.NewName.data.value1 + \'Node1\'}}',
+									value4a: "={{$node.NewName.data.value1 + 'Node1'}}",
 									value4b: {
-										value5a: '={{$node.NewName.data.value1 + \'Node1\'}}',
-										value5b: '={{$node.NewName.data.value1 + \'Node1\'}}',
+										value5a: "={{$node.NewName.data.value1 + 'Node1'}}",
+										value5b: "={{$node.NewName.data.value1 + 'Node1'}}",
 									},
-								}
-							]
+								},
+							],
 						},
-					}
+					},
 				},
 			},
 		];
@@ -142,15 +143,17 @@ describe('Workflow', () => {
 
 		for (const testData of tests) {
 			test(testData.description, () => {
-				const result = workflow.renameNodeInExpressions(testData.input.parameters, testData.input.currentName, testData.input.newName);
+				const result = workflow.renameNodeInExpressions(
+					testData.input.parameters,
+					testData.input.currentName,
+					testData.input.newName,
+				);
 				expect(result).toEqual(testData.output);
 			});
 		}
 	});
 
-
 	describe('renameNode', () => {
-
 		const tests = [
 			{
 				description: 'rename node without connections',
@@ -164,9 +167,9 @@ describe('Workflow', () => {
 								value1: 'value1Node1',
 								value2: 'value2Node1',
 							},
-						}
+						},
 					],
-					connections: {}
+					connections: {},
 				},
 				output: {
 					nodes: [
@@ -176,9 +179,9 @@ describe('Workflow', () => {
 								value1: 'value1Node1',
 								value2: 'value2Node1',
 							},
-						}
+						},
 					],
-					connections: {}
+					connections: {},
 				},
 			},
 			{
@@ -381,9 +384,9 @@ describe('Workflow', () => {
 										node: 'Node5',
 										type: 'main',
 										index: 0,
-									}
-								]
-							]
+									},
+								],
+							],
 						},
 						Node3: {
 							main: [
@@ -507,12 +510,12 @@ describe('Workflow', () => {
 						{
 							name: 'Node2',
 							parameters: {
-								value1: '={{$node.Node1.data.value1 + \'Node1\'}}',
-								value2: '={{$node.Node1.data.value2 + \' - \' + $node.Node1.data.value2}}',
+								value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+								value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
 							},
-						}
+						},
 					],
-					connections: {}
+					connections: {},
 				},
 				output: {
 					nodes: [
@@ -526,12 +529,12 @@ describe('Workflow', () => {
 						{
 							name: 'Node2',
 							parameters: {
-								value1: '={{$node.Node1New.data.value1 + \'Node1\'}}',
-								value2: '={{$node.Node1New.data.value2 + \' - \' + $node.Node1New.data.value2}}',
+								value1: "={{$node.Node1New.data.value1 + 'Node1'}}",
+								value2: "={{$node.Node1New.data.value2 + ' - ' + $node.Node1New.data.value2}}",
 							},
-						}
+						},
 					],
-					connections: {}
+					connections: {},
 				},
 			},
 		];
@@ -545,10 +548,7 @@ describe('Workflow', () => {
 				parameters: stubData.parameters,
 				type: 'test.set',
 				typeVersion: 1,
-				position: [
-					100,
-					100,
-				],
+				position: [100, 100],
 			};
 		}
 
@@ -559,13 +559,17 @@ describe('Workflow', () => {
 
 		for (const testData of tests) {
 			test(testData.description, () => {
-
 				executeNodes = [];
 				for (const node of testData.input.nodes) {
 					executeNodes.push(createNodeData(node));
 				}
 
-				workflow = new Workflow({ nodes: executeNodes, connections: testData.input.connections as IConnections, active: false, nodeTypes });
+				workflow = new Workflow({
+					nodes: executeNodes,
+					connections: testData.input.connections as IConnections,
+					active: false,
+					nodeTypes,
+				});
 				workflow.renameNode(testData.input.currentName, testData.input.newName);
 
 				resultNodes = {};
@@ -577,12 +581,9 @@ describe('Workflow', () => {
 				expect(workflow.connectionsBySourceNode).toEqual(testData.output.connections);
 			});
 		}
-
 	});
 
-
 	describe('getParameterValue', () => {
-
 		const tests = [
 			{
 				description: 'read simple not expression value',
@@ -590,16 +591,16 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: 'valueNode2',
 						},
-					}
+					},
 				},
 				output: {
-					value1: 'valueNode2'
+					value1: 'valueNode2',
 				},
 			},
 			{
@@ -608,16 +609,16 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: '',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: '={{1+2}}',
 						},
-					}
+					},
 				},
 				output: {
-					value1: 3
+					value1: 3,
 				},
 			},
 			{
@@ -626,38 +627,40 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: '={{$node.Node1.data.value1}}',
 						},
-					}
+					},
 				},
 				output: {
-					value1: 'valueNode1'
+					value1: 'valueNode1',
 				},
 			},
 			{
-				description: 'read data from node-output-data with with long "$node.{NODE}.data" syntax add value and append text',
+				description:
+					'read data from node-output-data with with long "$node.{NODE}.data" syntax add value and append text',
 				input: {
 					Node1: {
 						parameters: {
 							value1: 1,
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: '={{$node.Node1.data.value1 + 2}} asdf',
 						},
-					}
+					},
 				},
 				output: {
-					value1: '3 asdf'
+					value1: '3 asdf',
 				},
 			},
 			{
-				description: 'read deep-data from node-output-data with with long "$node.{NODE}.data" syntax with JavaScript Code',
+				description:
+					'read deep-data from node-output-data with with long "$node.{NODE}.data" syntax with JavaScript Code',
 				input: {
 					Node1: {
 						parameters: {
@@ -688,13 +691,13 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
-							value1: '={{$data.value1}}'
+							value1: '={{$data.value1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueNode1',
@@ -727,7 +730,8 @@ describe('Workflow', () => {
 				},
 			},
 			{
-				description: 'read deep-data from node-output-data with with long "$node.{NODE}.data" syntax',
+				description:
+					'read deep-data from node-output-data with with long "$node.{NODE}.data" syntax',
 				input: {
 					Node1: {
 						parameters: {
@@ -753,7 +757,8 @@ describe('Workflow', () => {
 				},
 			},
 			{
-				description: 'read binary-string-data from incoming-node-data with with short "$binary" syntax',
+				description:
+					'read binary-string-data from incoming-node-data with with short "$binary" syntax',
 				input: {
 					Node1: {
 						parameters: {
@@ -765,8 +770,8 @@ describe('Workflow', () => {
 								data: '',
 								type: '',
 								fileName: 'test-file1.jpg',
-							}
-						}
+							},
+						},
 					},
 					Node2: {
 						parameters: {
@@ -779,7 +784,8 @@ describe('Workflow', () => {
 				},
 			},
 			{
-				description: 'read binary-string-data from node-output-data with with long "$node.{NODE}.binary" syntax',
+				description:
+					'read binary-string-data from node-output-data with with long "$node.{NODE}.binary" syntax',
 				input: {
 					Node1: {
 						parameters: {
@@ -791,8 +797,8 @@ describe('Workflow', () => {
 								data: '',
 								type: '',
 								fileName: 'test-file1.jpg',
-							}
-						}
+							},
+						},
 					},
 					Node2: {
 						parameters: {
@@ -810,13 +816,13 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
-							value1: '={{$node.Node1.parameter.value1}}'
+							value1: '={{$node.Node1.parameter.value1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueNode1',
@@ -828,13 +834,13 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
-							value1: '={{$env.TEST_VARIABLE_1}}'
+							value1: '={{$env.TEST_VARIABLE_1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueEnvVariable1',
@@ -846,13 +852,13 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
-							value1: '={{$env.DOES_NOT_EXIST}}'
+							value1: '={{$env.DOES_NOT_EXIST}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: undefined,
@@ -864,14 +870,14 @@ describe('Workflow', () => {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: 'valueNode2',
 							value2: '={{$parameter.value1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueNode2',
@@ -879,19 +885,20 @@ describe('Workflow', () => {
 				},
 			},
 			{
-				description: 'return resolved value when referencing another property with expression (long "$node.{NODE}.data" syntax)',
+				description:
+					'return resolved value when referencing another property with expression (long "$node.{NODE}.data" syntax)',
 				input: {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: '={{$node.Node1.data.value1}}',
 							value2: '={{$parameter.value1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueNode1',
@@ -899,19 +906,20 @@ describe('Workflow', () => {
 				},
 			},
 			{
-				description: 'return resolved value when referencing another property with expression (short "data" syntax)',
+				description:
+					'return resolved value when referencing another property with expression (short "data" syntax)',
 				input: {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: '={{$data.value1}}',
 							value2: '={{$parameter.value1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueNode1',
@@ -919,30 +927,32 @@ describe('Workflow', () => {
 				},
 			},
 			{
-				description: 'return resolved value when referencing another property with expression when a node has spaces (long "$node["{NODE}"].parameter" syntax)',
+				description:
+					'return resolved value when referencing another property with expression when a node has spaces (long "$node["{NODE}"].parameter" syntax)',
 				input: {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
 							value1: '={{$node["Node 4 with spaces"].parameter.value1}}',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'default-value1',
 				},
 			},
 			{
-				description: 'return resolved value when referencing another property with expression on another node (long "$node["{NODE}"].parameter" syntax)',
+				description:
+					'return resolved value when referencing another property with expression on another node (long "$node["{NODE}"].parameter" syntax)',
 				input: {
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
-						}
+						},
 					},
 					Node2: {
 						parameters: {
@@ -953,7 +963,7 @@ describe('Workflow', () => {
 						parameters: {
 							value1: '={{$node["Node2"].parameter.value1}}b',
 						},
-					}
+					},
 				},
 				output: {
 					value1: 'valueNode1ab',
@@ -987,79 +997,72 @@ describe('Workflow', () => {
 			// },
 		];
 
-
 		const nodeTypes = Helpers.NodeTypes();
+		const timezone = 'America/New_York';
 
 		for (const testData of tests) {
 			test(testData.description, () => {
-
 				const nodes: INode[] = [
 					{
-						"name": "Node1",
-						"parameters": testData.input.Node1.parameters,
-						"type": "test.set",
-						"typeVersion": 1,
-						"position": [
-							100,
-							100,
-						],
+						name: 'Node1',
+						parameters: testData.input.Node1.parameters,
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 100],
 					},
 					{
-						"name": "Node2",
-						"parameters": testData.input.Node2.parameters,
-						"type": "test.set",
-						"typeVersion": 1,
-						"position": [
-							100,
-							200,
-						],
+						name: 'Node2',
+						parameters: testData.input.Node2.parameters,
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 200],
 					},
 					{
-						"name": "Node3",
+						name: 'Node3',
 						// @ts-ignore
-						"parameters": testData.input.hasOwnProperty('Node3') ? testData.input.Node3.parameters : {},
-						"type": "test.set",
-						"typeVersion": 1,
-						"position": [
-							100,
-							300,
-						],
+						parameters: testData.input.hasOwnProperty('Node3')
+							? // @ts-ignore
+							  testData.input.Node3.parameters
+							: {},
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 300],
 					},
 					{
-						"name": "Node 4 with spaces",
+						name: 'Node 4 with spaces',
 						// @ts-ignore
-						"parameters": testData.input.hasOwnProperty('Node4') ? testData.input.Node4.parameters : {},
-						"type": "test.set",
-						"typeVersion": 1,
-						"position": [
-							100,
-							400,
-						],
-					}
+						parameters: testData.input.hasOwnProperty('Node4')
+							? // @ts-ignore
+							  testData.input.Node4.parameters
+							: {},
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 400],
+					},
 				];
 				const connections: IConnections = {
-					"Node1": {
-						"main": [
+					Node1: {
+						main: [
 							[
 								{
-									"node": "Node2",
-									"type": "main",
-									"index": 0
-								}
-							]
-						]
+									node: 'Node2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
 					},
-					"Node2": {
-						"main": [
+					Node2: {
+						main: [
 							[
 								{
-									"node": "Node3",
-									"type": "main",
-									"index": 0
-								}
-							]
-						]
-					}
+									node: 'Node3',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 				};
 
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
@@ -1080,31 +1083,42 @@ describe('Workflow', () => {
 													// @ts-ignore
 													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
 													// @ts-ignore
-													binary: testData.input.Node1.outputBinary
-												}
-											]
-										]
-									}
-								}
-							]
-						}
-					}
+													binary: testData.input.Node1.outputBinary,
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
 				};
 
 				const itemIndex = 0;
 				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
+				const connectionInputData: INodeExecutionData[] =
+					runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
 
 				for (const parameterName of Object.keys(testData.output)) {
-					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[parameterName];
-					const result = workflow.getParameterValue(parameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData);
+					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+						parameterName
+					];
+					const result = workflow.expression.getParameterValue(
+						parameterValue,
+						runExecutionData,
+						runIndex,
+						itemIndex,
+						activeNodeName,
+						connectionInputData,
+						'manual',
+						timezone,
+						{},
+					);
 					// @ts-ignore
 					expect(result).toEqual(testData.output[parameterName]);
 				}
 			});
 		}
-
-
 
 		// test('should be able to set and read key data without initial data set', () => {
 
@@ -1175,7 +1189,6 @@ describe('Workflow', () => {
 		//         ]
 		//     };
 
-
 		//     const itemIndex = 0;
 		//     const connectionInputData: NodeExecutionData[] = runData!['Node1']![0]!.data!.main[0]!;
 
@@ -1184,34 +1197,29 @@ describe('Workflow', () => {
 		//     expect(result).toEqual('outputSet1');
 		// });
 
-
 		test('should also resolve all child parameters when the parent get requested', () => {
-
 			const nodeTypes = Helpers.NodeTypes();
 
 			const nodes: INode[] = [
 				{
-					"name": "Node1",
-					"parameters": {
-						"values": {
-							"string": [
+					name: 'Node1',
+					parameters: {
+						values: {
+							string: [
 								{
-									"name": "name1",
-									"value": "value1"
+									name: 'name1',
+									value: 'value1',
 								},
 								{
-									"name": "name2",
-									"value": "={{$parameter.values.string[0].value}}A"
-								}
-							]
-						}
+									name: 'name2',
+									value: '={{$parameter.values.string[0].value}}A',
+								},
+							],
+						},
 					},
-					"type": "test.setMulti",
-					"typeVersion": 1,
-					"position": [
-						100,
-						100,
-					],
+					type: 'test.setMulti',
+					typeVersion: 1,
+					position: [100, 100],
 				},
 			];
 			const connections: IConnections = {};
@@ -1231,23 +1239,36 @@ describe('Workflow', () => {
 										[
 											{
 												json: {},
-											}
-										]
-									]
-								}
-							}
-						]
-					}
-				}
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
 			};
 
 			const itemIndex = 0;
 			const runIndex = 0;
-			const connectionInputData: INodeExecutionData[] = runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
+			const connectionInputData: INodeExecutionData[] =
+				runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
 			const parameterName = 'values';
 
-			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[parameterName];
-			const result = workflow.getParameterValue(parameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData);
+			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+				parameterName
+			];
+			const result = workflow.expression.getParameterValue(
+				parameterValue,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				'manual',
+				timezone,
+				{},
+			);
 
 			expect(result).toEqual({
 				string: [
@@ -1259,11 +1280,8 @@ describe('Workflow', () => {
 						name: 'name2',
 						value: 'value1A',
 					},
-				]
+				],
 			});
-
 		});
-
 	});
-
 });

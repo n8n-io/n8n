@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class CalendlyApi implements ICredentialType {
 	name = 'calendlyApi';
 	displayName = 'Calendly API';
-	properties = [
+	documentationUrl = 'calendly';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

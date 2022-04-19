@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 const scopes = [
@@ -14,11 +14,12 @@ export class GoogleCalendarOAuth2Api implements ICredentialType {
 		'googleOAuth2Api',
 	];
 	displayName = 'Google Calendar OAuth2 API';
-	properties = [
+	documentationUrl = 'google';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: scopes.join(' '),
 		},
 	];

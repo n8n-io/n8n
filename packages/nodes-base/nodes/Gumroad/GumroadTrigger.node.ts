@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -24,7 +24,6 @@ export class GumroadTrigger implements INodeType {
 		description: 'Handle Gumroad events via webhooks',
 		defaults: {
 			name: 'Gumroad Trigger',
-			color: '#60c2cd',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -32,7 +31,7 @@ export class GumroadTrigger implements INodeType {
 			{
 				name: 'gumroadApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

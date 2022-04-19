@@ -5,16 +5,16 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
-	jiraSoftwareCloudApiRequest,
+	allEvents,
 	eventExists,
 	getId,
-	allEvents,
+	jiraSoftwareCloudApiRequest,
 } from './GenericFunctions';
 
 import * as queryString from 'querystring';
@@ -23,13 +23,12 @@ export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Trigger',
 		name: 'jiraTrigger',
-		icon: 'file:jira.png',
+		icon: 'file:jira.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Jira events occurs.',
+		description: 'Starts the workflow when Jira events occur',
 		defaults: {
 			name: 'Jira Trigger',
-			color: '#4185f7',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -284,59 +283,59 @@ export class JiraTrigger implements INodeType {
 						options: [
 							{
 								name: 'Attachment ID',
-								value: 'attachment.id'
+								value: 'attachment.id',
 							},
 							{
 								name: 'Board ID',
-								value: 'board.id'
+								value: 'board.id',
 							},
 							{
 								name: 'Comment ID',
-								value: 'comment.id'
+								value: 'comment.id',
 							},
 							{
 								name: 'Issue ID',
-								value: 'issue.id'
+								value: 'issue.id',
 							},
 							{
 								name: 'Merge Version ID',
-								value: 'mergeVersion.id'
+								value: 'mergeVersion.id',
 							},
 							{
 								name: 'Modified User Account ID',
-								value: 'modifiedUser.accountId'
+								value: 'modifiedUser.accountId',
 							},
 							{
 								name: 'Modified User Key',
-								value: 'modifiedUser.key'
+								value: 'modifiedUser.key',
 							},
 							{
 								name: 'Modified User Name',
-								value: 'modifiedUser.name'
+								value: 'modifiedUser.name',
 							},
 							{
 								name: 'Project ID',
-								value: 'project.id'
+								value: 'project.id',
 							},
 							{
 								name: 'Project Key',
-								value: 'project.key'
+								value: 'project.key',
 							},
 							{
 								name: 'Propery Key',
-								value: 'property.key'
+								value: 'property.key',
 							},
 							{
 								name: 'Sprint ID',
-								value: 'sprint.id'
+								value: 'sprint.id',
 							},
 							{
 								name: 'Version ID',
-								value: 'version.id'
+								value: 'version.id',
 							},
 							{
 								name: 'Worklog ID',
-								value: 'worklog.id'
+								value: 'worklog.id',
 							},
 						],
 						default: [],
@@ -404,7 +403,8 @@ export class JiraTrigger implements INodeType {
 				}
 
 				if (additionalFields.includeFields) {
-					const parameters: IDataObject = {};
+					// tslint:disable-next-line: no-any
+					const parameters: any = {};
 					for (const field of additionalFields.includeFields as string[]) {
 						parameters[field] = '${' + field + '}';
 					}
@@ -426,7 +426,7 @@ export class JiraTrigger implements INodeType {
 
 					try {
 						await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
@@ -447,7 +447,7 @@ export class JiraTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

@@ -1,20 +1,32 @@
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
+	capitalize,
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
-	capitalize
 } from './GenericFunctions';
+
+import {
+	ICreateContactBody,
+} from './ContactInterface';
+
+import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
 
 enum Status {
 	Open = 2,
@@ -27,7 +39,7 @@ enum Priority {
 	Low = 1,
 	Medium = 2,
 	High = 3,
-	Urgent = 4
+	Urgent = 4,
 }
 
 enum Source {
@@ -77,7 +89,6 @@ export class Freshdesk implements INodeType {
 		description: 'Consume Freshdesk API',
 		defaults: {
 			name: 'Freshdesk',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,6 +106,10 @@ export class Freshdesk implements INodeType {
 				required: true,
 				options: [
 					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
 						name: 'Ticket',
 						value: 'ticket',
 					},
@@ -111,7 +126,7 @@ export class Freshdesk implements INodeType {
 					show: {
 						resource: [
 							'ticket',
-						]
+						],
 					},
 				},
 				options: [
@@ -156,7 +171,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
@@ -206,7 +221,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				default: '',
@@ -224,7 +239,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
@@ -259,8 +274,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
-						]
+							'create',
+						],
 					},
 				},
 				options: [
@@ -279,7 +294,7 @@ export class Freshdesk implements INodeType {
 					{
 						name: 'Urgent',
 						value: 'urgent',
-					}
+					},
 				],
 				default: 'low',
 				description: 'Priority',
@@ -295,8 +310,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
-						]
+							'create',
+						],
 					},
 				},
 				options: [
@@ -382,7 +397,7 @@ export class Freshdesk implements INodeType {
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
 					},
 					{
 						displayName: 'Company',
@@ -433,7 +448,7 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getGroups'
+							loadOptionsMethod: 'getGroups',
 						},
 						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
 					},
@@ -451,7 +466,7 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getProducts'
+							loadOptionsMethod: 'getProducts',
 						},
 						description: `ID of the product to which the ticket is associated.
 						It will be ignored if the email_config_id attribute is set in the request.`,
@@ -469,7 +484,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by , tags that have been associated with the ticket`,
+						description: `separated by a comma (,) tags that have been associated with the ticket`,
 					},
 					{
 						displayName: 'Type',
@@ -498,9 +513,9 @@ export class Freshdesk implements INodeType {
 								name: 'Refund',
 								value: 'Refund',
 							},
-						]
+						],
 					},
-				]
+				],
 			},
 			// {
 			// 	displayName: 'Custom Fields',
@@ -588,7 +603,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'update',
-						]
+						],
 					},
 				},
 				default: '',
@@ -626,7 +641,7 @@ export class Freshdesk implements INodeType {
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
 					},
 					{
 						displayName: 'Company',
@@ -710,7 +725,7 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Urgent',
 								value: 'urgent',
-							}
+							},
 						],
 						default: 'low',
 						description: 'Priority',
@@ -782,7 +797,7 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Closed',
 								value: 'closed',
-							}
+							},
 						],
 						default: 'pending',
 						description: 'Status',
@@ -831,7 +846,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by , tags that have been associated with the ticket`,
+						description: `separated by a comma (,) tags that have been associated with the ticket`,
 					},
 					{
 						displayName: 'Type',
@@ -842,27 +857,27 @@ export class Freshdesk implements INodeType {
 						options: [
 							{
 								name: 'Feature Request',
-								value: 'Feature Request'
+								value: 'Feature Request',
 							},
 							{
 								name: 'Incident',
-								value: 'Incident'
+								value: 'Incident',
 							},
 							{
 								name: 'Problem',
-								value: 'Problem'
+								value: 'Problem',
 							},
 							{
 								name: 'Question',
-								value: 'Question'
+								value: 'Question',
 							},
 							{
 								name: 'Refund',
-								value: 'Refund'
+								value: 'Refund',
 							},
-						]
+						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Ticket ID',
@@ -875,8 +890,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'get'
-						]
+							'get',
+						],
 					},
 				},
 				default: '',
@@ -1026,7 +1041,7 @@ export class Freshdesk implements INodeType {
 						type: 'dateTime',
 						default: '',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Ticket ID',
@@ -1039,14 +1054,17 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'delete'
-						]
+							'delete',
+						],
 					},
 				},
 				default: '',
 				description: 'Ticket ID',
 			},
-		]
+			// CONTACTS
+			...contactOperations,
+			...contactFields,
+		],
 	};
 
 	methods = {
@@ -1129,230 +1147,291 @@ export class Freshdesk implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'ticket') {
-				//https://developers.freshdesk.com/api/#create_ticket
-				if (operation === 'create') {
-					const requester = this.getNodeParameter('requester', i) as string;
-					const value = this.getNodeParameter('requesterIdentificationValue', i) as string;
-					const status = this.getNodeParameter('status', i) as string;
-					const priority = this.getNodeParameter('priority', i) as string;
-					const source = this.getNodeParameter('source', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
-					const body: ICreateTicketBody = {
-						// @ts-ignore
-						status: Status[capitalize(status)],
-						// @ts-ignore
-						priority: Priority[capitalize(priority)],
-						// @ts-ignore
-						source: Source[capitalize(source)]
-					};
-
-					if (requester === 'requesterId') {
-						// @ts-ignore
-						if (isNaN(value)) {
-							throw new Error('Requester Id must be a number');
-						}
-						body.requester_id = parseInt(value, 10);
-					} else if (requester === 'email') {
-						body.email = value;
-					} else if (requester === 'facebookId') {
-						body.facebook_id = value;
-					} else if (requester === 'phone') {
-						body.phone = value;
-					} else if (requester === 'twitterId') {
-						body.twitter_id = value;
-					} else if (requester === 'uniqueExternalId') {
-						body.unique_external_id = value;
-					}
-
-					// if (!jsonActive) {
-					// 	const customFieldsUi = this.getNodeParameter('customFieldsUi') as IDataObject;
-					// 	if (Object.keys(customFieldsUi).length > 0) {
-					// 		const aux: IDataObject = {};
-					// 		// @ts-ignore
-					// 		customFieldsUi.customFieldsValues.forEach( o => {
-					// 			aux[`${o.key}`] = o.value;
-					// 			return aux;
-					// 		});
-					// 		body.custom_fields = aux;
-					// } else {
-					// 	body.custom_fields = validateJSON(this.getNodeParameter('customFielsJson') as string);
-					// }
-
-					if (options.name) {
-						body.name = options.name as string;
-					}
-					if (options.subject) {
-						body.subject = options.subject as string;
-					} else {
-						body.subject = 'null';
-					}
-					if (options.type) {
-						body.type = options.type as string;
-					}
-					if (options.description) {
-						body.description = options.description as string;
-					} else {
-						body.description = 'null';
-					}
-					if (options.agent) {
-						body.responder_id = options.agent as number;
-					}
-					if (options.company) {
-						body.company_id = options.company as number;
-					}
-					if (options.product) {
-						body.product_id = options.product as number;
-					}
-					if (options.group) {
-						body.group_id = options.group as number;
-					}
-					if (options.frDueBy) {
-						body.fr_due_by = options.frDueBy as string;
-					}
-					if (options.emailConfigId) {
-						body.email_config_id = options.emailConfigId as number;
-					}
-					if (options.dueBy) {
-						body.due_by = options.dueBy as string;
-					}
-					if (options.tags) {
-						body.tags = (options.tags as string).split(',') as [string];
-					}
-					if (options.ccEmails) {
-						body.cc_emails = (options.ccEmails as string).split(',') as [string];
-					}
-					responseData = await freshdeskApiRequest.call(this, 'POST', '/tickets', body);
-				}
-				//https://developers.freshdesk.com/api/#update_ticket
-				if (operation === 'update') {
-					const ticketId = this.getNodeParameter('ticketId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const body: ICreateTicketBody = {};
-
-					if (updateFields.requester) {
-						const value = updateFields.requesterIdentificationValue as string;
-						if (updateFields.requester === 'requesterId') {
+			try {
+				if (resource === 'ticket') {
+					//https://developers.freshdesk.com/api/#create_ticket
+					if (operation === 'create') {
+						const requester = this.getNodeParameter('requester', i) as string;
+						const value = this.getNodeParameter('requesterIdentificationValue', i) as string;
+						const status = this.getNodeParameter('status', i) as string;
+						const priority = this.getNodeParameter('priority', i) as string;
+						const source = this.getNodeParameter('source', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
+						const body: ICreateTicketBody = {
 							// @ts-ignore
-							if (isNaN(parseInt(value, 10))) {
-								throw new Error('Requester Id must be a number');
+							status: Status[capitalize(status)],
+							// @ts-ignore
+							priority: Priority[capitalize(priority)],
+							// @ts-ignore
+							source: Source[capitalize(source)],
+						};
+
+						if (requester === 'requesterId') {
+							// @ts-ignore
+							if (isNaN(value)) {
+								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
 							}
-							body.requester_id = parseInt(value as string, 10);
-						} else if (updateFields.requester === 'email') {
-							body.email = value as string;
-						} else if (updateFields.requester === 'facebookId') {
-							body.facebook_id = value as string;
-						} else if (updateFields.requester === 'phone') {
-							body.phone = value as string;
-						} else if (updateFields.requester === 'twitterId') {
-							body.twitter_id = value as string;
-						} else if (updateFields.requester === 'uniqueExternalId') {
-							body.unique_external_id = value as string;
+							body.requester_id = parseInt(value, 10);
+						} else if (requester === 'email') {
+							body.email = value;
+						} else if (requester === 'facebookId') {
+							body.facebook_id = value;
+						} else if (requester === 'phone') {
+							body.phone = value;
+						} else if (requester === 'twitterId') {
+							body.twitter_id = value;
+						} else if (requester === 'uniqueExternalId') {
+							body.unique_external_id = value;
+						}
+
+						// if (!jsonActive) {
+						// 	const customFieldsUi = this.getNodeParameter('customFieldsUi') as IDataObject;
+						// 	if (Object.keys(customFieldsUi).length > 0) {
+						// 		const aux: IDataObject = {};
+						// 		// @ts-ignore
+						// 		customFieldsUi.customFieldsValues.forEach( o => {
+						// 			aux[`${o.key}`] = o.value;
+						// 			return aux;
+						// 		});
+						// 		body.custom_fields = aux;
+						// } else {
+						// 	body.custom_fields = validateJSON(this.getNodeParameter('customFielsJson') as string);
+						// }
+
+						if (options.name) {
+							body.name = options.name as string;
+						}
+						if (options.subject) {
+							body.subject = options.subject as string;
+						} else {
+							body.subject = 'null';
+						}
+						if (options.type) {
+							body.type = options.type as string;
+						}
+						if (options.description) {
+							body.description = options.description as string;
+						} else {
+							body.description = 'null';
+						}
+						if (options.agent) {
+							body.responder_id = options.agent as number;
+						}
+						if (options.company) {
+							body.company_id = options.company as number;
+						}
+						if (options.product) {
+							body.product_id = options.product as number;
+						}
+						if (options.group) {
+							body.group_id = options.group as number;
+						}
+						if (options.frDueBy) {
+							body.fr_due_by = options.frDueBy as string;
+						}
+						if (options.emailConfigId) {
+							body.email_config_id = options.emailConfigId as number;
+						}
+						if (options.dueBy) {
+							body.due_by = options.dueBy as string;
+						}
+						if (options.tags) {
+							body.tags = (options.tags as string).split(',') as [string];
+						}
+						if (options.ccEmails) {
+							body.cc_emails = (options.ccEmails as string).split(',') as [string];
+						}
+						responseData = await freshdeskApiRequest.call(this, 'POST', '/tickets', body);
+					}
+					//https://developers.freshdesk.com/api/#update_ticket
+					if (operation === 'update') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: ICreateTicketBody = {};
+
+						if (updateFields.requester) {
+							const value = updateFields.requesterIdentificationValue as string;
+							if (updateFields.requester === 'requesterId') {
+								// @ts-ignore
+								if (isNaN(parseInt(value, 10))) {
+									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+								}
+								body.requester_id = parseInt(value as string, 10);
+							} else if (updateFields.requester === 'email') {
+								body.email = value as string;
+							} else if (updateFields.requester === 'facebookId') {
+								body.facebook_id = value as string;
+							} else if (updateFields.requester === 'phone') {
+								body.phone = value as string;
+							} else if (updateFields.requester === 'twitterId') {
+								body.twitter_id = value as string;
+							} else if (updateFields.requester === 'uniqueExternalId') {
+								body.unique_external_id = value as string;
+							}
+						}
+						if (updateFields.status) {
+							//@ts-ignore
+							body.status = Status[capitalize(updateFields.status)];
+						}
+						if (updateFields.priority) {
+							//@ts-ignore
+							body.priority = Priority[capitalize(updateFields.priority)];
+						}
+						if (updateFields.source) {
+							//@ts-ignore
+							body.source = Source[capitalize(updateFields.source)];
+						}
+						if (updateFields.name) {
+							body.name = updateFields.name as string;
+						}
+						if (updateFields.type) {
+							body.type = updateFields.type as string;
+						}
+						if (updateFields.agent) {
+							body.responder_id = updateFields.agent as number;
+						}
+						if (updateFields.company) {
+							body.company_id = updateFields.company as number;
+						}
+						if (updateFields.product) {
+							body.product_id = updateFields.product as number;
+						}
+						if (updateFields.group) {
+							body.group_id = updateFields.group as number;
+						}
+						if (updateFields.frDueBy) {
+							body.fr_due_by = updateFields.frDueBy as string;
+						}
+						if (updateFields.emailConfigId) {
+							body.email_config_id = updateFields.emailConfigId as number;
+						}
+						if (updateFields.dueBy) {
+							body.due_by = updateFields.dueBy as string;
+						}
+						if (updateFields.tags) {
+							body.tags = (updateFields.tags as string).split(',') as [string];
+						}
+						if (updateFields.ccEmails) {
+							body.cc_emails = (updateFields.ccEmails as string).split(',') as [string];
+						}
+						responseData = await freshdeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
+					}
+					//https://developers.freshdesk.com/api/#view_a_ticket
+					if (operation === 'get') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						responseData = await freshdeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`);
+					}
+					//https://developers.freshdesk.com/api/#list_all_tickets
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						if (options.requesterId) {
+							qs.requester_id = options.requesterId as string;
+						}
+						if (options.requesterEmail) {
+							qs.email = options.requesterEmail as string;
+						}
+						if (options.companyId) {
+							qs.company_id = options.companyId as string;
+						}
+						if (options.updatedSince) {
+							qs.updated_since = options.updatedSince as string;
+						}
+						if (options.orderBy) {
+							qs.order_by = options.orderBy as string;
+						}
+						if (options.order) {
+							qs.order_type = options.order as string;
+						}
+						if (options.include) {
+							if ((options.include as string[]).length !== 0) {
+								qs.include = (options.include as string[]).join(',');
+							}
+						}
+						if (returnAll === true) {
+							responseData = await freshdeskApiRequestAllItems.call(this, 'GET', '/tickets', {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i) as number;
+							responseData = await freshdeskApiRequest.call(this, 'GET', '/tickets', {}, qs);
 						}
 					}
-					if (updateFields.status) {
-						//@ts-ignore
-						body.status = Status[capitalize(updateFields.status)];
+					//https://developers.freshdesk.com/api/#delete_a_ticket
+					if (operation === 'delete') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						responseData = await freshdeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
 					}
-					if (updateFields.priority) {
-						//@ts-ignore
-						body.priority = Priority[capitalize(updateFields.priority)];
-					}
-					if (updateFields.source) {
-						//@ts-ignore
-						body.source = Source[capitalize(updateFields.source)];
-					}
-					if (updateFields.name) {
-						body.name = updateFields.name as string;
-					}
-					if (updateFields.type) {
-						body.type = updateFields.type as string;
-					}
-					if (updateFields.agent) {
-						body.responder_id = updateFields.agent as number;
-					}
-					if (updateFields.company) {
-						body.company_id = updateFields.company as number;
-					}
-					if (updateFields.product) {
-						body.product_id = updateFields.product as number;
-					}
-					if (updateFields.group) {
-						body.group_id = updateFields.group as number;
-					}
-					if (updateFields.frDueBy) {
-						body.fr_due_by = updateFields.frDueBy as string;
-					}
-					if (updateFields.emailConfigId) {
-						body.email_config_id = updateFields.emailConfigId as number;
-					}
-					if (updateFields.dueBy) {
-						body.due_by = updateFields.dueBy as string;
-					}
-					if (updateFields.tags) {
-						body.tags = (updateFields.tags as string).split(',') as [string];
-					}
-					if (updateFields.ccEmails) {
-						body.cc_emails = (updateFields.ccEmails as string).split(',') as [string];
-					}
-					responseData = await freshdeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
-				}
-				//https://developers.freshdesk.com/api/#view_a_ticket
-				if (operation === 'get') {
-					const ticketId = this.getNodeParameter('ticketId', i) as string;
-					responseData = await freshdeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`);
-				}
-				//https://developers.freshdesk.com/api/#list_all_tickets
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					if (options.requesterId) {
-						qs.requester_id = options.requesterId as string;
-					}
-					if (options.requesterEmail) {
-						qs.email = options.requesterEmail as string;
-					}
-					if (options.companyId) {
-						qs.company_id = options.companyId as string;
-					}
-					if (options.updatedSince) {
-						qs.updated_since = options.updatedSince as string;
-					}
-					if (options.orderBy) {
-						qs.order_by = options.orderBy as string;
-					}
-					if (options.order) {
-						qs.order_type = options.order as string;
-					}
-					if (options.include) {
-						if ((options.include as string[]).length !== 0) {
-							qs.include = (options.include as string[]).join(',');
+				} else if (resource === 'contact') {
+					//https://developers.freshdesk.com/api/#create_contact
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						if (additionalFields.customFields) {
+							const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+							additionalFields.custom_fields = {};
+							for (const data of metadata) {
+								//@ts-ignore
+								additionalFields.custom_fields[data.name as string] = data.value;
+							}
+							delete additionalFields.customFields;
 						}
+
+						const body: ICreateContactBody = additionalFields;
+						body.name = name;
+						if (email) {
+							body.email = email;
+						}
+						responseData = await freshdeskApiRequest.call(this, 'POST', '/contacts', body);
+					//https://developers.freshdesk.com/api/#delete_contact
+					} else if (operation === 'delete') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						responseData = await freshdeskApiRequest.call(this, 'DELETE', `/contacts/${contactId}`, {});
+					} else if (operation === 'get') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						responseData = await freshdeskApiRequest.call(this, 'GET', `/contacts/${contactId}`, {});
+					//https://developers.freshdesk.com/api/#list_all_contacts
+					} else if (operation === 'getAll') {
+						const qs = this.getNodeParameter('filters', i, {}) as IDataObject;
+						responseData = await freshdeskApiRequest.call(this, 'GET', '/contacts', {}, qs);
+					//https://developers.freshdesk.com/api/#update_contact
+					} else if (operation === 'update') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						if (additionalFields.customFields) {
+							const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+							additionalFields.custom_fields = {};
+							for (const data of metadata) {
+								//@ts-ignore
+								additionalFields.custom_fields[data.name as string] = data.value;
+							}
+							delete additionalFields.customFields;
+						}
+
+						const body: ICreateContactBody = additionalFields;
+						responseData = await freshdeskApiRequest.call(this, 'PUT', `/contacts/${contactId}`, body);
 					}
-					if (returnAll === true) {
-						responseData = await freshdeskApiRequestAllItems.call(this, 'GET', '/tickets', {}, qs);
-					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
-						responseData = await freshdeskApiRequest.call(this, 'GET', '/tickets', {}, qs);
-					}
-				}
-				//https://developers.freshdesk.com/api/#delete_a_ticket
-				if (operation === 'delete') {
-					const ticketId = this.getNodeParameter('ticketId', i) as string;
-					responseData = await freshdeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
-				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				if (responseData === undefined) {
-					responseData = { json: {
-						success: true,
-					} };
 				}
 
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					if (responseData === undefined) {
+						responseData = {
+							success: true,
+						};
+					}
+
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

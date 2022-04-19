@@ -1,30 +1,31 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class NextCloudApi implements ICredentialType {
 	name = 'nextCloudApi';
 	displayName = 'NextCloud API';
-	properties = [
+	documentationUrl = 'nextCloud';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Web DAV URL',
 			name: 'webDavUrl',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			placeholder: 'https://nextcloud.example.com/remote.php/webdav',
 			default: '',
 		},
 		{
 			displayName: 'User',
 			name: 'user',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

@@ -1,0 +1,27 @@
+{
+	"node": "n8n-nodes-base.harvest",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Productivity"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/harvest"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.harvest/"
+			}
+		],
+		"generic": [
+			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			}
+		]
+	}
+}

@@ -1,6 +1,8 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const labelOperations = [
+export const labelOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         label
 	// ----------------------------------
@@ -50,16 +52,16 @@ export const labelOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a label.',
-			}
+			},
 
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const labelFields = [
+export const labelFields: INodeProperties[] = [
 	// ----------------------------------
 	//         label:create
 	// ----------------------------------
@@ -125,7 +127,7 @@ export const labelFields = [
 			},
 			{
 				name: 'green',
-				value: 'green'
+				value: 'green',
 			},
 			{
 				name: 'orange',
@@ -157,7 +159,7 @@ export const labelFields = [
 			},
 			{
 				name: 'yellow',
-				value: 'yellow'
+				value: 'yellow',
 			},
 		],
 		default: 'null',
@@ -423,7 +425,7 @@ export const labelFields = [
 					},
 					{
 						name: 'green',
-						value: 'green'
+						value: 'green',
 					},
 					{
 						name: 'orange',
@@ -455,7 +457,7 @@ export const labelFields = [
 					},
 					{
 						name: 'yellow',
-						value: 'yellow'
+						value: 'yellow',
 					},
 				],
 				default: 'null',
@@ -464,4 +466,4 @@ export const labelFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

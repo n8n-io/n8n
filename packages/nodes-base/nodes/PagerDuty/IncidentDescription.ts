@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const incidentOperations = [
+export const incidentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const incidentOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const incidentFields = [
+export const incidentFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                incident:create                             */
@@ -131,6 +131,13 @@ export const incidentFields = [
 				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given.',
 			},
 			{
+				displayName: 'Incident Details',
+				name: 'details',
+				type: 'string',
+				default: '',
+				description: 'Additional details about the incident which will go in the body',
+			},
+			{
 				displayName: 'Incident Key',
 				name: 'incidentKey',
 				type: 'string',
@@ -196,8 +203,7 @@ export const incidentFields = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,)</br>
-						represents a one-second wait and pound (#) completes access code input.`,
+						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.`,
 					},
 					{
 						displayName: 'Conference URL',
@@ -205,7 +211,7 @@ export const incidentFields = [
 						type: 'string',
 						default: '',
 						description: 'An URL for the conference bridge. This could be a link to a web conference or Slack channel.',
-					}
+					},
 				],
 			},
 		],
@@ -226,7 +232,7 @@ export const incidentFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the incident.',
@@ -310,9 +316,7 @@ export const incidentFields = [
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
-				description: `Incident de-duplication key. Incidents with child alerts do not</br>
-				 have an incident key; querying by incident key will return incidents whose alerts have</br>
-				 alert_key matching the given incident key.`,
+				description: `Incident de-duplication key. Incidents with child alerts do not have an incident key; querying by incident key will return incidents whose alerts have alert_key matching the given incident key.`,
 			},
 			{
 				displayName: 'Include',
@@ -382,9 +386,7 @@ export const incidentFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'created_at:asc,resolved_at:desc',
-				description: `Used to specify both the field you wish to sort the results on (incident_number/created_at/resolved_at/urgency), as well as the direction (asc/desc) of the results.</br>
-				The sort_by field and direction should be separated by a colon.</br>
-				A maximum of two fields can be included, separated by a comma.`,
+				description: `Used to specify both the field you wish to sort the results on (incident_number/created_at/resolved_at/urgency), as well as the direction (asc/desc) of the results. The sort_by field and direction should be separated by a colon. A maximum of two fields can be included, separated by a comma.`,
 			},
 			{
 				displayName: 'Statuses',
@@ -625,8 +627,7 @@ export const incidentFields = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,)</br>
-						represents a one-second wait and pound (#) completes access code input.`,
+						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.`,
 					},
 					{
 						displayName: 'Conference URL',
@@ -634,9 +635,9 @@ export const incidentFields = [
 						type: 'string',
 						default: '',
 						description: 'An URL for the conference bridge. This could be a link to a web conference or Slack channel.',
-					}
+					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

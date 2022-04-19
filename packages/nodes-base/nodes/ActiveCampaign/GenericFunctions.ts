@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, ILoadOptionsFunctions,
+	IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -26,10 +26,7 @@ export interface IProduct {
  * @returns {Promise<any>}
  */
 export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('activeCampaignApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('activeCampaignApi');
 
 	if (query === undefined) {
 		query = {};
@@ -42,7 +39,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -53,7 +50,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		const responseData = await this.helpers.request!(options);
 
 		if (responseData.success === false) {
-			throw new Error(`ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeApiError(this.getNode(), responseData);
 		}
 
 		if (dataKey === undefined) {
@@ -63,13 +60,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		}
 
 	} catch (error) {
-		if (error.statusCode === 403) {
-			// Return a clear error
-			throw new Error('The ActiveCampaign credentials are not valid!');
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -123,4 +114,67 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 	);
 
 	return returnData;
+}
+
+export function activeCampaignDefaultGetAllProperties(resource: string, operation: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Return All',
+			name: 'returnAll',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+				},
+			},
+			default: false,
+			description: 'If all results should be returned or only up to a given limit.',
+		},
+		{
+			displayName: 'Limit',
+			name: 'limit',
+			type: 'number',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+					returnAll: [
+						false,
+					],
+				},
+			},
+			typeOptions: {
+				minValue: 1,
+				maxValue: 500,
+			},
+			default: 100,
+			description: 'How many results to return.',
+		},
+		{
+			displayName: 'Simplify Response',
+			name: 'simple',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+				},
+			},
+			default: true,
+			description: 'Return a simplified version of the response instead of the raw data.',
+		},
+	];
 }

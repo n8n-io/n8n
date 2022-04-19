@@ -13,12 +13,13 @@ import {
 } from 'n8n-workflow';
 
 import {
+	campaignFieldsMetadata,
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 enum Status {
 	subscribe = 'subscribe',
@@ -55,14 +56,13 @@ export class Mailchimp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp',
 		name: 'mailchimp',
-		icon: 'file:mailchimp.png',
+		icon: 'file:mailchimp.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mailchimp API',
 		defaults: {
 			name: 'Mailchimp',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -113,6 +113,10 @@ export class Mailchimp implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
+					{
+						name: 'Campaign',
+						value: 'campaign',
+					},
 					{
 						name: 'List Group',
 						value: 'listGroup',
@@ -221,6 +225,54 @@ export class Mailchimp implements INodeType {
 				default: 'getAll',
 				description: 'The operation to perform.',
 			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type:'options',
+				required: true,
+				displayOptions : {
+					show: {
+						resource: [
+							'campaign',
+						],
+					},
+
+				},
+				options: [
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a campaign',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a campaign',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the campaigns',
+					},
+					{
+						name: 'Replicate',
+						value: 'replicate',
+						description: 'Replicate a campaign',
+					},
+					{
+						name: 'Resend',
+						value: 'resend',
+						description: 'Creates a Resend to Non-Openers version of this campaign',
+					},
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Send a campaign',
+					},
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */
 /* -------------------------------------------------------------------------- */
@@ -312,7 +364,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -447,7 +499,7 @@ export class Mailchimp implements INodeType {
 								default: '',
 							},
 						],
-					}
+					},
 				],
 			},
 			{
@@ -462,7 +514,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -563,7 +615,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -748,7 +800,7 @@ export class Mailchimp implements INodeType {
 						default: '',
 						description: 'A comma-separated list of fields to exclude.',
 					},
-				]
+				],
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:getAll                              */
@@ -967,7 +1019,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'update',
@@ -1021,7 +1073,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1086,7 +1138,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1157,7 +1209,7 @@ export class Mailchimp implements INodeType {
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
-						description: `If skip_merge_validation is true, member data will be accepted without merge field values,<br/>
+						description: `If skip_merge_validation is true, member data will be accepted without merge field values,
 						even if the merge field is usually required`,
 					},
 					{
@@ -1207,7 +1259,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1373,7 +1425,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'memberTag'
+							'memberTag',
 						],
 						operation: [
 							'create',
@@ -1500,6 +1552,219 @@ export class Mailchimp implements INodeType {
 				default: 500,
 				description: 'How many results to return.',
 			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:getAll                            */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 10,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource:[
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Before Create Time',
+						name: 'beforeCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created before the set time.',
+					},
+					{
+						displayName: 'Before Send Time',
+						name: 'beforeSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent before the set time.',
+					},
+					{
+						displayName: 'Exclude Fields',
+						name: 'excludeFields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [],
+						description: 'A comma-separated list of fields to exclude.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [
+							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.reply_to',
+							'campaigns.settings.title',
+						],
+						description: 'A comma-separated list of fields to return.',
+					},
+					{
+						displayName: 'List ID',
+						name: 'listId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLists',
+						},
+						default: '',
+						description: 'List of lists',
+					},
+					{
+						displayName: 'Since Create Time',
+						name: 'sinceCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created after the set time.',
+					},
+					{
+						displayName: 'Since Send Time',
+						name: 'sinceSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent after the set time.',
+					},
+					{
+						displayName: 'Sort Direction',
+						name: 'sortDirection',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'ASC',
+							},
+							{
+								name: 'DESC',
+								value: 'DESC',
+							},
+						],
+						default: '',
+						description: 'Determines the order direction for sorted results.',
+					},
+					{
+						displayName: 'Sort Field',
+						name: 'sortField',
+						type: 'options',
+						options: [
+							{
+								name: 'Create Time',
+								value: 'create_time',
+							},
+							{
+								name: 'Send Time',
+								value: 'send_time',
+							},
+						],
+						default: '',
+						description: 'Returns files sorted by the specified field.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Save',
+								value: 'save',
+							},
+							{
+								name: 'Sending',
+								value: 'sending',
+							},
+							{
+								name: 'Sent',
+								value: 'sent',
+							},
+							{
+								name: 'Schedule',
+								value: 'schedule',
+							},
+						],
+						default: '',
+						description: 'The status of the campaign.',
+					},
+				],
+			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:send                              */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Campaign ID',
+				name: 'campaignId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'send',
+							'get',
+							'delete',
+							'replicate',
+							'resend',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'List of Campaigns',
+				options:[],
+			},
 		],
 	};
 
@@ -1556,7 +1821,34 @@ export class Mailchimp implements INodeType {
 				}
 				return returnData;
 			},
-		}
+
+			// Get all the available campaigns to display them to users so that they can select them easily
+			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const campaigns = await mailchimpApiRequestAllItems.call(this, '/campaigns', 'GET', 'campaigns');
+				for (const campaign of campaigns) {
+					const campaignName = campaign.settings.title;
+					const campaignId = campaign.id;
+					returnData.push({
+						name: campaignName,
+						value: campaignId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available fields to display them to users so that they can select them easily
+			async getCampaignsFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const campaignFields of campaignFieldsMetadata) {
+					returnData.push({
+						name: campaignFields,
+						value: campaignFields,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -1569,215 +1861,64 @@ export class Mailchimp implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'listGroup') {
-				//https://mailchimp.com/developer/reference/lists/interest-categories/#get_/lists/-list_id-/interest-categories/-interest_category_id-
-				if (operation === 'getAll') {
-					const listId = this.getNodeParameter('list', i) as string;
-					const categoryId = this.getNodeParameter('groupCategory', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+			try {
+				if (resource === 'listGroup') {
+					//https://mailchimp.com/developer/reference/lists/interest-categories/#get_/lists/-list_id-/interest-categories/-interest_category_id-
+					if (operation === 'getAll') {
+						const listId = this.getNodeParameter('list', i) as string;
+						const categoryId = this.getNodeParameter('groupCategory', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					if (returnAll === true) {
-						responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', 'interests', {}, qs);
-					} else {
-						qs.count = this.getNodeParameter('limit', i) as number;
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', {}, qs);
-						responseData = responseData.interests;
+						if (returnAll === true) {
+							responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', 'interests', {}, qs);
+						} else {
+							qs.count = this.getNodeParameter('limit', i) as number;
+							responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', {}, qs);
+							responseData = responseData.interests;
+						}
 					}
 				}
-			}
-			if (resource === 'member') {
-				//https://mailchimp.com/developer/reference/lists/list-members/#post_/lists/-list_id-/members
-				if (operation === 'create') {
-					const listId = this.getNodeParameter('list', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-					const status = this.getNodeParameter('status', i) as Status;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as IDataObject;
+				if (resource === 'member') {
+					//https://mailchimp.com/developer/reference/lists/list-members/#post_/lists/-list_id-/members
+					if (operation === 'create') {
+						const listId = this.getNodeParameter('list', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const status = this.getNodeParameter('status', i) as Status;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						const jsonActive = this.getNodeParameter('jsonParameters', i) as IDataObject;
 
-					const body: ICreateMemberBody = {
-						listId,
-						email_address: email,
-						status
-					};
-					if (options.emailType) {
-						body.email_type = options.emailType as string;
-					}
-					if (options.language) {
-						body.language = options.language as string;
-					}
-					if (options.vip) {
-						body.vip = options.vip as boolean;
-					}
-					if (options.ipSignup) {
-						body.ip_signup = options.ipSignup as string;
-					}
-					if (options.ipOptIn) {
-						body.ip_opt = options.ipOptIn as string;
-					}
-					if (options.timestampOpt) {
-						body.timestamp_opt = moment(options.timestampOpt as string).format('YYYY-MM-DD HH:MM:SS') as string;
-					}
-					if (options.timestampSignup) {
-						body.timestamp_signup = moment(options.timestampSignup as string).format('YYYY-MM-DD HH:MM:SS') as string;
-					}
-					if (options.tags) {
-						// @ts-ignore
-						body.tags = options.tags.split(',') as string[];
-					}
-					if (!jsonActive) {
-						const locationValues = (this.getNodeParameter('locationFieldsUi', i) as IDataObject).locationFieldsValues as IDataObject;
-						if (locationValues) {
-							const location: ILocation = {};
-							for (const key of Object.keys(locationValues)) {
-								if (key === 'latitude') {
-									location.latitude = parseFloat(locationValues[key] as string) as number;
-								} else if (key === 'longitude') {
-									location.longitude = parseFloat(locationValues[key] as string) as number;
-								}
-							}
-							body.location = location;
+						const body: ICreateMemberBody = {
+							listId,
+							email_address: email,
+							status,
+						};
+						if (options.emailType) {
+							body.email_type = options.emailType as string;
 						}
-						const mergeFieldsValues = (this.getNodeParameter('mergeFieldsUi', i) as IDataObject).mergeFieldsValues as IDataObject[];
-						if (mergeFieldsValues) {
-							const mergeFields = {};
-							for (let i = 0; i < mergeFieldsValues.length; i++) {
-								// @ts-ignore
-								mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
-							}
-							body.merge_fields = mergeFields;
+						if (options.language) {
+							body.language = options.language as string;
 						}
-
-						const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject).groupsValues as IDataObject[];
-						if (groupsValues) {
-							const groups = {};
-							for (let i = 0; i < groupsValues.length; i++) {
-								// @ts-ignore
-								groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
-							}
-							body.interests = groups;
+						if (options.vip) {
+							body.vip = options.vip as boolean;
 						}
-					} else {
-						const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-						const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
-						const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
-						if (locationJson) {
-							body.location = locationJson;
+						if (options.ipSignup) {
+							body.ip_signup = options.ipSignup as string;
 						}
-						if (mergeFieldsJson) {
-							body.merge_fields = mergeFieldsJson;
+						if (options.ipOptIn) {
+							body.ip_opt = options.ipOptIn as string;
 						}
-						if (groupJson) {
-							body.interests = groupJson;
+						if (options.timestampOpt) {
+							body.timestamp_opt = moment(options.timestampOpt as string).format('YYYY-MM-DD HH:MM:SS') as string;
 						}
-					}
-					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'POST', body);
-				}
-				//https://mailchimp.com/developer/reference/lists/list-members/
-				if (operation === 'delete') {
-
-					const listId = this.getNodeParameter('list', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-
-					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/actions/delete-permanent`, 'POST');
-					responseData = { success: true };
-				}
-				//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members/-subscriber_hash-
-				if (operation === 'get') {
-
-					const listId = this.getNodeParameter('list', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					if (options.fields) {
-						qs.fields = options.fields as string;
-					}
-
-					if (options.excludeFields) {
-						qs.exclude_fields = options.excludeFields as string;
-					}
-
-					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'GET', {}, qs);
-				}
-				//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members
-				if (operation === 'getAll') {
-					const listId = this.getNodeParameter('list', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					if (options.beforeLastChanged) {
-						qs.before_last_changed = options.beforeLastChanged as string;
-					}
-					if (options.beforeTimestampOpt) {
-						qs.before_timestamp_opt = options.beforeTimestampOpt as string;
-					}
-					// TODO
-					//figure why for some reason when either fields or exclude_fields is set the endpoint returns nothing
-					// interestingly it works perfect when retriving just one member
-
-					// if (options.fields) {
-					// 	qs.fields = options.fields as string;
-					// }
-					// if (options.excludeFields) {
-					// 	qs.exclude_fields = options.excludeFields as string;
-					// }
-					if (options.emailType) {
-						qs.email_type = options.emailType as string;
-					}
-					if (options.status) {
-						qs.status = options.status as string;
-					}
-					if (options.sinceLastChanged) {
-						qs.since_last_changed = options.sinceLastChanged as string;
-					}
-					if (returnAll === true) {
-						responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/members`, 'GET', 'members', {}, qs);
-					} else {
-						qs.count = this.getNodeParameter('limit', i) as number;
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'GET', {}, qs);
-						responseData = responseData.members;
-					}
-				}
-				//https://mailchimp.com/developer/reference/lists/list-members/#put_/lists/-list_id-/members/-subscriber_hash-
-				if (operation === 'update') {
-
-					const listId = this.getNodeParameter('list', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as IDataObject;
-					const body: ICreateMemberBody = {
-						listId,
-						email_address: email,
-					};
-					if (updateFields.skipMergeValidation) {
-						qs.skip_merge_validation = updateFields.skipMergeValidation as boolean;
-					}
-					if (updateFields.status) {
-						body.status = updateFields.status as Status;
-					}
-					if (updateFields.emailType) {
-						body.email_type = updateFields.emailType as string;
-					}
-					if (updateFields.language) {
-						body.language = updateFields.language as string;
-					}
-					if (updateFields.vip) {
-						body.vip = updateFields.vip as boolean;
-					}
-					if (updateFields.ipSignup) {
-						body.ip_signup = updateFields.ipSignup as string;
-					}
-					if (updateFields.ipOptIn) {
-						body.ip_opt = updateFields.ipOptIn as string;
-					}
-					if (updateFields.timestampOpt) {
-						body.timestamp_opt = moment(updateFields.timestampOpt as string).format('YYYY-MM-DD HH:MM:SS') as string;
-					}
-					if (updateFields.timestampSignup) {
-						body.timestamp_signup = moment(updateFields.timestampSignup as string).format('YYYY-MM-DD HH:MM:SS') as string;
-					}
-					if (!jsonActive) {
-						if (updateFields.locationFieldsUi) {
-							const locationValues = (updateFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+						if (options.timestampSignup) {
+							body.timestamp_signup = moment(options.timestampSignup as string).format('YYYY-MM-DD HH:MM:SS') as string;
+						}
+						if (options.tags) {
+							// @ts-ignore
+							body.tags = options.tags.split(',') as string[];
+						}
+						if (!jsonActive) {
+							const locationValues = (this.getNodeParameter('locationFieldsUi', i) as IDataObject).locationFieldsValues as IDataObject;
 							if (locationValues) {
 								const location: ILocation = {};
 								for (const key of Object.keys(locationValues)) {
@@ -1789,9 +1930,7 @@ export class Mailchimp implements INodeType {
 								}
 								body.location = location;
 							}
-						}
-						if (updateFields.mergeFieldsUi) {
-							const mergeFieldsValues = (updateFields.mergeFieldsUi as IDataObject).mergeFieldsValues as IDataObject[];
+							const mergeFieldsValues = (this.getNodeParameter('mergeFieldsUi', i) as IDataObject).mergeFieldsValues as IDataObject[];
 							if (mergeFieldsValues) {
 								const mergeFields = {};
 								for (let i = 0; i < mergeFieldsValues.length; i++) {
@@ -1800,9 +1939,8 @@ export class Mailchimp implements INodeType {
 								}
 								body.merge_fields = mergeFields;
 							}
-						}
-						if (updateFields.groupsUi) {
-							const groupsValues = (updateFields.groupsUi  as IDataObject).groupsValues as IDataObject[];
+
+							const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject).groupsValues as IDataObject[];
 							if (groupsValues) {
 								const groups = {};
 								for (let i = 0; i < groupsValues.length; i++) {
@@ -1811,84 +1949,330 @@ export class Mailchimp implements INodeType {
 								}
 								body.interests = groups;
 							}
+						} else {
+							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
+							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+							if (locationJson) {
+								body.location = locationJson;
+							}
+							if (mergeFieldsJson) {
+								body.merge_fields = mergeFieldsJson;
+							}
+							if (groupJson) {
+								body.interests = groupJson;
+							}
 						}
-					} else {
-						const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-						const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
-						const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'POST', body);
+					}
+					//https://mailchimp.com/developer/reference/lists/list-members/
+					if (operation === 'delete') {
 
-						if (locationJson) {
-							body.location = locationJson;
+						const listId = this.getNodeParameter('list', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/actions/delete-permanent`, 'POST');
+						responseData = { success: true };
+					}
+					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members/-subscriber_hash-
+					if (operation === 'get') {
+
+						const listId = this.getNodeParameter('list', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						if (options.fields) {
+							qs.fields = options.fields as string;
 						}
-						if (mergeFieldsJson) {
-							body.merge_fields = mergeFieldsJson;
+
+						if (options.excludeFields) {
+							qs.exclude_fields = options.excludeFields as string;
 						}
-						if (groupJson) {
-							body.interests = groupJson;
+
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'GET', {}, qs);
+					}
+					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members
+					if (operation === 'getAll') {
+						const listId = this.getNodeParameter('list', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						if (options.beforeLastChanged) {
+							qs.before_last_changed = options.beforeLastChanged as string;
+						}
+						if (options.beforeTimestampOpt) {
+							qs.before_timestamp_opt = options.beforeTimestampOpt as string;
+						}
+						// TODO
+						//figure why for some reason when either fields or exclude_fields is set the endpoint returns nothing
+						// interestingly it works perfect when retriving just one member
+
+						// if (options.fields) {
+						// 	qs.fields = options.fields as string;
+						// }
+						// if (options.excludeFields) {
+						// 	qs.exclude_fields = options.excludeFields as string;
+						// }
+						if (options.emailType) {
+							qs.email_type = options.emailType as string;
+						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.sinceLastChanged) {
+							qs.since_last_changed = options.sinceLastChanged as string;
+						}
+						if (returnAll === true) {
+							responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/members`, 'GET', 'members', {}, qs);
+						} else {
+							qs.count = this.getNodeParameter('limit', i) as number;
+							responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'GET', {}, qs);
+							responseData = responseData.members;
 						}
 					}
-					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'PUT', body);
+					//https://mailchimp.com/developer/reference/lists/list-members/#put_/lists/-list_id-/members/-subscriber_hash-
+					if (operation === 'update') {
+
+						const listId = this.getNodeParameter('list', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const jsonActive = this.getNodeParameter('jsonParameters', i) as IDataObject;
+						const body: ICreateMemberBody = {
+							listId,
+							email_address: email,
+						};
+						if (updateFields.skipMergeValidation) {
+							qs.skip_merge_validation = updateFields.skipMergeValidation as boolean;
+						}
+						if (updateFields.status) {
+							body.status = updateFields.status as Status;
+						}
+						if (updateFields.emailType) {
+							body.email_type = updateFields.emailType as string;
+						}
+						if (updateFields.language) {
+							body.language = updateFields.language as string;
+						}
+						if (updateFields.vip) {
+							body.vip = updateFields.vip as boolean;
+						}
+						if (updateFields.ipSignup) {
+							body.ip_signup = updateFields.ipSignup as string;
+						}
+						if (updateFields.ipOptIn) {
+							body.ip_opt = updateFields.ipOptIn as string;
+						}
+						if (updateFields.timestampOpt) {
+							body.timestamp_opt = moment(updateFields.timestampOpt as string).format('YYYY-MM-DD HH:MM:SS') as string;
+						}
+						if (updateFields.timestampSignup) {
+							body.timestamp_signup = moment(updateFields.timestampSignup as string).format('YYYY-MM-DD HH:MM:SS') as string;
+						}
+						if (!jsonActive) {
+							if (updateFields.locationFieldsUi) {
+								const locationValues = (updateFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+								if (locationValues) {
+									const location: ILocation = {};
+									for (const key of Object.keys(locationValues)) {
+										if (key === 'latitude') {
+											location.latitude = parseFloat(locationValues[key] as string) as number;
+										} else if (key === 'longitude') {
+											location.longitude = parseFloat(locationValues[key] as string) as number;
+										}
+									}
+									body.location = location;
+								}
+							}
+							if (updateFields.mergeFieldsUi) {
+								const mergeFieldsValues = (updateFields.mergeFieldsUi as IDataObject).mergeFieldsValues as IDataObject[];
+								if (mergeFieldsValues) {
+									const mergeFields = {};
+									for (let i = 0; i < mergeFieldsValues.length; i++) {
+										// @ts-ignore
+										mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+									}
+									body.merge_fields = mergeFields;
+								}
+							}
+							if (updateFields.groupsUi) {
+								const groupsValues = (updateFields.groupsUi  as IDataObject).groupsValues as IDataObject[];
+								if (groupsValues) {
+									const groups = {};
+									for (let i = 0; i < groupsValues.length; i++) {
+										// @ts-ignore
+										groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+									}
+									body.interests = groups;
+								}
+							}
+						} else {
+							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
+							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+
+							if (locationJson) {
+								body.location = locationJson;
+							}
+							if (mergeFieldsJson) {
+								body.merge_fields = mergeFieldsJson;
+							}
+							if (groupJson) {
+								body.interests = groupJson;
+							}
+						}
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'PUT', body);
+					}
 				}
-			}
-			if (resource === 'memberTag') {
-			//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
-				if (operation === 'create') {
-					const listId = this.getNodeParameter('list', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-					const tags = this.getNodeParameter('tags', i) as string[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
+				if (resource === 'memberTag') {
+				//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
+					if (operation === 'create') {
+						const listId = this.getNodeParameter('list', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const tags = this.getNodeParameter('tags', i) as string[];
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
-					const body: IDataObject = {
-						tags: [],
-					};
+						const body: IDataObject = {
+							tags: [],
+						};
 
-					if (options.isSyncing) {
-						body.is_syncing = options.isSyncing as boolean;
+						if (options.isSyncing) {
+							body.is_syncing = options.isSyncing as boolean;
+						}
+
+						for (const tag of tags) {
+							//@ts-ignore
+							body.tags.push({
+								name: tag,
+								status: 'active',
+							});
+						}
+
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
+						responseData = { success: true };
 					}
+				//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
+					if (operation === 'delete') {
 
-					for (const tag of tags) {
-						//@ts-ignore
-						body.tags.push({
-							name: tag,
-							status: 'active',
-						});
+						const listId = this.getNodeParameter('list', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const tags = this.getNodeParameter('tags', i) as string[];
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						const body: IDataObject = {
+							tags: [],
+						};
+
+						if (options.isSyncing) {
+							body.is_syncing = options.isSyncing as boolean;
+						}
+
+						for (const tag of tags) {
+							//@ts-ignore
+							body.tags.push({
+								name: tag,
+								status: 'inactive',
+							});
+						}
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
+						responseData = { success: true };
 					}
-
-					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
-					responseData = { success: true };
 				}
-			//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
-				if (operation === 'delete') {
+				if (resource === 'campaign') {
+					//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.beforeCreateTime) {
+							qs.before_create_time = options.beforeCreateTime as string;
+						}
+						if (options.beforeSendTime) {
+							qs.before_send_time = options.beforeSendTime as string;
+						}
+						if (options.excludeFields) {
+							qs.exclude_fields = (options.exclude_fields as string[]).join(',');
+						}
+						if (options.fields) {
+							qs.fields = (options.fields as string[]).join(',');
+							if ((options.fields as string[]).includes('*')) {
+								qs.fields = campaignFieldsMetadata.join(',');
+							}
+						} else {
+							qs.fields = [
+								'campaigns.id',
+								'campaigns.status',
+								'campaigns.tracking',
+								'campaigns.settings.from_name',
+								'campaigns.settings.title',
+								'campaigns.settings.reply_to',
+							].join(',');
+						}
 
-					const listId = this.getNodeParameter('list', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-					const tags = this.getNodeParameter('tags', i) as string[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					const body: IDataObject = {
-						tags: [],
-					};
-
-					if (options.isSyncing) {
-						body.is_syncing = options.isSyncing as boolean;
+						if (options.listId) {
+							qs.list_id = options.listId as string;
+						}
+						if (options.sinceCreateTime) {
+							qs.since_create_time = options.sinceCreateTime as string;
+						}
+						if (options.sinceSendTime) {
+							qs.since_send_time = options.sinceSendTime as string;
+						}
+						if (options.sortDirection) {
+							qs.sort_dir = options.sortDirection as string;
+						}
+						if (options.sortField) {
+							qs.sort_field = options.sortField as string;
+						}
+						if (returnAll === true) {
+							responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs);
+						} else {
+							qs.count = this.getNodeParameter('limit', i) as number;
+							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+							responseData = responseData.campaigns;
+						}
 					}
-
-					for (const tag of tags) {
-						//@ts-ignore
-						body.tags.push({
-							name: tag,
-							status: 'inactive',
-						});
+					//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
+					if (operation === 'send') {
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {});
+						responseData = { success: true };
 					}
-					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
-					responseData = { success: true };
+					//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
+					if (operation === 'get') {
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {});
+					}
+					//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
+					if (operation === 'delete') {
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {});
+						responseData = { success: true };
+					}
+					//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
+					if (operation === 'replicate') {
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {});
+					}
+					//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
+					if (operation === 'resend') {
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {});
+					}
 				}
-			}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

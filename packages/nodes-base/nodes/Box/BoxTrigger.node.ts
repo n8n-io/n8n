@@ -4,8 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -21,10 +21,9 @@ export class BoxTrigger implements INodeType {
 		icon: 'file:box.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when Box events occur',
 		defaults: {
 			name: 'Box Trigger',
-			color: '#00aeef',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -275,8 +274,6 @@ export class BoxTrigger implements INodeType {
 				const endpoint = '/webhooks';
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
 
-				console.log(webhooks);
-
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl &&
 						webhook.target.id === targetId &&
@@ -308,7 +305,7 @@ export class BoxTrigger implements INodeType {
 					target: {
 						id: targetId,
 						type: targetType,
-					}
+					},
 				};
 
 				const responseData = await boxApiRequest.call(this, 'POST', endpoint, body);
@@ -329,7 +326,7 @@ export class BoxTrigger implements INodeType {
 
 					try {
 						await boxApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
@@ -347,7 +344,7 @@ export class BoxTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

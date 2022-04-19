@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class PhilipsHueOAuth2Api implements ICredentialType {
@@ -9,37 +9,43 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'PhilipHue OAuth2 API';
-	properties = [
+	documentationUrl = 'philipsHue';
+	properties: INodeProperties[] = [
+		{
+			displayName: 'APP ID',
+			name: 'appId',
+			type: 'string',
+			default: '',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'https://api.meethue.com/oauth2/auth',
+			type: 'hidden',
+			default: 'https://api.meethue.com/v2/oauth2/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'https://api.meethue.com/oauth2/token',
+			type: 'hidden',
+			default: 'https://api.meethue.com/v2/oauth2/token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
-			default: '',
+			type: 'hidden',
+			default: '={{"appid="+$self["appId"]}}',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
-            displayName: 'Authentication',
-            name: 'authentication',
-            type: 'hidden' as NodePropertyTypes,
-            default: 'header',
-            description: 'Method of authentication.',
-        },
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'header',
+		},
 	];
 }

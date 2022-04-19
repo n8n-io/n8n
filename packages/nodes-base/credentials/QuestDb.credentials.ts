@@ -1,31 +1,32 @@
-import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class QuestDb implements ICredentialType {
 	name = 'questDb';
 	displayName = 'QuestDB';
-	properties = [
+	documentationUrl = 'questDb';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'localhost',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'qdb',
 		},
 		{
 			displayName: 'User',
 			name: 'user',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'admin',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -34,26 +35,26 @@ export class QuestDb implements ICredentialType {
 		{
 			displayName: 'SSL',
 			name: 'ssl',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
-					name: 'disable',
-					value: 'disable',
-				},
-				{
-					name: 'allow',
+					name: 'Allow',
 					value: 'allow',
 				},
 				{
-					name: 'require',
+					name: 'Disable',
+					value: 'disable',
+				},
+				{
+					name: 'Require',
 					value: 'require',
 				},
 				{
-					name: 'verify (not implemented)',
+					name: 'Verify (Not Implemented)',
 					value: 'verify',
 				},
 				{
-					name: 'verify-full (not implemented)',
+					name: 'Verify-Full (Not Implemented)',
 					value: 'verify-full',
 				},
 			],
@@ -62,7 +63,7 @@ export class QuestDb implements ICredentialType {
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 8812,
 		},
 	];

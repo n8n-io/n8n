@@ -1,8 +1,8 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const checklistItemOperations = [
+export const checklistItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,13 +34,13 @@ export const checklistItemOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const checklistItemFields = [
+export const checklistItemFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                checklistItem:create                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                checklistItem:create                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
 		name: 'checklist',
@@ -100,9 +100,10 @@ export const checklistItemFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                checklistItem:delete                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                checklistItem:delete                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
 		name: 'checklist',
@@ -137,9 +138,10 @@ export const checklistItemFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                checklistItem:update                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                checklistItem:update                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
 		name: 'checklist',
@@ -218,4 +220,4 @@ export const checklistItemFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

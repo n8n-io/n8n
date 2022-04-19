@@ -1,22 +1,23 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class AcuitySchedulingApi implements ICredentialType {
 	name = 'acuitySchedulingApi';
 	displayName = 'Acuity Scheduling API';
-	properties = [
+	documentationUrl = 'acuityScheduling';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'User ID',
 			name: 'userId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

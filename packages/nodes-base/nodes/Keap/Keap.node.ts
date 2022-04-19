@@ -3,13 +3,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 	IBinaryKeyData,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -19,57 +20,57 @@ import {
 } from './GenericFunctions';
 
 import {
-	contactOperations,
 	contactFields,
+	contactOperations,
 } from './ContactDescription';
 
 import {
-	contactNoteOperations,
 	contactNoteFields,
+	contactNoteOperations,
 } from './ContactNoteDescription';
 
 import {
-	contactTagOperations,
 	contactTagFields,
+	contactTagOperations,
 } from './ContactTagDescription';
 
 import {
-	ecommerceOrderOperations,
 	ecommerceOrderFields,
+	ecommerceOrderOperations,
 } from './EcommerceOrderDescripion';
 
 import {
-	ecommerceProductOperations,
 	ecommerceProductFields,
+	ecommerceProductOperations,
 } from './EcommerceProductDescription';
 
 import {
-	emailOperations,
 	emailFields,
+	emailOperations,
 } from './EmailDescription';
 
 import {
-	fileOperations,
 	fileFields,
+	fileOperations,
 } from './FileDescription';
 
 import {
-	companyOperations,
 	companyFields,
- } from './CompanyDescription';
+	companyOperations,
+} from './CompanyDescription';
 
 import {
-	IContact,
 	IAddress,
-	IFax,
+	IContact,
 	IEmailContact,
-	ISocialAccount,
+	IFax,
 	IPhone,
+	ISocialAccount,
 } from './ConctactInterface';
 
 import {
-	IEmail,
 	IAttachment,
+	IEmail,
 } from './EmaiIInterface';
 
 import {
@@ -77,9 +78,9 @@ import {
 } from './ContactNoteInterface';
 
 import {
-	 IEcommerceOrder,
-	 IItem,
-	 IShippingAddress,
+	IEcommerceOrder,
+	IItem,
+	IShippingAddress,
 } from './EcommerceOrderInterface';
 
 import {
@@ -99,7 +100,7 @@ import {
 	pascalCase,
 } from 'change-case';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
@@ -109,10 +110,9 @@ export class Keap implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Keap API.',
+		description: 'Consume Keap API',
 		defaults: {
 			name: 'Keap',
-			color: '#79af53',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -309,9 +309,9 @@ export class Keap implements INodeType {
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
 					if (addresses) {
-						body.address = keysToSnakeCase(addresses)[0] ;
-					 }
-					 if (faxes) {
+						body.address = keysToSnakeCase(addresses)[0];
+					}
+					if (faxes) {
 						body.fax_number = faxes[0];
 					}
 					if (phones) {
@@ -406,13 +406,16 @@ export class Keap implements INodeType {
 					if (additionalFields.companyId) {
 						body.company = { id: additionalFields.companyId as number };
 					}
+					if (additionalFields.optInReason) {
+						body.opt_in_reason = additionalFields.optInReason as string;
+					}
 					if (addresses) {
 						body.addresses = keysToSnakeCase(addresses) as IAddress[];
-					 }
-					 if (emails) {
-						 body.email_addresses = emails as IEmailContact[];
-					 }
-					 if (faxes) {
+					}
+					if (emails) {
+						body.email_addresses = emails as IEmailContact[];
+					}
+					if (faxes) {
 						body.fax_numbers = faxes as IFax[];
 					}
 					if (socialAccounts) {
@@ -705,10 +708,10 @@ export class Keap implements INodeType {
 							attachments = attachmentsUi.attachmentsValues as IAttachment[];
 						}
 						if (attachmentsUi.attachmentsBinary
-						&& (attachmentsUi.attachmentsBinary as IDataObject).length) {
+							&& (attachmentsUi.attachmentsBinary as IDataObject).length) {
 
 							if (items[i].binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
 							for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
@@ -716,7 +719,7 @@ export class Keap implements INodeType {
 								const item = items[i].binary as IBinaryKeyData;
 
 								if (item[property as string] === undefined) {
-									throw new Error(`Binary data property "${property}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `Binary data property "${property}" does not exists on item!`);
 								}
 
 								attachments.push({
@@ -779,13 +782,13 @@ export class Keap implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (items[i].binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const item = items[i].binary as IBinaryKeyData;
 
 						if (item[binaryPropertyName as string] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
 						body.file_data = item[binaryPropertyName as string].data;

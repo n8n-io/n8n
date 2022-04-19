@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,14 +42,13 @@ export const companyOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                company:users                               */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                company:users                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'List By',
 		name: 'listBy',
@@ -97,10 +96,51 @@ export const companyFields = [
 		},
 		description: 'View by value',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                company:getAll                                */
-/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'users',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'users',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
 
+	/* -------------------------------------------------------------------------- */
+	/*                                company:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -173,13 +213,12 @@ export const companyFields = [
 				default: '',
 				description: 'Tag representing the Lead',
 			},
-		]
+		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                company:get                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                company:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Select By',
 		name: 'selectBy',
@@ -233,10 +272,9 @@ export const companyFields = [
 		description: 'View by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                            company:create/update                           */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                            company:create/update                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company Id',
 		name: 'companyId',
@@ -333,9 +371,9 @@ export const companyFields = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: `The URL for this company's website. Please note that the value<br />specified here is not validated. Accepts any string.`,
+				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -404,8 +442,8 @@ export const companyFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-] as INodeProperties[];
+];

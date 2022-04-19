@@ -4,10 +4,11 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -26,7 +27,6 @@ export class AffinityTrigger implements INodeType {
 		description: 'Handle Affinity events via webhooks',
 		defaults: {
 			name: 'Affinity-Trigger',
-			color: '#3343df',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -187,7 +187,7 @@ export class AffinityTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('%20')) {
-					throw new Error('The name of the Affinity Trigger Node is not allowed to contain any spaces!');
+					throw new NodeOperationError(this.getNode(), 'The name of the Affinity Trigger Node is not allowed to contain any spaces!');
 				}
 
 				const events = this.getNodeParameter('events') as string[];

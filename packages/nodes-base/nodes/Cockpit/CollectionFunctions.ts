@@ -15,7 +15,7 @@ export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSi
 	if (id) {
 		body.data = {
 			_id: id,
-			...body.data
+			...body.data,
 		};
 	}
 

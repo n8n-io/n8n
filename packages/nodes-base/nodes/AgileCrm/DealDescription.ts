@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const dealOperations = [
+export const dealOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -45,9 +45,9 @@ export const dealOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const dealFields = [
+export const dealFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  deal:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -110,8 +110,6 @@ export const dealFields = [
 		default: false,
 		description: 'If all results should be returned or only up to a given limit.',
 	},
-
-
 	/* -------------------------------------------------------------------------- */
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -143,7 +141,7 @@ export const dealFields = [
 		required: true,
 		typeOptions: {
 			minValue: 0,
-			maxValue: 1000000000000
+			maxValue: 1000000000000,
 		},
 		displayOptions: {
 			show: {
@@ -210,7 +208,7 @@ export const dealFields = [
 		required: true,
 		typeOptions: {
 			minValue: 0,
-			maxValue: 100
+			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
@@ -266,7 +264,7 @@ export const dealFields = [
 				],
 			},
 		},
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api" target="_blank">here</a>.`,
+		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -303,6 +301,7 @@ export const dealFields = [
 				displayName: 'Custom Data',
 				name: 'customData',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
@@ -318,7 +317,7 @@ export const dealFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Value',
@@ -416,7 +415,7 @@ export const dealFields = [
 			},
 		},
 
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api" target="_blank">here</a>.`,
+		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -444,7 +443,7 @@ export const dealFields = [
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 10000
+					maxValue: 10000,
 				},
 				default: '',
 				description: 'Expected Value of deal.',
@@ -462,7 +461,7 @@ export const dealFields = [
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 100
+					maxValue: 100,
 				},
 				default: 50,
 				description: 'Expected Value of deal.',
@@ -482,6 +481,7 @@ export const dealFields = [
 				displayName: 'Custom Data',
 				name: 'customData',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
@@ -497,7 +497,7 @@ export const dealFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Value',
@@ -510,6 +510,6 @@ export const dealFields = [
 					},
 				],
 			},
-		]
+		],
 	},
-] as INodeProperties[];
+];

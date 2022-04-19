@@ -1,8 +1,12 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['client'];
+const resource = [
+	'client',
+];
 
-export const clientOperations = [
+export const clientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,12 +48,12 @@ export const clientOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const clientFields = [
+export const clientFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:getAll                            */
+	/*                                client:getAll                               */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -117,12 +121,12 @@ export const clientFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Only return clients that have been updated since the given date and time.',
-			}
-		]
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:get                            */
+	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -135,14 +139,14 @@ export const clientFields = [
 				operation: [
 					'get',
 				],
-				resource
+				resource,
 			},
 		},
 		description: 'The ID of the client you are retrieving.',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:delete                            */
+	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -155,14 +159,14 @@ export const clientFields = [
 				operation: [
 					'delete',
 				],
-				resource
+				resource,
 			},
 		},
 		description: 'The ID of the client you want to delete.',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:create                           */
+	/*                                client:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -196,31 +200,31 @@ export const clientFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'string',
-				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.'
-			},
-			{
 				displayName: 'Address',
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.'
+				description: ' A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+			},
+			{
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'string',
+				default: '',
+				description: 'Whether the client is active, or archived. Defaults to true.',
 			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:update                           */
+	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -258,30 +262,30 @@ export const clientFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.'
+				description: ' A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the client is active, or archived. Defaults to true.'
+				description: 'Whether the client is active, or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.'
+				description: 'Whether the client is active, or archived. Defaults to true.',
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

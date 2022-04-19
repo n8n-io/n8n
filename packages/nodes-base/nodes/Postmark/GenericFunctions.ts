@@ -10,27 +10,25 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
 export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method : string, endpoint : string, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('postmarkApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('postmarkApi');
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
 			'Accept': 'application/json',
-			'X-Postmark-Server-Token' : credentials.serverToken
+			'X-Postmark-Server-Token' : credentials.serverToken,
 		},
 		method,
 		body,
 		uri: 'https://api.postmarkapp.com' + endpoint,
-		json: true
+		json: true,
 	};
 	if (body === {}) {
 		delete options.body;
@@ -40,7 +38,7 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(`Postmark: ${error.statusCode} Message: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

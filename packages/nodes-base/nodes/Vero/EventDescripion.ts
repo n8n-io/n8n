@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -22,9 +22,9 @@ export const eventOperations = [
 		default: 'track',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                event:track                                     */
@@ -43,7 +43,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -61,7 +61,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'Email',
@@ -79,7 +79,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The name of the event tracked.',
@@ -97,9 +97,9 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Data',
@@ -143,7 +143,7 @@ export const eventFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -189,7 +189,7 @@ export const eventFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -241,4 +241,4 @@ export const eventFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const taskOpeations = [
+export const taskOpeations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const taskOpeations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                task:create                                */
@@ -48,6 +48,7 @@ export const taskFields = [
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -55,8 +56,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		description: 'Create resources under the given workspace.',
@@ -65,6 +66,7 @@ export const taskFields = [
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -72,8 +74,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		description: 'The title of the task.',
@@ -171,7 +173,7 @@ export const taskFields = [
 					{
 						name: 'text/html',
 						value: 'text/html',
-					}
+					},
 				],
 				description: `Identify which markup language is used to format the given note`,
 			},
@@ -221,7 +223,7 @@ export const taskFields = [
 				type: 'string',
 				default: '',
 				required : false,
-				description: `A list of tag names to apply to the new task separated by ,`,
+				description: `A list of tag names to apply to the new task separated by a comma (,)`,
 			},
 		],
 	},
@@ -233,6 +235,7 @@ export const taskFields = [
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -240,8 +243,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'update'
-				]
+					'update',
+				],
 			},
 		},
 		description: 'Create resources under the given workspace.',
@@ -250,6 +253,7 @@ export const taskFields = [
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -257,8 +261,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'update'
-				]
+					'update',
+				],
 			},
 		},
 		description: '',
@@ -364,7 +368,7 @@ export const taskFields = [
 					{
 						name: 'text/html',
 						value: 'text/html',
-					}
+					},
 				],
 				description: `Identify which markup language is used to format the given note`,
 			},
@@ -408,7 +412,7 @@ export const taskFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: `A list of tag names to apply to the new task separated by ,`,
+				description: `A list of tag names to apply to the new task separated by a comma (,)`,
 			},
 		],
 	},
@@ -419,6 +423,7 @@ export const taskFields = [
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -426,8 +431,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'get'
-				]
+					'get',
+				],
 			},
 		},
 		description: '',
@@ -471,7 +476,7 @@ export const taskFields = [
 						name: 'Parent',
 						value: 'parent',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -488,8 +493,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'getAll'
-				]
+					'getAll',
+				],
 			},
 		},
 		default: false,
@@ -505,7 +510,7 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'getAll'
+					'getAll',
 				],
 				returnAll: [
 					false,
@@ -558,7 +563,7 @@ export const taskFields = [
 						name: 'Parent',
 						value: 'parent',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Order',
@@ -610,7 +615,7 @@ export const taskFields = [
 						name: 'Updated At',
 						value: 'updated_at',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Workspace ID',
@@ -663,4 +668,4 @@ export const taskFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

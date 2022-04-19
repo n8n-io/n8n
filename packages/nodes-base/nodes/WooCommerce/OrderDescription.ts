@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const orderOperations = [
+export const orderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const orderOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const orderFields = [
+export const orderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                order:create                                */
@@ -184,7 +184,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Billing address',
@@ -232,7 +232,7 @@ export const orderFields = [
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -274,7 +274,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -343,7 +343,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Fee line data',
@@ -443,7 +443,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Line item data',
@@ -554,7 +554,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -597,7 +597,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Shipping address',
@@ -645,7 +645,7 @@ export const orderFields = [
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -675,7 +675,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -890,7 +890,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Billing address',
@@ -980,7 +980,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -1049,7 +1049,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Fee line data',
@@ -1149,7 +1149,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Line item data',
@@ -1260,7 +1260,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -1303,7 +1303,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Shipping address',
@@ -1381,7 +1381,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -1666,7 +1666,7 @@ export const orderFields = [
 				default: 'any',
 				description: 'Limit result set to orders assigned a specific status.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:delete                           */
@@ -1688,4 +1688,4 @@ export const orderFields = [
 		default: '',
 		description: 'order ID.',
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const webinarOperations = [
+export const webinarOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,14 +39,14 @@ export const webinarOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a webinar',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
-] as INodeProperties[];
+	},
+];
 
-export const webinarFields = [
+export const webinarFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 webinar:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -83,7 +83,7 @@ export const webinarFields = [
 				resource: [
 					'webinar',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -657,9 +657,9 @@ export const webinarFields = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.'
+				description: 'Webinar type.',
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

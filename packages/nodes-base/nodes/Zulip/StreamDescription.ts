@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const streamOperations = [
+export const streamOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const streamOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const streamFields = [
+export const streamFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                stream:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -131,7 +131,7 @@ export const streamFields = [
 						required: true,
 						default: '',
 						description: 'Description of Subscription.',
-					}
+					},
 				],
 			},
 		],
@@ -205,7 +205,7 @@ export const streamFields = [
 								required: true,
 								default: '',
 								description: 'Principal email address.',
-							}
+							},
 						],
 					},
 				],
@@ -220,21 +220,21 @@ export const streamFields = [
 					{
 						name: '1',
 						value: 1,
-						description: 'Any user can post.'
+						description: 'Any user can post.',
 					},
 					{
 						name: '2',
 						value: 2,
-						description: 'Only administrators can post.'
+						description: 'Only administrators can post.',
 					},
 					{
 						name: '3',
 						value: 3,
-						description: 'Only new members can post.'
+						description: 'Only new members can post.',
 					},
 				],
-			}
-		]
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -292,7 +292,7 @@ export const streamFields = [
 				default: true,
 				description: 'Include all streams that the user is subscribed to.',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -321,8 +321,8 @@ export const streamFields = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether each returned stream object should include a subscribers field containing a list of the user IDs of its subscribers.',
-			}
-		]
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -421,7 +421,7 @@ export const streamFields = [
 				type: 'string',
 				default: '',
 				description: 'The new description for the stream.',
-				placeholder: 'Place of discussion'
+				placeholder: 'Place of discussion',
 			},
 			{
 				displayName: 'Is Private',
@@ -443,7 +443,7 @@ export const streamFields = [
 				type: 'string',
 				default: '',
 				description: 'The new name for the stream.',
-				placeholder: 'Italy'
+				placeholder: 'Italy',
 			},
 			{
 				displayName: 'Stream Post Policy',
@@ -455,21 +455,21 @@ export const streamFields = [
 					{
 						name: '1',
 						value: 1,
-						description: 'Any user can post.'
+						description: 'Any user can post.',
 					},
 					{
 						name: '2',
 						value: 2,
-						description: 'Only administrators can post.'
+						description: 'Only administrators can post.',
 					},
 					{
 						name: '3',
 						value: 3,
-						description: 'Only new members can post.'
+						description: 'Only new members can post.',
 					},
 				],
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                stream:delete                               */
@@ -493,4 +493,4 @@ export const streamFields = [
 		description: 'ID of stream to delete.',
 	},
 
-] as INodeProperties[];
+];

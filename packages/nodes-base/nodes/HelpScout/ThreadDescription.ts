@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const threadOperations = [
+export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const threadOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const threadFields = [
+export const threadFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                thread:create                               */
 /* -------------------------------------------------------------------------- */
@@ -69,23 +69,23 @@ export const threadFields = [
 		options: [
 			{
 				name: 'Chat',
-				value: 'chat'
+				value: 'chat',
 			},
 			{
 				name: 'Customer',
-				value: 'customer'
+				value: 'customer',
 			},
 			{
 				name: 'Note',
-				value: 'note'
+				value: 'note',
 			},
 			{
 				name: 'Phone',
-				value: 'phone'
+				value: 'phone',
 			},
 			{
 				name: 'Reply',
-				value: 'reply'
+				value: 'reply',
 			},
 		],
 		default: '',
@@ -167,7 +167,7 @@ export const threadFields = [
 				default: false,
 				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Attachments',
@@ -294,4 +294,4 @@ export const threadFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

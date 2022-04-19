@@ -1,6 +1,6 @@
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export interface IAssociation {
 	associatedCompanyIds?: number[];

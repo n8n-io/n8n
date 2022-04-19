@@ -7,9 +7,10 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -25,9 +26,9 @@ export class EventbriteTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Eventbrite events via webhooks',
+		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Eventbrite Trigger',
-			color: '#dc5237',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -79,7 +80,6 @@ export class EventbriteTrigger implements INodeType {
 					},
 				],
 				default: 'privateKey',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Organization',
@@ -87,10 +87,10 @@ export class EventbriteTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getOrganizations'
+					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
-				description: '',
+				description: 'The Eventbrite Organization to work on',
 			},
 			{
 				displayName: 'Event',
@@ -101,10 +101,10 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsDependsOn: [
 						'organization',
 					],
-					loadOptionsMethod: 'getEvents'
+					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
-				description: '',
+				description: 'Limit the triggers to this event',
 			},
 			{
 				displayName: 'Actions',
@@ -113,75 +113,75 @@ export class EventbriteTrigger implements INodeType {
 				options: [
 					{
 						name: 'attendee.updated',
-						value: 'attendee.updated'
+						value: 'attendee.updated',
 					},
 					{
 						name: 'attendee.checked_in',
-						value: 'attendee.checked_in'
+						value: 'attendee.checked_in',
 					},
 					{
 						name: 'attendee.checked_out',
-						value: 'attendee.checked_out'
+						value: 'attendee.checked_out',
 					},
 					{
 						name: 'event.created',
-						value: 'event.created'
+						value: 'event.created',
 					},
 					{
 						name: 'event.published',
-						value: 'event.published'
+						value: 'event.published',
 					},
 					{
 						name: 'event.unpublished',
-						value: 'event.unpublished'
+						value: 'event.unpublished',
 					},
 					{
 						name: 'event.updated',
-						value: 'event.updated'
+						value: 'event.updated',
 					},
 					{
 						name: 'order.placed',
-						value: 'order.placed'
+						value: 'order.placed',
 					},
 					{
 						name: 'order.refunded',
-						value: 'order.refunded'
+						value: 'order.refunded',
 					},
 					{
 						name: 'order.updated',
-						value: 'order.updated'
+						value: 'order.updated',
 					},
 					{
 						name: 'organizer.updated',
-						value: 'organizer.updated'
+						value: 'organizer.updated',
 					},
 					{
 						name: 'ticket_class.created',
-						value: 'ticket_class.created'
+						value: 'ticket_class.created',
 					},
 					{
 						name: 'ticket_class.deleted',
-						value: 'ticket_class.deleted'
+						value: 'ticket_class.deleted',
 					},
 					{
 						name: 'ticket_class.updated',
-						value: 'ticket_class.updated'
+						value: 'ticket_class.updated',
 					},
 					{
 						name: 'venue.updated',
-						value: 'venue.updated'
+						value: 'venue.updated',
 					},
 				],
 				required: true,
 				default: [],
-				description: '',
+				description: 'One or more action to subscribe to.',
 			},
 			{
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data only contain the URL to receive<br />the object data manually. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically',
 			},
 		],
 	};
@@ -206,7 +206,7 @@ export class EventbriteTrigger implements INodeType {
 			// Get all the available events to display them to user so that he can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
+				const returnData: INodePropertyOptions[] = [{ name: 'All', value: 'all' }];
 				const organization = this.getCurrentNodeParameter('organization');
 				const events = await eventbriteApiRequestAllItems.call(this, 'events', 'GET', `/organizations/${organization}/events`);
 				for (const event of events) {
@@ -264,9 +264,10 @@ export class EventbriteTrigger implements INodeType {
 					actions: actions.join(','),
 					event_id: event,
 				};
-
+				if (event === 'all' || event === '') {
+					delete body.event_id;
+				}
 				const responseData = await eventbriteApiRequest.call(this, 'POST', endpoint, body);
-
 				webhookData.webhookId = responseData.id;
 				return true;
 			},
@@ -292,7 +293,7 @@ export class EventbriteTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		if (req.body.api_url === undefined) {
-			throw new Error('The received data does not contain required "api_url" property!');
+			throw new NodeApiError(this.getNode(), req.body, { message: 'The received data does not contain required "api_url" property!' });
 		}
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
@@ -311,7 +312,7 @@ export class EventbriteTrigger implements INodeType {
 				workflowData: [
 					this.helpers.returnJsonArray({
 						placeholder: 'Test received. To display actual data of object get the webhook triggered by performing the action which triggers it.',
-					})
+					}),
 				],
 			};
 		}

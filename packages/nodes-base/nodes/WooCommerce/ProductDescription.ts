@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const productOperations = [
+export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const productOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const productFields = [
+export const productFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                product:create                              */
@@ -62,7 +62,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Product name.',
@@ -420,7 +420,7 @@ export const productFields = [
 				default: '',
 				description: 'Product weight.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Dimensions',
@@ -438,7 +438,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Product dimensions',
@@ -488,7 +488,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Product Image',
@@ -538,7 +538,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -945,7 +945,7 @@ export const productFields = [
 				default: '',
 				description: 'Product weight.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Dimensions',
@@ -963,7 +963,7 @@ export const productFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Product dimensions',
@@ -1013,7 +1013,7 @@ export const productFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Product Image',
@@ -1063,7 +1063,7 @@ export const productFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -1410,7 +1410,7 @@ export const productFields = [
 				default: 'simple',
 				description: 'Product type',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   product:delete                           */
@@ -1432,4 +1432,4 @@ export const productFields = [
 		default: '',
 		description: 'Product ID.',
 	},
-] as INodeProperties[];
+];

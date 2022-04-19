@@ -15,8 +15,8 @@ import {
 	companyOperations,
 } from './CompanyDesciption';
 import {
+	personFields,
 	personOperations,
-	 personFields,
 } from './PersonDescription';
 
 export class Uplead implements INodeType {
@@ -30,7 +30,6 @@ export class Uplead implements INodeType {
 		description: 'Consume Uplead API',
 		defaults: {
 			name: 'Uplead',
-			color: '#5d6f7b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -38,7 +37,7 @@ export class Uplead implements INodeType {
 			{
 				name: 'upleadApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -54,7 +53,7 @@ export class Uplead implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`
+						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`,
 					},
 				],
 				default: 'company',
@@ -76,46 +75,54 @@ export class Uplead implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'person') {
-				if (operation === 'enrich') {
-					const email = this.getNodeParameter('email', i) as string;
-					const firstname = this.getNodeParameter('firstname', i) as string;
-					const lastname = this.getNodeParameter('lastname', i) as string;
-					const domain = this.getNodeParameter('domain', i) as string;
-					if (email) {
-						qs.email = email;
+			try {
+				if (resource === 'person') {
+					if (operation === 'enrich') {
+						const email = this.getNodeParameter('email', i) as string;
+						const firstname = this.getNodeParameter('firstname', i) as string;
+						const lastname = this.getNodeParameter('lastname', i) as string;
+						const domain = this.getNodeParameter('domain', i) as string;
+						if (email) {
+							qs.email = email;
+						}
+						if (firstname) {
+							qs.first_name = firstname;
+						}
+						if (lastname) {
+							qs.last_name = lastname;
+						}
+						if (domain) {
+							qs.domain = domain;
+						}
+						responseData = await upleadApiRequest.call(this, 'GET', '/person-search', {}, qs);
 					}
-					if (firstname) {
-						qs.first_name = firstname;
-					}
-					if (lastname) {
-						qs.last_name = lastname;
-					}
-					if (domain) {
-						qs.domain = domain;
-					}
-					responseData = await upleadApiRequest.call(this, 'GET', '/person-search', {}, qs);
 				}
-			}
-			if (resource === 'company') {
-				if (operation === 'enrich') {
-					const domain = this.getNodeParameter('domain', i) as string;
-					const company = this.getNodeParameter('company', i) as string;
-					if (domain) {
-						qs.domain = domain;
+				if (resource === 'company') {
+					if (operation === 'enrich') {
+						const domain = this.getNodeParameter('domain', i) as string;
+						const company = this.getNodeParameter('company', i) as string;
+						if (domain) {
+							qs.domain = domain;
+						}
+						if (company) {
+							qs.company = company;
+						}
+						responseData = await upleadApiRequest.call(this, 'GET', '/company-search', {}, qs);
 					}
-					if (company) {
-						qs.company = company;
+				}
+				if (Array.isArray(responseData.data)) {
+					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+				} else {
+					if (responseData.data !== null) {
+						returnData.push(responseData.data as IDataObject);
 					}
-					responseData = await upleadApiRequest.call(this, 'GET', '/company-search', {}, qs);
 				}
-			}
-			if (Array.isArray(responseData.data)) {
-				returnData.push.apply(returnData, responseData.data as IDataObject[]);
-			} else {
-				if (responseData.data !== null) {
-					returnData.push(responseData.data as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

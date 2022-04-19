@@ -1,35 +1,41 @@
 <template>
 	<div class="node-settings" @keydown.stop>
-		<div class="header-side-menu">
-			<span v-if="node">
-				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
-				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
-					<el-tooltip class="clickable" placement="top" effect="light">
-						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>For more information and usage examples click!</strong>'"></div>
-						<font-awesome-icon icon="question-circle" />
-					</el-tooltip>
-				</a>
-			</span>
-			<span v-else>No node active</span>
+		<div :class="$style.header">
+			<div class="header-side-menu">
+				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
+				<div
+					v-if="!isReadOnly"
+				>
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
+				</div>
+			</div>
+			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			The node is not valid as its type "{{node.type}}" is unknown.
+			<n8n-text>
+				{{
+					$locale.baseText(
+						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
+						{ interpolate: { nodeType: node.type } },
+					)
+				}}
+			</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<el-tabs stretch>
-				<el-tab-pane label="Parameters">
-					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-					<node-webhooks :node="node" :nodeType="nodeType" />
-					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0">
-						The node does not have any parameters.
-					</div>
-				</el-tab-pane>
-				<el-tab-pane label="Settings">
-					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
-					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-				</el-tab-pane>
-			</el-tabs>
+			<div v-show="openPanel === 'params'">
+				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+				<node-webhooks :node="node" :nodeType="nodeType" />
+				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+					<n8n-text>
+					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+					</n8n-text>
+				</div>
+			</div>
+			<div v-show="openPanel === 'settings'">
+				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
+				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -37,9 +43,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	INodeIssues,
-	INodeIssueData,
-	INodeIssueObjectProperty,
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
@@ -52,47 +55,67 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import DisplayWithChange from '@/components/DisplayWithChange.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeTabs from '@/components/NodeTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 )
-
 	.extend({
 		name: 'NodeSettings',
 		components: {
-			DisplayWithChange,
+			NodeTitle,
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
+			NodeTabs,
 			NodeWebhooks,
+			NodeExecuteButton,
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
-				const activeNode = this.node;
-
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type);
+					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 
 				return null;
 			},
+			nodeTypeName(): string {
+				if (this.nodeType) {
+					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
+
+					return this.$locale.headerText({
+						key: `headers.${shortNodeType}.displayName`,
+						fallback: this.nodeType.name,
+					});
+				}
+
+				return '';
+			},
 			nodeTypeDescription (): string {
 				if (this.nodeType && this.nodeType.description) {
-					return this.nodeType.description;
+					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
+
+					return this.$locale.headerText({
+						key: `headers.${shortNodeType}.description`,
+						fallback: this.nodeType.description,
+					});
 				} else {
-					return 'No description found';
+					return this.$locale.baseText('nodeSettings.noDescriptionFound');
 				}
 			},
 			headerStyle (): object {
@@ -124,21 +147,16 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			isColorDefaultValue (): boolean {
-				if (this.nodeType === null) {
-					return false;
-				}
-
-				return this.node.color === this.nodeType.defaults.color;
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
+		},
+		props: {
+			eventBus: {
 			},
 		},
 		data () {
 			return {
 				nodeValid: true,
 				nodeColor: null,
+				openPanel: 'params',
 				nodeValues: {
 					color: '#ff0000',
 					alwaysOutputData: false,
@@ -154,7 +172,7 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: 'Notes',
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -162,50 +180,42 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: 'Notes to save with the node.',
+						description: this.$locale.baseText('nodeSettings.notes.description'),
 					},
 					{
-						displayName: 'Notes In Flow',
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated it will display the above notes in the flow as subtitle.',
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 					{
-						displayName: 'Node Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						noDataExpression: true,
-						description: 'The color of the node in the flow.',
-					},
-					{
-						displayName: 'Always Output Data',
+						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated and the node does not have any data for the first output,<br />it returns an empty item anyway. Be careful setting this on<br />IF-Nodes as it could easily cause an infinite loop.',
+						description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
 					},
 					{
-						displayName: 'Execute Once',
+						displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
 						name: 'executeOnce',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'Instead of executing once per item does it only execute once with the data of the first item.',
+						description: this.$locale.baseText('nodeSettings.executeOnce.description'),
 					},
 					{
-						displayName: 'Retry On Fail',
+						displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
 						name: 'retryOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated it will automatically retry the node again multiple times.',
+						description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
 					},
 					{
-						displayName: 'Max. Tries',
+						displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
 						name: 'maxTries',
 						type: 'number',
 						typeOptions: {
@@ -221,10 +231,10 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How often it should try to execute the node before it should fail.',
+						description: this.$locale.baseText('nodeSettings.maxTries.description'),
 					},
 					{
-						displayName: 'Wait Between Tries',
+						displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
 						name: 'waitBetweenTries',
 						type: 'number',
 						typeOptions: {
@@ -240,15 +250,15 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How long to wait between ties. Value in ms.',
+						description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
 					},
 					{
-						displayName: 'Continue On Fail',
+						displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
 						name: 'continueOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated and the node fails the workflow will simply continue running.<br />It will then simply pass through the input data so the workflow has<br />to be set up to handle the case that different data gets returned.',
+						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
 					},
 				] as INodeProperties[],
 
@@ -260,7 +270,9 @@ export default mixins(
 			},
 		},
 		methods: {
-			noOp () {},
+			onNodeExecute () {
+				this.$emit('execute');
+			},
 			setValue (name: string, value: NodeParameterValue) {
 				const nameParts = name.split('.');
 				let lastNamePart: string | undefined = nameParts.pop();
@@ -319,10 +331,19 @@ export default mixins(
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
 
-				const node = this.$store.getters.nodeByName(updateInformation.name);
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			},
+			nameChanged(name: string) {
+				// @ts-ignore
+				this.valueChanged({
+					value: name,
+					name: 'name',
+				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				let newValue: NodeParameterValue;
@@ -337,7 +358,7 @@ export default mixins(
 				// Save the node name before we commit the change because
 				// we need the old name to rename the node properly
 				const nodeNameBefore = parameterData.node || this.node.name;
-				const node = this.$store.getters.nodeByName(nodeNameBefore);
+				const node = this.$store.getters.getNodeByName(nodeNameBefore);
 				if (parameterData.name === 'name') {
 					// Name of node changed so we have to set also the new node name as active
 
@@ -349,14 +370,17 @@ export default mixins(
 					};
 					this.$emit('valueChanged', sendData);
 
-					this.$store.commit('setActiveNode', newValue);
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type);
+					const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+					if (!nodeType) {
+						return;
+					}
 
 					// Get only the parameters which are different to the defaults
 					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					const oldNodeParameters = Object.assign({}, nodeParameters);
 
 					// Copy the data because it is the data of vuex so make sure that
 					// we do not edit it directly
@@ -404,7 +428,10 @@ export default mixins(
 						name: node.name,
 						value: nodeParameters,
 					};
+
 					this.$store.commit('setNodeParameters', updateInformation);
+
+					this.$externalHooks().run('nodeSettings.valueChanged', { parameterPath, newValue, parameters: this.parameters, oldNodeParameters });
 
 					this.updateNodeParameterIssues(node, nodeType);
 					this.updateNodeCredentialIssues(node);
@@ -487,10 +514,6 @@ export default mixins(
 							// Set default value
 							Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
 						}
-						if (nodeSetting.name === 'color') {
-							// For color also apply the default node color to the node settings
-							nodeSetting.default = this.nodeType.defaults.color;
-						}
 					}
 
 					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
@@ -501,50 +524,39 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
+			if (this.eventBus) {
+				(this.eventBus as Vue).$on('openSettings', () => {
+					this.openPanel = 'settings';
+				});
+			}
 		},
 	});
 </script>
 
+<style lang="scss" module>
+.header {
+	background-color: var(--color-background-base);
+}
+</style>
+
 <style lang="scss">
-
 .node-settings {
-	position: absolute;
-	left: 0;
-	width: 350px;
-	height: 100%;
-	border: none;
-	z-index: 200;
-	font-size: 0.8em;
-	color: #555;
-	border-radius: 2px 0 0 2px;
+	overflow: hidden;
+	min-width: 350px;
+	max-width: 350px;
 
-	textarea {
-		font-size: 0.9em;
-		line-height: 1.5em;
-		margin: 0.2em 0;
-
-	}
-	textarea:hover {
-		line-height: 1.5em;
+	.no-parameters {
+		margin-top: var(--spacing-xs);
 	}
 
 	.header-side-menu {
-		padding: 1em 0 1em 1.8em;
-		font-size: 1.35em;
-		background-color: $--custom-window-sidebar-top;
-		color: #555;
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
+		font-size: var(--font-size-l);
+		display: flex;
 
-		.node-info {
-			color: #555;
-			display: none;
-			padding-left: 0.5em;
-			font-size: 0.8em;
-		}
-
-		&:hover {
-			.node-info {
-				display: inline;
-			}
+		.node-name {
+			padding-top: var(--spacing-5xs);
+			flex-grow: 1;
 		}
 	}
 
@@ -553,74 +565,9 @@ export default mixins(
 	}
 
 	.node-parameters-wrapper {
-		height: calc(100% - 110px);
-
-		.el-tabs__header {
-			background-color: #fff5f2;
-			line-height: 2em;
-		}
-
-		.el-tabs {
-			height: 100%;
-			.el-tabs__content {
-				height: calc(100% - 17px);
-				overflow-y: auto;
-
-				.el-tab-pane {
-					margin: 0 1em;
-				}
-			}
-		}
-
-		.el-tabs__nav {
-			padding-bottom: 1em;
-		}
-
-		.add-option > .el-input input::placeholder {
-			color: #fff;
-			font-weight: 600;
-		}
-
-		.el-button,
-		.add-option > .el-input .el-input__inner,
-		.add-option > .el-input .el-input__inner:hover
-		{
-			background-color: $--color-primary;
-			color: #fff;
-			text-align: center;
-			height: 38px;
-		}
-
-		.el-button,
-		.add-option > .el-input .el-input__inner
-		{
-			border: 1px solid $--color-primary;
-			border-radius: 17px;
-			height: 38px;
-		}
-	}
-
-	.el-input-number,
-	input.el-input__inner {
-		font-size: 0.9em;
-		line-height: 28px;
-		height: 28px;
-	}
-	.el-input-number {
-		padding: 0 10px;
-	}
-
-	.el-input--prefix .el-input__inner {
-		padding: 0 28px;
-	}
-
-	.el-input__prefix {
-		left: 2px;
-		top: 1px;
-	}
-
-	.el-select.add-option .el-input .el-select__caret {
-		color: #fff;
+		height: 100%;
+		overflow-y: auto;
+		padding: 0 20px 200px 20px;
 	}
 }
 
@@ -647,14 +594,7 @@ export default mixins(
 }
 
 .parameter-wrapper {
-	line-height: 2.7em;
 	padding: 0 1em;
-}
-.parameter-name {
-	line-height: 2.7em;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 .color-reset-button-wrapper {

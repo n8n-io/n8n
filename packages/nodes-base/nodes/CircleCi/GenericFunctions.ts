@@ -10,14 +10,11 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function circleciApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('circleCiApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('circleCiApi');
 	let options: OptionsWithUri = {
 		headers: {
 			'Circle-Token': credentials.apiKey,
@@ -27,7 +24,7 @@ export async function circleciApiRequest(this: IHookFunctions | IExecuteFunction
 		qs,
 		body,
 		uri: uri ||`https://circleci.com/api/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
@@ -35,14 +32,9 @@ export async function circleciApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 	try {
 		return await this.helpers.request!(options);
-	} catch (err) {
-		if (err.response && err.response.body && err.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`CircleCI error response [${err.statusCode}]: ${err.response.body.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw err;	}
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
 
 /**
