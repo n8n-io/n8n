@@ -23,7 +23,7 @@
             theme="sticky"
           />
         </div>
-        <div 
+        <div
           v-else
           @mouseover="onMouseHover"
           @mouseout="onMouseHoverEnd"
@@ -44,7 +44,7 @@
               size="xsmall"
               aligh="right"
             >
-              You can style with 
+              You can style with
               <a href="https://docs.n8n.io/getting-started/key-components/workflow-notes.html" target="_blank">
                 Markdown
               </a>
@@ -53,8 +53,8 @@
         </div>
       </template>
     </n8n-resize>
-    
-    
+
+
   </div>
 </template>
 
@@ -65,144 +65,144 @@ import N8nResize from '../N8nResize';
 import N8nText from '../N8nText';
 
 export default {
-  name: 'n8n-sticky',
-  props: {
-    content: {
-      type: String,
-    },
-    height: {
-      type: Number,
-      default: 160,
-    },
-    id: {
-      type: String,
-      default: '0',
-    },
-    isDefaultTextChanged: {
-      type: Boolean,
-      default: false,
-    },
-    isEditable: {
-      type: Boolean,
-      default: false,
-    },
-    minHeight: {
-      type: Number,
-      default: 80,
-    },
-    minWidth: {
-      type: Number,
-      default: 150,
-    },
-    readOnly: {
-      type: Boolean,
-      default: false,
-    },
-    totalSize: {
-      type: Number,
-      default: 400,
-    },
-    width: {
-      type: Number,
-      default: 240,
-    },
-    zIndex: {
-      type: Number,
-      default: -400,
-    },
-  },
-  watch: {
-    content(content) {
-      this.tempContent = content;
-    },
-    isEditable(isEditable) {
-      this.isStickyEditable = isEditable;
-      this.$emit('onChangeMode', this.isEditable);
-    }
-  },
-  components: {
-    N8nInput,
-    N8nMarkdown,
-    N8nResize,
-    N8nText,
-  },
-  computed: {
-    styles() {
-      return {
-        ...(this.height ? { height: this.height + 'px' } : { height: '100%' }),
-        ...(this.width ? { width: this.width + 'px' } : { width: '100%' }),
-        ...(this.minHeight ? { minHeight: this.minHeight + 'px' } : { minHeight: '100%' }),
-        ...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
-      };
-    },
-    shouldShowFooter() {
-      return this.componentHeight > 100 && this.componentWidth > 155;
-    },
-  },
-  data() {
-    return {
-      componentHeight: this.height,
-      componentWidth: this.width,
-      isStickyEditable: false,
-      tempContent: this.content,
-      resizer: null,
-    }
-  },
-  methods: {
-    changeMode() {
-      if (!this.readOnly) {
-        setTimeout(() => {
-          const textArea = document.querySelector('.el-textarea__inner');
-          if (textArea) {
-            if (!this.isDefaultTextChanged) {
-              textArea.select();
-            }
-            textArea.focus();
-          }
-        }, 100);
+	name: 'n8n-sticky',
+	props: {
+		content: {
+			type: String,
+		},
+		height: {
+			type: Number,
+			default: 160,
+		},
+		id: {
+			type: String,
+			default: '0',
+		},
+		isDefaultTextChanged: {
+			type: Boolean,
+			default: false,
+		},
+		isEditable: {
+			type: Boolean,
+			default: false,
+		},
+		minHeight: {
+			type: Number,
+			default: 80,
+		},
+		minWidth: {
+			type: Number,
+			default: 150,
+		},
+		readOnly: {
+			type: Boolean,
+			default: false,
+		},
+		totalSize: {
+			type: Number,
+			default: 400,
+		},
+		width: {
+			type: Number,
+			default: 240,
+		},
+		zIndex: {
+			type: Number,
+			default: -400,
+		},
+	},
+	watch: {
+		content(content) {
+			this.tempContent = content;
+		},
+		isEditable(isEditable) {
+			this.isStickyEditable = isEditable;
+			this.$emit('onChangeMode', this.isEditable);
+		},
+	},
+	components: {
+		N8nInput,
+		N8nMarkdown,
+		N8nResize,
+		N8nText,
+	},
+	computed: {
+		styles() {
+			return {
+				...(this.height ? { height: this.height + 'px' } : { height: '100%' }),
+				...(this.width ? { width: this.width + 'px' } : { width: '100%' }),
+				...(this.minHeight ? { minHeight: this.minHeight + 'px' } : { minHeight: '100%' }),
+				...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
+			};
+		},
+		shouldShowFooter() {
+			return this.componentHeight > 100 && this.componentWidth > 155;
+		},
+	},
+	data() {
+		return {
+			componentHeight: this.height,
+			componentWidth: this.width,
+			isStickyEditable: false,
+			tempContent: this.content,
+			resizer: null,
+		};
+	},
+	methods: {
+		changeMode() {
+			if (!this.readOnly) {
+				setTimeout(() => {
+					const textArea = document.querySelector('.el-textarea__inner');
+					if (textArea) {
+						if (!this.isDefaultTextChanged) {
+							textArea.select();
+						}
+						textArea.focus();
+					}
+				}, 100);
 
-        if (this.isStickyEditable) {
-          this.$emit('unfocus', this.isStickyEditable);
-        }
+				if (this.isStickyEditable) {
+					this.$emit('unfocus', this.isStickyEditable);
+				}
 
-        this.isStickyEditable =! this.isStickyEditable; 
-        this.$emit('onChangeMode', this.isStickyEditable); 
-      }  
-    },
-    onBlur(value) {
-      this.isStickyEditable = false;
-      this.$emit('onChangeMode', this.isStickyEditable); 
-      this.$emit('blur', value);
-    },
-    onChange(value: string) {
-      this.$emit('change', value);
-    },
-    onFocus(value) {
-      this.$emit('focus', value);
-    },
-    onInput(value: string) {
-      this.tempContent = value;
-      this.$emit('input', value);
-    },
-    onMouseHover() {
-      this.$emit('onMouseHover', true);
-    },
-    onMouseHoverEnd() {
-      this.$emit('onMouseHover', false);
-    },
-    onResizeEnd(resizeEnd) {
-      this.$emit('onResizeEnd', resizeEnd);
-    },
-    onResizeStart(parameters) {
-      this.componentHeight = parameters.height;
-      this.componentWidth = parameters.width;
+				this.isStickyEditable =! this.isStickyEditable;
+				this.$emit('onChangeMode', this.isStickyEditable);
+			}
+		},
+		onBlur(value) {
+			this.isStickyEditable = false;
+			this.$emit('onChangeMode', this.isStickyEditable);
+			this.$emit('blur', value);
+		},
+		onChange(value: string) {
+			this.$emit('change', value);
+		},
+		onFocus(value) {
+			this.$emit('focus', value);
+		},
+		onInput(value: string) {
+			this.tempContent = value;
+			this.$emit('input', value);
+		},
+		onMouseHover() {
+			this.$emit('onMouseHover', true);
+		},
+		onMouseHoverEnd() {
+			this.$emit('onMouseHover', false);
+		},
+		onResizeEnd(resizeEnd) {
+			this.$emit('onResizeEnd', resizeEnd);
+		},
+		onResizeStart(parameters) {
+			this.componentHeight = parameters.height;
+			this.componentWidth = parameters.width;
 
-      this.$emit('onResizeStart', parameters);
-    },
-  },
-  mounted() {
-   this.resizer = document.querySelector(`#sticky-${this.id}`);
-  },
+			this.$emit('onResizeStart', parameters);
+		},
+	},
+	mounted() {
+		this.resizer = document.querySelector(`#sticky-${this.id}`);
+	},
 };
 </script>
 
@@ -249,7 +249,7 @@ export default {
 .sticky-textarea {
   width: calc(100% - var(--spacing-s));
   height: calc(100% - var(--spacing-l));
-  
+
   .el-textarea {
     height: 100%;
 
