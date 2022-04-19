@@ -26,6 +26,7 @@ export class EventbriteTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Eventbrite events via webhooks',
+		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Eventbrite Trigger',
 		},
@@ -79,7 +80,6 @@ export class EventbriteTrigger implements INodeType {
 					},
 				],
 				default: 'privateKey',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Organization',
@@ -90,7 +90,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
-				description: '',
+				description: 'The Eventbrite Organization to work on',
 			},
 			{
 				displayName: 'Event',
@@ -104,7 +104,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
-				description: '',
+				description: 'Limit the triggers to this event',
 			},
 			{
 				displayName: 'Actions',
@@ -174,14 +174,14 @@ export class EventbriteTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: '',
+				description: 'One or more action to subscribe to.',
 			},
 			{
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
+				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically',
 			},
 		],
 	};
@@ -206,7 +206,7 @@ export class EventbriteTrigger implements INodeType {
 			// Get all the available events to display them to user so that he can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
+				const returnData: INodePropertyOptions[] = [{ name: 'All', value: 'all' }];
 				const organization = this.getCurrentNodeParameter('organization');
 				const events = await eventbriteApiRequestAllItems.call(this, 'events', 'GET', `/organizations/${organization}/events`);
 				for (const event of events) {
@@ -264,9 +264,10 @@ export class EventbriteTrigger implements INodeType {
 					actions: actions.join(','),
 					event_id: event,
 				};
-
+				if (event === 'all' || event === '') {
+					delete body.event_id;
+				}
 				const responseData = await eventbriteApiRequest.call(this, 'POST', endpoint, body);
-
 				webhookData.webhookId = responseData.id;
 				return true;
 			},

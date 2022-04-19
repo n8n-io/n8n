@@ -24,7 +24,7 @@ import {
 } from './Queries';
 
 export async function linearApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('linearApi') as IDataObject;
+	const credentials = await this.getCredentials('linearApi');
 
 	const endpoint = 'https://api.linear.app/graphql';
 

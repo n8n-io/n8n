@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-await-in-loop */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
@@ -86,9 +85,6 @@ export class ImportCredentialsCommand extends Command {
 			await UserSettings.prepareUserSettings();
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
-				throw new Error('No encryption key found to encrypt the credentials!');
-			}
 
 			if (flags.separate) {
 				const files = await glob(
@@ -150,7 +146,7 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async initOwnerCredentialRole() {
-		const ownerCredentialRole = await Db.collections.Role!.findOne({
+		const ownerCredentialRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'credential' },
 		});
 
@@ -180,11 +176,11 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async getOwner() {
-		const ownerGlobalRole = await Db.collections.Role!.findOne({
+		const ownerGlobalRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'global' },
 		});
 
-		const owner = await Db.collections.User!.findOne({ globalRole: ownerGlobalRole });
+		const owner = await Db.collections.User.findOne({ globalRole: ownerGlobalRole });
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
@@ -194,7 +190,7 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User!.findOne(userId);
+		const user = await Db.collections.User.findOne(userId);
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);

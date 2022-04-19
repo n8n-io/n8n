@@ -43,7 +43,7 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 		};
 	} else {
 		const smsApiCredentials = await this.getCredentials('mailjetSmsApi');
-		options.headers!['Authorization'] = `Bearer ${smsApiCredentials!.token}`;
+		options.headers!['Authorization'] = `Bearer ${smsApiCredentials.token}`;
 	}
 	try {
 		return await this.helpers.request!(options);

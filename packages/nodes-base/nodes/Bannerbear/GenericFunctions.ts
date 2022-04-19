@@ -23,10 +23,6 @@ export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFun
 
 	const credentials = await this.getCredentials('bannerbearApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
