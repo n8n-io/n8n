@@ -172,6 +172,97 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'post',
+					'postEphemeral',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Icon Emoji',
+				name: 'icon_emoji',
+				type: 'string',
+				default: '',
+				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
+			},
+			{
+				displayName: 'Icon URL',
+				name: 'icon_url',
+				type: 'string',
+				default: '',
+				description: 'URL to an image to use as the icon for this message.',
+			},
+			{
+				displayName: 'Link Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Find and link channel names and usernames.',
+			},
+			{
+				displayName: 'Make Reply',
+				name: 'thread_ts',
+				type: 'string',
+				default: '',
+				description: 'Provide another message\'s ts value to make this message a reply.',
+			},
+			{
+				displayName: 'Markdown',
+				name: 'mrkdwn',
+				type: 'boolean',
+				default: true,
+				description: 'Use Slack Markdown parsing.',
+			},
+			{
+				displayName: 'Reply Broadcast',
+				name: 'reply_broadcast',
+				type: 'boolean',
+				default: false,
+				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
+			},
+			{
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
+				type: 'boolean',
+				default: false,
+				description: 'Pass true to enable unfurling of primarily text-based content.',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Pass false to disable unfurling of media content.',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/authentication': [
+							'accessToken',
+						],
+					},
+				},
+				default: '',
+				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
+			},
+		],
+	},
+	{
 		displayName: 'Attachments',
 		name: 'attachments',
 		type: 'collection',
@@ -367,97 +458,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Other Options',
-		name: 'otherOptions',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: [
-					'post',
-					'postEphemeral',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		default: {},
-		description: 'Other options to set',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Icon Emoji',
-				name: 'icon_emoji',
-				type: 'string',
-				default: '',
-				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
-			},
-			{
-				displayName: 'Icon URL',
-				name: 'icon_url',
-				type: 'string',
-				default: '',
-				description: 'URL to an image to use as the icon for this message.',
-			},
-			{
-				displayName: 'Link Names',
-				name: 'link_names',
-				type: 'boolean',
-				default: false,
-				description: 'Find and link channel names and usernames.',
-			},
-			{
-				displayName: 'Make Reply',
-				name: 'thread_ts',
-				type: 'string',
-				default: '',
-				description: 'Provide another message\'s ts value to make this message a reply.',
-			},
-			{
-				displayName: 'Markdown',
-				name: 'mrkdwn',
-				type: 'boolean',
-				default: true,
-				description: 'Use Slack Markdown parsing.',
-			},
-			{
-				displayName: 'Reply Broadcast',
-				name: 'reply_broadcast',
-				type: 'boolean',
-				default: false,
-				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
-			},
-			{
-				displayName: 'Unfurl Links',
-				name: 'unfurl_links',
-				type: 'boolean',
-				default: false,
-				description: 'Pass true to enable unfurling of primarily text-based content.',
-			},
-			{
-				displayName: 'Unfurl Media',
-				name: 'unfurl_media',
-				type: 'boolean',
-				default: true,
-				description: 'Pass false to disable unfurling of media content.',
-			},
-			{
-				displayName: 'Send as User',
-				name: 'sendAsUser',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/authentication': [
-							'accessToken',
-						],
-					},
-				},
-				default: '',
-				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
-			},
-		],
-	},
 
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:update                          */
@@ -487,7 +487,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		required: true,
+		required: false,
 		default: '',
 		displayOptions: {
 			show: {
@@ -518,6 +518,22 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
+	},
+	{
+		displayName: 'JSON parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Update Fields',
@@ -565,6 +581,54 @@ export const messageFields: INodeProperties[] = [
 				description: 'Change how messages are treated',
 			},
 		],
+	},
+	{
+		displayName: 'Attachments',
+		name: 'attachmentsJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The attachments to add',
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The blocks to add',
 	},
 	{
 		displayName: 'Blocks',

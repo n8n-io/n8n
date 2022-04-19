@@ -1,4 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -10,6 +12,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -130,7 +133,6 @@ export class Slack implements INodeType {
 						],
 					},
 				},
-				testedBy: 'testSlackTokenAuth',
 			},
 			{
 				name: 'slackOAuth2Api',
@@ -285,41 +287,6 @@ export class Slack implements INodeType {
 					});
 				}
 				return returnData;
-			},
-		},
-		credentialTest: {
-			async testSlackTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-
-				const options = {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json; charset=utf-8',
-						Authorization: `Bearer ${credential.data!.accessToken}`,
-					},
-					uri: 'https://slack.com/api/users.profile.get',
-					json: true,
-				};
-
-				try {
-					const response = await this.helpers.request(options);
-
-					if (!response.ok) {
-						return {
-							status: 'Error',
-							message: `${response.error}`,
-						};
-					}
-				} catch (err) {
-					return {
-						status: 'Error',
-						message: `${err.message}`,
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
 			},
 		},
 	};
@@ -840,6 +807,28 @@ export class Slack implements INodeType {
 						}
 						body['attachments'] = attachments;
 
+						const jsonParameters = this.getNodeParameter('jsonParameters', i, false) as boolean;
+						if (jsonParameters) {
+							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
+
+							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
+							}
+							if (blocksJson !== '') {
+								body.blocks = blocksJson;
+							}
+
+							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
+
+							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json');
+							}
+
+							if (attachmentsJson !== '') {
+								body.attachments = attachmentsJson;
+							}
+						}
+
 						// Add all the other options to the request
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(body, updateFields);
@@ -1189,7 +1178,7 @@ export class Slack implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
