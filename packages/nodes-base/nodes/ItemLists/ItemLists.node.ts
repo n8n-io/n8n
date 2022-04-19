@@ -13,6 +13,7 @@ import {
 
 import {
 	get,
+	isEmpty,
 	isEqual,
 	isObject,
 	lt,
@@ -61,14 +62,24 @@ export class ItemLists implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Split Out Items',
-						value: 'splitOutItems',
-						description: 'Turn a list inside item(s) into separate items',
-					},
-					{
 						name: 'Aggregate Items',
 						value: 'aggregateItems',
 						description: 'Merge fields into a single new item',
+					},
+					{
+						name: 'Create array of objects',
+						value: 'createArray',
+						description: 'Create array of input items',
+					},
+					{
+						name: 'Limit',
+						value: 'limit',
+						description: 'Remove items if there are too many',
+					},
+					{
+						name: 'Split Out Items',
+						value: 'splitOutItems',
+						description: 'Turn a list inside item(s) into separate items',
 					},
 					{
 						name: 'Remove Duplicates',
@@ -79,11 +90,6 @@ export class ItemLists implements INodeType {
 						name: 'Sort',
 						value: 'sort',
 						description: 'Change the item order',
-					},
-					{
-						name: 'Limit',
-						value: 'limit',
-						description: 'Remove items if there are too many',
 					},
 				],
 				default: 'splitOutItems',
@@ -661,6 +667,93 @@ return 0;`,
 					},
 				],
 			},
+			// Create Array of Objects
+			{
+				displayName: 'Destination Field Name',
+				name: 'destinationFieldName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						'operation': [
+							'createArray',
+						],
+					},
+				},
+				default: 'data',
+				description: 'The field in the output under which to put the array of objects',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'createArray',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Fields To Exclude',
+						name: 'fieldsToExclude',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						placeholder: 'Add Field To Exclude',
+						default: {},
+						options: [
+							{
+								displayName: '',
+								name: 'fields',
+								values: [
+									{
+										displayName: 'Field Name',
+										name: 'fieldName',
+										type: 'string',
+										default: '',
+										description: 'A field in the input to exclude from the object in output array',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Fields To Include',
+						name: 'fieldsToInclude',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						placeholder: 'Add Field To Include',
+						default: {},
+						options: [
+							{
+								displayName: '',
+								name: 'fields',
+								values: [
+									{
+										displayName: 'Field Name',
+										name: 'fieldName',
+										type: 'string',
+										default: '',
+										description: 'Specify fields that will be included in output array',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -1092,6 +1185,40 @@ return 0;`,
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
 				return this.prepareOutputData(newItems);
+
+			} else if (operation === 'createArray') {
+				let newItems: IDataObject[] = items.map(item => item.json);;
+				const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
+				const fieldsToExclude = (this.getNodeParameter('options.fieldsToExclude.fields', 0, []) as IDataObject[]).map(entry => entry.fieldName);
+				const fieldsToInclude = (this.getNodeParameter('options.fieldsToInclude.fields', 0, []) as IDataObject[]).map(entry => entry.fieldName);
+
+
+				if (fieldsToExclude.length || fieldsToInclude.length) {
+					newItems = newItems.reduce((acc, item) => {
+						const newItem:IDataObject = {};
+						let outputFields = Object.keys(item);
+
+						if (fieldsToExclude.length) {
+							outputFields = outputFields.filter(key => !fieldsToExclude.includes(key));
+						}
+						if (fieldsToInclude.length) {
+							outputFields = outputFields.filter(key => fieldsToInclude.length ? fieldsToInclude.includes(key) : true);
+						}
+
+						outputFields.forEach( key => {
+							newItem[key] = item[key];
+						});
+
+						if (isEmpty(newItem)) {
+							return acc;
+						}
+						return acc.concat([newItem]);
+					}, [] as IDataObject[]);
+				}
+
+				const output: INodeExecutionData = { json: {[destinationFieldName]: newItems} };
+
+				return this.prepareOutputData([output]);
 
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
