@@ -19,7 +19,7 @@
           @dblclick="changeMode"
         >
           <n8n-markdown
-            :content="tempContent"
+            :content="content"
             theme="sticky"
           />
         </div>
@@ -31,7 +31,7 @@
           :class="{'full-height': !shouldShowFooter}"
         >
           <n8n-input
-            v-model="tempContent"
+            :value="content"
             type="textarea"
             :rows="5"
             @blur="onBlur"
@@ -53,8 +53,6 @@
         </div>
       </template>
     </n8n-resize>
-
-
   </div>
 </template>
 
@@ -70,9 +68,21 @@ export default {
 		content: {
 			type: String,
 		},
-		height: {
+		top: {
 			type: Number,
-			default: 160,
+			default: 80,
+		},
+		bottom: {
+			type: Number,
+			default: 80,
+		},
+		left: {
+			type: Number,
+			default: 120,
+		},
+		right: {
+			type: Number,
+			default: 120,
 		},
 		id: {
 			type: String,
@@ -102,19 +112,12 @@ export default {
 			type: Number,
 			default: 400,
 		},
-		width: {
-			type: Number,
-			default: 240,
-		},
 		zIndex: {
 			type: Number,
 			default: -400,
 		},
 	},
 	watch: {
-		content(content) {
-			this.tempContent = content;
-		},
 		isEditable(isEditable) {
 			this.isStickyEditable = isEditable;
 			this.$emit('onChangeMode', this.isEditable);
@@ -127,24 +130,33 @@ export default {
 		N8nText,
 	},
 	computed: {
+		height(): number {
+			const height = this.top + this.bottom;
+			if (height < this.minHeight) {
+				return this.minHeight;
+			}
+			return height;
+		},
+		width(): number {
+			const width = this.top + this.bottom;
+			if (width < this.minWidth) {
+				return this.minWidth;
+			}
+			return width;
+		},
 		styles() {
 			return {
-				...(this.height ? { height: this.height + 'px' } : { height: '100%' }),
-				...(this.width ? { width: this.width + 'px' } : { width: '100%' }),
-				...(this.minHeight ? { minHeight: this.minHeight + 'px' } : { minHeight: '100%' }),
-				...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
+				height: this.height + 'px',
+				width: this.width + 'px',
 			};
 		},
 		shouldShowFooter() {
-			return this.componentHeight > 100 && this.componentWidth > 155;
+			return this.height > 100 && this.width > 155;
 		},
 	},
 	data() {
 		return {
-			componentHeight: this.height,
-			componentWidth: this.width,
 			isStickyEditable: false,
-			tempContent: this.content,
 			resizer: null,
 		};
 	},
@@ -181,7 +193,6 @@ export default {
 			this.$emit('focus', value);
 		},
 		onInput(value: string) {
-			this.tempContent = value;
 			this.$emit('input', value);
 		},
 		onMouseHover() {
@@ -194,9 +205,6 @@ export default {
 			this.$emit('onResizeEnd', resizeEnd);
 		},
 		onResizeStart(parameters) {
-			this.componentHeight = parameters.height;
-			this.componentWidth = parameters.width;
-
 			this.$emit('onResizeStart', parameters);
 		},
 	},
