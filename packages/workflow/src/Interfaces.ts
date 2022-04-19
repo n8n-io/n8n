@@ -248,9 +248,17 @@ export interface IAuthenticateRuleResponseCode extends IAuthenticateRuleBase {
 	};
 }
 
+export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleBase {
+	type: 'responseSuccessBody';
+	properties: {
+		message: string;
+		key: string;
+		value: any;
+	};
+}
 export interface ICredentialTestRequest {
 	request: IHttpRequestOptions;
-	rules?: IAuthenticateRuleResponseCode[];
+	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
 export interface ICredentialTestRequestData {

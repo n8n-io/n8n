@@ -1,5 +1,9 @@
 <template>
-	<div class="node-view-root">
+	<div
+		class="node-view-root"
+	 	@dragover="onDragOver"
+	 	@drop="onDrop"
+	>
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -10,28 +14,32 @@
 			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
+		>
+			<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
+			<div
+				id="node-view"
+				class="node-view"
+				:style="workflowStyle"
 			>
-			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
-			<div id="node-view" class="node-view" :style="workflowStyle">
 				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
 					<node
-					v-if="nodeData.type !== 'n8n-nodes-base.note'"
-					@duplicateNode="duplicateNode"
-					@deselectAllNodes="deselectAllNodes"
-					@deselectNode="nodeDeselectedByName"
-					@nodeSelected="nodeSelectedByName"
-					@removeNode="removeNode"
-					@runWorkflow="runWorkflow"
-					@moved="onNodeMoved"
-					@run="onNodeRun"
-					:id="'node-' + getNodeIndex(nodeData.name)"
-					:key="getNodeIndex(nodeData.name)"
-					:name="nodeData.name"
-					:isReadOnly="isReadOnly"
-					:instance="instance"
-					:isActive="!!activeNode && activeNode.name === nodeData.name"
-					:hideActions="pullConnActive"
-					></node>
+						v-if="nodeData.type !== 'n8n-nodes-base.note'"
+						@duplicateNode="duplicateNode"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="removeNode"
+						@runWorkflow="runWorkflow"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						:id="'node-' + getNodeIndex(nodeData.name)"
+						:key="getNodeIndex(nodeData.name)"
+						:name="nodeData.name"
+						:isReadOnly="isReadOnly"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:hideActions="pullConnActive"
+					/>
 					<Sticky
 						v-else
 						@duplicateNode="duplicateNode"
@@ -55,7 +63,7 @@
 			</div>
 		</div>
 		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
-		<div 
+		<div
 			class="node-buttons-wrapper"
 			v-if="!createNodeActive && !isReadOnly"
 			@mouseover="isAddStickyButtonVisible = true"
@@ -72,7 +80,7 @@
 			:active="createNodeActive"
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
-			></node-creator>
+		/>
 		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
 				<font-awesome-icon icon="expand"/>
@@ -208,6 +216,11 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+
+interface AddNodeOptions {
+	position?: XYPosition;
+	dragAndDrop?: boolean;
+}
 
 export default mixins(
 	copyPaste,
@@ -759,7 +772,7 @@ export default mixins(
 					return;
 				}
 
-			
+
 				if (!this.isStickyNode) {
 					// node modal is open
 					if (this.activeNode) {
@@ -868,7 +881,7 @@ export default mixins(
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
 					}
-					
+
 
 					if (this.lastSelectedNode && this.isStickyNode) {
 						const nodeParameters = {
@@ -1357,6 +1370,27 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 
+			onDragOver(event: DragEvent) {
+				event.preventDefault();
+			},
+
+			onDrop(event: DragEvent) {
+				if (!event.dataTransfer) {
+					return;
+				}
+
+				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+				if (nodeTypeName) {
+					const mousePosition = this.getMousePositionWithinNodeView(event);
+
+					this.addNodeButton(nodeTypeName, {
+						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						dragAndDrop: true,
+					});
+					this.createNodeActive = false;
+				}
+			},
+
 			nodeDeselectedByName (nodeName: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
 				if (node) {
@@ -1397,7 +1431,7 @@ export default mixins(
 					duration: 0,
 				});
 			},
-			async injectNode (nodeTypeName: string) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
 				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1427,7 +1461,10 @@ export default mixins(
 
 				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;
-				if (lastSelectedNode) {
+
+				if (options.position) {
+					newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, options.position);
+				} else if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) { // set when injecting into a connection
 						const [diffX] = CanvasHelpers.getConnectorLengths(lastSelectedConnection);
@@ -1438,10 +1475,12 @@ export default mixins(
 
 					// set when pulling connections
 					if (this.newNodeInsertPosition) {
-						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0] + CanvasHelpers.GRID_SIZE, this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
+						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [
+							this.newNodeInsertPosition[0] + CanvasHelpers.GRID_SIZE,
+							this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2,
+						]);
 						this.newNodeInsertPosition = null;
-					}
-					else {
+					} else {
 						let yOffset = 0;
 
 						if (lastSelectedConnection) {
@@ -1482,11 +1521,15 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
-				if(nodeTypeName === 'n8n-nodes-base.note') {
+				if (nodeTypeName === 'n8n-nodes-base.note') {
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+						node_type: nodeTypeName,
+						workflow_id: this.$store.getters.workflowId,
+						drag_and_drop: options.dragAndDrop,
+					} as IDataObject);
 				}
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -1530,7 +1573,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNodeButton (nodeTypeName: string) {
+			async addNodeButton (nodeTypeName: string, options: AddNodeOptions = {}) {
 				if (this.editAllowedCheck() === false) {
 					return;
 				}
@@ -1539,7 +1582,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 
-				const newNodeData = await this.injectNode(nodeTypeName);
+				const newNodeData = await this.injectNode(nodeTypeName, options);
 				if (!newNodeData) {
 					return;
 				}
@@ -2271,7 +2314,7 @@ export default mixins(
 					this.$externalHooks().run('node.deleteNode', { node });
 					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 				}
-				
+
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
 				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
