@@ -1,3 +1,9 @@
+# [0.173.1](https://github.com/n8n-io/n8n/compare/n8n@0.173.0...n8n@0.173.1) (2022-04-19)
+
+### Bug Fixes
+
+- **Discord Node:** Fix icon name
+
 # [0.173.0](https://github.com/n8n-io/n8n/compare/n8n@0.172.0...n8n@0.173.0) (2022-04-19)
 
 ### Bug Fixes
