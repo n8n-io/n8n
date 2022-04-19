@@ -12,7 +12,7 @@ export class Discord implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Discord',
 		name: 'discord',
-		icon: 'file:discord.png',
+		icon: 'file:discord.svg',
 		group: ['output'],
 		version: 1,
 		description: 'Sends data to Discord',
