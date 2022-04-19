@@ -423,7 +423,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		if (Db.collections.Credentials === null) {
+		if (!Db.isInitialized) {
 			// The first time executeWorkflow gets called the Database has
 			// to get initialized first
 			await Db.init();
