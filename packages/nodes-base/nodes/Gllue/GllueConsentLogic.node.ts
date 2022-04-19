@@ -47,25 +47,32 @@ export class GllueConsentLogic implements INodeType {
 		const resource = item.info.trigger_model_name;
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
 		const timestamp = helpers.getCurrentTimeStamp();
+		console.log('DEBUG Line 50');
 		const token = helpers.generateTokenWithAESKey(timestamp, credentials.apiUsername, credentials.apiAesKey);
 		const gllue = new Gllue(credentials.apiHost as string, token, this.helpers.request);
 		const simpleData = await gllue.getDetail(resource, resourceId,
 			'id,jobsubmission__candidate__email,gllueext_send_terms_cv_sent');
-
+		console.log('DEBUG Line 55');
 		const candidateData = Gllue.extractIdAndEmail(simpleData);
 		const source = item.source as string;
 		const consentService = new ConsentService(this.helpers.request);
+		console.log('DEBUG Line 59');
 		const consented = await consentService.getConsented(candidateData.id, source, EMAIL_CHANNEL);
+		console.log('DEBUG Line 61');
 		const sent = await consentService.getSentIn30Days(candidateData.id, source, EMAIL_CHANNEL);
+		console.log('DEBUG Line 63');
 		const service = new SendEmailOnConsentService(consented, sent, resource, candidateData.cvsentField);
 
 		let emailData = {};
 		if (service.canSendEmail()) {
 			const saved = await consentService.create(candidateData.id, source, EMAIL_CHANNEL);
+			console.log('DEBUG Line 69');
 			const emailService = new EmailNotificationService(this.helpers.request);
 			const email = await emailService.saveConsentEmail(candidateData.email);
+			console.log('DEBUG Line 72');
 			const track_id = email.track_id;
 			const updated = await consentService.updateTrackId(saved.id as string, track_id);
+			console.log('DEBUG Line 75');
 			const consentConfirmUrl = buildConsentUrl(saved.id as string);
 
 			emailData = {
@@ -81,6 +88,7 @@ export class GllueConsentLogic implements INodeType {
 
 			};
 		}
+		console.log('DEBUG Line 91');
 		const responseData = service.canSendEmail() ? emailData : [];
 		return [this.helpers.returnJsonArray(responseData)];
 
