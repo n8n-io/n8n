@@ -10,6 +10,7 @@ data:
   DB_POSTGRESDB_PASSWORD: S3kwUDZ6RjNEd3BZUHRObA==
   N8N_BASIC_AUTH_USER: bjhuYmFzaWM=
   N8N_BASIC_AUTH_PASSWORD: M3lQcW4xRDdNRHJhNDd2bA==
+  X_HASURA_ADMIN_SECRET: N1IzWkNFbHh1UGhtRWZxTw==
 ---
 apiVersion: v1
 kind: Service
@@ -54,10 +55,12 @@ spec:
         imagePullPolicy: IfNotPresent
         name: prod-n8n
         env:
+        - name: DB_TYPE
+          value: "postgresdb"
         - name: DB_POSTGRESDB_DATABASE
           value: "prod_n8n"
         - name: HASURA_URL
-          value: "prod-hasura-svc:8080"
+          value: "prod-hasura-svc:80"
         - name: DB_POSTGRESDB_HOST
           valueFrom: 
             secretKeyRef: 
@@ -80,6 +83,11 @@ spec:
             secretKeyRef: 
               name: prod-n8n-secrets
               key: N8N_BASIC_AUTH_USER
+        - name: X_HASURA_ADMIN_SECRET
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-n8n-secrets
+              key: X_HASURA_ADMIN_SECRET
         - name: N8N_BASIC_AUTH_PASSWORD
           valueFrom: 
             secretKeyRef: 
