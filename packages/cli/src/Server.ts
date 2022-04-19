@@ -30,7 +30,7 @@
 /* eslint-disable no-await-in-loop */
 
 import express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -613,6 +613,10 @@ class App {
 					normalizeTags: true, // Transform tags to lowercase
 					explicitArray: false, // Only put properties in array if length > 1
 				},
+				verify: (req: express.Request, res: any, buf: any) => {
+					// @ts-ignore
+					req.rawBody = buf;
+				},
 			}),
 		);
 
@@ -671,7 +675,7 @@ class App {
 
 		// eslint-disable-next-line consistent-return
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (Db.collections.Workflow === null) {
+			if (!Db.isInitialized) {
 				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
@@ -1503,10 +1507,17 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<object | void> => {
 					const packagesPath = pathJoin(__dirname, '..', '..', '..');
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+
+					try {
+						await promises.access(`${headersPath}.js`);
+					} catch (_) {
+						return; // no headers available
+					}
+
 					try {
 						return require(headersPath);
 					} catch (error) {
-						res.status(500).send('Failed to find headers file');
+						res.status(500).send('Failed to load headers file');
 					}
 				},
 			),
@@ -1696,21 +1707,21 @@ class App {
 					);
 				}
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (!encryptionKey) {
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-						undefined,
-						500,
-					);
+				let encryptionKey: string;
+				try {
+					encryptionKey = await UserSettings.getEncryptionKey();
+				} catch (error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
+				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
+					timezone,
 					true,
 				);
 
@@ -1718,6 +1729,7 @@ class App {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
+					timezone,
 				);
 
 				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1832,29 +1844,28 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const encryptionKey = await UserSettings.getEncryptionKey();
-
-					if (!encryptionKey) {
-						const errorResponse = new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							503,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
+					let encryptionKey: string;
+					try {
+						encryptionKey = await UserSettings.getEncryptionKey();
+					} catch (error) {
+						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
+					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
 						mode,
+						timezone,
 					);
 
 					const options: OptionsWithUrl = {
@@ -1949,21 +1960,21 @@ class App {
 					);
 				}
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (!encryptionKey) {
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-						undefined,
-						500,
-					);
+				let encryptionKey: string;
+				try {
+					encryptionKey = await UserSettings.getEncryptionKey();
+				} catch (error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
+				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
+					timezone,
 					true,
 				);
 
@@ -1971,6 +1982,7 @@ class App {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
+					timezone,
 				);
 
 				const token = new csrf();
@@ -2087,29 +2099,28 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const encryptionKey = await UserSettings.getEncryptionKey();
-
-					if (!encryptionKey) {
-						const errorResponse = new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							503,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
+					let encryptionKey: string;
+					try {
+						encryptionKey = await UserSettings.getEncryptionKey();
+					} catch (error) {
+						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
+					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
 						mode,
+						timezone,
 					);
 
 					const token = new csrf();

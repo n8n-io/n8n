@@ -874,13 +874,7 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as ICredentialDataDecryptedObject;
-
-	if (credentials === undefined) {
-		throw new Error('No credentials were returned!');
-	}
+	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials.oauthTokenData === undefined) {
 		throw new Error('OAuth credentials not connected!');
@@ -997,9 +991,7 @@ export async function requestOAuth1(
 		| IHttpRequestOptions,
 	isN8nRequest = false,
 ) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as ICredentialDataDecryptedObject;
+	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
 		throw new Error('No credentials were returned!');
@@ -1100,6 +1092,7 @@ export async function httpRequestWithAuthentication(
 			requestOptions,
 			workflow,
 			node,
+			additionalData.timezone,
 		);
 
 		return await httpRequest(requestOptions);
@@ -1222,6 +1215,7 @@ export async function requestWithAuthentication(
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
+			additionalData.timezone,
 		);
 
 		return await proxyRequestToAxios(requestOptions as IDataObject);
@@ -1267,7 +1261,7 @@ export async function getCredentials(
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
-): Promise<ICredentialDataDecryptedObject | undefined> {
+): Promise<ICredentialDataDecryptedObject> {
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -1307,8 +1301,8 @@ export async function getCredentials(
 				node.parameters,
 			)
 		) {
-			// Credentials should not be displayed so return undefined even if they would be defined
-			return undefined;
+			// Credentials should not be displayed even if they would be defined
+			throw new NodeOperationError(node, 'Credentials not found');
 		}
 	}
 
@@ -1325,15 +1319,15 @@ export async function getCredentials(
 				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"!`);
 			}
 		} else {
-			// Credentials are not required so resolve with undefined
-			return undefined;
+			// Credentials are not required
+			throw new NodeOperationError(node, 'Node does not require credentials');
 		}
 	}
 
 	if (fullAccess && (!node.credentials || !node.credentials[type])) {
 		// Make sure that fullAccess nodes still behave like before that if they
 		// request access to credentials that are currently not set it returns undefined
-		return undefined;
+		throw new NodeOperationError(node, 'Credentials not found');
 	}
 
 	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
@@ -1372,6 +1366,7 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
+		additionalData.timezone,
 		false,
 		expressionResolveValues,
 	);
@@ -1413,6 +1408,7 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
+	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
@@ -1437,6 +1433,7 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 		);
 	} catch (e) {
@@ -1475,6 +1472,7 @@ export function getNodeWebhookUrl(
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	isTest?: boolean,
 ): string | undefined {
@@ -1493,6 +1491,7 @@ export function getNodeWebhookUrl(
 		node,
 		webhookDescription.path,
 		mode,
+		timezone,
 		additionalKeys,
 	);
 	if (path === undefined) {
@@ -1503,6 +1502,7 @@ export function getNodeWebhookUrl(
 		node,
 		webhookDescription.isFullPath,
 		mode,
+		timezone,
 		additionalKeys,
 		false,
 	) as boolean;
@@ -1597,7 +1597,7 @@ export function getExecutePollFunctions(
 			__emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -1632,6 +1632,7 @@ export function getExecutePollFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -1750,7 +1751,7 @@ export function getExecuteTriggerFunctions(
 			emitError: (error: Error): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getNode: () => {
@@ -1785,6 +1786,7 @@ export function getExecuteTriggerFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -1916,6 +1918,7 @@ export function getExecuteFunctions(
 					node.name,
 					connectionInputData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 			},
@@ -1938,7 +1941,7 @@ export function getExecuteFunctions(
 			async getCredentials(
 				type: string,
 				itemIndex?: number,
-			): Promise<ICredentialDataDecryptedObject | undefined> {
+			): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(
 					workflow,
 					node,
@@ -1991,6 +1994,7 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2020,6 +2024,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 				return dataProxy.getDataProxy();
@@ -2173,13 +2178,14 @@ export function getExecuteSingleFunctions(
 					node.name,
 					connectionInputData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(
 					workflow,
 					node,
@@ -2249,6 +2255,7 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2266,6 +2273,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 				return dataProxy.getDataProxy();
@@ -2373,7 +2381,7 @@ export function getLoadOptionsFunctions(
 ): ILoadOptionsFunctions {
 	return ((workflow: Workflow, node: INode, path: string) => {
 		const that = {
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, 'internal');
 			},
 			getCurrentNodeParameter: (
@@ -2422,6 +2430,7 @@ export function getLoadOptionsFunctions(
 					parameterName,
 					itemIndex,
 					'internal' as WorkflowExecuteMode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2516,7 +2525,7 @@ export function getExecuteHookFunctions(
 ): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -2551,6 +2560,7 @@ export function getExecuteHookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2562,6 +2572,7 @@ export function getExecuteHookFunctions(
 					node,
 					additionalData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					isTest,
 				);
@@ -2673,7 +2684,7 @@ export function getExecuteWebhookFunctions(
 				}
 				return additionalData.httpRequest.body;
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getHeaderData(): object {
@@ -2711,6 +2722,7 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 					fallbackValue,
 				);
@@ -2746,6 +2758,7 @@ export function getExecuteWebhookFunctions(
 					node,
 					additionalData,
 					mode,
+					additionalData.timezone,
 					getAdditionalKeys(additionalData),
 				);
 			},

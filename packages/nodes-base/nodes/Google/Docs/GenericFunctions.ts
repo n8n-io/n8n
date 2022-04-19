@@ -53,10 +53,6 @@ export async function googleApiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
 			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
