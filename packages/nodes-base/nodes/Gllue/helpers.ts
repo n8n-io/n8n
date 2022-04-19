@@ -3,6 +3,7 @@ import {IDataObject} from 'n8n-workflow';
 import {GllueEvent} from './interfaces';
 import {BLUE_HOST, BLUE_TOKEN_KEY, DEV_NODE_ENV, HOST_MAPPING, TOKEN_KEY} from './constants';
 import * as moment from 'moment-timezone';
+import {getHasuraAdminSecret} from "../utils/utilities";
 
 const crypto = require('crypto');
 
@@ -104,6 +105,11 @@ export function buildOptionWithUri(uriGenerated: string, method = 'GET', body: I
 
 	if (!Object.keys(body).length) {
 		delete options.body;
+	}
+	const adminSecret = getHasuraAdminSecret();
+	if (adminSecret !== ''){
+		// @ts-ignore
+		options.headers['x-hasura-admin-secret'] = adminSecret;
 	}
 	return options;
 }

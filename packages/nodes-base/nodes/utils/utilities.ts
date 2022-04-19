@@ -70,3 +70,10 @@ export function getHasuraUrl(): string {
 	}
 	return data;
 }
+
+
+export function  getHasuraAdminSecret(): string {
+	const data = process.env.X_HASURA_ADMIN_SECRET as string;
+	return data === undefined ? '' : data;
+}
+

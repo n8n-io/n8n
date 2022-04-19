@@ -1,4 +1,4 @@
-import {buildConsentUrl, convertEventPayload, UrlParams} from '../../../nodes/Gllue/helpers';
+import {buildConsentUrl, buildOptionWithUri, convertEventPayload, UrlParams} from '../../../nodes/Gllue/helpers';
 import {GllueEvent} from '../../../nodes/Gllue/interfaces';
 import {BLUE_HOST, DEV_NODE_ENV, HOST_MAPPING, STAGING_NODE_ENV} from '../../../nodes/Gllue/constants';
 
@@ -172,11 +172,50 @@ describe('prepareGllueApiUpdateData', () => {
 	it('should build proper gllue update payload', () => {
 		const data = helpers.prepareGllueApiUpdateData(123, {name: 'Name'});
 		expect(Object.keys(data)).toEqual(['data']);
-		expect(data).toEqual({data:'{"name":"Name","id":123}'});
+		expect(data).toEqual({data: '{"name":"Name","id":123}'});
 	});
 	it('should replace id in update date with id privided separately', () => {
-		const data = helpers.prepareGllueApiUpdateData(123, {name: 'Name', id:456});
+		const data = helpers.prepareGllueApiUpdateData(123, {name: 'Name', id: 456});
 		expect(Object.keys(data)).toEqual(['data']);
-		expect(data).toEqual({data:'{"name":"Name","id":123}'});
+		expect(data).toEqual({data: '{"name":"Name","id":123}'});
+	});
+});
+
+describe('build options with uri', () => {
+	const OLD_ENV = process.env;
+
+	beforeEach(() => {
+		jest.resetModules(); // Most important - it clears the cache
+		process.env = {...OLD_ENV}; // Make a copy
+	});
+
+	afterAll(() => {
+		process.env = OLD_ENV; // Restore old environment
+	});
+
+	const URI = 'www.test-uri.com';
+	const BASE_EXPECT_DATA = {
+		json: true,
+		method: 'GET',
+		uri: URI,
+	};
+	it('should build with no header on undefined', () => {
+		const data = buildOptionWithUri(URI);
+		const expectData = {
+			...BASE_EXPECT_DATA,
+			headers: {Accept: 'application/json'},
+		};
+		expect(data).toEqual(expectData);
+	});
+	it('should build with key', () => {
+		const key = 'admin-secret-key';
+		process.env.X_HASURA_ADMIN_SECRET = key;
+		const data = buildOptionWithUri(URI);
+		const expectData = {
+			...BASE_EXPECT_DATA,
+			headers: {Accept: 'application/json', 'x-hasura-admin-secret': key},
+		};
+		expect(data).toEqual(expectData);
+
 	});
 });
