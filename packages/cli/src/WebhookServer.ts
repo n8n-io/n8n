@@ -300,7 +300,7 @@ class App {
 		}
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (Db.collections.Workflow === null) {
+			if (!Db.isInitialized) {
 				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
