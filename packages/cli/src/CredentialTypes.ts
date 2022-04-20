@@ -16,7 +16,11 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 	}
 
 	getByName(credentialType: string): ICredentialType {
-		return this.credentialTypes[credentialType].type;
+		try {
+			return this.credentialTypes[credentialType].type;
+		} catch (error) {
+			throw new Error(`Failed to find credential type: ${credentialType}`);
+		}
 	}
 }
 
