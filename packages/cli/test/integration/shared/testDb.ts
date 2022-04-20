@@ -109,7 +109,7 @@ export async function truncate(collections: CollectionName[], testDbName: string
 
 	if (dbType === 'sqlite') {
 		await testDb.query('PRAGMA foreign_keys=OFF');
-		await Promise.all(collections.map((collection) => Db.collections[collection]!.clear()));
+		await Promise.all(collections.map((collection) => Db.collections[collection].clear()));
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
@@ -182,11 +182,11 @@ export async function saveCredential(
 
 	Object.assign(newCredential, encryptedData);
 
-	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+	const savedCredential = await Db.collections.Credentials.save(newCredential);
 
 	savedCredential.data = newCredential.data;
 
-	await Db.collections.SharedCredentials!.save({
+	await Db.collections.SharedCredentials.save({
 		user,
 		credentials: savedCredential,
 		role,
@@ -211,7 +211,7 @@ export async function createUser(attributes: Partial<User> & { globalRole: Role 
 		...rest,
 	};
 
-	return Db.collections.User!.save(user);
+	return Db.collections.User.save(user);
 }
 
 export function createUserShell(globalRole: Role): Promise<User> {
@@ -225,7 +225,7 @@ export function createUserShell(globalRole: Role): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return Db.collections.User!.save(shell);
+	return Db.collections.User.save(shell);
 }
 
 // ----------------------------------
@@ -233,28 +233,28 @@ export function createUserShell(globalRole: Role): Promise<User> {
 // ----------------------------------
 
 export function getGlobalOwnerRole() {
-	return Db.collections.Role!.findOneOrFail({
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
 export function getGlobalMemberRole() {
-	return Db.collections.Role!.findOneOrFail({
+	return Db.collections.Role.findOneOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
 export function getWorkflowOwnerRole() {
-	return Db.collections.Role!.findOneOrFail({
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
 export function getCredentialOwnerRole() {
-	return Db.collections.Role!.findOneOrFail({
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});

@@ -70,9 +70,7 @@ export class ActiveExecutions {
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-			const executionResult = await Db.collections.Execution!.save(
-				execution as IExecutionFlattedDb,
-			);
+			const executionResult = await Db.collections.Execution.save(execution as IExecutionFlattedDb);
 			executionId =
 				typeof executionResult.id === 'object'
 					? // @ts-ignore
@@ -88,7 +86,7 @@ export class ActiveExecutions {
 			};
 
 			// @ts-ignore
-			await Db.collections.Execution!.update(executionId, execution);
+			await Db.collections.Execution.update(executionId, execution);
 		}
 
 		// @ts-ignore

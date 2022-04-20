@@ -42,7 +42,7 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
-	await Db.collections.Settings!.update(
+	await Db.collections.Settings.update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(true) },
 	);
@@ -103,7 +103,7 @@ test('POST /login should log user in', async () => {
 });
 
 test('GET /login should receive logged in user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await Db.collections.User.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.get('/login');
@@ -137,7 +137,7 @@ test('GET /login should receive logged in user', async () => {
 });
 
 test('POST /logout should log user out', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await Db.collections.User.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/logout');

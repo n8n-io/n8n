@@ -33,7 +33,7 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
-	await Db.collections.Settings!.update(
+	await Db.collections.Settings.update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(true) },
 	);
@@ -102,7 +102,7 @@ test('GET /login should return cookie if UM is disabled', async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	await Db.collections.Settings!.update(
+	await Db.collections.Settings.update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(false) },
 	);

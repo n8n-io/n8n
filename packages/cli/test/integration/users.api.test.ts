@@ -121,9 +121,9 @@ test('DELETE /users/:id should delete the user', async () => {
 		nodes: [],
 	});
 
-	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
+	const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
 
-	await Db.collections.SharedWorkflow!.save({
+	await Db.collections.SharedWorkflow.save({
 		role: workflowOwnerRole,
 		user: userToDelete,
 		workflow: savedWorkflow,
@@ -138,9 +138,9 @@ test('DELETE /users/:id should delete the user', async () => {
 		nodesAccess: [],
 	});
 
-	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+	const savedCredential = await Db.collections.Credentials.save(newCredential);
 
-	await Db.collections.SharedCredentials!.save({
+	await Db.collections.SharedCredentials.save({
 		role: credentialOwnerRole,
 		user: userToDelete,
 		credentials: savedCredential,
@@ -151,27 +151,27 @@ test('DELETE /users/:id should delete the user', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-	const user = await Db.collections.User!.findOne(userToDelete.id);
+	const user = await Db.collections.User.findOne(userToDelete.id);
 	expect(user).toBeUndefined(); // deleted
 
-	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOne({
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		relations: ['user'],
 		where: { user: userToDelete },
 	});
 	expect(sharedWorkflow).toBeUndefined(); // deleted
 
-	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
+	const sharedCredential = await Db.collections.SharedCredentials.findOne({
 		relations: ['user'],
 		where: { user: userToDelete },
 	});
 	expect(sharedCredential).toBeUndefined(); // deleted
 
-	const workflow = await Db.collections.Workflow!.findOne(savedWorkflow.id);
+	const workflow = await Db.collections.Workflow.findOne(savedWorkflow.id);
 	expect(workflow).toBeUndefined(); // deleted
 
 	// TODO: Include active workflow and check whether webhook has been removed
 
-	const credential = await Db.collections.Credentials!.findOne(savedCredential.id);
+	const credential = await Db.collections.Credentials.findOne(savedCredential.id);
 	expect(credential).toBeUndefined(); // deleted
 });
 
@@ -183,7 +183,7 @@ test('DELETE /users/:id should fail to delete self', async () => {
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User!.findOne(owner.id);
+	const user = await Db.collections.User.findOne(owner.id);
 	expect(user).toBeDefined();
 });
 
@@ -199,7 +199,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User!.findOne(idToDelete);
+	const user = await Db.collections.User.findOne(idToDelete);
 	expect(user).toBeDefined();
 });
 
@@ -207,7 +207,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const userToDelete = await Db.collections.User!.save({
+	const userToDelete = await Db.collections.User.save({
 		id: uuid(),
 		email: randomEmail(),
 		password: randomValidPassword(),
@@ -227,9 +227,9 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 		nodes: [],
 	});
 
-	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
+	const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
 
-	await Db.collections.SharedWorkflow!.save({
+	await Db.collections.SharedWorkflow.save({
 		role: workflowOwnerRole,
 		user: userToDelete,
 		workflow: savedWorkflow,
@@ -244,9 +244,9 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 		nodesAccess: [],
 	});
 
-	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+	const savedCredential = await Db.collections.Credentials.save(newCredential);
 
-	await Db.collections.SharedCredentials!.save({
+	await Db.collections.SharedCredentials.save({
 		role: credentialOwnerRole,
 		user: userToDelete,
 		credentials: savedCredential,
@@ -258,17 +258,17 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
 		relations: ['user'],
 		where: { user: owner },
 	});
 
-	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['user'],
 		where: { user: owner },
 	});
 
-	const deletedUser = await Db.collections.User!.findOne(userToDelete);
+	const deletedUser = await Db.collections.User.findOne(userToDelete);
 
 	expect(sharedWorkflow.user.id).toBe(owner.id);
 	expect(sharedCredential.user.id).toBe(owner.id);
@@ -319,7 +319,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 		.query({ inviteeId });
 
 	// cause inconsistent DB state
-	await Db.collections.User!.update(owner.id, { email: '' });
+	await Db.collections.User.update(owner.id, { email: '' });
 	const fifth = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: owner.id })
@@ -371,7 +371,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
 
-	const member = await Db.collections.User!.findOneOrFail(memberShell.id);
+	const member = await Db.collections.User.findOneOrFail(memberShell.id);
 	expect(member.firstName).toBe(memberData.firstName);
 	expect(member.lastName).toBe(memberData.lastName);
 	expect(member.password).not.toBe(memberData.password);
@@ -384,7 +384,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 
 	const memberShellEmail = randomEmail();
 
-	const memberShell = await Db.collections.User!.save({
+	const memberShell = await Db.collections.User.save({
 		email: memberShellEmail,
 		globalRole: globalMemberRole,
 	});
@@ -423,7 +423,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 			const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedUser = await Db.collections.User!.findOneOrFail({
+			const storedUser = await Db.collections.User.findOneOrFail({
 				where: { email: memberShellEmail },
 			});
 			expect(storedUser.firstName).toBeNull();
@@ -450,7 +450,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 
 	expect(response.statusCode).toBe(400);
 
-	const storedMember = await Db.collections.User!.findOneOrFail({
+	const storedMember = await Db.collections.User.findOneOrFail({
 		where: { email: member.email },
 	});
 	expect(storedMember.firstName).not.toBe(newMemberData.firstName);
@@ -512,7 +512,7 @@ test('POST /users should email invites and create user shells but ignore existin
 			expect(error).toBe('Email could not be sent');
 		}
 
-		const storedUser = await Db.collections.User!.findOneOrFail(id);
+		const storedUser = await Db.collections.User.findOneOrFail(id);
 		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
 			storedUser;
 
@@ -543,7 +543,7 @@ test('POST /users should fail with invalid inputs', async () => {
 			const response = await authOwnerAgent.post('/users').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const users = await Db.collections.User!.find();
+			const users = await Db.collections.User.find();
 			expect(users.length).toBe(1); // DB unaffected
 		}),
 	);
@@ -563,7 +563,7 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(Array.isArray(data)).toBe(true);
 	expect(data.length).toBe(0);
 
-	const users = await Db.collections.User!.find();
+	const users = await Db.collections.User.find();
 	expect(users.length).toBe(1);
 });
 
@@ -571,7 +571,7 @@ test('POST /users should ignore an empty payload', async () => {
 
 // TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
 // test('POST /users should error for wrong SMTP config', async () => {
-// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const owner = await Db.collections.User.findOneOrFail();
 // 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 // 	config.set('userManagement.emails.mode', 'smtp');
