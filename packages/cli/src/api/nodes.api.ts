@@ -6,6 +6,7 @@ import { getLogger } from '../Logger';
 
 import { Db, ResponseHelper, LoadNodesAndCredentials, Push } from '..';
 import { NodeRequest } from '../requests';
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
 
 export const nodesController = express.Router();
 
@@ -26,7 +27,11 @@ nodesController.post(
 	ResponseHelper.send(async (req: NodeRequest.Post) => {
 		const { name } = req.body;
 		if (!name) {
-			throw new ResponseHelper.ResponseError(`The parameter "name" is missing!`, undefined, 400);
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
+				undefined,
+				400,
+			);
 		}
 
 		try {
@@ -69,8 +74,13 @@ nodesController.delete(
 	ResponseHelper.send(async (req: NodeRequest.Delete) => {
 		const { name } = req.body;
 		if (!name) {
-			throw new ResponseHelper.ResponseError(`The parameter "name" is missing!`, undefined, 400);
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
+				undefined,
+				400,
+			);
 		}
+
 		const installedPackage = await Db.collections.InstalledPackages.findOne({
 			where: {
 				packageName: name,
@@ -79,7 +89,11 @@ nodesController.delete(
 		});
 
 		if (!installedPackage) {
-			throw new ResponseHelper.ResponseError('Package is not installed', undefined, 400);
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
+				undefined,
+				400,
+			);
 		}
 
 		try {
@@ -112,7 +126,11 @@ nodesController.patch(
 	ResponseHelper.send(async (req: NodeRequest.Update) => {
 		const { name } = req.body;
 		if (!name) {
-			throw new ResponseHelper.ResponseError(`The parameter "name" is missing!`, undefined, 400);
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
+				undefined,
+				400,
+			);
 		}
 		const installedPackage = await Db.collections.InstalledPackages.findOne({
 			where: {
@@ -122,7 +140,11 @@ nodesController.patch(
 		});
 
 		if (!installedPackage) {
-			throw new ResponseHelper.ResponseError('Package is not installed', undefined, 400);
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
+				undefined,
+				400,
+			);
 		}
 
 		try {
@@ -145,6 +167,13 @@ nodesController.patch(
 				pushInstance.send('reloadNodeType', nodeData);
 			});
 		} catch (error) {
+			installedPackage.installedNodes.forEach((installedNode) => {
+				const pushInstance = Push.getInstance();
+				pushInstance.send('removeNodeType', {
+					name: installedNode.type,
+					version: installedNode.latestVersion,
+				});
+			});
 			throw new ResponseHelper.ResponseError(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 				`Error updating package "${name}": ${error.message}`,
