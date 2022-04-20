@@ -4,7 +4,7 @@
     :class="[$style.sticky, isStickyEditable ? $style.editMode : '']"
     :style="styles"
   >
-    <n8n-resize
+    <resize
       :isResizingEnabled="!readOnly"
       :minHeight="minHeight"
       :minWidth="minWidth"
@@ -49,14 +49,14 @@
           </div>
         </div>
       </template>
-    </n8n-resize>
+    </resize>
   </div>
 </template>
 
 <script lang="ts">
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResize from '../N8nResize';
+import Resize from './Resize';
 import N8nText from '../N8nText';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
@@ -108,7 +108,7 @@ export default mixins(Locale).extend({
 	components: {
 		N8nInput,
 		N8nMarkdown,
-		N8nResize,
+		Resize,
 		N8nText,
 	},
 	computed: {
