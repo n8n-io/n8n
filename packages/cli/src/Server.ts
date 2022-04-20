@@ -168,6 +168,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { oauth2CredentialController } from './api/oauth2Credential.api';
 import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
@@ -1931,6 +1932,8 @@ class App {
 		// ----------------------------------------
 		// OAuth2-Credential/Auth
 		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/oauth2-credential`, oauth2CredentialController);
 
 		// Authorize OAuth Data
 		this.app.get(
