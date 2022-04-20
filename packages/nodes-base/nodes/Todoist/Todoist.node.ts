@@ -21,7 +21,7 @@ interface IBodyCreateTask {
 	description?: string;
 	project_id?: number;
 	section_id?: number;
-	parent?: number;
+	parent_id?: number;
 	order?: number;
 	label_ids?: number[];
 	priority?: number;
