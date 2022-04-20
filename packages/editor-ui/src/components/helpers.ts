@@ -59,3 +59,7 @@ export function filterTemplateNodes(nodes: ITemplatesNode[]) {
 export function setPageTitle(title: string) {
 	window.document.title = title;
 }
+
+export function isString(value: unknown): value is string {
+	return typeof value === 'string';
+}

@@ -80,9 +80,8 @@ export default {
 			type: String,
 			default: '0',
 		},
-		isDefaultTextChanged: {
-			type: Boolean,
-			default: false,
+		defaultText: {
+			type: String,
 		},
 		isEditable: {
 			type: Boolean,
@@ -148,7 +147,7 @@ export default {
 				setTimeout(() => {
 					const textArea = document.querySelector('.el-textarea__inner');
 					if (textArea) {
-						if (!this.isDefaultTextChanged) {
+						if (this.defaultText === this.content) {
 							textArea.select();
 						}
 						textArea.focus();

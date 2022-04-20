@@ -19,10 +19,10 @@
 					:content.sync="node.parameters.content"
 					:height="node.parameters.height"
 					:id="nodeIndex"
-					:isDefaultTextChanged="node.parameters.isDefaultTextChanged"
 					:isEditable="node.parameters.isEditable"
 					:readOnly="!showTooltip"
 					:width="node.parameters.width"
+					:defaultText="defaultText"
 					@input="onInputChange"
 					@onChangeMode="onChangeMode"
 					@onMouseHover="onMouseHover"
@@ -49,7 +49,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { getStyleTokenValue } from './helpers';
+import { getStyleTokenValue, isString } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
 import {
@@ -82,7 +82,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 						const nodeParameters = {
 							content: this.node.parameters.content,
 							height: this.stickyProp.height,
-							isDefaultTextChanged: this.node.parameters.isDefaultTextChanged,
 							isEditable: false,
 							width: this.stickyProp.width,
 						};
@@ -114,6 +113,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			};
 
 			return returnStyles;
+		},
+		defaultText (): string {
+			if (!this.nodeType) {
+				return '';
+			}
+			const properties = this.nodeType.properties;
+			const content = properties.find((property) => property.name === 'content');
+
+			return content && isString(content.default) ? content.default : '';
 		},
 		isSelected (): boolean {
 			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
@@ -259,13 +267,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
-		setSizeParameters(content: string | null = null, isEditable = false, isDefaultTextChanged: boolean | null = null) {
+		setSizeParameters(content: string | null = null, isEditable = false) {
 			if (this.node) {
 				const nodeParameters = {
 					content: content ? content : this.node.parameters.content,
 					height: this.stickyProp.height,
 					width: this.stickyProp.width,
-					isDefaultTextChanged: isDefaultTextChanged ? isDefaultTextChanged : this.node.parameters.isDefaultTextChanged,
 					isEditable,
 				};
 
