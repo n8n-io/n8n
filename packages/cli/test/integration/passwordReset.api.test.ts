@@ -13,6 +13,7 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { Role } from '../../src/databases/entities/Role';
+import { SMTP_TEST_TIMEOUT } from './shared/constants';
 
 jest.mock('../../src/telemetry');
 
@@ -72,7 +73,7 @@ test(
 			}),
 		);
 	},
-	utils.SMTP_TEST_TIMEOUT,
+	SMTP_TEST_TIMEOUT,
 );
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {

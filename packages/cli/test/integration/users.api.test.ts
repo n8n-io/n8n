@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Db } from '../../src';
 import config from '../../config';
-import { SUCCESS_RESPONSE_BODY } from './shared/constants';
+import { SMTP_TEST_TIMEOUT, SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomEmail,
 	randomValidPassword,
@@ -528,7 +528,7 @@ test(
 			expect(resetPasswordToken).toBeNull();
 		}
 	},
-	utils.SMTP_TEST_TIMEOUT,
+	SMTP_TEST_TIMEOUT,
 );
 
 test(
@@ -557,7 +557,7 @@ test(
 			}),
 		);
 	},
-	utils.SMTP_TEST_TIMEOUT,
+	SMTP_TEST_TIMEOUT,
 );
 
 test(
@@ -579,7 +579,7 @@ test(
 		const users = await Db.collections.User!.find();
 		expect(users.length).toBe(1);
 	},
-	utils.SMTP_TEST_TIMEOUT,
+	SMTP_TEST_TIMEOUT,
 );
 
 // TODO: /users/:id/reinvite route tests missing
