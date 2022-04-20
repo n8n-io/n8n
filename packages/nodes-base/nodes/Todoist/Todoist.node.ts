@@ -157,7 +157,7 @@ export class Todoist implements INodeType {
 			},
 			{
 				displayName: 'Project',
-				name: 'project',
+				name: 'projectId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getProjects',
@@ -274,13 +274,13 @@ export class Todoist implements INodeType {
 						description: 'Task priority from 1 (normal) to 4 (urgent).',
 					},
 					{
-						displayName: 'Section',
-						name: 'section',
+						displayName: 'Section ID',
+						name: 'sectionId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getSections',
 							loadOptionsDependsOn: [
-								'project',
+								'projectId',
 							],
 						},
 						default: {},
@@ -340,8 +340,8 @@ export class Todoist implements INodeType {
 				description: 'How many results to return.',
 			},
 			{
-				displayName: 'Filters',
-				name: 'filters',
+				displayName: 'Additional Fields',
+				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
@@ -396,6 +396,19 @@ export class Todoist implements INodeType {
 						},
 						default: '',
 						description: 'Filter tasks by project id.',
+					},
+					{
+						displayName: 'Section ID',
+						name: 'sectionId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getSections',
+							loadOptionsDependsOn: [
+								'options.projectId',
+							],
+						},
+						default: '',
+						description: 'Filter tasks by section id.',
 					},
 				],
 			},
@@ -503,7 +516,9 @@ export class Todoist implements INodeType {
 			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const projectId = this.getCurrentNodeParameter('project') as number;
+				const options = this.getNodeParameter('options', {}) as IDataObject;
+				const projectId = options.projectId as number ??
+					this.getCurrentNodeParameter('projectId') as number;
 				if (projectId) {
 					const qs: IDataObject = {project_id: projectId};
 					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
@@ -559,7 +574,7 @@ export class Todoist implements INodeType {
 					if (operation === 'create') {
 						//https://developer.todoist.com/rest/v1/#create-a-new-task
 						const content = this.getNodeParameter('content', i) as string;
-						const projectId = this.getNodeParameter('project', i) as number;
+						const projectId = this.getNodeParameter('projectId', i) as number;
 						const labels = this.getNodeParameter('labels', i) as number[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -589,8 +604,9 @@ export class Todoist implements INodeType {
 							body.label_ids = labels;
 						}
 
-						if (options.section) {
-							body.section_id = options.section as number;
+						if (options.sectionId) {
+							body.section_id = options.sectionId as number;
+						}
 						}
 
 						responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
@@ -625,6 +641,9 @@ export class Todoist implements INodeType {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.projectId) {
 							qs.project_id = filters.projectId as string;
+						}
+						if (filters.sectionId) {
+							qs.section_id = filters.sectionId as string;
 						}
 						if (filters.labelId) {
 							qs.label_id = filters.labelId as string;
