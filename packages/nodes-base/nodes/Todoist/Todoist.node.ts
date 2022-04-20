@@ -287,6 +287,20 @@ export class Todoist implements INodeType {
 						description: 'The section you want to operate on.',
 					},
 					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getItems',
+							loadOptionsDependsOn: [
+								'projectId',
+								'options.sectionId',
+							],
+						},
+						default: {},
+						description: 'The parent task you want to operate on.',
+					},
+					{
 						displayName: 'Labels',
 						name: 'labels',
 						type: 'multiOptions',
@@ -409,6 +423,20 @@ export class Todoist implements INodeType {
 						},
 						default: '',
 						description: 'Filter tasks by section id.',
+					},
+					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getItems',
+							loadOptionsDependsOn: [
+								'options.projectId',
+								'options.sectionId',
+							],
+						},
+						default: '',
+						description: 'Filter tasks by parent task id.',
 					},
 				],
 			},
@@ -536,6 +564,34 @@ export class Todoist implements INodeType {
 				return returnData;
 			},
 
+			// Get all the available parents in the selected project and section,
+			// to display them to user so that they can select one easily
+			async getItems(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const options = this.getNodeParameter('options', {}) as IDataObject;
+				const projectId = options.projectId as number ??
+					this.getCurrentNodeParameter('projectId') as number;
+				const sectionId = options.sectionId as number ??
+					this.getCurrentNodeParameter('sectionId') as number;
+				if (projectId) {
+					const qs: IDataObject = sectionId ?
+						{project_id: projectId, section_id: sectionId} : {project_id: projectId};
+					const items = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
+					for (const item of items) {
+						const itemContent = item.content;
+						const itemId = item.id;
+
+						returnData.push({
+							name: itemContent,
+							value: itemId,
+						});
+					}
+				}
+
+				return returnData;
+			},
+
 			// Get all the available labels to display them to user so that he can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -607,6 +663,9 @@ export class Todoist implements INodeType {
 						if (options.sectionId) {
 							body.section_id = options.sectionId as number;
 						}
+
+						if (options.parentId) {
+							body.parent_id = options.parentId as number;
 						}
 
 						responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
@@ -644,6 +703,9 @@ export class Todoist implements INodeType {
 						}
 						if (filters.sectionId) {
 							qs.section_id = filters.sectionId as string;
+						}
+						if (filters.parentId) {
+							qs.parent_id = filters.parentId as string;
 						}
 						if (filters.labelId) {
 							qs.label_id = filters.labelId as string;
