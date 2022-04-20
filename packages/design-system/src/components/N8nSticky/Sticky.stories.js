@@ -39,11 +39,7 @@ export default {
 };
 
 const methods = {
-	onBlur: action('blur'),
-	onChange: action('change'),
-	onFocus: action('focus'),
 	onInput: action('input'),
-	onUnfocus: action('unfocus'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -52,7 +48,7 @@ const Template = (args, { argTypes }) => ({
 		N8nSticky,
 	},
 	template:
-    '<n8n-sticky v-bind="$props"  @blur="onBlur" @change="onChange" @focus="onFocus" @input="onInput" @unfocus="onUnfocus"></n8n-sticky>',
+		'<n8n-sticky v-bind="$props"  @blur="onBlur" @change="onChange" @focus="onFocus" @input="onInput" @unfocus="onUnfocus"></n8n-sticky>',
 	methods,
 });
 

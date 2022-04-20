@@ -10,7 +10,6 @@
 				:data-name="data.name"
 				:ref="data.name"
 				:style="borderStyle"
-				@click="setNodeActive"
 				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -19,12 +18,12 @@
 					:content.sync="node.parameters.content"
 					:height="node.parameters.height"
 					:id="nodeIndex"
-					:isEditable="node.parameters.isEditable"
 					:readOnly="isReadOnly"
 					:width="node.parameters.width"
 					:defaultText="defaultText"
+					:editMode="isActive && !isReadOnly"
 					@input="onInputChange"
-					@onChangeMode="onChangeMode"
+					@edit="onEdit"
 					@onMouseHover="onMouseHover"
 					@resizestart="onResizeStart"
 					@resize="onResize"
@@ -68,12 +67,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		NodeIcon,
 	},
 	watch: {
-		isResizing: {
-			handler(isResizing) {
-				this.$emit('onResizeChange', isResizing);
-			},
-			immediate: true,
-		},
 		isSelected: {
 			handler(isSelected) {
 				if (!isSelected) {
@@ -173,7 +166,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			} = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
-				zIndex: -1 * Math.floor((this.height * this.width) / 1000),
+				zIndex: this.isActive ? 9999999 : -1 * Math.floor((this.height * this.width) / 1000),
 			};
 
 			return returnStyles;
@@ -214,20 +207,19 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$emit('removeNode', this.data.name);
 			});
 		},
-		onChangeMode(isStickyInEditMode: boolean) {
-			if (isStickyInEditMode) {
-				this.setSizeParameters(null, isStickyInEditMode, 99999);
-			} else {
-				this.setSizeParameters(null, isStickyInEditMode);
+		onEdit(edit: boolean) {
+			if (edit && !this.isActive && this.node) {
+				this.$store.commit('setActiveNode', this.node.name);
 			}
-
-			this.$emit('onChangeMode', isStickyInEditMode);
+			else if (this.isActive && !edit) {
+				this.$store.commit('setActiveNode', null);
+			}
 		},
 		onMouseHover(isMouseHoverActive: boolean) {
 			this.$emit('onMouseHover', isMouseHoverActive);
 		},
 		onInputChange(content: string) {
-			this.setSizeParameters(content, true, 9999, true);
+			this.setParameters({content});
 		},
 		onResizeStart() {
 			this.isResizing = true;
@@ -251,19 +243,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			if (this.node) {
-				const isStickyInEditMode = this.node.parameters.isEditable as boolean;
-				if (isStickyInEditMode) {
-					this.setSizeParameters(null, isStickyInEditMode, 99999);
-				} else {
-					this.setSizeParameters(null, isStickyInEditMode);
-				}
-			}
-
 			this.__makeInstanceDraggable(this.data);
-		},
-		setNodeActive () {
-			this.$store.commit('setActiveNode', this.data.name);
 		},
 		setParameters(params: {content?: string, height?: number, width?: number}) {
 			if (this.node) {
@@ -294,23 +274,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			};
 
 			this.$store.commit('updateNodeProperties', updateInformation);
-		},
-		setSizeParameters(content: string | null = null, isEditable = false) {
-			if (this.node) {
-				const nodeParameters = {
-					content: content ? content : this.node.parameters.content,
-					height: this.node.parameters.height,
-					width: this.node.parameters.width,
-					isEditable,
-				};
-
-				const updateInformation = {
-					name: this.node.name,
-					value: nodeParameters,
-				};
-
-				this.$store.commit('setNodeParameters', updateInformation);
-			}
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {

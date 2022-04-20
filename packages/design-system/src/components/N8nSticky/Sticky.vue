@@ -1,7 +1,6 @@
 <template>
   <div
-    :id="`sticky-${id}`"
-    :class="[$style.sticky, isStickyEditable ? $style.editMode : '']"
+    :class="{[$style.sticky]: true, [$style.editMode]: editMode}"
     :style="styles"
   >
     <resize
@@ -12,9 +11,9 @@
     >
       <template>
         <div
-          v-if="!isStickyEditable"
+          v-show="!editMode"
           :class="$style.wrapper"
-          @dblclick="changeMode"
+          @dblclick.stop="onDoubleClick"
         >
           <n8n-markdown
             :content="content"
@@ -22,7 +21,10 @@
           />
         </div>
         <div
-          v-else
+          v-show="editMode"
+					@click.stop
+					@keydown.esc="onInputBlur"
+					@keydown.stop
           @mouseover="onMouseHover"
           @mouseout="onMouseHoverEnd"
           class="sticky-textarea"
@@ -32,10 +34,9 @@
             :value="content"
             type="textarea"
             :rows="5"
-            @blur="onBlur"
-            @change="onChange"
-            @focus="onFocus"
+            @blur="onInputBlur"
             @input="onInput"
+						ref="input"
           />
           <div v-if="shouldShowFooter" :class="$style.footer">
             <n8n-text
@@ -80,7 +81,7 @@ export default mixins(Locale).extend({
 		defaultText: {
 			type: String,
 		},
-		isEditable: {
+		editMode: {
 			type: Boolean,
 			default: false,
 		},
@@ -95,12 +96,6 @@ export default mixins(Locale).extend({
 		readOnly: {
 			type: Boolean,
 			default: false,
-		},
-	},
-	watch: {
-		isEditable(isEditable) {
-			this.isStickyEditable = isEditable;
-			this.$emit('onChangeMode', this.isEditable);
 		},
 	},
 	components: {
@@ -132,43 +127,14 @@ export default mixins(Locale).extend({
 			return this.resHeight > 100 && this.resWidth > 155;
 		},
 	},
-	data() {
-		return {
-			isStickyEditable: false,
-			resizer: null,
-		};
-	},
 	methods: {
-		changeMode() {
+		onDoubleClick() {
 			if (!this.readOnly) {
-				setTimeout(() => {
-					const textArea = document.querySelector('.el-textarea__inner');
-					if (textArea) {
-						if (this.defaultText === this.content) {
-							textArea.select();
-						}
-						textArea.focus();
-					}
-				}, 100);
-
-				if (this.isStickyEditable) {
-					this.$emit('unfocus', this.isStickyEditable);
-				}
-
-				this.isStickyEditable =! this.isStickyEditable;
-				this.$emit('onChangeMode', this.isStickyEditable);
+				this.$emit('edit', true);
 			}
 		},
-		onBlur(value) {
-			this.isStickyEditable = false;
-			this.$emit('onChangeMode', this.isStickyEditable);
-			this.$emit('blur', value);
-		},
-		onChange(value: string) {
-			this.$emit('change', value);
-		},
-		onFocus(value) {
-			this.$emit('focus', value);
+		onInputBlur(value) {
+			this.$emit('edit', false);
 		},
 		onInput(value: string) {
 			this.$emit('input', value);
@@ -189,8 +155,19 @@ export default mixins(Locale).extend({
 			this.$emit('resizestart');
 		},
 	},
-	mounted() {
-		this.resizer = document.querySelector(`#sticky-${this.id}`);
+	watch: {
+		editMode(newMode, prevMode) {
+			setTimeout(() => {
+				if (newMode && !prevMode && this.$refs.input && this.$refs.input.$refs && this.$refs.input.$refs.textarea) {
+					const textarea = this.$refs.input.$refs.textarea;
+					if (this.defaultText === this.content) {
+						textarea.select();
+					}
+					textarea.focus();
+				}
+			}, 100);
+
+		},
 	},
 });
 </script>

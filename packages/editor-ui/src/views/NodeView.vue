@@ -48,7 +48,6 @@
 						@removeNode="removeNode"
 						@onChangeMode="onStickyChangeMode"
 						@onMouseHover="onMouseHover"
-						@onResizeChange="onResizeChange"
 						:id="'node-' + getNodeIndex(nodeData.name)"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
@@ -743,22 +742,6 @@ export default mixins(
 						this.$store.commit('setActiveNode', null);
 					}
 
-					if (this.lastSelectedNode && this.isStickyNode) {
-						const nodeParameters = {
-							content: this.lastSelectedNode.parameters.content,
-							height: this.lastSelectedNode.parameters.height,
-							isEditable: false,
-							width: this.lastSelectedNode.parameters.width,
-						};
-
-						const updateInformation = {
-							name: this.lastSelectedNode.name,
-							value: nodeParameters,
-						};
-
-						this.$store.commit('setNodeParameters', updateInformation);
-					}
-
 					return;
 				}
 
@@ -870,23 +853,6 @@ export default mixins(
 
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
-					}
-
-
-					if (this.lastSelectedNode && this.isStickyNode) {
-						const nodeParameters = {
-							content: this.lastSelectedNode.parameters.content,
-							height: this.lastSelectedNode.parameters.height,
-							isEditable: true,
-							width: this.lastSelectedNode.parameters.width,
-						};
-
-						const updateInformation = {
-							name: this.lastSelectedNode.name,
-							value: nodeParameters,
-						};
-
-						this.$store.commit('setNodeParameters', updateInformation);
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
 					// Select all downstream nodes

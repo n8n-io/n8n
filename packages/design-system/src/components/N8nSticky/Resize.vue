@@ -16,9 +16,6 @@
 export default {
 	name: 'n8n-resize',
 	props: {
-		resizer: {
-			type: HTMLDivElement,
-		},
 		isResizingEnabled: {
 			type: Boolean,
 			default: true,
