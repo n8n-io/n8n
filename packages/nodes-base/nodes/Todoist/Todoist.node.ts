@@ -176,27 +176,6 @@ export class Todoist implements INodeType {
 				description: 'The project you want to operate on.',
 			},
 			{
-				displayName: 'Labels',
-				name: 'labels',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'task',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
-				default: [],
-				required: false,
-				description: 'Labels',
-			},
-			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
@@ -306,6 +285,16 @@ export class Todoist implements INodeType {
 						},
 						default: {},
 						description: 'The section you want to operate on.',
+					},
+					{
+						displayName: 'Labels',
+						name: 'labels',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getLabels',
+						},
+						default: [],
+						description: 'Labels',
 					},
 				],
 			},
