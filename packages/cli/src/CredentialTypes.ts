@@ -3,6 +3,7 @@ import {
 	ICredentialTypeData,
 	ICredentialTypes as ICredentialTypesInterface,
 } from 'n8n-workflow';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 class CredentialTypesClass implements ICredentialTypesInterface {
 	credentialTypes: ICredentialTypeData = {};
@@ -19,7 +20,7 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 		try {
 			return this.credentialTypes[credentialType].type;
 		} catch (error) {
-			throw new Error(`Failed to find credential type: ${credentialType}`);
+			throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL}: ${credentialType}`);
 		}
 	}
 }
