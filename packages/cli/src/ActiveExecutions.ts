@@ -85,7 +85,6 @@ export class ActiveExecutions {
 				waitTill: null,
 			};
 
-			// @ts-ignore
 			await Db.collections.Execution.update(executionId, execution);
 		}
 
