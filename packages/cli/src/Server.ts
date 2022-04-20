@@ -1078,7 +1078,6 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-				// @ts-ignore
 				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
 
 				if (updatedWorkflow.active) {
@@ -1092,7 +1091,6 @@ class App {
 					} catch (error) {
 						// If workflow could not be activated set it again to inactive
 						updateData.active = false;
-						// @ts-ignore
 						await Db.collections.Workflow.update(workflowId, updateData);
 
 						// Also set it in the returned data
