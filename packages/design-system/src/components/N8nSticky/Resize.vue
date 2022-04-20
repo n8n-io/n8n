@@ -19,12 +19,6 @@ export default {
 		resizer: {
 			type: HTMLDivElement,
 		},
-		minWidth: {
-			type: Number,
-		},
-		minHeight: {
-			type: Number,
-		},
 		isResizingEnabled: {
 			type: Boolean,
 			default: true,

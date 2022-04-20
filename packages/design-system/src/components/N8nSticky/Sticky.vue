@@ -6,8 +6,6 @@
   >
     <resize
       :isResizingEnabled="!readOnly"
-      :minHeight="minHeight"
-      :minWidth="minWidth"
       @resizeend="onResizeEnd"
       @resize="onResize"
       @resizestart="onResizeStart"
