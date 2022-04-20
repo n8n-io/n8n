@@ -58,6 +58,7 @@ class LoadNodesAndCredentialsClass {
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(__dirname, '..', '..', 'node_modules', 'n8n-workflow'),
+			path.join(__dirname, '..', 'node_modules', 'n8n-workflow'), // for test run
 		];
 		for (const checkPath of checkPaths) {
 			try {
