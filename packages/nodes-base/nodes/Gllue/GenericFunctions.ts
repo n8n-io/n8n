@@ -25,12 +25,14 @@ export class Hasura {
 	async post(payload: IDataObject) {
 		const uri = this.getUrl(payload.id as string);
 		const options = buildOptionWithUri(uri, 'POST', payload);
+		console.log(`DEBUG: Hasura POST options=${JSON.stringify(options)}`);
 		return await this.request(options);
 	}
 
 	async get(id?: string){
 		const uri = this.getUrl(id);
 		const options = buildOptionWithUri(uri, 'GET');
+		console.log(`DEBUG: Hasura GET options=${JSON.stringify(options)}`);
 		const data = await this.request(options);
 		return data.email_notification[0];
 	}
