@@ -43,7 +43,7 @@ export class NocoDbUserToken implements ICredentialType {
 				properties: {
 					key: 'isAuthorized',
 					value: false,
-					message: 'Invalid API Token',
+					message: 'Invalid User Token',
 				},
 			},
 		],

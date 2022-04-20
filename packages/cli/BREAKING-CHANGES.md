@@ -8,7 +8,7 @@ This list shows all the versions which include breaking changes and how to upgra
 Renamed credentials in the NocoDB node from nocoDb to nocoDbUserToken.
 ### When is action necessary?
 
-If you are using the NocoDB node,
+If you are using the NocoDB node.
 
 ### How to upgrade:
 
