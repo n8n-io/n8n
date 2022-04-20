@@ -1,6 +1,10 @@
 import { MongoClient } from 'mongodb';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -17,6 +21,44 @@ import { validateAndResolveMongoCredentials } from './MongoDb.node.utils';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
+	methods = {
+		credentialTest: {
+			async mongoDBConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				try {
+					const credentials = credential.data as IDataObject;
+
+					let connectionString = '';
+					if (credentials.configurationType === 'connectionString') {
+						connectionString = (credentials.connectionString as string).trim();
+					} else {
+						if (credentials.port) {
+							connectionString = `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
+						} else {
+							connectionString = `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+						}
+					}
+
+					await MongoClient.connect(connectionString, {
+						useNewUrlParser: true,
+						useUnifiedTopology: true,
+					});
+
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const { database, connectionString } = validateAndResolveMongoCredentials(
