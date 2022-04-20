@@ -20,7 +20,7 @@
 					:height="node.parameters.height"
 					:id="nodeIndex"
 					:isEditable="node.parameters.isEditable"
-					:readOnly="!showTooltip"
+					:readOnly="isReadOnly"
 					:width="node.parameters.width"
 					:defaultText="defaultText"
 					@input="onInputChange"
@@ -32,7 +32,7 @@
 				/>
 			</div>
 
-			<div v-show="showTooltip" :style="tootlipSize" class="sticky-options no-select-on-click">
+			<div v-show="showActions" :style="tootlipSize" class="sticky-options no-select-on-click">
 				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -189,8 +189,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		showTooltip(): boolean {
-			return !this.hideActions && !this.isReadOnly && !this.workflowRunning;
+		showActions(): boolean {
+			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');

@@ -51,7 +51,7 @@
 						@onResizeChange="onResizeChange"
 						:id="'node-' + getNodeIndex(nodeData.name)"
 						:name="nodeData.name"
-						:isReadOnly="isResizing"
+						:isReadOnly="isReadOnly"
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
 						:hideActions="pullConnActive"
@@ -396,7 +396,6 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
-				isResizing: false,
 				isAddStickyButtonVisible: false,
 				isStickyInEditMode: false,
 				shouldPreventScrolling: false,
@@ -412,9 +411,6 @@ export default mixins(
 		methods: {
 			onMouseHover(shouldPreventScrolling: boolean) {
 				this.shouldPreventScrolling = shouldPreventScrolling;
-			},
-			onResizeChange(isResizing: boolean) {
-				this.isResizing = isResizing;
 			},
 			onStickyChangeMode(isStickyInEditMode: boolean) {
 				this.isStickyInEditMode = isStickyInEditMode;
