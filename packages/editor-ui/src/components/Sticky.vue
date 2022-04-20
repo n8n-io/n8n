@@ -49,7 +49,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { getStyleTokenValue, isString } from './helpers';
+import { getStyleTokenValue, isNumber, isString } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
 import {
@@ -57,8 +57,6 @@ import {
 } from 'n8n-workflow';
 
 export interface Sticky {
-	height: number;
-	width: number;
 	top: number;
 	left: number;
 }
@@ -81,9 +79,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					if (this.node) {
 						const nodeParameters = {
 							content: this.node.parameters.content,
-							height: this.stickyProp.height,
+							height: this.height,
 							isEditable: false,
-							width: this.stickyProp.width,
+							width: this.width,
 						};
 
 						const updateInformation = {
@@ -139,12 +137,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return [0, 0];
 			}
 		},
+		height(): number {
+			return this.node && isNumber(this.node.parameters.height)? this.node.parameters.height : 0;
+		},
+		width(): number {
+			return this.node && isNumber(this.node.parameters.width)? this.node.parameters.width : 0;
+		},
 		selectedStickyStyle (): object {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
-				height: this.stickyProp.height + 16 + 'px',
-				width: this.stickyProp.width + 16 + 'px',
+				height: this.height + 16 + 'px',
+				width: this.width + 16 + 'px',
 				left: this.stickyProp.left - 8 + 'px',
 				top: this.stickyProp.top - 8 + 'px',
 				zIndex: 0,
@@ -156,19 +160,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
-				height: this.stickyProp.height + 'px',
-				width: this.stickyProp.width + 'px',
+				height: this.height + 'px',
+				width: this.width + 'px',
 			};
 
 			return returnStyles;
-		},
-		height(): number {
-			// @ts-ignore
-			return this.node.parameters.height;
-		},
-		width(): number {
-			// @ts-ignore
-			return this.node.parameters.width;
 		},
 		stickyPosition (): object {
 			const returnStyles: {
@@ -185,7 +181,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			const returnStyles: {
 				[key: string]: string;
 			} = {
-				width: this.stickyProp.width + 16 + 'px',
+				width: this.width + 16 + 'px',
 				left: this.stickyProp.left - 8 + 'px',
 				top: this.stickyProp.top - 25 + 'px',
 			};
@@ -205,8 +201,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			isResizing: false,
 			isTouchActive: false,
 			stickyProp: {
-				height: 0,
-				width: 0,
 				top: 0,
 				left: 0,
 			},
@@ -234,18 +228,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		onInputChange(content: string) {
 			this.setSizeParameters(content, true, 9999, true);
 		},
-		onResizeStart(parameters: Sticky) {
+		onResizeStart(deltas:  { width: number, height: number, left: number, top: number }) {
 			this.isResizing = true;
-			this.stickyProp.height = parameters.height;
-			this.stickyProp.width = parameters.width;
+			console.log('resizing', deltas);
+			this.setParameters({ height: this.height + deltas.height, width: this.width + deltas.width });
 
-			if(parameters.top) {
-				this.stickyProp.top = parameters.top;
-			}
+			// if(parameters.top) {
+			// 	this.stickyProp.top = parameters.top;
+			// }
 
-			if (parameters.left) {
-				this.stickyProp.left = parameters.left;
-			}
+			// if (parameters.left) {
+			// 	this.stickyProp.left = parameters.left;
+			// }
 
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
@@ -267,12 +261,28 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
+		setParameters(params: {content?: string, height?: number, width?: number}) {
+			if (this.node) {
+				const nodeParameters = {
+					content: params.content ? params.content : this.node.parameters.content,
+					height: params.height ? params.height : this.node.parameters.height,
+					width: params.width ? params.width : this.node.parameters.width,
+				};
+
+				const updateInformation = {
+					name: this.node.name,
+					value: nodeParameters,
+				};
+
+				this.$store.commit('setNodeParameters', updateInformation);
+			}
+		},
 		setSizeParameters(content: string | null = null, isEditable = false) {
 			if (this.node) {
 				const nodeParameters = {
 					content: content ? content : this.node.parameters.content,
-					height: this.stickyProp.height,
-					width: this.stickyProp.width,
+					height: this.node.parameters.height,
+					width: this.node.parameters.width,
 					isEditable,
 				};
 
@@ -292,10 +302,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}, 2000);
 			}
 		},
-	},
-	mounted() {
-		this.stickyProp.height = this.data.parameters.height as number;
-		this.stickyProp.width = this.data.parameters.width as number;
 	},
 });
 
