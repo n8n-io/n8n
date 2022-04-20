@@ -33,8 +33,6 @@ export default {
 	data() {
 		return {
 			currentResizer: null,
-			prevX: 0,
-			prevY: 0,
 			height: 0,
 			width: 0,
 			x: 0,
@@ -45,8 +43,6 @@ export default {
 		resizerMove(e) {
 			this.currentResizer = e.target;
 
-			this.prevX = e.clientX;
-			this.prevY = e.clientY;
 			this.x = e.pageX;
 			this.y = e.pageY;
 			this.width = 0;
@@ -64,39 +60,28 @@ export default {
 			let top = false;
 			let left = false;
 
-			if (this.currentResizer.classList.contains('bottom-right')) {
+			const hasDir = (dir) => {
+				return [...this.currentResizer.classList].find((v) => typeof v === 'string' && v.includes(dir));
+			};
+
+			if (hasDir('right')) {
 				width = e.pageX - this.x;
-				height = e.pageY - this.y;
-			} else if (this.currentResizer.classList.contains('bottom-left')) {
-				height = e.pageY - this.y;
+			}
+			if (hasDir('left')) {
 				width = this.x - e.pageX;
 				left = true;
-			} else if (this.currentResizer.classList.contains('top-right')) {
-				width = e.pageX - this.x;
+			}
+			if (hasDir('top')) {
 				height = this.y - e.pageY;
 				top = true;
-			} else if (this.currentResizer.classList.contains('top-left')) {
-				width = this.x - e.pageX;
-				height = this.y - e.pageY;
-				top = true;
-				left = true;
-			} else if (this.currentResizer.classList.contains('right')) {
-				width = e.pageX - this.x;
-			} else if (this.currentResizer.classList.contains('left')) {
-				width = this.x - e.pageX;
-				left = true;
-			} else if (this.currentResizer.classList.contains('top')) {
-				height = this.y - e.pageY;
-				top = true;
-			} else if (this.currentResizer.classList.contains('bottom')) {
+			}
+			if (hasDir('bottom')) {
 				height = e.pageY - this.y;
 			}
 
 			this.$emit('resize', { width: width - this.width, height: height - this.height, left, top });
 			this.height = height;
 			this.width = width;
-			this.prevX = e.clientX;
-			this.prevY = e.clientY;
 		},
 		mouseUp() {
 			this.$emit('resizeend', true);
