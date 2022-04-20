@@ -101,7 +101,7 @@ Vue.use(N8nMenuItem);
 Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
-Vue.use(N8nSticky);
+Vue.component('n8n-sticky', N8nSticky);
 Vue.use(N8nRadioButtons);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);

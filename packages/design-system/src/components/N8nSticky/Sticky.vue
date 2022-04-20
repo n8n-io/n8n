@@ -44,10 +44,7 @@
               size="xsmall"
               aligh="right"
             >
-              You can style with
-              <a href="https://docs.n8n.io/getting-started/key-components/workflow-notes.html" target="_blank">
-                Markdown
-              </a>
+							<span v-html="t('sticky.markdownHint')"></span>
             </n8n-text>
           </div>
         </div>
@@ -61,8 +58,10 @@ import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nResize from '../N8nResize';
 import N8nText from '../N8nText';
+import Locale from '../../mixins/locale';
+import mixins from 'vue-typed-mixins';
 
-export default {
+export default mixins(Locale).extend({
 	name: 'n8n-sticky',
 	props: {
 		content: {
@@ -192,7 +191,7 @@ export default {
 	mounted() {
 		this.resizer = document.querySelector(`#sticky-${this.id}`);
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
