@@ -5,7 +5,7 @@ metadata:
   namespace: staging
 type: Opaque
 data:
-  DB_POSTGRESDB_HOST: cGdtLXVmNjZvaGJpbWt3dzc0MDgucGcucmRzLmFsaXl1bmNzLmNvbQ==
+  DB_POSTGRESDB_HOST: cGdtLXVmNjRmeTU3NTFjaDYyOTQxNDgzMC5wZy5yZHMuYWxpeXVuY3MuY29t
   DB_POSTGRESDB_USER: Y3JtX3N0YWdpbmdfbjhu
   DB_POSTGRESDB_PASSWORD: QVNENXhMY0JOY0hLb2JIVg==
   N8N_BASIC_AUTH_USER: bjhuYmFzaWM=
