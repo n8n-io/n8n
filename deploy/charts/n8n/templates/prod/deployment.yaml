@@ -5,7 +5,7 @@ metadata:
   namespace: prod
 type: Opaque
 data:
-  DB_POSTGRESDB_HOST: cGdtLXVmNnI4NzI1aGZtdGIwOXAxMTczOTAucGcucmRzLmFsaXl1bmNzLmNvbQ==
+  DB_POSTGRESDB_HOST: cGdtLXVmNm05M2VodzU4ZDFrczYxNDI4OTAucGcucmRzLmFsaXl1bmNzLmNvbQ==
   DB_POSTGRESDB_USER: cHJvZF9uOG4=
   DB_POSTGRESDB_PASSWORD: S3kwUDZ6RjNEd3BZUHRObA==
   N8N_BASIC_AUTH_USER: bjhuYmFzaWM=

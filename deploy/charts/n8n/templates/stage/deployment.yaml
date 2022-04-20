@@ -5,8 +5,8 @@ metadata:
   namespace: staging
 type: Opaque
 data:
-  DB_POSTGRESDB_HOST: cGdtLXVmNnI4NzI1aGZtdGIwOXAxMTczOTAucGcucmRzLmFsaXl1bmNzLmNvbQ==
-  DB_POSTGRESDB_USER: c3RhZ2luZ19uOG4=
+  DB_POSTGRESDB_HOST: cGdtLXVmNjZvaGJpbWt3dzc0MDgucGcucmRzLmFsaXl1bmNzLmNvbQ==
+  DB_POSTGRESDB_USER: Y3JtX3N0YWdpbmdfbjhu
   DB_POSTGRESDB_PASSWORD: QVNENXhMY0JOY0hLb2JIVg==
   N8N_BASIC_AUTH_USER: bjhuYmFzaWM=
   N8N_BASIC_AUTH_PASSWORD: M3lQcW4xRDdNRHJhNDd2bA==
@@ -58,7 +58,7 @@ spec:
         - name: DB_TYPE
           value: "postgresdb"
         - name: DB_POSTGRESDB_DATABASE
-          value: "staging_n8n"
+          value: "crm_staging_n8n"
         - name: HASURA_URL
           value: "staging-hasura-svc:80"
         - name: DB_POSTGRESDB_HOST
