@@ -68,21 +68,13 @@ export default {
 		content: {
 			type: String,
 		},
-		top: {
+		height: {
 			type: Number,
-			default: 80,
+			default: 180,
 		},
-		bottom: {
+		width: {
 			type: Number,
-			default: 80,
-		},
-		left: {
-			type: Number,
-			default: 120,
-		},
-		right: {
-			type: Number,
-			default: 120,
+			default: 240,
 		},
 		id: {
 			type: String,
@@ -130,28 +122,26 @@ export default {
 		N8nText,
 	},
 	computed: {
-		height(): number {
-			const height = this.top + this.bottom;
-			if (height < this.minHeight) {
+		resHeight(): number {
+			if (this.height < this.minHeight) {
 				return this.minHeight;
 			}
-			return height;
+			return this.height;
 		},
-		width(): number {
-			const width = this.top + this.bottom;
-			if (width < this.minWidth) {
+		resWidth(): number {
+			if (this.width < this.minWidth) {
 				return this.minWidth;
 			}
-			return width;
+			return this.width;
 		},
 		styles() {
 			return {
-				height: this.height + 'px',
-				width: this.width + 'px',
+				height: this.resHeight + 'px',
+				width: this.resWidth + 'px',
 			};
 		},
 		shouldShowFooter() {
-			return this.height > 100 && this.width > 155;
+			return this.resHeight > 100 && this.resWidth > 155;
 		},
 	},
 	data() {
