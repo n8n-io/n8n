@@ -2,30 +2,30 @@ name: Docker Nightly Image CI
 
 on:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       repository:
-        description: 'GitHub repository to create image off.'
+        description: "GitHub repository to create image off."
         required: true
-        default: 'saurabharch/n8n'
+        default: "n8n-io/n8n"
       branch:
-        description: 'GitHub branch to create image off.'
+        description: "GitHub branch to create image off."
         required: true
-        default: 'master'
+        default: "master"
       tag:
-        description: 'Name of the docker tag to create.'
+        description: "Name of the docker tag to create."
         required: true
-        default: 'nightly'
+        default: "nightly"
       merge-master:
-        description: 'Merge with master.'
+        description: "Merge with master."
         type: boolean
         required: true
         default: false
       success-url:
-        description: 'URL to call after Docker Image got built successfully.'
+        description: "URL to call after Docker Image got built successfully."
         required: false
-        default: ''
+        default: ""
 
 jobs:
   build:
@@ -35,9 +35,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          repository: ${{ github.event.inputs.repository || 'saurabharch/n8n' }}
+          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
           ref: ${{ github.event.inputs.branch || 'master' }}
-      - name: Set up QEMU
+      - name: Set up QEMU for docker build
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -48,7 +48,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Merge Master - optionally
         run: |
-          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/saurabharch/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
+          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
         shell: bash
       - name: Build and push
         uses: docker/build-push-action@v2
@@ -57,7 +57,7 @@ jobs:
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: saurabharch/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: n8nio/n8n:${{ github.event.inputs.tag || 'nightly' }}
       - name: Call Success URL - optionally
         run: |
           [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""
