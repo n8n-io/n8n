@@ -41,6 +41,8 @@ export default {
 	},
 	methods: {
 		resizerMove(e) {
+			e.preventDefault();
+			e.stopPropagation();
 			this.currentResizer = e.target;
 
 			this.x = e.pageX;
@@ -55,6 +57,8 @@ export default {
 			}
 		},
 		mouseMove(e) {
+			e.preventDefault();
+			e.stopPropagation();
 			let width = 0;
 			let height = 0;
 			let top = false;
@@ -83,7 +87,9 @@ export default {
 			this.height = height;
 			this.width = width;
 		},
-		mouseUp() {
+		mouseUp(e) {
+			e.preventDefault();
+			e.stopPropagation();
 			this.$emit('resizeend', true);
 			window.removeEventListener('mousemove', this.mouseMove);
 			window.removeEventListener('mouseup', this.mouseUp);
