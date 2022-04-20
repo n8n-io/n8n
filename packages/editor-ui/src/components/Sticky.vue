@@ -1,44 +1,43 @@
 <template>
-  <div class="sticky-wrapper" :style="stickyPosition">
-    <div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
-    <div
-      :class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
-      :style="stickySize"
-    >
-      <div
-        class="sticky-box"
-        :data-name="data.name"
-        :ref="data.name"
-        :style="borderStyle"
-        @click="setNodeActive"
-        @click.left="mouseLeftClick"
-        v-touch:start="touchStart"
-        v-touch:end="touchEnd"
-      >
-        <n8n-sticky
-          :content.sync="node.parameters.content"
-          :height="node.parameters.height"
-          :id="nodeIndex"
+	<div class="sticky-wrapper" :style="stickyPosition">
+		<div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
+		<div
+			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+			:style="stickySize"
+		>
+			<div
+				class="sticky-box"
+				:data-name="data.name"
+				:ref="data.name"
+				:style="borderStyle"
+				@click="setNodeActive"
+				@click.left="mouseLeftClick"
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
+			>
+				<n8n-sticky
+					:content.sync="node.parameters.content"
+					:height="node.parameters.height"
+					:id="nodeIndex"
 					:isDefaultTextChanged="node.parameters.isDefaultTextChanged"
 					:isEditable="node.parameters.isEditable"
 					:readOnly="!showTooltip"
-          :width="node.parameters.width"
-          :zIndex="node.parameters.zIndex"
-          @input="onInputChange"
+					:width="node.parameters.width"
+					@input="onInputChange"
 					@onChangeMode="onChangeMode"
 					@onMouseHover="onMouseHover"
-          @onResizeEnd="onResizeEnd"
-          @onResizeStart="onResizeStart"
-        />
-      </div>
+					@onResizeEnd="onResizeEnd"
+					@onResizeStart="onResizeStart"
+				/>
+			</div>
 
-      <div v-show="showTooltip" :style="tootlipSize" class="sticky-options no-select-on-click">
-        <div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
-          <font-awesome-icon icon="trash" />
-        </div>
-      </div>
-    </div>
-  </div>
+			<div v-show="showTooltip" :style="tootlipSize" class="sticky-options no-select-on-click">
+				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
+					<font-awesome-icon icon="trash" />
+				</div>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script lang="ts">
@@ -62,7 +61,6 @@ export interface Sticky {
 	width: number;
 	top: number;
 	left: number;
-	zIndex: number;
 }
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
@@ -87,8 +85,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 							isDefaultTextChanged: this.node.parameters.isDefaultTextChanged,
 							isEditable: false,
 							width: this.stickyProp.width,
-							totalSize: this.stickyProp.height + this.stickyProp.width,
-							zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
 						};
 
 						const updateInformation = {
@@ -158,13 +154,21 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
+		height(): number {
+			// @ts-ignore
+			return this.node.parameters.height;
+		},
+		width(): number {
+			// @ts-ignore
+			return this.node.parameters.width;
+		},
 		stickyPosition (): object {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
-				zIndex: this.stickyProp.zIndex,
+				zIndex: -1 * Math.floor((this.height * this.width) / 1000),
 			};
 
 			return returnStyles;
@@ -197,7 +201,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				width: 0,
 				top: 0,
 				left: 0,
-				zIndex: 0,
 			},
 		};
 	},
@@ -256,23 +259,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
-		setSizeParameters(content: string | null = null, isEditable = false, zIndex: number | null = null, isDefaultTextChanged: boolean | null = null) {
+		setSizeParameters(content: string | null = null, isEditable = false, isDefaultTextChanged: boolean | null = null) {
 			if (this.node) {
-
-				if (zIndex) {
-					this.stickyProp.zIndex = zIndex;
-				} else {
-					this.stickyProp.zIndex = (this.stickyProp.height + this.stickyProp.width) * -1;
-				}
-
 				const nodeParameters = {
 					content: content ? content : this.node.parameters.content,
 					height: this.stickyProp.height,
 					width: this.stickyProp.width,
 					isDefaultTextChanged: isDefaultTextChanged ? isDefaultTextChanged : this.node.parameters.isDefaultTextChanged,
 					isEditable,
-					totalSize: this.stickyProp.height + this.stickyProp.width,
-					zIndex: this.stickyProp.zIndex,
 				};
 
 				const updateInformation = {
@@ -295,7 +289,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	mounted() {
 		this.stickyProp.height = this.data.parameters.height as number;
 		this.stickyProp.width = this.data.parameters.width as number;
-		this.stickyProp.zIndex = this.data.parameters.zIndex as number;
 	},
 });
 

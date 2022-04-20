@@ -753,9 +753,7 @@ export default mixins(
 							height: this.lastSelectedNode.parameters.height,
 							isDefaultTextChanged: this.lastSelectedNode.parameters.isDefaultTextChanged,
 							isEditable: false,
-							totalSize: this.lastSelectedNode.parameters.totalSize,
 							width: this.lastSelectedNode.parameters.width,
-							zIndex: this.lastSelectedNode.parameters.zIndex,
 						};
 
 						const updateInformation = {
@@ -886,9 +884,7 @@ export default mixins(
 							height: this.lastSelectedNode.parameters.height,
 							isDefaultTextChanged: this.lastSelectedNode.parameters.isDefaultTextChanged,
 							isEditable: true,
-							totalSize: this.lastSelectedNode.parameters.totalSize,
 							width: this.lastSelectedNode.parameters.width,
-							zIndex: this.lastSelectedNode.parameters.zIndex,
 						};
 
 						const updateInformation = {

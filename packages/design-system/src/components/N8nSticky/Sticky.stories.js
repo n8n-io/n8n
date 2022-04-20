@@ -35,11 +35,6 @@ export default {
 				control: 'number',
 			},
 		},
-		zIndex: {
-			control: {
-				control: 'number',
-			},
-		},
 	},
 };
 
@@ -71,5 +66,4 @@ Sticky.args = {
 	minWidth: 150,
 	readOnly: false,
 	width: 240,
-	zIndex: -400,
 };

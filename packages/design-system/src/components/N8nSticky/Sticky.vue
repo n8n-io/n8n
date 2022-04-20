@@ -100,14 +100,6 @@ export default {
 			type: Boolean,
 			default: false,
 		},
-		totalSize: {
-			type: Number,
-			default: 400,
-		},
-		zIndex: {
-			type: Number,
-			default: -400,
-		},
 	},
 	watch: {
 		isEditable(isEditable) {
