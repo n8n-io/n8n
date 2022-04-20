@@ -25,23 +25,20 @@ import {
 
 import {
 	access as fsAccess,
-	mkdir as fsMkdir,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
 	stat as fsStat,
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
 import { Db } from '.';
 import { InstalledPackages } from './databases/entities/InstalledPackages';
 import { InstalledNodes } from './databases/entities/InstalledNodes';
-
-const execAsync = promisify(exec);
+import { executeCommand, parsePackageName } from './CommunityNodes/helpers';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -205,42 +202,23 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	async loadNpmModule(packageName: string): Promise<INodeTypeNameVersion[]> {
+		const parsedPackaeName = parsePackageName(packageName);
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
-
-		// Make sure the node-download folder exists
-		try {
-			await fsAccess(downloadFolder);
-			// eslint-disable-next-line no-empty
-		} catch (error) {
-			await fsMkdir(downloadFolder);
-		}
-
 		const command = `npm install ${packageName}`;
-		const execOptions = {
-			cwd: downloadFolder,
-			env: {
-				NODE_PATH: process.env.NODE_PATH,
-				PATH: process.env.PATH,
-			},
-		};
 
 		try {
-			await execAsync(command, execOptions);
+			await executeCommand(command);
 		} catch (error) {
-			if (error.message.includes('404 Not Found')) {
+			if (error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new Error(`The npm package "${packageName}" could not be found.`);
 			}
 			throw error;
 		}
 
-		const packageNameWithoutVersion = packageName.includes('@')
-			? packageName.split('@')[0]
-			: packageName;
-
 		const finalNodeUnpackedPath = path.join(
 			downloadFolder,
 			'node_modules',
-			packageNameWithoutVersion,
+			parsedPackaeName.packageName,
 		);
 
 		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
@@ -254,7 +232,7 @@ class LoadNodesAndCredentialsClass {
 					const promises = [];
 
 					const installedPackage = Object.assign(new InstalledPackages(), {
-						packageName: packageNameWithoutVersion,
+						packageName: parsedPackaeName.packageName,
 						installedVersion: packageFile.version,
 					});
 					await transactionManager.save<InstalledPackages>(installedPackage);
@@ -265,7 +243,7 @@ class LoadNodesAndCredentialsClass {
 								name: loadedNode.name,
 								type: loadedNode.name,
 								latestVersion: loadedNode.version,
-								package: packageNameWithoutVersion,
+								package: parsedPackaeName.packageName,
 							});
 							return transactionManager.save<InstalledNodes>(installedNode);
 						}),
@@ -279,31 +257,21 @@ class LoadNodesAndCredentialsClass {
 			}
 		} else {
 			// Remove this package since it contains no loadable nodes
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await executeCommand(removeCommand);
+			} catch (error) {
+				// Do nothing
+			}
 		}
 
 		return loadedNodes;
 	}
 
 	async removeNpmModule(packageName: string, installedNodes: InstalledNodes[]): Promise<void> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
-
 		const command = `npm remove ${packageName}`;
-		const execOptions = {
-			cwd: downloadFolder,
-			env: {
-				NODE_PATH: process.env.NODE_PATH,
-				PATH: process.env.PATH,
-			},
-		};
 
-		try {
-			await execAsync(command, execOptions);
-		} catch (error) {
-			if (error.message.includes('404 Not Found')) {
-				throw new Error(`The npm package "${packageName}" could not be found.`);
-			}
-			throw error;
-		}
+		await executeCommand(command);
 
 		installedNodes.forEach((installedNode) => {
 			delete this.nodeTypes[installedNode.name];
@@ -317,18 +285,11 @@ class LoadNodesAndCredentialsClass {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
 		const command = `npm update ${packageName}`;
-		const execOptions = {
-			cwd: downloadFolder,
-			env: {
-				NODE_PATH: process.env.NODE_PATH,
-				PATH: process.env.PATH,
-			},
-		};
 
 		try {
-			await execAsync(command, execOptions);
+			await executeCommand(command);
 		} catch (error) {
-			if (error.message.includes('404 Not Found')) {
+			if (error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new Error(`The npm package "${packageName}" could not be found.`);
 			}
 			throw error;
@@ -384,6 +345,12 @@ class LoadNodesAndCredentialsClass {
 			}
 		} else {
 			// Remove this package since it contains no loadable nodes
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await executeCommand(removeCommand);
+			} catch (error) {
+				// Do nothing
+			}
 		}
 
 		return loadedNodes;
