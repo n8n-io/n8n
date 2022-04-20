@@ -286,6 +286,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * Returns the scope of a credential type
+	 *
+	 * @param {string} type
+	 * @returns {string[]}
+	 * @memberof CredentialsHelper
+	 */
+	getScopes(type: string): string[] {
+		const scopeProperty = this.getCredentialsProperties(type).find(({ name }) => name === 'scope');
+
+		if (!scopeProperty?.default || typeof scopeProperty.default !== 'string') {
+			const errorMessage = `No \`scope\` property found for credential type: ${type}`;
+
+			Logger.error(errorMessage);
+
+			throw new Error(errorMessage);
+		}
+
+		const { default: scopeDefault } = scopeProperty;
+
+		if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+
+		if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+
+		return [scopeDefault];
+	}
+
+	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 *
 	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
