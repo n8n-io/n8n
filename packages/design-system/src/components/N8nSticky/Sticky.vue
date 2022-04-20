@@ -8,9 +8,9 @@
       :isResizingEnabled="!readOnly"
       :minHeight="minHeight"
       :minWidth="minWidth"
-      :resizer="resizer"
-      @onResizeEnd="onResizeEnd"
-      @onResizeStart="onResizeStart"
+      @resizeend="onResizeEnd"
+      @resize="onResize"
+      @resizestart="onResizeStart"
     >
       <template>
         <div
@@ -181,11 +181,14 @@ export default mixins(Locale).extend({
 		onMouseHoverEnd() {
 			this.$emit('onMouseHover', false);
 		},
-		onResizeEnd(resizeEnd) {
-			this.$emit('onResizeEnd', resizeEnd);
+		onResize(deltas) {
+			this.$emit('resize', deltas);
 		},
-		onResizeStart(parameters) {
-			this.$emit('onResizeStart', parameters);
+		onResizeEnd(resizeEnd) {
+			this.$emit('resizeend', resizeEnd);
+		},
+		onResizeStart() {
+			this.$emit('resizestart');
 		},
 	},
 	mounted() {

@@ -55,13 +55,14 @@ export default {
 			if (this.isResizingEnabled) {
 				window.addEventListener('mousemove', this.mouseMove);
 				window.addEventListener('mouseup', this.mouseUp);
+				this.$emit('resizestart');
 			}
 		},
 		mouseMove(e) {
 			let width = 0;
 			let height = 0;
-			let left = 0;
-			let top = 0;
+			let top = false;
+			let left = false;
 
 			if (this.currentResizer.classList.contains('bottom-right')) {
 				width = e.pageX - this.x;
@@ -69,37 +70,36 @@ export default {
 			} else if (this.currentResizer.classList.contains('bottom-left')) {
 				height = e.pageY - this.y;
 				width = this.x - e.pageX;
-				left = this.prevX - e.clientX;
+				left = true;
 			} else if (this.currentResizer.classList.contains('top-right')) {
 				width = e.pageX - this.x;
 				height = this.y - e.pageY;
-				top = e.clientY - this.prevY;
+				top = true;
 			} else if (this.currentResizer.classList.contains('top-left')) {
 				width = this.x - e.pageX;
 				height = this.y - e.pageY;
-				top = e.clientY - this.prevY;
-				left = e.clientX - this.prevX;
+				top = true;
+				left = true;
 			} else if (this.currentResizer.classList.contains('right')) {
 				width = e.pageX - this.x;
 			} else if (this.currentResizer.classList.contains('left')) {
 				width = this.x - e.pageX;
-				left = e.clientX - this.prevX;
+				left = true;
 			} else if (this.currentResizer.classList.contains('top')) {
 				height = this.y - e.pageY;
-				top = e.clientY - this.prevY;
+				top = true;
 			} else if (this.currentResizer.classList.contains('bottom')) {
 				height = e.pageY - this.y;
 			}
 
-			this.prevX = e.clientX;
-			this.prevY = e.clientY;
-
-			this.$emit('onResizeStart', { width: width - this.width, height: height - this.height, left, top });
+			this.$emit('resize', { width: width - this.width, height: height - this.height, left, top });
 			this.height = height;
 			this.width = width;
+			this.prevX = e.clientX;
+			this.prevY = e.clientY;
 		},
 		mouseUp() {
-			this.$emit('onResizeEnd', true);
+			this.$emit('resizeend', true);
 			window.removeEventListener('mousemove', this.mouseMove);
 			window.removeEventListener('mouseup', this.mouseUp);
 		},

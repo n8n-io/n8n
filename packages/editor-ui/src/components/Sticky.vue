@@ -26,8 +26,9 @@
 					@input="onInputChange"
 					@onChangeMode="onChangeMode"
 					@onMouseHover="onMouseHover"
-					@onResizeEnd="onResizeEnd"
-					@onResizeStart="onResizeStart"
+					@resizestart="onResizeStart"
+					@resize="onResize"
+					@resizeend="onResizeEnd"
 				/>
 			</div>
 
@@ -228,22 +229,25 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		onInputChange(content: string) {
 			this.setSizeParameters(content, true, 9999, true);
 		},
-		onResizeStart(deltas:  { width: number, height: number, left: number, top: number }) {
+		onResizeStart() {
 			this.isResizing = true;
-			console.log('resizing', deltas);
-			this.setParameters({ height: this.height + deltas.height, width: this.width + deltas.width });
-
-			// if(parameters.top) {
-			// 	this.stickyProp.top = parameters.top;
-			// }
-
-			// if (parameters.left) {
-			// 	this.stickyProp.left = parameters.left;
-			// }
-
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
-			this.instance.destroyDraggable(nodeIdName);
+			this.instance.destroyDraggable(nodeIdName); // todo
+		},
+		onResize(deltas:  { width: number, height: number, left: boolean, top: boolean }) {
+			const minHeight = 180;
+			const minWidth = 150;
+			const newHeight = this.height + deltas.height >= minHeight ? this.height + deltas.height : minHeight;
+			const newWidth = this.width + deltas.width >= minWidth ? this.width + deltas.width : minWidth;
+
+			if (this.node && (deltas.top || deltas.left)) {
+				const x = deltas.left && newWidth !== this.width ? this.node.position[0] - deltas.width : this.node.position[0];
+				const y = deltas.top && newHeight !== this.height ? this.node.position[1] - deltas.height: this.node.position[1];
+				this.setPosition([x, y]);
+			}
+
+			this.setParameters({ height: newHeight, width: newWidth });
 		},
 		onResizeEnd() {
 			this.isResizing = false;
@@ -276,6 +280,20 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 				this.$store.commit('setNodeParameters', updateInformation);
 			}
+		},
+		setPosition(position: XYPosition) {
+			if (!this.node) {
+				return;
+			}
+
+			const updateInformation = {
+				name: this.node.name,
+				properties: {
+					position,
+				},
+			};
+
+			this.$store.commit('updateNodeProperties', updateInformation);
 		},
 		setSizeParameters(content: string | null = null, isEditable = false) {
 			if (this.node) {
