@@ -67,7 +67,7 @@ export async function bulkUpdateOps(
 		await mdb.collection(collection).bulkWrite(writeOperations);
 
 		return this.helpers.returnJsonArray(updateItems);
-	} catch (error: any) {
+	} catch (error) {
 		if (this.continueOnFail()) {
 			return this.helpers.returnJsonArray({ error: error.message });
 		} else {

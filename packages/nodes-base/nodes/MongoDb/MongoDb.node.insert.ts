@@ -8,7 +8,7 @@ export async function insertOps(
 	mdb: Db,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	let returnItems: INodeExecutionData[] = [];
+	const returnItems: INodeExecutionData[] = [];
 
 	try {
 		const collection = this.getNodeParameter('collection', 0) as string;
@@ -44,7 +44,7 @@ export async function insertOps(
 		}
 
 		return returnItems;
-	} catch (error: any) {
+	} catch (error) {
 		if (this.continueOnFail()) {
 			return this.helpers.returnJsonArray({ error: error.message });
 		} else {

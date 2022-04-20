@@ -125,7 +125,7 @@ export function handleObjectIdFields(items: IDataObject[], fields: string) {
 	}
 }
 
-export function handleObjectId(item: Record<string, any>, fields: string) {
+export function handleObjectId(item: Record<string, any>, fields: string) { // tslint:disable-line:no-any
 	const objectIdFields = (fields as string).split(',');
 
 	for (const key of Object.keys(item)) {

@@ -53,7 +53,7 @@ export async function updateOps(
 			}
 
 			await mdb.collection(collection).updateOne(filter, { $set: item }, updateOptions);
-		} catch (error: any) {
+		} catch (error) {
 			if (this.continueOnFail()) {
 				item.json = { error: error.message };
 				continue;

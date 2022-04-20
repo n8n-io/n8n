@@ -10,7 +10,7 @@ export async function deleteOps(this: IExecuteFunctions, mdb: Db): Promise<INode
 		const { deletedCount } = await mdb.collection(collection).deleteMany(filterQuery);
 
 		return this.helpers.returnJsonArray([{ deletedCount }]);
-	} catch (error: any) {
+	} catch (error) {
 		if (this.continueOnFail()) {
 			return this.helpers.returnJsonArray({ error: error.message });
 		} else {

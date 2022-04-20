@@ -36,7 +36,7 @@ export async function findOps(this: IExecuteFunctions, mdb: Db): Promise<INodeEx
 		const queryResult = await query.toArray();
 
 		return this.helpers.returnJsonArray(queryResult as IDataObject[]);
-	} catch (error: any) {
+	} catch (error) {
 		if (this.continueOnFail()) {
 			return this.helpers.returnJsonArray({ error: error.message });
 		} else {
