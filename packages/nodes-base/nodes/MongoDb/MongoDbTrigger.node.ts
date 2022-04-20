@@ -7,7 +7,7 @@ import {
 	MongoClient,
 	MongoError
 } from 'mongodb';
-import {validateAndResolveMongoCredentials} from './mongo.node.utils';
+import {validateAndResolveMongoCredentials} from './MongoDb.node.utils';
 import {nodeDescription} from './mongoTrigger.node.options';
 
 export class MongoDbTrigger implements INodeType {
