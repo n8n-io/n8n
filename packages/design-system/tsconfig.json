@@ -9,10 +9,16 @@
 		"experimentalDecorators": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
+		"allowJs": true,
 		"allowSyntheticDefaultImports": true,
 		"sourceMap": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "jest"],
+		"types": [
+		  "webpack-env",
+		  "jest",
+		  "@testing-library",
+		  "@types"
+		],
 		"paths": {
 			"@/*": ["src/*"]
 		},
@@ -21,9 +27,7 @@
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.tsx",
-		"src/**/*.vue",
-		"tests/**/*.ts",
-		"tests/**/*.tsx"
+		"src/**/*.vue"
 	],
 	"exclude": ["node_modules"]
 }
