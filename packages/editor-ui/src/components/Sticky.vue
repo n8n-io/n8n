@@ -85,7 +85,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 						this.$store.commit('setNodeParameters', updateInformation);
 					}
-					this.$emit('onChangeMode', false);
 				}
 			},
 		},

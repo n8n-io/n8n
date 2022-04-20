@@ -46,7 +46,6 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						@onChangeMode="onStickyChangeMode"
 						@onMouseHover="onMouseHover"
 						:id="'node-' + getNodeIndex(nodeData.name)"
 						:name="nodeData.name"
@@ -322,9 +321,6 @@ export default mixins(
 			isDemo (): boolean {
 				return this.$route.name === VIEWS.DEMO;
 			},
-			isStickyNode (): boolean {
-				return this.$store.getters.isStickyNode;
-			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
@@ -396,7 +392,6 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				isAddStickyButtonVisible: false,
-				isStickyInEditMode: false,
 				shouldPreventScrolling: false,
 			};
 		},
@@ -410,9 +405,6 @@ export default mixins(
 		methods: {
 			onMouseHover(shouldPreventScrolling: boolean) {
 				this.shouldPreventScrolling = shouldPreventScrolling;
-			},
-			onStickyChangeMode(isStickyInEditMode: boolean) {
-				this.isStickyInEditMode = isStickyInEditMode;
 			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -746,23 +738,12 @@ export default mixins(
 				}
 
 
-				if (!this.isStickyNode) {
-					// node modal is open
-					if (this.activeNode) {
-						return;
-					}
-				}
-
 				if (e.key === 'd') {
 					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
-					if (this.isStickyInEditMode && this.isStickyNode) {
-						return;
-					} else {
-						e.stopPropagation();
-						e.preventDefault();
-					}
+					e.stopPropagation();
+					e.preventDefault();
 
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
@@ -788,23 +769,13 @@ export default mixins(
 					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
-					if (this.isStickyNode && this.isStickyInEditMode) {
-						return;
-					}
-
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
-					if (this.isStickyNode && this.isStickyInEditMode) {
-						return;
-					}
 					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
-					if (this.isStickyNode && this.isStickyInEditMode) {
-						return;
-					}
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
@@ -1080,10 +1051,6 @@ export default mixins(
 			},
 
 			zoomIn() {
-				if (this.isStickyNode && this.isStickyInEditMode) {
-					return;
-				}
-
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
@@ -1091,10 +1058,6 @@ export default mixins(
 			},
 
 			zoomOut() {
-				if (this.isStickyNode && this.isStickyInEditMode) {
-					return;
-				}
-
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);

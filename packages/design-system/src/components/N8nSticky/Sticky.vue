@@ -2,6 +2,7 @@
   <div
     :class="{[$style.sticky]: true, [$style.editMode]: editMode}"
     :style="styles"
+		@keydown.prevent
   >
     <resize
       :isResizingEnabled="!readOnly"
