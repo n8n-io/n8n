@@ -657,3 +657,10 @@ export interface IWorkflowExecuteProcess {
 }
 
 export type WhereClause = Record<string, { id: string }>;
+
+export interface IParsedNpmPackageName {
+	packageName: string;
+	originalString: string;
+	scope?: string;
+	version?: string;
+}
