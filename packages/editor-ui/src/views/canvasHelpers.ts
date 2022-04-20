@@ -597,7 +597,7 @@ export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {off
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
 	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
 	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
-	const footerHeight = 200;
+	const footerHeight = addComponentPadding? 200: 100;
 
 	const PADDING = NODE_SIZE * 4;
 
