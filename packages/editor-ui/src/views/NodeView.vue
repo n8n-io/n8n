@@ -52,6 +52,7 @@
 						:isReadOnly="isReadOnly"
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:nodeViewScale="nodeViewScale"
 						:hideActions="pullConnActive"
 					/>
 				</div>

@@ -89,6 +89,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			},
 		},
 	},
+	props: {
+		nodeViewScale: {
+			type: Number,
+		},
+	},
 	computed: {
 		borderStyle (): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
@@ -229,12 +234,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		onResize(deltas:  { width: number, height: number, left: boolean, top: boolean }) {
 			const minHeight = 180;
 			const minWidth = 150;
-			const newHeight = this.height + deltas.height >= minHeight ? this.height + deltas.height : minHeight;
-			const newWidth = this.width + deltas.width >= minWidth ? this.width + deltas.width : minWidth;
+			const deltaWidth = Math.floor(deltas.width / this.nodeViewScale);
+			const deltaHeight = Math.floor(deltas.height / this.nodeViewScale);
+			const newHeight = this.height + deltaHeight >= minHeight ? this.height + deltaHeight : minHeight;
+			const newWidth = this.width + deltaWidth >= minWidth ? this.width + deltaWidth : minWidth;
 
 			if (this.node && (deltas.top || deltas.left)) {
-				const x = deltas.left && newWidth !== this.width ? this.node.position[0] - deltas.width : this.node.position[0];
-				const y = deltas.top && newHeight !== this.height ? this.node.position[1] - deltas.height: this.node.position[1];
+				const x = deltas.left && newWidth !== this.width ? this.node.position[0] - deltaWidth : this.node.position[0];
+				const y = deltas.top && newHeight !== this.height ? this.node.position[1] - deltaHeight: this.node.position[1];
 				this.setPosition([x, y]);
 			}
 
