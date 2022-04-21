@@ -1,9 +1,9 @@
 <template>
   <div :class="theme === 'markdown' ? '' : $style.overflow">
-    <div 
-      v-if="!loading" 
-      ref="editor" 
-      :class="theme === 'markdown' ? $style.markdown : $style.sticky" v-html="htmlContent" 
+    <div
+      v-if="!loading"
+      ref="editor"
+      :class="theme === 'markdown' ? $style.markdown : $style.sticky" v-html="htmlContent"
     />
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
@@ -63,6 +63,9 @@ export default {
 		content: {
 			type: String,
 		},
+		withMultiBreaks: {
+			type: Boolean,
+		},
 		images: {
 			type: Array,
 		},
@@ -114,7 +117,11 @@ export default {
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			const html = this.md.render(escapeMarkdown(this.content));
+			let contentToRender = this.content;
+			if (this.withMultiBreaks) {
+				contentToRender = contentToRender.replaceAll('\n', '<br/>');
+			}
+			const html = this.md.render(escapeMarkdown(contentToRender));
 			const safeHtml = xss(html, {
 				onTagAttr: (tag, name, value, isWhiteAttr) => {
 					if (tag === 'img' && name === 'src') {
@@ -266,7 +273,7 @@ export default {
       line-height: var(--font-line-height-regular);
     }
   }
-	
+
   code {
 		background-color: var(--color-background-base);
     padding: 0 var(--spacing-4xs);

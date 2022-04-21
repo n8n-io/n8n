@@ -3,8 +3,11 @@ export const escapeMarkdown = (html: string | undefined): string => {
 		return '';
 	}
 	const escaped = html.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+	const withBreaks = escaped.replaceAll('&lt;br/&gt;', '<br/>');
+
 	// unescape greater than quotes at start of line
-	const withQuotes = escaped.replace(/^((\s)*(&gt;)+)+\s*/gm, (matches) => {
+	const withQuotes = withBreaks.replace(/^((\s)*(&gt;)+)+\s*/gm, (matches) => {
 		return matches.replace(/&gt;/g, '>');
 	});
 

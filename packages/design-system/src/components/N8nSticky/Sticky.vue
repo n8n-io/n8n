@@ -17,8 +17,9 @@
           @dblclick.stop="onDoubleClick"
         >
           <n8n-markdown
-            :content="content"
             theme="sticky"
+						:content="content"
+						:withMultiBreaks="true"
           />
         </div>
         <div
