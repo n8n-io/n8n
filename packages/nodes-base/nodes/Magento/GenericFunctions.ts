@@ -25,13 +25,9 @@ import {
 } from './Types';
 
 export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('magento2Api') as IDataObject;
+	const credentials = await this.getCredentials('magento2Api');
 
 	let options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${credentials.accessToken}`,
-		},
 		method,
 		body,
 		qs,
@@ -45,7 +41,7 @@ export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'magento2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

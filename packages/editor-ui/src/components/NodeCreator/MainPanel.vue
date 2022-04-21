@@ -1,7 +1,18 @@
 <template>
-	<div @click="onClickInside" class="container">
+	<div
+		class="container"
+		ref="mainPanelContainer"
+		@click="onClickInside"
+	>
 		<SlideTransition>
-			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.properties.subcategory" :activeIndex="activeSubcategoryIndex" @close="onSubcategoryClose" @selected="selected" />
+			<SubcategoryPanel
+				v-if="activeSubcategory"
+				:elements="subcategorizedNodes"
+				:title="activeSubcategory.properties.subcategory"
+				:activeIndex="activeSubcategoryIndex"
+				@close="onSubcategoryClose"
+				@selected="selected"
+			/>
 		</SlideTransition>
 		<div class="main-panel">
 			<SearchBar
@@ -35,7 +46,10 @@
 					@selected="selected"
 				/>
 			</div>
-			<NoResults v-else @nodeTypeSelected="nodeTypeSelected" />
+			<NoResults
+				v-else
+				@nodeTypeSelected="$emit('nodeTypeSelected', $event)"
+			/>
 		</div>
 	</div>
 </template>
@@ -55,7 +69,6 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
-
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -235,17 +248,12 @@ export default mixins(externalHooks).extend({
 		},
 		selected(element: INodeCreateElement) {
 			if (element.type === 'node') {
-				const properties = element.properties as INodeItemProps;
-
-				this.nodeTypeSelected(properties.nodeType.name);
+				this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name);
 			} else if (element.type === 'category') {
 				this.onCategorySelected(element.category);
 			} else if (element.type === 'subcategory') {
 				this.onSubcategorySelected(element);
 			}
-		},
-		nodeTypeSelected(nodeTypeName: string) {
-			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {

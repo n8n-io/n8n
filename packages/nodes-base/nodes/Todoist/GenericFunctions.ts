@@ -45,7 +45,7 @@ export async function todoistApiRequest(
 
 	try {
 		if (authentication === 'apiKey') {
-			const credentials = await this.getCredentials('todoistApi') as IDataObject;
+			const credentials = await this.getCredentials('todoistApi');
 
 			//@ts-ignore
 			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
