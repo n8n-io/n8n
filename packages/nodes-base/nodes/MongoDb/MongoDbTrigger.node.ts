@@ -1,25 +1,18 @@
-import {IDataObject, INodeType, INodeTypeDescription, ITriggerResponse} from 'n8n-workflow';
-import {ITriggerFunctions} from 'n8n-core';
-import {
-	ChangeEvent,
-	ChangeStream,
-	Collection,
-	MongoClient,
-	MongoError
-} from 'mongodb';
-import {validateAndResolveMongoCredentials} from './MongoDb.node.utils';
-import {nodeDescription} from './mongoTrigger.node.options';
+import { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { ITriggerFunctions } from 'n8n-core';
+import { ChangeEvent, ChangeStream, Collection, MongoClient, MongoError } from 'mongodb';
+import { validateAndResolveMongoCredentials } from './MongoDb.node.utils';
+import { nodeDescription } from './mongoDbTrigger.node.options';
 
 export class MongoDbTrigger implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const {database, connectionString} = validateAndResolveMongoCredentials(
+		const { database, connectionString } = validateAndResolveMongoCredentials(
 			this,
 			await this.getCredentials('mongoDb'),
 		);
-		const collectionName = this.getNodeParameter('collection') as string;
-		const includeFullDocument = this.getNodeParameter('includeFullDocument') as boolean;
+		const resource = this.getNodeParameter('resource') as string;
 		const self = this;
 
 		let changeStream: ChangeStream;
@@ -31,31 +24,44 @@ export class MongoDbTrigger implements INodeType {
 		await client.connect();
 
 		async function manualTriggerFunction() {
-			await new Promise((resolve, reject) => {
-				client.db(database)
-				.listCollections({name: collectionName})
-				.hasNext((error: MongoError, isFound: boolean) => {
-					if (isFound) {
-						const collection: Collection = client.db(database).collection(collectionName);
+			if (resource === 'changeStream') {
+				const collectionName = self.getNodeParameter('collection') as string;
+				const includeFullDocument = self.getNodeParameter('options.includeFullDocument', false) as boolean;
+				const changeEvents = self.getNodeParameter('options.changeEvents', []) as string[];
 
-						changeStream = includeFullDocument ?
-							collection.watch({fullDocument: 'updateLookup'}) :
-							collection.watch();
+				const aggregationPipeline: IDataObject[] = [];
+				if (changeEvents.length) {
+					const operationTypes = changeEvents.map((event) => ({ operationType: event }));
+					aggregationPipeline.push({ $match: { $or: operationTypes } });
+				}
 
-						changeStream.on('change', (next: ChangeEvent) => {
-							self.emit([self.helpers.returnJsonArray(next as unknown as IDataObject)]);
-							resolve(true);
+				await new Promise((resolve, reject) => {
+					client
+						.db(database)
+						.listCollections({ name: collectionName })
+						.hasNext((error: MongoError, isFound: boolean) => {
+							if (isFound) {
+								const collection: Collection = client.db(database).collection(collectionName);
+
+								changeStream = collection.watch(
+									aggregationPipeline.length ? aggregationPipeline : undefined,
+									includeFullDocument ? { fullDocument: 'updateLookup' } : undefined,
+								);
+
+								changeStream.on('change', (next: ChangeEvent) => {
+									self.emit([self.helpers.returnJsonArray(next as unknown as IDataObject)]);
+									resolve(true);
+								});
+
+								changeStream.on('error', (error) => {
+									reject(error);
+								});
+							} else {
+								reject(new Error('The collection was not found'));
+							}
 						});
-
-						changeStream.on('error', (error) => {
-							reject(error);
-						});
-					}
-					else {
-						reject(new Error('The collection was not found'));
-					}
 				});
-			});
+			}
 		}
 
 		if (this.getMode() === 'trigger') {
