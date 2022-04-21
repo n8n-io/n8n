@@ -1,4 +1,4 @@
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import {IExecuteFunctions, ITriggerFunctions} from 'n8n-core';
 
 import {
@@ -135,7 +135,7 @@ export function handleObjectId(item: Record<string, any>, fields: string) { // t
 
 			if (item[key].$in && Array.isArray(item[key].$in)) {
 				item[key].$in = item[key].$in.map((id: string) => {
-					return new ObjectID(id);
+					return new ObjectId(id);
 				});
 
 				continue;
@@ -145,13 +145,13 @@ export function handleObjectId(item: Record<string, any>, fields: string) { // t
 				const ids = item[key] || [];
 
 				item[key] = ids.map((id: string) => {
-					return new ObjectID(id);
+					return new ObjectId(id);
 				});
 
 				continue;
 			}
 
-			item[key] = new ObjectID(item[key]);
+			item[key] = new ObjectId(item[key]);
 		}
 	}
 }

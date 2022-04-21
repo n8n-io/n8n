@@ -1,4 +1,4 @@
-import { Db, FilterQuery } from 'mongodb';
+import { Db } from 'mongodb';
 import { IExecuteFunctions } from 'n8n-core';
 import { INodeExecutionData } from 'n8n-workflow';
 

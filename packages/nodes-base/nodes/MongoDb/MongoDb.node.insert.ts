@@ -38,7 +38,7 @@ export async function insertOps(
 			returnItems.push({
 				json: {
 					...insertItems[parseInt(i, 10)],
-					id: insertedIds[parseInt(i, 10)] as string,
+					id: insertedIds[parseInt(i, 10)] as unknown as string,
 				},
 			});
 		}

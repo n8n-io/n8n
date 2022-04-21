@@ -1,4 +1,4 @@
-import { Db, ObjectID } from 'mongodb';
+import { Db, ObjectId } from 'mongodb';
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { getItemCopy, handleDateFields, handleObjectIdFields } from './MongoDb.node.utils';
@@ -22,7 +22,7 @@ export async function updateOps(
 
 	const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
 		? { upsert: true }
-		: undefined;
+		: {};
 
 	if (!fields.includes(updateKey)) {
 		fields.push(updateKey);
@@ -45,10 +45,10 @@ export async function updateOps(
 				continue;
 			}
 
-			const filter: { [key: string]: string | ObjectID } = {};
+			const filter: { [key: string]: string | ObjectId } = {};
 			filter[updateKey] = item[updateKey] as string;
 			if (updateKey === '_id') {
-				filter[updateKey] = new ObjectID(filter[updateKey]);
+				filter[updateKey] = new ObjectId(filter[updateKey]);
 				delete item._id;
 			}
 

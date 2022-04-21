@@ -1,4 +1,4 @@
-import { Db, ObjectID } from 'mongodb';
+import { Db, ObjectId } from 'mongodb';
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 
@@ -7,7 +7,7 @@ export async function aggregateOps(this: IExecuteFunctions, mdb: Db): Promise<IN
 		const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 		if (queryParameter._id && typeof queryParameter._id === 'string') {
-			queryParameter._id = new ObjectID(queryParameter._id);
+			queryParameter._id = new ObjectId(queryParameter._id);
 		}
 
 		const query = mdb
