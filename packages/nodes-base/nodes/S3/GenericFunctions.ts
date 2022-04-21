@@ -34,10 +34,6 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	credentials = await this.getCredentials('s3');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	if (!(credentials.endpoint as string).startsWith('http')) {
 		throw new NodeOperationError(this.getNode(), 'HTTP(S) Scheme is required in endpoint definition');
 	}

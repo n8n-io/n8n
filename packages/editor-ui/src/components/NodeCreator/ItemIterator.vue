@@ -8,7 +8,12 @@
 			@before-leave="beforeLeave"
 			@leave="leave"
 		>
-			<div v-for="(item, index) in elements" :key="item.key" :class="item.type" :data-key="item.key">
+			<div
+				v-for="(item, index) in elements"
+				:key="item.key"
+				:class="item.type"
+				:data-key="item.key"
+			>
 				<CreatorItem
 					:item="item"
 					:active="activeIndex === index && !disabled"
@@ -16,7 +21,9 @@
 					:lastNode="
 						index === elements.length - 1 || elements[index + 1].type !== 'node'
 					"
-					@click="() => selected(item)"
+					@click="$emit('selected', item)"
+					@dragstart="emit('dragstart', item, $event)"
+					@dragend="emit('dragend', item, $event)"
 				/>
 			</div>
 		</div>
@@ -36,12 +43,12 @@ export default Vue.extend({
 	},
 	props: ['elements', 'activeIndex', 'disabled', 'transitionsEnabled'],
 	methods: {
-		selected(element: INodeCreateElement) {
+		emit(eventName: string, element: INodeCreateElement, event: Event) {
 			if (this.$props.disabled) {
 				return;
 			}
 
-			this.$emit('selected', element);
+			this.$emit(eventName, { element, event });
 		},
 		beforeEnter(el: HTMLElement) {
 			el.style.height = '0';

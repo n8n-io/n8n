@@ -30,6 +30,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	jest.mock('../../config');
+
+	config.set('userManagement.isInstanceOwnerSetUp', false);
+});
+
+afterEach(async () => {
 	await testDb.truncate(['User'], testDbName);
 });
 
@@ -86,6 +92,29 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 
 	const isInstanceOwnerSetUpSetting = await utils.isInstanceOwnerSetUp();
 	expect(isInstanceOwnerSetUpSetting).toBe(true);
+});
+
+test('POST /owner should create owner with lowercased email', async () => {
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+
+	const newOwnerData = {
+		email: randomEmail().toUpperCase(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
+	};
+
+	const response = await authOwnerAgent.post('/owner').send(newOwnerData);
+
+	expect(response.statusCode).toBe(200);
+
+	const { id, email } = response.body.data;
+
+	expect(email).toBe(newOwnerData.email.toLowerCase());
+
+	const storedOwner = await Db.collections.User!.findOneOrFail(id);
+	expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 });
 
 test('POST /owner should fail with invalid inputs', async () => {
