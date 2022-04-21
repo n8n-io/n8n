@@ -25,14 +25,15 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
+    "@fortawesome/free-regular-svg-icons": "^6.1.1",
     "luxon": "^2.3.0",
-    "n8n-design-system": "~0.17.0",
     "monaco-editor": "^0.29.1",
+    "n8n-design-system": "~0.17.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2",
-    "vue2-boring-avatars": "0.3.4",
     "vue-i18n": "^8.26.7",
+    "vue2-boring-avatars": "0.3.4",
     "xss": "^1.0.10"
   },
   "devDependencies": {
