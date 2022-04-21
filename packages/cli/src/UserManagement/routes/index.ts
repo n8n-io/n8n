@@ -66,6 +66,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
 			req.url.startsWith(`/${restEndpoint}/change-password`) ||
+			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
+			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`) ||
 			isAuthExcluded(req.url, ignoredEndpoints)
 		) {
 			return next();

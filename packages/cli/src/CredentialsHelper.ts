@@ -753,3 +753,13 @@ export async function getCredentialForUser(
 
 	return sharedCredential.credentials as ICredentialsDb;
 }
+
+/**
+ * Get a credential without user check
+ */
+export async function getCredentialWithoutUser(
+	credentialId: string,
+): Promise<ICredentialsDb | undefined> {
+	const credential = await Db.collections.Credentials.findOne(credentialId);
+	return credential;
+}
