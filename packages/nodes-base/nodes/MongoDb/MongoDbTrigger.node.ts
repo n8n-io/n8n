@@ -35,31 +35,28 @@ export class MongoDbTrigger implements INodeType {
 					aggregationPipeline.push({ $match: { $or: operationTypes } });
 				}
 
+				const db = client.db(database);
+				const collectionExist = await db.listCollections({ name: collectionName }).hasNext();
+				if (!collectionExist) {
+					throw new Error('The collection was not found');
+				}
+
 				await new Promise((resolve, reject) => {
-					client
-						.db(database)
-						.listCollections({ name: collectionName })
-						.hasNext((error: MongoError, isFound: boolean) => {
-							if (isFound) {
-								const collection: Collection = client.db(database).collection(collectionName);
+					const collection: Collection = db.collection(collectionName);
 
-								changeStream = collection.watch(
-									aggregationPipeline.length ? aggregationPipeline : undefined,
-									includeFullDocument ? { fullDocument: 'updateLookup' } : undefined,
-								);
+					changeStream = collection.watch(
+						aggregationPipeline.length ? aggregationPipeline : undefined,
+						includeFullDocument ? { fullDocument: 'updateLookup' } : undefined,
+					);
 
-								changeStream.on('change', (next: ChangeEvent) => {
-									self.emit([self.helpers.returnJsonArray(next as unknown as IDataObject)]);
-									resolve(true);
-								});
+					changeStream.on('change', (next: ChangeEvent) => {
+						self.emit([self.helpers.returnJsonArray(next as unknown as IDataObject)]);
+						resolve(true);
+					});
 
-								changeStream.on('error', (error) => {
-									reject(error);
-								});
-							} else {
-								reject(new Error('The collection was not found'));
-							}
-						});
+					changeStream.on('error', (error) => {
+						reject(error);
+					});
 				});
 			}
 		}
