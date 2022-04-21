@@ -3,9 +3,9 @@
 		"target": "esnext",
 		"module": "esnext",
 		"strict": true,
-		"jsx": "preserve",
 		"importHelpers": true,
 		"moduleResolution": "node",
+		"declaration": true,
 		"experimentalDecorators": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
@@ -13,9 +13,12 @@
 		"allowSyntheticDefaultImports": true,
 		"sourceMap": true,
 		"baseUrl": ".",
+	    "outDir": "dist",
 		"types": [
 		  "webpack-env",
-		  "jest",
+		  "jest"
+		],
+	  	"typeRoots": [
 		  "@testing-library",
 		  "@types"
 		],

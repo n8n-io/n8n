@@ -14,7 +14,8 @@
   },
   "scripts": {
     "build": "npm run build:theme",
-    "build:vue": "vue-cli-service build --target lib ./src/main.js --report",
+    "build:vue": "vite build",
+    "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
     "dev": "npm run watch:theme",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",
@@ -89,10 +90,12 @@
     "vue-template-compiler": "^2.6.11",
     "vue-typed-mixins": "^0.2.0",
     "vue2-boring-avatars": "0.3.4",
+    "vue-tsc": "0.34.8",
     "xss": "^1.0.10"
   },
   "dependencies": {
     "element-ui": "~2.15.7",
-    "sanitize-html": "2.7.0"
+    "sanitize-html": "2.7.0",
+    "vue2-boring-avatars": "0.3.4"
   }
 }
