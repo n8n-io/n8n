@@ -106,6 +106,11 @@ export default mixins(Locale).extend({
 		Resize,
 		N8nText,
 	},
+	data() {
+		return {
+			isResizing: false,
+		};
+	},
 	computed: {
 		resHeight(): number {
 			if (this.height < this.minHeight) {
@@ -136,7 +141,9 @@ export default mixins(Locale).extend({
 			}
 		},
 		onInputBlur(value) {
-			this.$emit('edit', false);
+			if (!this.isResizing) {
+				this.$emit('edit', false);
+			}
 		},
 		onInput(value: string) {
 			this.$emit('input', value);
@@ -151,9 +158,11 @@ export default mixins(Locale).extend({
 			this.$emit('resize', deltas);
 		},
 		onResizeEnd(resizeEnd) {
+			this.isResizing = false;
 			this.$emit('resizeend', resizeEnd);
 		},
 		onResizeStart() {
+			this.isResizing = true;
 			this.$emit('resizestart');
 		},
 	},
