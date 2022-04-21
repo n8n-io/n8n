@@ -24,8 +24,8 @@ export interface HostMapping {
 }
 export const HOST_MAPPING:HostMapping = {
 	dev: 'http://localhost:5678',
-	staging: 'https://flash.local.ap.ngrok.io',
-	production: ' https://replace.me.cn',
+	staging: 'https://stage-crm-integration.cgpo2o.cn/',
+	production: 'https://crm-integration.cgpo2o.cn/',
 };
 
 export const INTERVIEW_PIPELINE_NAME = 'clientinterview';
