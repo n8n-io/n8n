@@ -57,6 +57,8 @@ spec:
         env:
         - name: DB_TYPE
           value: "postgresdb"
+        - name: NODE_ENV
+          value: "production"
         - name: DB_POSTGRESDB_DATABASE
           value: "prod_n8n"
         - name: HASURA_URL
