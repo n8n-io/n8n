@@ -112,10 +112,10 @@ export class Odoo implements INodeType {
 				}
 
 				const credentials = await this.getCredentials('odooApi');
-				const url = credentials?.url as string;
-				const username = credentials?.username as string;
-				const password = credentials?.password as string;
-				const db = odooGetDBName(credentials?.db as string, url);
+				const url = credentials.url as string;
+				const username = credentials.username as string;
+				const password = credentials.password as string;
+				const db = odooGetDBName(credentials.db as string, url);
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
 				const responce = await odooGetModelFields.call(this, db, userID, password, resource, url);
@@ -134,10 +134,10 @@ export class Odoo implements INodeType {
 			},
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('odooApi');
-				const url = credentials?.url as string;
-				const username = credentials?.username as string;
-				const password = credentials?.password as string;
-				const db = odooGetDBName(credentials?.db as string, url);
+				const url = credentials.url as string;
+				const username = credentials.username as string;
+				const password = credentials.password as string;
+				const db = odooGetDBName(credentials.db as string, url);
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
 				const body = {
@@ -172,10 +172,10 @@ export class Odoo implements INodeType {
 			},
 			async getStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('odooApi');
-				const url = credentials?.url as string;
-				const username = credentials?.username as string;
-				const password = credentials?.password as string;
-				const db = odooGetDBName(credentials?.db as string, url);
+				const url = credentials.url as string;
+				const username = credentials.username as string;
+				const password = credentials.password as string;
+				const db = odooGetDBName(credentials.db as string, url);
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
 				const body = {
@@ -201,10 +201,10 @@ export class Odoo implements INodeType {
 			},
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('odooApi');
-				const url = credentials?.url as string;
-				const username = credentials?.username as string;
-				const password = credentials?.password as string;
-				const db = odooGetDBName(credentials?.db as string, url);
+				const url = credentials.url as string;
+				const username = credentials.username as string;
+				const password = credentials.password as string;
+				const db = odooGetDBName(credentials.db as string, url);
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
 				const body = {
@@ -297,10 +297,10 @@ export class Odoo implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		const credentials = await this.getCredentials('odooApi');
-		const url = (credentials?.url as string).replace(/\/$/, '');
-		const username = credentials?.username as string;
-		const password = credentials?.password as string;
-		const db = odooGetDBName(credentials?.db as string, url);
+		const url = (credentials.url as string).replace(/\/$/, '');
+		const username = credentials.username as string;
+		const password = credentials.password as string;
+		const db = odooGetDBName(credentials.db as string, url);
 		const userID = await odooGetUserID.call(this, db, username, password, url);
 
 		//----------------------------------------------------------------------

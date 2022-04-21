@@ -19,10 +19,6 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 	const productionUrl = 'https://vendors.paddle.com/api';
 	const sandboxUrl = 'https://sandbox-vendors.paddle.com/api';
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'Could not retrieve credentials!');
-	}
-
 	const isSandbox = credentials.sandbox;
 
 	const options: OptionsWithUri = {

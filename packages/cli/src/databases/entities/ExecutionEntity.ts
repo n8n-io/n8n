@@ -2,11 +2,11 @@
 import { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { Column, ColumnOptions, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import config = require('../../../config');
+import * as config from '../../../config';
 import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
 
 function resolveDataType(dataType: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {

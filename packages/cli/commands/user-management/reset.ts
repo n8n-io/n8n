@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import Command from '@oclif/command';
 import { Not } from 'typeorm';
@@ -27,33 +26,33 @@ export class Reset extends Command {
 		try {
 			const owner = await this.getInstanceOwner();
 
-			const ownerWorkflowRole = await Db.collections.Role!.findOneOrFail({
+			const ownerWorkflowRole = await Db.collections.Role.findOneOrFail({
 				name: 'owner',
 				scope: 'workflow',
 			});
 
-			const ownerCredentialRole = await Db.collections.Role!.findOneOrFail({
+			const ownerCredentialRole = await Db.collections.Role.findOneOrFail({
 				name: 'owner',
 				scope: 'credential',
 			});
 
-			await Db.collections.SharedWorkflow!.update(
+			await Db.collections.SharedWorkflow.update(
 				{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
 				{ user: owner },
 			);
 
-			await Db.collections.SharedCredentials!.update(
+			await Db.collections.SharedCredentials.update(
 				{ user: { id: Not(owner.id) }, role: ownerCredentialRole },
 				{ user: owner },
 			);
-			await Db.collections.User!.delete({ id: Not(owner.id) });
-			await Db.collections.User!.save(Object.assign(owner, this.defaultUserProps));
+			await Db.collections.User.delete({ id: Not(owner.id) });
+			await Db.collections.User.save(Object.assign(owner, this.defaultUserProps));
 
-			await Db.collections.Settings!.update(
+			await Db.collections.Settings.update(
 				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: 'false' },
 			);
-			await Db.collections.Settings!.update(
+			await Db.collections.Settings.update(
 				{ key: 'userManagement.skipInstanceOwnerSetup' },
 				{ value: 'false' },
 			);
@@ -68,19 +67,19 @@ export class Reset extends Command {
 	}
 
 	private async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role!.findOneOrFail({
+		const globalRole = await Db.collections.Role.findOneOrFail({
 			name: 'owner',
 			scope: 'global',
 		});
 
-		const owner = await Db.collections.User!.findOne({ globalRole });
+		const owner = await Db.collections.User.findOne({ globalRole });
 
 		if (owner) return owner;
 
 		const user = new User();
 
-		await Db.collections.User!.save(Object.assign(user, { ...this.defaultUserProps, globalRole }));
+		await Db.collections.User.save(Object.assign(user, { ...this.defaultUserProps, globalRole }));
 
-		return Db.collections.User!.findOneOrFail({ globalRole });
+		return Db.collections.User.findOneOrFail({ globalRole });
 	}
 }

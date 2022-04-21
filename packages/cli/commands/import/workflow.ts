@@ -12,8 +12,8 @@ import { Command, flags } from '@oclif/command';
 
 import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as glob from 'fast-glob';
+import fs from 'fs';
+import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
@@ -157,7 +157,7 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async initOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role!.findOne({
+		const ownerWorkflowRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'workflow' },
 		});
 
@@ -187,11 +187,11 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async getOwner() {
-		const ownerGlobalRole = await Db.collections.Role!.findOne({
+		const ownerGlobalRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'global' },
 		});
 
-		const owner = await Db.collections.User!.findOne({ globalRole: ownerGlobalRole });
+		const owner = await Db.collections.User.findOne({ globalRole: ownerGlobalRole });
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
@@ -201,7 +201,7 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User!.findOne(userId);
+		const user = await Db.collections.User.findOne(userId);
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);

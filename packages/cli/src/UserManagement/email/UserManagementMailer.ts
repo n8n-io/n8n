@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import { GenericHelpers } from '../..';
-import config = require('../../../config');
+import * as config from '../../../config';
 import {
 	InviteEmailData,
 	PasswordResetData,
@@ -12,6 +12,7 @@ import {
 } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
+// TODO: make function fully async (remove sync functions)
 async function getTemplate(configKeyName: string, defaultFilename: string) {
 	const templateOverride = (await GenericHelpers.getConfigValue(
 		`userManagement.emails.templates.${configKeyName}`,
@@ -45,7 +46,7 @@ export class UserManagementMailer {
 
 	constructor() {
 		// Other implementations can be used in the future.
-		if (config.get('userManagement.emails.mode') === 'smtp') {
+		if (config.getEnv('userManagement.emails.mode') === 'smtp') {
 			this.mailer = new NodeMailer();
 		}
 	}
@@ -60,7 +61,6 @@ export class UserManagementMailer {
 		let template = await getTemplate('invite', 'invite.html');
 		template = replaceStrings(template, inviteEmailData);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',

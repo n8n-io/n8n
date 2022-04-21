@@ -1,13 +1,15 @@
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	createDeferredPromise,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
+	IDeferredPromise,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	LoggerProxy,
+	LoggerProxy as Logger,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -23,11 +25,7 @@ import {
 	Source as ParserSource,
 } from 'mailparser';
 
-import * as lodash from 'lodash';
-
-import {
-	LoggerProxy as Logger
-} from 'n8n-workflow';
+import _ from 'lodash';
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
@@ -181,10 +179,6 @@ export class EmailReadImap implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('imap');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
@@ -288,7 +282,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = lodash.find(message.parts, { which: '' });
+					const part = _.find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -358,7 +352,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = lodash.find(message.parts, { which: 'TEXT' });
+					const part = _.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -376,6 +370,8 @@ export class EmailReadImap implements INodeType {
 
 			return newEmails;
 		};
+
+		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise<void>();
 
 		const establishConnection = (): Promise<ImapSimple> => {
 
@@ -425,7 +421,11 @@ export class EmailReadImap implements INodeType {
 							}
 						} catch (error) {
 							Logger.error('Email Read Imap node encountered an error fetching new emails', { error });
-							throw error;
+							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
+							// if it receives an error before the workflow got activated
+							returnedPromise.promise().then(() => {
+								this.emitError(error as Error);
+							});
 						}
 					}
 				},
@@ -475,10 +475,12 @@ export class EmailReadImap implements INodeType {
 			await connection.end();
 		}
 
+		// Resolve returned-promise so that waiting errors can be emitted
+		returnedPromise.resolve();
+
 		return {
 			closeFunction,
 		};
-
 	}
 }
 

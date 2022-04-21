@@ -5,8 +5,8 @@
 			clickable: props.clickable,
 			active: props.active,
 		}"
-		@click="listeners['click']"
-		>
+		@click="listeners.click"
+	>
 		<CategoryItem
 			v-if="props.item.type === 'category'"
 			:item="props.item"
@@ -21,7 +21,9 @@
 			v-else-if="props.item.type === 'node'"
 			:nodeType="props.item.properties.nodeType"
 			:bordered="!props.lastNode"
-		></NodeItem>
+			@dragstart="listeners.dragstart"
+			@dragend="listeners.dragend"
+		/>
 	</div>
 </template>
 
