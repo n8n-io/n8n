@@ -175,7 +175,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		tootlipSize(): object {
+		tootlipSize(): object { // todo
 			const returnStyles: {
 				[key: string]: string;
 			} = {
@@ -227,6 +227,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeStart() {
 			this.isResizing = true;
+			if (!this.isSelected && this.node) {
+				this.$emit('nodeSelectedByName', this.node.name, false, true);
+			}
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName); // todo
