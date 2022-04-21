@@ -8,13 +8,13 @@ export default {
 	resolve: {
 		alias: {
 			'@': resolve(__dirname, 'src'),
-			'vue2-boring-avatars': resolve(__dirname, 'node_modules', 'vue2-boring-avatars', 'dist', 'vue-2-boring-avatars.umd.js'),
+			'vue2-boring-avatars': resolve(__dirname, '..', '..', 'node_modules', 'vue2-boring-avatars', 'dist', 'vue-2-boring-avatars.umd.js'),
 			// 'vue2-boring-avatars': 'vue2-boring-avatars/dist/vue-2-boring-avatars.umd.js',
 		},
 	},
 	build: {
 		lib: {
-			entry: resolve(__dirname, 'src', 'main.ts'),
+			entry: resolve(__dirname, 'src', 'main.js'),
 			name: 'N8nDesignSystem',
 			fileName: (format) => `n8n-design-system.${format}.js`,
 		},

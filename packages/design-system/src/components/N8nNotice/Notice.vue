@@ -28,9 +28,9 @@
 <script lang="ts">
 import Vue from 'vue';
 import sanitizeHtml from 'sanitize-html';
-import N8nText from "@/components/N8nText";
-import Locale from "@/mixins/locale";
-import {uid} from "@/utils";
+import N8nText from "../../components/N8nText";
+import Locale from "../../mixins/locale";
+import {uid} from "../../utils";
 
 const DEFAULT_TRUNCATION_MAX_LENGTH = 150;
 
