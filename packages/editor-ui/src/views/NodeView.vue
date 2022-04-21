@@ -46,7 +46,6 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						@onMouseHover="onMouseHover"
 						:id="'node-' + getNodeIndex(nodeData.name)"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
@@ -393,7 +392,6 @@ export default mixins(
 				dropPrevented: false,
 				renamingActive: false,
 				isAddStickyButtonVisible: false,
-				shouldPreventScrolling: false,
 			};
 		},
 		beforeDestroy () {
@@ -404,9 +402,6 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
-			onMouseHover(shouldPreventScrolling: boolean) {
-				this.shouldPreventScrolling = shouldPreventScrolling;
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -665,10 +660,6 @@ export default mixins(
 				}
 			},
 			mouseDown (e: MouseEvent | TouchEvent) {
-				if (this.shouldPreventScrolling) {
-					return;
-				}
-
 				// Save the location of the mouse click
 				this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
@@ -679,19 +670,10 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			mouseUp (e: MouseEvent) {
-				if (this.shouldPreventScrolling) {
-					return;
-				}
-
 				this.mouseUpMouseSelect(e);
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
-				//* Control + scroll zoom
-				if (this.shouldPreventScrolling) {
-					return;
-				}
-
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
 						this.zoomOut();

@@ -24,7 +24,6 @@
 					:editMode="isActive && !isReadOnly"
 					@input="onInputChange"
 					@edit="onEdit"
-					@onMouseHover="onMouseHover"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
@@ -218,9 +217,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			else if (this.isActive && !edit) {
 				this.$store.commit('setActiveNode', null);
 			}
-		},
-		onMouseHover(isMouseHoverActive: boolean) {
-			this.$emit('onMouseHover', isMouseHoverActive);
 		},
 		onInputChange(content: string) {
 			this.setParameters({content});

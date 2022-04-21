@@ -25,6 +25,8 @@
         <div
           v-show="editMode"
 					@click.stop
+					@mousedown.stop
+					@mouseup.stop
 					@keydown.esc="onInputBlur"
 					@keydown.stop
 					@wheel.stop
