@@ -41,6 +41,7 @@ import RunData from '@/components/RunData.vue';
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
+import { STICKY_NODE_TYPE } from '@/constants';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -76,11 +77,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 			return null;
 		},
-		isActiveStickyNode(): boolean | null {
-			if (this.$store.getters.activeNode) {
-				return this.$store.getters.activeNode.type === 'n8n-nodes-base.note';
-			}
-			return null;
+		isActiveStickyNode(): boolean {
+			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
 		},
 	},
 	watch: {
@@ -90,7 +88,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
-			if (window.top) {
+			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
 			}
 		},

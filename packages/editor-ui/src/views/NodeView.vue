@@ -23,7 +23,7 @@
 			>
 				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
 					<node
-						v-if="nodeData.type !== 'n8n-nodes-base.note'"
+						v-if="nodeData.type !== STICKY_NODE_TYPE"
 						@duplicateNode="duplicateNode"
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
@@ -66,7 +66,7 @@
 		>
 			<div class="node-creator-button">
 				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
-				<div class="add-sticky-button" @click="nodeTypeSelected('n8n-nodes-base.note')">
+				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
 					<n8n-icon-button v-if="isAddStickyButtonVisible" size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
 			</div>
@@ -327,11 +327,6 @@ export default mixins(
 			nodes (): INodeUi[] {
 				return this.$store.getters.allNodes;
 			},
-			stickies(): INodeUi[] {
-				return this.$store.getters.allNodes.filter((node: INodeUi) => {
-					return node.type === 'n8n-nodes-base.note';
-				});
-			},
 			runButtonText (): string {
 				if (this.workflowRunning === false) {
 					return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
@@ -377,6 +372,7 @@ export default mixins(
 		},
 		data () {
 			return {
+				STICKY_NODE_TYPE,
 				createNodeActive: false,
 				instance: jsPlumb.getInstance(),
 				lastSelectedConnection: null as null | Connection,
@@ -1420,7 +1416,7 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
-				if (nodeTypeName === 'n8n-nodes-base.note') {
+				if (nodeTypeName === STICKY_NODE_TYPE) {
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
@@ -2207,7 +2203,7 @@ export default mixins(
 					}
 				}
 
-				if(node.type === 'n8n-nodes-base.note') {
+				if(node.type === STICKY_NODE_TYPE) {
 					this.$telemetry.track('User deleted workflow note', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('node.deleteNode', { node });
