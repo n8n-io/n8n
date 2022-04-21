@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="{[$style.sticky]: true, [$style.editMode]: editMode}"
+    :class="{[$style.sticky]: true, [$style.editMode]: false}"
     :style="styles"
 		@keydown.prevent
   >
@@ -201,11 +201,6 @@ export default mixins(Locale).extend({
   }
 }
 
-.editMode {
-  padding: var(--spacing-2xs) var(--spacing-2xs) 0;
-  cursor: default;
-}
-
 .footer {
   padding: var(--spacing-5xs) 0 var(--spacing-2xs);
   display: flex;
@@ -215,8 +210,9 @@ export default mixins(Locale).extend({
 
 <style lang="scss">
 .sticky-textarea {
-  width: calc(100% - var(--spacing-s));
   height: calc(100% - var(--spacing-l));
+  padding: var(--spacing-2xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+  cursor: default;
 
   .el-textarea {
     height: 100%;
