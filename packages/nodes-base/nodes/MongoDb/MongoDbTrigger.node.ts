@@ -1,6 +1,6 @@
 import { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
 import { ITriggerFunctions } from 'n8n-core';
-import { ChangeEvent, ChangeStream, Collection, MongoClient, MongoError } from 'mongodb';
+import { ChangeStream, Collection, MongoClient, MongoError } from 'mongodb';
 import { validateAndResolveMongoCredentials } from './MongoDb.node.utils';
 import { nodeDescription } from './mongoDbTrigger.node.options';
 
@@ -17,10 +17,7 @@ export class MongoDbTrigger implements INodeType {
 
 		let changeStream: ChangeStream;
 
-		const client: MongoClient = new MongoClient(connectionString, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-		});
+		const client: MongoClient = new MongoClient(connectionString);
 		await client.connect();
 
 		async function manualTriggerFunction() {
@@ -49,7 +46,7 @@ export class MongoDbTrigger implements INodeType {
 						includeFullDocument ? { fullDocument: 'updateLookup' } : undefined,
 					);
 
-					changeStream.on('change', (next: ChangeEvent) => {
+					changeStream.on('change', (next) => {
 						self.emit([self.helpers.returnJsonArray(next as unknown as IDataObject)]);
 						resolve(true);
 					});

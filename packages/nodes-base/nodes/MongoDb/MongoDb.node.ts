@@ -41,10 +41,7 @@ export class MongoDb implements INodeType {
 						}
 					}
 
-					await MongoClient.connect(connectionString, {
-						useNewUrlParser: true,
-						useUnifiedTopology: true,
-					});
+					await MongoClient.connect(connectionString);
 
 					return {
 						status: 'OK',
@@ -66,10 +63,7 @@ export class MongoDb implements INodeType {
 			await this.getCredentials('mongoDb'),
 		);
 
-		const client: MongoClient = await MongoClient.connect(connectionString, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-		});
+		const client: MongoClient = await MongoClient.connect(connectionString);
 
 		const mdb = client.db(database);
 
