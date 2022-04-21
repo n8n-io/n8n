@@ -27,8 +27,7 @@
 					@click.stop
 					@keydown.esc="onInputBlur"
 					@keydown.stop
-          @mouseover="onMouseHover"
-          @mouseout="onMouseHoverEnd"
+					@wheel.stop
           class="sticky-textarea"
           :class="{'full-height': !shouldShowFooter}"
         >
@@ -147,12 +146,6 @@ export default mixins(Locale).extend({
 		},
 		onInput(value: string) {
 			this.$emit('input', value);
-		},
-		onMouseHover() {
-			this.$emit('onMouseHover', true);
-		},
-		onMouseHoverEnd() {
-			this.$emit('onMouseHover', false);
 		},
 		onResize(deltas) {
 			this.$emit('resize', deltas);
