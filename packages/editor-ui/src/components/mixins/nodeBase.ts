@@ -4,7 +4,7 @@ import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
-import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
+import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
 
@@ -221,7 +221,15 @@ export const nodeBase = mixins(
 					// @ts-ignore
 					this.dragging = true;
 
-					if (params.e && !this.$store.getters.isNodeSelected(this.data.name)) {
+					const isSelected = this.$store.getters.isNodeSelected(this.data.name);
+					const nodeName = this.data.name;
+					if (this.data.type === STICKY_NODE_TYPE && !isSelected) {
+						setTimeout(() => {
+							this.$emit('nodeSelected', nodeName, false, true);
+						}, 0);
+					}
+
+					if (params.e && !isSelected) {
 						// Only the node which gets dragged directly gets an event, for all others it is
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.

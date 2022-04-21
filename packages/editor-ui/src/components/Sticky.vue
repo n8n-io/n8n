@@ -228,7 +228,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		onResizeStart() {
 			this.isResizing = true;
 			if (!this.isSelected && this.node) {
-				this.$emit('nodeSelectedByName', this.node.name, false, true);
+				this.$emit('nodeSelected', this.node.name, false, true);
 			}
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
