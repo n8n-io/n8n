@@ -134,6 +134,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Create a new sheet',
 					},
 					{
+						name: 'Create or Update',
+						value: 'upsert',
+						description: 'Create a new record, or update the current one if it already exists',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
@@ -157,11 +162,6 @@ export class GoogleSheets implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in a sheet',
-					},
-					{
-						name: 'Create or Update',
-						value: 'upsert',
-						description: 'Create a new record, or update the current one if it already exists',
 					},
 				],
 				default: 'read',
