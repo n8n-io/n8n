@@ -120,6 +120,7 @@ export default {
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
 				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
+				contentToRender = contentToRender.replaceAll('  ', ' &nbsp;');
 			}
 			const html = this.md.render(escapeMarkdown(contentToRender));
 			const safeHtml = xss(html, {
