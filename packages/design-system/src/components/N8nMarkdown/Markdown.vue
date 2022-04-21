@@ -119,7 +119,7 @@ export default {
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
-				contentToRender = contentToRender.replaceAll('\n', '<br/>');
+				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
 			}
 			const html = this.md.render(escapeMarkdown(contentToRender));
 			const safeHtml = xss(html, {
