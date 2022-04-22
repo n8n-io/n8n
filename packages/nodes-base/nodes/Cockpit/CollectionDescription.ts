@@ -192,7 +192,6 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The entry ID.',
 	},
 
 	// Collection:entry:create

@@ -135,7 +135,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
 				displayName: 'Categories',
@@ -152,7 +151,7 @@ export const productFields: INodeProperties[] = [
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
@@ -313,7 +312,6 @@ export const productFields: INodeProperties[] = [
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -351,7 +349,6 @@ export const productFields: INodeProperties[] = [
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -372,7 +369,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -404,7 +400,7 @@ export const productFields: INodeProperties[] = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
@@ -583,7 +579,6 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -653,7 +648,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
 				displayName: 'Categories',
@@ -670,7 +664,7 @@ export const productFields: INodeProperties[] = [
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
@@ -838,7 +832,6 @@ export const productFields: INodeProperties[] = [
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -876,7 +869,6 @@ export const productFields: INodeProperties[] = [
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -897,7 +889,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -929,7 +920,7 @@ export const productFields: INodeProperties[] = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
@@ -1108,7 +1099,6 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   product:getAll                           */
@@ -1430,6 +1420,5 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 ];

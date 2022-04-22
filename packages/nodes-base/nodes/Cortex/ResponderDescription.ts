@@ -146,7 +146,7 @@ export const responderFields: INodeProperties[] = [
 								value: 3,
 							},
 						],
-						description: 'Severity of the case. Default=Medium',
+						description: 'Severity of the case. Default=Medium.',
 					},
 					{
 						displayName: 'Start Date',
@@ -192,7 +192,7 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
-						description: 'Traffict Light Protocol (TLP). Default=Amber',
+						description: 'Traffict Light Protocol (TLP). Default=Amber.',
 					},
 					{
 						displayName: 'Tags',
@@ -277,7 +277,7 @@ export const responderFields: INodeProperties[] = [
 								value: 3,
 							},
 						],
-						description: 'Severity of the case. Default=Medium',
+						description: 'Severity of the case. Default=Medium.',
 					},
 					{
 						displayName: 'Date',
@@ -315,7 +315,7 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
-						description: 'Traffict Light Protocol (TLP). Default=Amber',
+						description: 'Traffict Light Protocol (TLP). Default=Amber.',
 					},
 					{
 						displayName: 'Status',
@@ -340,7 +340,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'Imported',
 							},
 						],
-						description: 'Status of the alert. Default=New',
+						description: 'Status of the alert. Default=New.',
 					},
 					{
 						displayName: 'Type',
@@ -663,7 +663,7 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
-						description: 'Traffict Light Protocol (TLP). Default=Amber',
+						description: 'Traffict Light Protocol (TLP). Default=Amber.',
 					},
 					{
 						displayName: 'IOC',

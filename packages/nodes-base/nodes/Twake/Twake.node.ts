@@ -164,7 +164,6 @@ export class Twake implements INodeType {
 						name: 'senderName',
 						type: 'string',
 						default: '',
-						description: 'Sender name',
 					},
 				],
 			},

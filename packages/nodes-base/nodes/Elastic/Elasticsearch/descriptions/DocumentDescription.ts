@@ -179,7 +179,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Stored Fields',
 				name: 'stored_fields',
-				description: 'If true, retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false',
+				description: 'If true, retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
@@ -284,21 +284,21 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Allow No Indices',
 				name: 'allow_no_indices',
-				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true',
+				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true.',
 				type: 'boolean',
 				default: true,
 			},
 			{
 				displayName: 'Allow Partial Search Results',
 				name: 'allow_partial_search_results',
-				description: '<p>If true, return partial results if there are shard request timeouts or shard failures.</p><p>If false, returns an error with no partial results. Defaults to true.</p>',
+				description: '<p>If true, return partial results if there are shard request timeouts or shard failures.</p><p>If false, returns an error with no partial results. Defaults to true.</p>.',
 				type: 'boolean',
 				default: true,
 			},
 			{
 				displayName: 'Batched Reduce Size',
 				name: 'batched_reduce_size',
-				description: 'Number of shard results that should be reduced at once on the coordinating node. Defaults to 512',
+				description: 'Number of shard results that should be reduced at once on the coordinating node. Defaults to 512.',
 				type: 'number',
 				typeOptions: {
 					minValue: 2,
@@ -308,7 +308,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'CCS Minimize Roundtrips',
 				name: 'ccs_minimize_roundtrips',
-				description: 'If true, network round-trips between the coordinating node and the remote clusters are minimized when executing cross-cluster search (CCS) requests. Defaults to true',
+				description: 'If true, network round-trips between the coordinating node and the remote clusters are minimized when executing cross-cluster search (CCS) requests. Defaults to true.',
 				type: 'boolean',
 				default: true,
 			},
@@ -351,35 +351,35 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Explain',
 				name: 'explain',
-				description: 'If true, return detailed information about score computation as part of a hit. Defaults to false',
+				description: 'If true, return detailed information about score computation as part of a hit. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Ignore Throttled',
 				name: 'ignore_throttled',
-				description: 'If true, concrete, expanded or aliased indices are ignored when frozen. Defaults to true',
+				description: 'If true, concrete, expanded or aliased indices are ignored when frozen. Defaults to true.',
 				type: 'boolean',
 				default: true,
 			},
 			{
 				displayName: 'Ignore Unavailable',
 				name: 'ignore_unavailable',
-				description: 'If true, missing or closed indices are not included in the response. Defaults to false',
+				description: 'If true, missing or closed indices are not included in the response. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Max Concurrent Shard Requests',
 				name: 'max_concurrent_shard_requests',
-				description: 'Define the number of shard requests per node this search executes concurrently. Defaults to 5',
+				description: 'Define the number of shard requests per node this search executes concurrently. Defaults to 5.',
 				type: 'number',
 				default: 5,
 			},
 			{
 				displayName: 'Pre-Filter Shard Size',
 				name: 'pre_filter_shard_size',
-				description: 'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting. Only used if the number of shards the search request expands to exceeds the threshold',
+				description: 'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting. Only used if the number of shards the search request expands to exceeds the threshold.',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
@@ -400,7 +400,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Request Cache',
 				name: 'request_cache',
-				description: 'If true, the caching of search results is enabled for requests where size is 0. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html">Elasticsearch shard request cache settings</a>',
+				description: 'If true, the caching of search results is enabled for requests where size is 0. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html">Elasticsearch shard request cache settings</a>.',
 				type: 'boolean',
 				default: false,
 			},
@@ -414,7 +414,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Search Type',
 				name: 'search_type',
-				description: 'How distributed term frequencies are calculated for relevance scoring. Defaults to Query then Fetch',
+				description: 'How distributed term frequencies are calculated for relevance scoring. Defaults to Query then Fetch.',
 				type: 'options',
 				options: [
 					{
@@ -431,7 +431,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Sequence Number and Primary Term',
 				name: 'seq_no_primary_term',
-				description: 'If true, return the sequence number and primary term of the last modification of each hit. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html">Optimistic concurrency control</a>',
+				description: 'If true, return the sequence number and primary term of the last modification of each hit. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html">Optimistic concurrency control</a>.',
 				type: 'boolean',
 				default: false,
 			},
@@ -452,7 +452,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Stored Fields',
 				name: 'stored_fields',
-				description: 'If true, retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false',
+				description: 'If true, retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
@@ -473,21 +473,21 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Track Scores',
 				name: 'track_scores',
-				description: 'If true, calculate and return document scores, even if the scores are not used for sorting. Defaults to false',
+				description: 'If true, calculate and return document scores, even if the scores are not used for sorting. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Track Total Hits',
 				name: 'track_total_hits',
-				description: 'Number of hits matching the query to count accurately. Defaults to 10000',
+				description: 'Number of hits matching the query to count accurately. Defaults to 10000.',
 				type: 'number',
 				default: 10000,
 			},
 			{
 				displayName: 'Version',
 				name: 'version',
-				description: 'If true, return document version as part of a hit. Defaults to false',
+				description: 'If true, return document version as part of a hit. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
@@ -563,7 +563,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		default: '',
 		required: false,
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -738,7 +738,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		default: '',
 		required: false,
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{

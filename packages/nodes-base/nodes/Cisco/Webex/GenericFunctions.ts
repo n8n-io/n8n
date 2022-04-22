@@ -164,7 +164,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			name: 'iconUrl',
 			type: 'string',
 			default: '',
-			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+',
+			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+.',
 		},
 		{
 			displayName: 'Style',
@@ -205,7 +205,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			required: true,
-			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)',
+			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures).',
 		},
 		{
 			displayName: 'Color',
@@ -407,7 +407,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'If true, allow text to wrap. Otherwise, text is clipped',
+			description: 'If true, allow text to wrap. Otherwise, text is clipped.',
 		},
 		{
 			displayName: 'Height',
@@ -537,7 +537,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: '',
-			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed',
+			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed.',
 		},
 		{
 			displayName: 'Is Multiline',
@@ -579,7 +579,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: '',
-			description: 'Description of the input desired. Displayed when no text has been input',
+			description: 'Description of the input desired. Displayed when no text has been input.',
 		},
 		{
 			displayName: 'Regex',

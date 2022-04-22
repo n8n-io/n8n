@@ -49,7 +49,6 @@ export const roomMemberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 	{

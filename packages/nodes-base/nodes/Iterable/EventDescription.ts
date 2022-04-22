@@ -131,7 +131,6 @@ export const eventFields: INodeProperties[] = [
 				name: 'templateId',
 				type: 'string',
 				default: '',
-				description: `Template id`,
 			},
 			{
 				displayName: 'User ID',

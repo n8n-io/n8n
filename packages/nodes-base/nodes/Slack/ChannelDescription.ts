@@ -702,7 +702,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'channelId',
 				type: 'string',
 				default: '',
-				description: `Resume a conversation by supplying an im or mpim's ID. Or provide the users field instead`,
+				description: 'Resume a conversation by supplying an im or mpim\'s ID. Or provide the users field instead.',
 			},
 			{
 				displayName: 'Return IM',

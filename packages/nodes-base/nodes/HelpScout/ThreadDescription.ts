@@ -49,7 +49,6 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 	{
 		displayName: 'Type',
@@ -252,7 +251,6 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 	{
 		displayName: 'Return All',

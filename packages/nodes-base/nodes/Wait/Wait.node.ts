@@ -346,21 +346,21 @@ export class Wait implements INodeType {
 					{
 						name: 'All Entries',
 						value: 'allEntries',
-						description: 'Returns all the entries of the last node. Always returns an array',
+						description: 'Returns all the entries of the last node. Always returns an array.',
 					},
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object',
+						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file',
+						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all the items as array or only the first item as object',
+				description: 'What data should be returned. If it should return all the items as array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',

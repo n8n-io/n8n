@@ -64,7 +64,6 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Email',
 	},
 	{
 		displayName: 'Event Name',
