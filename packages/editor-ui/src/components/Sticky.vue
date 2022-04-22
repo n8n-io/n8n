@@ -233,8 +233,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		onResize(deltas:  { width: number, height: number, left: boolean, top: boolean }) {
 			const minHeight = 180;
 			const minWidth = 150;
-			const deltaWidth = Math.floor(deltas.width / this.nodeViewScale);
-			const deltaHeight = Math.floor(deltas.height / this.nodeViewScale);
+			const deltaWidth = deltas.width / this.nodeViewScale;
+			const deltaHeight = deltas.height / this.nodeViewScale;
 			const newHeight = this.height + deltaHeight >= minHeight ? this.height + deltaHeight : minHeight;
 			const newWidth = this.width + deltaWidth >= minWidth ? this.width + deltaWidth : minWidth;
 
