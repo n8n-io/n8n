@@ -391,7 +391,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Reminders',
 		name: 'remindersUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Reminder',
 		typeOptions: {
 			multipleValues: true,
@@ -1011,7 +1011,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Reminders',
 		name: 'remindersUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Reminder',
 		typeOptions: {
 			multipleValues: true,

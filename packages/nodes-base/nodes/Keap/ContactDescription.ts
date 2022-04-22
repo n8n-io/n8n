@@ -241,7 +241,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Address',
 		displayOptions: {
 			show: {
@@ -506,7 +506,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Social Account',
 		displayOptions: {
 			show: {

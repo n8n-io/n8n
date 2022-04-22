@@ -671,7 +671,7 @@ export const fileFields: INodeProperties[] = [
 		name: 'tagsUi',
 		placeholder: 'Add Tag',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},

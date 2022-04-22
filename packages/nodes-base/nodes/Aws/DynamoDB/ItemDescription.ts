@@ -175,7 +175,7 @@ export const itemFields: INodeProperties[] = [
 				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				required: true,
 				typeOptions: {
 					multipleValues: true,
@@ -230,7 +230,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -401,7 +401,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -433,7 +433,7 @@ export const itemFields: INodeProperties[] = [
 				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				required: true,
 				typeOptions: {
 					multipleValues: true,
@@ -624,7 +624,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -733,7 +733,7 @@ export const itemFields: INodeProperties[] = [
 		description: 'Substitution tokens for attribute names in an expression',
 		placeholder: 'Add Attribute Value',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		required: true,
 		typeOptions: {
 			multipleValues: true,
@@ -931,7 +931,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},

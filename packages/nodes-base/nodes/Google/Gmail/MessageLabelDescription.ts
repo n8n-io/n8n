@@ -59,7 +59,7 @@ export const messageLabelFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getLabels',
 		},
-		default: '',
+		default: [],
 		required: true,
 		displayOptions: {
 			show: {

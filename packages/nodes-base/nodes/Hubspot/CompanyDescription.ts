@@ -895,7 +895,7 @@ export const companyFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyProperties',
 				},
-				default: '',
+				default: [],
 				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
@@ -1095,7 +1095,7 @@ export const companyFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyProperties',
 				},
-				default: '',
+				default: [],
 				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 		],

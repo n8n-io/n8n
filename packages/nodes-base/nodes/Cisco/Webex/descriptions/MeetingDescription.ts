@@ -200,7 +200,7 @@ export const meetingFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Invitee',
 				options: [
 					{
@@ -785,7 +785,7 @@ export const meetingFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Invitee',
 				options: [
 					{

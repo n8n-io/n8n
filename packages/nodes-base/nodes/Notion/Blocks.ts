@@ -357,7 +357,7 @@ export const text = (displayOptions: IDisplayOptions): INodeProperties[] => [
 		name: 'text',
 		placeholder: 'Add Text',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -526,7 +526,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 	typeOptions: {
 		multipleValues: true,
 	},
-	default: '',
+	default: {},
 	displayOptions: {
 		show: {
 			resource: [

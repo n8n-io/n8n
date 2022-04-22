@@ -102,7 +102,7 @@ export const transactionFields: INodeProperties[] = [
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				description: 'Columns to return',
 				options: TRANSACTION_REPORT_COLUMNS,
 			},

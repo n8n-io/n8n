@@ -119,7 +119,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -582,7 +582,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'lineItemsUi',
 				placeholder: 'Add Line Item',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},

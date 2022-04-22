@@ -128,7 +128,7 @@ const postalAddressesFields: INodeProperties[] = [
 		displayName: 'Location',
 		name: 'location',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		options: [
 			{
 				displayName: 'Location Fields',

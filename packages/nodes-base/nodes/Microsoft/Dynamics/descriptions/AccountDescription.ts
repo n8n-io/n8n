@@ -178,7 +178,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Expand Fields',
@@ -187,7 +187,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getExpandableAccountFields',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -266,7 +266,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
-				default: '',
+				default: [],
 				description: 'Fields the response will include',
 			},
 		],

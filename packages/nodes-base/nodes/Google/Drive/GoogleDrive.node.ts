@@ -2038,7 +2038,7 @@ export class GoogleDrive implements INodeType {
 						name: 'appPropertiesUi',
 						placeholder: 'Add Property',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -2071,7 +2071,7 @@ export class GoogleDrive implements INodeType {
 						name: 'propertiesUi',
 						placeholder: 'Add Property',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},

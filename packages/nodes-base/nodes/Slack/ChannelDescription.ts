@@ -238,7 +238,7 @@ export const channelFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				operation: [

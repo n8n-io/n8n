@@ -113,7 +113,7 @@ export class Pushcut implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getDevices',
 						},
-						default: '',
+						default: [],
 						description: 'List of devices this notification is sent to. (default is all devices)',
 					},
 					{

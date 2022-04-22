@@ -363,7 +363,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'artifactUi',
 		type: 'fixedCollection',
 		placeholder: 'Add Artifact',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -621,7 +621,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Artifact',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
