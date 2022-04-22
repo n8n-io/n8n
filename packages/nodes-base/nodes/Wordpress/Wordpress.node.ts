@@ -57,12 +57,10 @@ export class Wordpress implements INodeType {
 					{
 						name: 'Post',
 						value: 'post',
-						description: '',
 					},
 					{
 						name: 'User',
 						value: 'user',
-						description: '',
 					},
 				],
 				default: 'post',

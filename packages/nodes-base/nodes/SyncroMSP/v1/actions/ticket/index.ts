@@ -55,7 +55,6 @@ export const descriptions = [
 			},
 		],
 		default: 'getAll',
-		description: '',
 	},
 	...getAll.description,
 	...create.description,

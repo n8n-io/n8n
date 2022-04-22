@@ -249,7 +249,6 @@ export const messageFields: INodeProperties[] = [
 													},
 												],
 												default: 'textBlock',
-												description: '',
 											},
 											...getTextBlockProperties(),
 											...getInputTextProperties(),
@@ -290,7 +289,6 @@ export const messageFields: INodeProperties[] = [
 													},
 												],
 												default: 'openUrl',
-												description: '',
 											},
 											{
 												displayName: 'URL',
@@ -373,7 +371,6 @@ export const messageFields: INodeProperties[] = [
 									},
 								],
 								default: 'url',
-								description: '',
 							},
 							{
 								displayName: 'Input Field With File',

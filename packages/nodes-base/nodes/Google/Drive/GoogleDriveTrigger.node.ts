@@ -96,7 +96,6 @@ export class GoogleDriveTrigger implements INodeType {
 					// 	value: 'anyFileFolder',
 					// },
 				],
-				description: '',
 			},
 			{
 				displayName: 'File URL or ID',

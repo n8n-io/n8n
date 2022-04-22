@@ -143,7 +143,6 @@ export class Rocketchat implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						resource: [
@@ -391,7 +390,6 @@ export class Rocketchat implements INodeType {
 				},
 				default: '',
 				required: false,
-				description: '',
 			},
 		],
 	};

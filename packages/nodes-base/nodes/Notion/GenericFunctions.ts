@@ -932,7 +932,6 @@ export function getSearchFilters(resource: string) {
 				},
 			},
 			default: '',
-			description: '',
 		},
 	];
 }

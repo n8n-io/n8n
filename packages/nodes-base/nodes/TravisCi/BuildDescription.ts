@@ -349,7 +349,6 @@ export const buildFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: '',
 			},
 		],
 	},

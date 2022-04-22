@@ -65,7 +65,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Campaign ID',

@@ -115,7 +115,6 @@ export class LingvaNex implements INodeType {
 						name: 'platform',
 						type: 'string',
 						default: 'api',
-						description: '',
 					},
 					{
 						displayName: 'Translate Mode',

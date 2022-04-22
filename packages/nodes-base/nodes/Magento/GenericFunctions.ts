@@ -335,7 +335,6 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 				},
 			},
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Options',

@@ -400,7 +400,6 @@ export const cardFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'List ID',

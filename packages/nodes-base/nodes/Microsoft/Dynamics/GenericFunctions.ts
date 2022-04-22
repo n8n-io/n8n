@@ -274,7 +274,6 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'fax',
 			type: 'string',
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'FTP site URL',
@@ -369,14 +368,12 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'primarysatoriid',
 			type: 'string',
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Primary Twitter ID',
 			name: 'primarytwitterid',
 			type: 'string',
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Revenue',
@@ -414,7 +411,6 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'stageid',
 			type: 'string',
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Stock Exchange',

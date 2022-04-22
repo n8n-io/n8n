@@ -265,7 +265,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: '',
 	},
 	{
 		displayName: 'Update Fields',
@@ -435,7 +434,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: '',
 	},
 	{
 		displayName: 'Filters',
