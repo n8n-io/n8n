@@ -55,7 +55,6 @@ export class ClockifyTrigger implements INodeType {
 				displayName: 'Trigger',
 				name: 'watchField',
 				type: 'options',
-				default: '',
 				options: [
 					{
 						name: 'New Time Entry',
