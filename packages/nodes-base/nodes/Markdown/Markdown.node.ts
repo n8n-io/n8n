@@ -321,6 +321,7 @@ export class Markdown implements INodeType {
 						displayName: 'Automatic Linking To URLs',
 						name: 'simplifiedAutoLink',
 						type: 'boolean',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
 						description: 'Whether to enable automatic linking to urls',
 					},
@@ -478,6 +479,7 @@ export class Markdown implements INodeType {
 						displayName: 'Simple Line Breaks',
 						name: 'simpleLineBreaks',
 						type: 'boolean',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
 						description:
 							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
