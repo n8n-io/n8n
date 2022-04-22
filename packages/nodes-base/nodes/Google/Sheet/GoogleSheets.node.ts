@@ -134,6 +134,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Create a new sheet',
 					},
 					{
+						name: 'Create or Update',
+						value: 'upsert',
+						description: 'Create a new record, or update the current one if it already exists',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
@@ -363,6 +368,7 @@ export class GoogleSheets implements INodeType {
 						],
 						operation: [
 							'update',
+							'upsert',
 						],
 					},
 				},
@@ -381,6 +387,7 @@ export class GoogleSheets implements INodeType {
 						],
 						operation: [
 							'update',
+							'upsert',
 						],
 						rawData: [
 							true,
@@ -512,6 +519,7 @@ export class GoogleSheets implements INodeType {
 						],
 						operation: [
 							'update',
+							'upsert',
 						],
 						rawData: [
 							false,
@@ -537,6 +545,7 @@ export class GoogleSheets implements INodeType {
 							'lookup',
 							'read',
 							'update',
+							'upsert',
 						],
 					},
 				},
@@ -579,6 +588,7 @@ export class GoogleSheets implements INodeType {
 								'/operation': [
 									'append',
 									'update',
+									'upsert',
 								],
 							},
 						},
@@ -637,6 +647,7 @@ export class GoogleSheets implements INodeType {
 							show: {
 								'/operation': [
 									'update',
+									'upsert',
 								],
 								'/rawData': [
 									false,
@@ -1293,10 +1304,11 @@ export class GoogleSheets implements INodeType {
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
-			} else if (operation === 'update') {
+			} else if (operation === 'update' || operation === 'upsert') {
 				// ----------------------------------
-				//         update
+				//         update/upsert
 				// ----------------------------------
+				const upsert = operation === 'upsert' ? true : false;
 				try {
 					const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
@@ -1324,7 +1336,7 @@ export class GoogleSheets implements INodeType {
 							setData.push(item.json);
 						});
 
-						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
+						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, upsert);
 					}
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
