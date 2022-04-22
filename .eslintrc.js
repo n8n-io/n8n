@@ -375,7 +375,8 @@ module.exports = {
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				"n8n-nodes-base/node-param-default-missing": "error",
-				"n8n-nodes-base/node-class-description-inputs-wrong-trigger-node": "error"
+				"n8n-nodes-base/node-class-description-inputs-wrong-trigger-node": "error",
+				"n8n-nodes-base/node-class-description-inputs-wrong-regular-node": "error"
 			 }
 		},
 	],
