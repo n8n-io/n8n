@@ -93,6 +93,7 @@ import {
 	faUserCircle,
 	faUserFriends,
 	faUsers,
+	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import {
 	faStickyNote,
@@ -180,6 +181,7 @@ addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
+addIcon(faSolidStickyNote);
 addIcon(faStickyNote);
 addIcon(faStop);
 addIcon(faSun);
