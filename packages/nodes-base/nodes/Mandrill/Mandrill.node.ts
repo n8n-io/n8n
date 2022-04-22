@@ -216,7 +216,6 @@ export class Mandrill implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						operation: [
@@ -458,7 +457,7 @@ export class Mandrill implements INodeType {
 				name: 'mergeVarsUi',
 				placeholder: 'Add Merge Vars',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -496,7 +495,7 @@ export class Mandrill implements INodeType {
 				name: 'metadataUi',
 				placeholder: 'Add Metadata',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -634,7 +633,7 @@ export class Mandrill implements INodeType {
 						],
 					},
 				],
-				default: '',
+				default: {},
 				description: 'Array of supported attachments to add to the message.',
 			},
 			{
@@ -662,7 +661,7 @@ export class Mandrill implements INodeType {
 				name: 'headersUi',
 				placeholder: 'Add Headers',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -683,14 +682,12 @@ export class Mandrill implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 						],
 					},

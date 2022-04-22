@@ -58,7 +58,6 @@ export const payoutFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -164,7 +163,6 @@ export const payoutFields: INodeProperties[] = [
 							},
 						],
 						default: 'USD',
-						description: 'Currency',
 					},
 					{
 						displayName: 'Amount',
@@ -206,7 +204,6 @@ export const payoutFields: INodeProperties[] = [
 							},
 						],
 						default: 'paypal',
-						description: 'The recipient wallet',
 					},
 				],
 			},

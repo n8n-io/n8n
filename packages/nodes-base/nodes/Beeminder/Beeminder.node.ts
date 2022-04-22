@@ -174,7 +174,6 @@ export class Beeminder implements INodeType {
 				name: 'datapointId',
 				type: 'string',
 				default: '',
-				description: 'Datapoint id',
 				displayOptions: {
 					show: {
 						operation: [
@@ -207,7 +206,6 @@ export class Beeminder implements INodeType {
 						name: 'comment',
 						type: 'string',
 						default: '',
-						description: 'Comment',
 					},
 					{
 						displayName: 'Timestamp',
@@ -284,7 +282,6 @@ export class Beeminder implements INodeType {
 						name: 'comment',
 						type: 'string',
 						default: '',
-						description: 'Comment',
 					},
 					{
 						displayName: 'Timestamp',
@@ -326,7 +323,7 @@ export class Beeminder implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const timezone = this.getTimezone();
 
 		const resource = this.getNodeParameter('resource', 0) as string;

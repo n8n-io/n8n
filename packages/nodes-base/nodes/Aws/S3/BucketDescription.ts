@@ -348,7 +348,7 @@ export const bucketFields: INodeProperties[] = [
 				name: 'startAfter',
 				type: 'string',
 				default: '',
-				description: 'StartAfter is where you want Amazon S3 to start listing from. Amazon S3 starts listing after this specified key',
+				description: 'StartAfter is where you want Amazon S3 to start listing from. Amazon S3 starts listing after this specified key.',
 			},
 		],
 	},

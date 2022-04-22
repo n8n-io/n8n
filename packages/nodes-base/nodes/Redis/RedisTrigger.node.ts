@@ -38,7 +38,7 @@ export class RedisTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: `Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported`,
+				description: 'Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.',
 			},
 			{
 				displayName: 'Options',
