@@ -57,6 +57,8 @@ export default {
 			dir: '',
 			dHeight: 0,
 			dWidth: 0,
+			vHeight: 0,
+			vWidth: 0,
 			x: 0,
 			y: 0,
 		};
@@ -74,6 +76,8 @@ export default {
 			this.y = e.pageY;
 			this.dWidth = 0;
 			this.dHeight = 0;
+			this.vHeight = this.height - this.minHeight;
+			this.vWidth = this.width - this.minWidth;
 
 			window.addEventListener('mousemove', this.mouseMove);
 			window.addEventListener('mouseup', this.mouseUp);
@@ -104,8 +108,11 @@ export default {
 
 			const deltaWidth = (dWidth - this.dWidth) / this.scale;
 			const deltaHeight = (dHeight - this.dHeight) / this.scale;
-			const height = this.height + deltaHeight >= this.minHeight ? this.height + deltaHeight : this.minHeight;
-			const width = this.width + deltaWidth >= this.minWidth ? this.width + deltaWidth : this.minWidth;
+
+			this.vHeight = this.vHeight + deltaHeight;
+			this.vWidth = this.vWidth + deltaWidth;
+			const height = this.height + deltaHeight >= this.minHeight && this.vHeight > 0 ? this.height + deltaHeight : this.minHeight;
+			const width = this.width + deltaWidth >= this.minWidth && this.vWidth > 0 ? this.width + deltaWidth : this.minWidth;
 
 			if (left || top) {
 				const dX = left && width !== this.width ? -1 * deltaWidth : 0;
