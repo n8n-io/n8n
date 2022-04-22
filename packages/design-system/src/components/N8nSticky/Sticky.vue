@@ -6,6 +6,11 @@
   >
     <resize
       :isResizingEnabled="!readOnly"
+			:height="height"
+			:width="width"
+			:minHeight="minHeight"
+			:minWidth="minWidth"
+			:scale="scale"
       @resizeend="onResizeEnd"
       @resize="onResize"
       @resizestart="onResizeStart"
@@ -77,6 +82,18 @@ export default mixins(Locale).extend({
 			type: Number,
 			default: 240,
 		},
+		minHeight: {
+			type: Number,
+			default: 80,
+		},
+		minWidth: {
+			type: Number,
+			default: 150,
+		},
+		scale: {
+			type: Number,
+			default: 1,
+		},
 		id: {
 			type: String,
 			default: '0',
@@ -87,14 +104,6 @@ export default mixins(Locale).extend({
 		editMode: {
 			type: Boolean,
 			default: false,
-		},
-		minHeight: {
-			type: Number,
-			default: 80,
-		},
-		minWidth: {
-			type: Number,
-			default: 150,
 		},
 		readOnly: {
 			type: Boolean,
@@ -149,8 +158,8 @@ export default mixins(Locale).extend({
 		onInput(value: string) {
 			this.$emit('input', value);
 		},
-		onResize(deltas) {
-			this.$emit('resize', deltas);
+		onResize(values) {
+			this.$emit('resize', values);
 		},
 		onResizeEnd(resizeEnd) {
 			this.isResizing = false;

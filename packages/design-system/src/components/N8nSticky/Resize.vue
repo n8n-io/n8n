@@ -31,12 +31,32 @@ export default {
 			type: Boolean,
 			default: true,
 		},
+		height: {
+			type: Number,
+			default: 180,
+		},
+		width: {
+			type: Number,
+			default: 240,
+		},
+		minHeight: {
+			type: Number,
+			default: 80,
+		},
+		minWidth: {
+			type: Number,
+			default: 150,
+		},
+		scale: {
+			type: Number,
+			default: 1,
+		},
 	},
 	data() {
 		return {
 			dir: '',
-			height: 0,
-			width: 0,
+			dHeight: 0,
+			dWidth: 0,
 			x: 0,
 			y: 0,
 		};
@@ -52,8 +72,8 @@ export default {
 
 			this.x = e.pageX;
 			this.y = e.pageY;
-			this.width = 0;
-			this.height = 0;
+			this.dWidth = 0;
+			this.dHeight = 0;
 
 			window.addEventListener('mousemove', this.mouseMove);
 			window.addEventListener('mouseup', this.mouseUp);
@@ -62,29 +82,42 @@ export default {
 		mouseMove(e) {
 			e.preventDefault();
 			e.stopPropagation();
-			let width = 0;
-			let height = 0;
+			let dWidth = 0;
+			let dHeight = 0;
 			let top = false;
 			let left = false;
 
 			if (this.dir.includes('right')) {
-				width = e.pageX - this.x;
+				dWidth = e.pageX - this.x;
 			}
 			if (this.dir.includes('left')) {
-				width = this.x - e.pageX;
+				dWidth = this.x - e.pageX;
 				left = true;
 			}
 			if (this.dir.includes('top')) {
-				height = this.y - e.pageY;
+				dHeight = this.y - e.pageY;
 				top = true;
 			}
 			if (this.dir.includes('bottom')) {
-				height = e.pageY - this.y;
+				dHeight = e.pageY - this.y;
 			}
 
-			this.$emit('resize', { width: width - this.width, height: height - this.height, left, top });
-			this.height = height;
-			this.width = width;
+			const deltaWidth = (dWidth - this.dWidth) / this.scale;
+			const deltaHeight = (dHeight - this.dHeight) / this.scale;
+			const height = this.height + deltaHeight >= this.minHeight ? this.height + deltaHeight : this.minHeight;
+			const width = this.width + deltaWidth >= this.minWidth ? this.width + deltaWidth : this.minWidth;
+
+			if (left || top) {
+				const dX = left && width !== this.width ? -1 * deltaWidth : 0;
+				const dY = top && height !== this.height ? -1 * deltaHeight: 0;
+
+				this.$emit('resize', { height, width, dX, dY });
+			}
+			else {
+				this.$emit('resize', { height, width });
+			}
+			this.dHeight = dHeight;
+			this.dWidth = dWidth;
 		},
 		mouseUp(e) {
 			e.preventDefault();

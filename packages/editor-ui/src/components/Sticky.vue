@@ -17,9 +17,10 @@
 				<n8n-sticky
 					:content.sync="node.parameters.content"
 					:height="node.parameters.height"
+					:width="node.parameters.width"
+					:scale="nodeViewScale"
 					:id="nodeIndex"
 					:readOnly="isReadOnly"
-					:width="node.parameters.width"
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
 					@input="onInputChange"
@@ -230,21 +231,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName); // todo
 		},
-		onResize(deltas:  { width: number, height: number, left: boolean, top: boolean }) {
-			const minHeight = 80;
-			const minWidth = 150;
-			const deltaWidth = deltas.width / this.nodeViewScale;
-			const deltaHeight = deltas.height / this.nodeViewScale;
-			const newHeight = this.height + deltaHeight >= minHeight ? this.height + deltaHeight : minHeight;
-			const newWidth = this.width + deltaWidth >= minWidth ? this.width + deltaWidth : minWidth;
-
-			if (this.node && (deltas.top || deltas.left)) {
-				const x = deltas.left && newWidth !== this.width ? this.node.position[0] - deltaWidth : this.node.position[0];
-				const y = deltas.top && newHeight !== this.height ? this.node.position[1] - deltaHeight: this.node.position[1];
-				this.setPosition([x, y]);
+		onResize({height, width, dX, dY}:  { width: number, height: number, dX?: number, dY?: number }) {
+			if (!this.node) {
+				return;
+			}
+			if (isNumber(dX) || isNumber(dY)) {
+				this.setPosition([this.node.position[0] + (dX || 0), this.node.position[1] + (dY || 0)]);
 			}
 
-			this.setParameters({ height: newHeight, width: newWidth });
+			this.setParameters({ height, width });
 		},
 		onResizeEnd() {
 			this.isResizing = false;
