@@ -248,9 +248,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setParameters(params: {content?: string, height?: number, width?: number}) {
 			if (this.node) {
 				const nodeParameters = {
-					content: params.content ? params.content : this.node.parameters.content,
-					height: params.height ? params.height : this.node.parameters.height,
-					width: params.width ? params.width : this.node.parameters.width,
+					content: isString(params.content) ? params.content : this.node.parameters.content,
+					height: isNumber(params.height) ? params.height : this.node.parameters.height,
+					width: isNumber(params.width) ? params.width : this.node.parameters.width,
 				};
 
 				const updateInformation = {
