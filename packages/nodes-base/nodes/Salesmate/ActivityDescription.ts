@@ -426,7 +426,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
