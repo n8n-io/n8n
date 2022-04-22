@@ -9,11 +9,39 @@ import {
 	IWorkflowBase,
 	INodeTypes,
 } from '.';
+import { INodeType } from './Interfaces';
 
 import { getInstance as getLoggerInstance } from './LoggerProxy';
 
+const STICKY_NODE_TYPE = 'n8n-nodes-base.note';
+
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);
+}
+
+export function isNumber(value: unknown): value is number {
+	return typeof value === 'number';
+}
+
+function areOverlapping(note: INode, stickyType: INodeType | undefined, node: INode): boolean {
+	const heightProperty = stickyType?.description.properties.find((property) => property.name === 'height');
+	const widthProperty = stickyType?.description.properties.find((property) => property.name === 'width');
+
+	const defaultHeight = heightProperty && isNumber(heightProperty?.default) ? heightProperty.default : 0;
+	const defaultWidth = widthProperty && isNumber(widthProperty?.default) ? widthProperty.default : 0;
+
+	const height: number = isNumber(note.parameters.height)? note.parameters.height : defaultHeight;
+	const width: number = isNumber(note.parameters.width)? note.parameters.width : defaultWidth;
+
+	const topLeft = note.position;
+	const bottomRight = [topLeft[0] + width, topLeft[1] + height];
+
+	const targetPos = node.position;
+
+	return targetPos[0] > topLeft[0] &&
+		targetPos[1] > topLeft[1] &&
+		targetPos[0] < bottomRight[0] &&
+		targetPos[1] < bottomRight[1];
 }
 
 export function generateNodesGraph(
@@ -24,11 +52,24 @@ export function generateNodesGraph(
 		node_types: [],
 		node_connections: [],
 		nodes: {},
+		notes: {},
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
 
 	try {
-		workflow.nodes.forEach((node: INode, index: number) => {
+		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
+		const otherNodes = workflow.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+
+		notes.forEach((note: INode, index: number) => {
+			const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, note.typeVersion);
+			const overlapping = otherNodes.find((node) => areOverlapping(note, stickyType, node));
+			nodesGraph.notes[index] = {
+				type: overlapping ? 'overlapping' : 'non_overlapping',
+				position: note.position,
+			};
+		});
+
+		otherNodes.forEach((node: INode, index: number) => {
 			nodesGraph.node_types.push(node.type);
 			const nodeItem: INodeGraphItem = {
 				type: node.type,

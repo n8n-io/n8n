@@ -1410,10 +1410,20 @@ export interface INodesGraph {
 	node_types: string[];
 	node_connections: IDataObject[];
 	nodes: INodesGraphNode;
+	notes: INotesGraphNode;
 }
 
 export interface INodesGraphNode {
 	[key: string]: INodeGraphItem;
+}
+
+export interface INotesGraphNode {
+	[key: string]: INoteGraphItem;
+}
+
+export interface INoteGraphItem {
+	type: 'overlapping' | 'non_overlapping';
+	position: [number, number];
 }
 
 export interface INodeGraphItem {
