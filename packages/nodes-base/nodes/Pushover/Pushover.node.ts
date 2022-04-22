@@ -112,6 +112,7 @@ export class Pushover implements INodeType {
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'options',
+				default: '-2',
 				displayOptions: {
 					show: {
 						resource: [

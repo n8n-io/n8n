@@ -140,6 +140,7 @@ export class LocalFileTrigger implements INodeType {
 						displayName: 'Max Folder Depth',
 						name: 'depth',
 						type: 'options',
+						default: '-1',
 						options: [
 							{
 								name: 'Unlimited',

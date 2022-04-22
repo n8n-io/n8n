@@ -374,8 +374,8 @@ module.exports = {
 			files: ['./packages/nodes-base/nodes/**/*.ts'],
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
-
-			},
+				"n8n-nodes-base/node-param-default-missing": "error"
+			 }
 		},
 	],
 };

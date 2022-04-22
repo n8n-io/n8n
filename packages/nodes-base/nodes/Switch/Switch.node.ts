@@ -522,6 +522,7 @@ export class Switch implements INodeType {
 				displayName: 'Fallback Output',
 				name: 'fallbackOutput',
 				type: 'options',
+				default: '-1',
 				displayOptions: {
 					show: {
 						mode: [
