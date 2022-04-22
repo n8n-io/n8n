@@ -93,7 +93,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'attachments',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma-separated.',
 			},
 			{
 				displayName: 'Display Coordinates',

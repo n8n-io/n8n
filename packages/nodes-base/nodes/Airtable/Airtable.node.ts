@@ -433,7 +433,7 @@ export class Airtable implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Comma separated list of fields to ignore.',
+						description: 'Comma-separated list of fields to ignore.',
 					},
 					{
 						displayName: 'Typecast',

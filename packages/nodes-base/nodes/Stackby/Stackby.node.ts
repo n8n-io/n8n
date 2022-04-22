@@ -181,7 +181,7 @@ export class Stackby implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 		],
 	};

@@ -73,7 +73,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
 	},
 	{
 		displayName: 'Content',
@@ -118,7 +118,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
 	},
 	{
 		displayName: 'Topic',
