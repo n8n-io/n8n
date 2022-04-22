@@ -241,6 +241,6 @@ export default mixins(Locale).extend({
 }
 
 .full-height {
-  height: calc(100% - var(--spacing-s));
+  height: calc(100% - var(--spacing-2xs));
 }
 </style>
