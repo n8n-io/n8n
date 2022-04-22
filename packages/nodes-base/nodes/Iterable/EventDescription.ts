@@ -84,7 +84,7 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Data Fields',
 				name: 'dataFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Data Field',
 				typeOptions: {
 					multipleValues: true,

@@ -338,7 +338,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'argumentsUi',
 				placeholder: 'Add Argument',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -377,7 +377,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'bonusArgumentUi',
 				placeholder: 'Add Bonus Argument',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},

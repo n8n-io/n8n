@@ -206,7 +206,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Condition',
 		options: [
 			{

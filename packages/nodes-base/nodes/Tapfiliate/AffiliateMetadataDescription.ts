@@ -73,7 +73,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},

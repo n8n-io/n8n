@@ -182,7 +182,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -347,7 +347,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,

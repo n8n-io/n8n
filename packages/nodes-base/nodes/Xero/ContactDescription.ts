@@ -115,7 +115,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Address',
 				options: [
 					{
@@ -257,7 +257,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				options: [
 					{
@@ -590,7 +590,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Address',
 				options: [
 					{
@@ -739,7 +739,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				options: [
 					{

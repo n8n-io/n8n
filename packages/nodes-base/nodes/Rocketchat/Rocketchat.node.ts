@@ -336,7 +336,7 @@ export class Rocketchat implements INodeType {
 						typeOptions: {
 							multipleValues: true,
 						},
-						default: '',
+						default: {},
 						options: [
 							{
 								name: 'fieldsValues',

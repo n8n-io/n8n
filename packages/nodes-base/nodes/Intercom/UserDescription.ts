@@ -524,7 +524,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Attribute',
 		typeOptions: {
 			multipleValues: true,

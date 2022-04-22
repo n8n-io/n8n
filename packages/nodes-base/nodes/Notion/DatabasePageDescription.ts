@@ -170,7 +170,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Property',
 		options: [
 			{
@@ -585,7 +585,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Property',
 		options: [
 			{

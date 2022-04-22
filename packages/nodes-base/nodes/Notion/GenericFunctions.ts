@@ -874,7 +874,7 @@ export function getSearchFilters(resource: string) {
 					],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{

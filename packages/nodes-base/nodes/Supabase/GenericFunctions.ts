@@ -130,7 +130,7 @@ export function getFilters(
 					],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{

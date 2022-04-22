@@ -82,7 +82,7 @@ export class GooglePerspective implements INodeType {
 				displayName: 'Attributes to Analyze',
 				name: 'requestedAttributesUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
