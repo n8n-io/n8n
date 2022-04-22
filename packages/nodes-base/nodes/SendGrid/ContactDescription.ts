@@ -242,7 +242,7 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getListIds',
 								},
-								default: '',
+								default: [],
 								description: 'ID of the field to set.',
 							},
 						],

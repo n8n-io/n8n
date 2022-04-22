@@ -62,7 +62,7 @@ export const messageFields: INodeProperties[] = [
 			loadOptionsMethod: 'getUsers',
 		},
 		required: true,
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [

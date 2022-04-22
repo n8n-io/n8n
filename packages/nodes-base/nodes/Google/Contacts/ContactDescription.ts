@@ -704,7 +704,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
@@ -884,7 +884,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
@@ -1128,7 +1128,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{

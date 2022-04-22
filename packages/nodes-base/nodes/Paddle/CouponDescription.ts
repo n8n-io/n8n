@@ -93,7 +93,7 @@ export const couponFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'Comma-separated list of product IDs. Required if coupon_type is product.',
 		required: true,
 	},

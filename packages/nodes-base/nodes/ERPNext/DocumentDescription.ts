@@ -135,7 +135,7 @@ export const documentFields: INodeProperties[] = [
 						'docType',
 					],
 				},
-				default: '',
+				default: [],
 				description: 'Comma-separated list of fields to return.',
 				placeholder: 'name,country',
 			},

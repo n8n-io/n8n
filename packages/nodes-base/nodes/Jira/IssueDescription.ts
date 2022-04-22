@@ -679,7 +679,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Expand',
 				name: 'expand',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				options: [
 					{
 						name: 'Changelog',
