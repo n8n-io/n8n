@@ -76,8 +76,8 @@ export default {
 			this.y = e.pageY;
 			this.dWidth = 0;
 			this.dHeight = 0;
-			this.vHeight = this.height - this.minHeight;
-			this.vWidth = this.width - this.minWidth;
+			this.vHeight = this.height;// - this.minHeight;
+			this.vWidth = this.width;// - this.minWidth;
 
 			window.addEventListener('mousemove', this.mouseMove);
 			window.addEventListener('mouseup', this.mouseUp);
@@ -106,17 +106,49 @@ export default {
 				dHeight = e.pageY - this.y;
 			}
 
+			const gridSize = 20;
+
 			const deltaWidth = (dWidth - this.dWidth) / this.scale;
 			const deltaHeight = (dHeight - this.dHeight) / this.scale;
 
+			function closestNumber(n, m) {
+				// find the quotient
+				let q = parseInt(n / m);
+
+				// 1st possible closest number
+				let n1 = m * q;
+
+				// 2nd possible closest number
+				let n2 = (n * m) > 0 ?
+					(m * (q + 1)) : (m * (q - 1));
+
+				// if true, then n1 is the
+				// required closest number
+				if (Math.abs(n - n1) < Math.abs(n - n2))
+					return n1;
+
+				// else n2 is the required
+				// closest number
+				return n2;
+			}
+
+			const getSize = (curr, delta, min, virtual) => {
+				const target = closestNumber(virtual, gridSize);
+				if (target >= min && virtual > 0) {
+					return target;
+				}
+
+				return min;
+			};
+
 			this.vHeight = this.vHeight + deltaHeight;
 			this.vWidth = this.vWidth + deltaWidth;
-			const height = this.height + deltaHeight >= this.minHeight && this.vHeight > 0 ? this.height + deltaHeight : this.minHeight;
-			const width = this.width + deltaWidth >= this.minWidth && this.vWidth > 0 ? this.width + deltaWidth : this.minWidth;
+			const height = getSize(this.height, deltaHeight, this.minHeight, this.vHeight);
+			const width = getSize(this.width, deltaWidth, this.minWidth, this.vWidth);
 
 			if (left || top) {
-				const dX = left && width !== this.width ? -1 * deltaWidth : 0;
-				const dY = top && height !== this.height ? -1 * deltaHeight: 0;
+				const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
+				const dY = top && height !== this.height ? -1 * (height - this.height): 0;
 
 				this.$emit('resize', { height, width, dX, dY });
 			}
