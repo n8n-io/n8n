@@ -75,7 +75,7 @@ export const taskFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getTaskStatuses',
 		},
-		description: 'The current status of the task, such as In Progress or Completed.',
+		description: 'The current status of the task, such as In Progress or Completed',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -136,7 +136,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
+				description: 'The type of call being answered: Inbound, Internal, or Outbound',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -161,14 +161,14 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -182,14 +182,14 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Contains a text description of the task.',
+				description: 'Contains a text description of the task',
 			},
 			{
 				displayName: 'Is ReminderSet',
 				name: 'isReminderSet',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false).',
+				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
 				displayName: 'Owner',
@@ -199,7 +199,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the record.',
+				description: 'ID of the User who owns the record',
 			},
 			{
 				displayName: 'Priority',
@@ -209,7 +209,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: `Indicates the importance or urgency of a task, such as high or low.`,
+				description: 'Indicates the importance or urgency of a task, such as high or low',
 			},
 			{
 				displayName: 'Recurrence Type',
@@ -219,7 +219,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
-				description: 'Recurrence Type of the task.',
+				description: 'Recurrence Type of the task',
 			},
 			{
 				displayName: 'Recurrence Instance',
@@ -236,14 +236,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceInterval',
 				type: 'number',
 				default: '',
-				description: 'The interval between recurring tasks.',
+				description: 'The interval between recurring tasks',
 			},
 			{
 				displayName: 'Recurrence Day Of Month',
 				name: 'recurrenceDayOfMonth',
 				type: 'number',
 				default: '',
-				description: 'The day of the month in which the task repeats.',
+				description: 'The day of the month in which the task repeats',
 			},
 			{
 				displayName: 'Recurrence Day Of Week Mask',
@@ -314,7 +314,7 @@ export const taskFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The month of the year in which the task repeats.',
+				description: 'The month of the year in which the task repeats',
 			},
 			{
 				displayName: 'Recurrence Regenerated Type',
@@ -366,7 +366,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskSubjects',
 				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters',
 			},
 			{
 				displayName: 'Type',
@@ -376,7 +376,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: `Represents Type of the task, such as Call or Meeting.`,
+				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
 				displayName: 'What Id',
@@ -414,7 +414,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of task that needs to be fetched.',
+		description: 'ID of task that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -475,7 +475,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
+				description: 'The type of call being answered: Inbound, Internal, or Outbound',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -500,14 +500,14 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -521,14 +521,14 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Contains a text description of the task.',
+				description: 'Contains a text description of the task',
 			},
 			{
 				displayName: 'Is ReminderSet',
 				name: 'isReminderSet',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false).',
+				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
 				displayName: 'Owner',
@@ -538,7 +538,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the record.',
+				description: 'ID of the User who owns the record',
 			},
 			{
 				displayName: 'Priority',
@@ -548,7 +548,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: `Indicates the importance or urgency of a task, such as high or low.`,
+				description: 'Indicates the importance or urgency of a task, such as high or low',
 			},
 			{
 				displayName: 'Status',
@@ -558,7 +558,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskStatuses',
 				},
-				description: 'The current status of the task, such as In Progress or Completed.',
+				description: 'The current status of the task, such as In Progress or Completed',
 			},
 			{
 				displayName: 'Subject',
@@ -568,14 +568,14 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskSubjects',
 				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters',
 			},
 			{
 				displayName: 'Recurrence Day Of Month',
 				name: 'recurrenceDayOfMonth',
 				type: 'number',
 				default: '',
-				description: 'The day of the month in which the task repeats.',
+				description: 'The day of the month in which the task repeats',
 			},
 			{
 				displayName: 'Recurrence Day Of Week Mask',
@@ -606,7 +606,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceInterval',
 				type: 'number',
 				default: '',
-				description: 'The interval between recurring tasks.',
+				description: 'The interval between recurring tasks',
 			},
 			{
 				displayName: 'Recurrence Month Of Year',
@@ -663,7 +663,7 @@ export const taskFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The month of the year in which the task repeats.',
+				description: 'The month of the year in which the task repeats',
 			},
 			{
 				displayName: 'Recurrence Start Date Only',
@@ -701,7 +701,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
-				description: 'Website for the task.',
+				description: 'Website for the task',
 			},
 			{
 				displayName: 'Recurrence TimeZone SidKey',
@@ -725,7 +725,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: `Represents Type of the task, such as Call or Meeting.`,
+				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
 				displayName: 'What Id',
@@ -763,7 +763,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of task that needs to be fetched.',
+		description: 'ID of task that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -785,7 +785,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of task that needs to be fetched.',
+		description: 'ID of task that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -806,7 +806,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -830,7 +830,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -857,7 +857,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -872,7 +872,7 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTaskFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',

@@ -64,7 +64,7 @@ export class KeapTrigger implements INodeType {
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 		],
 	};

@@ -49,7 +49,7 @@ export const cameraProxyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The camera entity ID.',
+		description: 'The camera entity ID',
 	},
 	{
 		displayName: 'Binary Property',
@@ -67,6 +67,6 @@ export const cameraProxyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 ];

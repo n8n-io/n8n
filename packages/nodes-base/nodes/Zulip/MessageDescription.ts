@@ -73,7 +73,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
 	},
 	{
 		displayName: 'Content',
@@ -94,7 +94,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The content of the message.',
+		description: 'The content of the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                message:sendStream                          */
@@ -118,7 +118,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
 	},
 	{
 		displayName: 'Topic',
@@ -163,7 +163,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The content of the message.',
+		description: 'The content of the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:update                             */
@@ -184,7 +184,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	{
 		displayName: 'Update Fields',
@@ -262,7 +262,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:delete                             */
@@ -283,7 +283,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:updateFile                         */
@@ -304,6 +304,6 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 ];

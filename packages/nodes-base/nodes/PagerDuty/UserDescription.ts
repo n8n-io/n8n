@@ -46,6 +46,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the user.',
+		description: 'Unique identifier for the user',
 	},
 ];

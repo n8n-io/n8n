@@ -110,7 +110,7 @@ export const chatMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The content of the item.',
+		description: 'The content of the item',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -172,7 +172,7 @@ export const chatMessageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -196,6 +196,6 @@ export const chatMessageFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

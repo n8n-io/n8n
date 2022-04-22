@@ -33,7 +33,7 @@ export class Interval implements INodeType {
 					minValue: 1,
 				},
 				default: 1,
-				description: 'Interval value.',
+				description: 'Interval value',
 			},
 			{
 				displayName: 'Unit',
@@ -54,7 +54,7 @@ export class Interval implements INodeType {
 					},
 				],
 				default: 'seconds',
-				description: 'Unit of the interval value.',
+				description: 'Unit of the interval value',
 			},
 		],
 	};

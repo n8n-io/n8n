@@ -94,7 +94,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Plan.',
+		description: 'The ID of the Plan',
 	},
 	{
 		displayName: 'Bucket ID',
@@ -118,7 +118,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Bucket.',
+		description: 'The ID of the Bucket',
 	},
 	{
 		displayName: 'Title',
@@ -136,7 +136,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title of the task.',
+		description: 'Title of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -309,7 +309,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -333,7 +333,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -355,7 +355,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Task.',
+		description: 'The ID of the Task',
 	},
 	{
 		displayName: 'Update Fields',
@@ -392,7 +392,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'bucketId',
 				type: 'string',
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'Channel name as it will appear to the user in Microsoft Teams',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -437,14 +437,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'planId',
 				type: 'string',
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'Channel name as it will appear to the user in Microsoft Teams',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the task.',
+				description: 'Title of the task',
 			},
 		],
 	},

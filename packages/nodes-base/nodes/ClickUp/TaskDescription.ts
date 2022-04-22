@@ -669,7 +669,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -693,7 +693,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -754,7 +754,7 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Operator',
@@ -795,7 +795,7 @@ export const taskFields: INodeProperties[] = [
 									},
 								],
 								default: 'equal',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 							{
 								displayName: 'Value',
@@ -810,7 +810,7 @@ export const taskFields: INodeProperties[] = [
 									},
 								},
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -982,7 +982,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1006,7 +1006,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1028,7 +1028,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the task to add custom field to.',
+		description: 'The ID of the task to add custom field to',
 	},
 	{
 		displayName: 'Field ID',
@@ -1046,7 +1046,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the field to add custom field to.',
+		description: 'The ID of the field to add custom field to',
 	},
 	{
 		displayName: 'Value is JSON',
@@ -1081,6 +1081,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The value to set on custom field.',
+		description: 'The value to set on custom field',
 	},
 ];

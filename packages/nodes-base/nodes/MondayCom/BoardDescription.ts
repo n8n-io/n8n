@@ -65,7 +65,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers.',
+		description: 'Board unique identifiers',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 board:create                               */
@@ -171,7 +171,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers.',
+		description: 'Board unique identifiers',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  board:getAll                              */
@@ -191,7 +191,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -215,6 +215,6 @@ export const boardFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

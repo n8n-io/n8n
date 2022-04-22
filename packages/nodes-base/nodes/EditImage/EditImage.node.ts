@@ -104,7 +104,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The background color of the image to create.',
+		description: 'The background color of the image to create',
 	},
 	{
 		displayName: 'Image Width',
@@ -121,7 +121,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The width of the image to create.',
+		description: 'The width of the image to create',
 	},
 	{
 		displayName: 'Image Height',
@@ -138,7 +138,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The height of the image to create.',
+		description: 'The height of the image to create',
 	},
 
 
@@ -171,7 +171,7 @@ const nodeOperationOptions: INodeProperties[] = [
 			},
 		],
 		default: 'rectangle',
-		description: 'The primitive to draw.',
+		description: 'The primitive to draw',
 	},
 	{
 		displayName: 'Color',
@@ -207,7 +207,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'X (horizontal) start position of the primitive.',
+		description: 'X (horizontal) start position of the primitive',
 	},
 	{
 		displayName: 'Start Position Y',
@@ -226,7 +226,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Y (horizontal) start position of the primitive.',
+		description: 'Y (horizontal) start position of the primitive',
 	},
 	{
 		displayName: 'End Position X',
@@ -245,7 +245,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'X (horizontal) end position of the primitive.',
+		description: 'X (horizontal) end position of the primitive',
 	},
 	{
 		displayName: 'End Position Y',
@@ -264,7 +264,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Y (horizontal) end position of the primitive.',
+		description: 'Y (horizontal) end position of the primitive',
 	},
 	{
 		displayName: 'Corner Radius',
@@ -281,7 +281,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The radius of the corner to create round corners.',
+		description: 'The radius of the corner to create round corners',
 	},
 
 	// ----------------------------------
@@ -303,7 +303,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Text to write on the image.',
+		description: 'Text to write on the image',
 	},
 	{
 		displayName: 'Font Size',
@@ -317,7 +317,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Size of the text.',
+		description: 'Size of the text',
 	},
 	{
 		displayName: 'Font Color',
@@ -331,7 +331,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Color of the text.',
+		description: 'Color of the text',
 	},
 	{
 		displayName: 'Position X',
@@ -345,7 +345,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'X (horizontal) position of the text.',
+		description: 'X (horizontal) position of the text',
 	},
 	{
 		displayName: 'Position Y',
@@ -359,7 +359,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Y (vertical) position of the text.',
+		description: 'Y (vertical) position of the text',
 	},
 	{
 		displayName: 'Max Line Length',
@@ -376,7 +376,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Max amount of characters in a line before a line-break should get added.',
+		description: 'Max amount of characters in a line before a line-break should get added',
 	},
 
 	// ----------------------------------
@@ -463,7 +463,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Color of the border.',
+		description: 'Color of the border',
 	},
 
 
@@ -483,7 +483,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the binary property which contains the data of the image to composite on top of image which is found in Property Name.',
+		description: 'The name of the binary property which contains the data of the image to composite on top of image which is found in Property Name',
 	},
 	{
 		displayName: 'Operator',
@@ -587,7 +587,7 @@ const nodeOperationOptions: INodeProperties[] = [
 			},
 		],
 		default: 'Over',
-		description: 'The operator to use to combine the images.',
+		description: 'The operator to use to combine the images',
 	},
 	{
 		displayName: 'Position X',
@@ -601,7 +601,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'X (horizontal) position of composite image.',
+		description: 'X (horizontal) position of composite image',
 	},
 	{
 		displayName: 'Position Y',
@@ -615,7 +615,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Y (vertical) position of composite image.',
+		description: 'Y (vertical) position of composite image',
 	},
 
 	// ----------------------------------
@@ -661,7 +661,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'X (horizontal) position to crop from.',
+		description: 'X (horizontal) position to crop from',
 	},
 	{
 		displayName: 'Position Y',
@@ -675,7 +675,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Y (vertical) position to crop from.',
+		description: 'Y (vertical) position to crop from',
 	},
 
 	// ----------------------------------
@@ -742,7 +742,7 @@ const nodeOperationOptions: INodeProperties[] = [
 			{
 				name: 'Percent',
 				value: 'percent',
-				description: 'Width and height are specified in percents.',
+				description: 'Width and height are specified in percents',
 			},
 		],
 		default: 'maximumArea',
@@ -753,7 +753,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'How to resize the image.',
+		description: 'How to resize the image',
 	},
 
 	// ----------------------------------
@@ -792,7 +792,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90.',
+		description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90',
 	},
 
 
@@ -811,7 +811,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'X (horizontal) shear degrees.',
+		description: 'X (horizontal) shear degrees',
 	},
 	{
 		displayName: 'Degrees Y',
@@ -825,7 +825,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Y (vertical) shear degrees.',
+		description: 'Y (vertical) shear degrees',
 	},
 
 
@@ -893,7 +893,7 @@ export class EditImage implements INodeType {
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property in which the image data can be found.',
+				description: 'Name of the binary property in which the image data can be found',
 			},
 
 
@@ -916,7 +916,7 @@ export class EditImage implements INodeType {
 						],
 					},
 				},
-				description: 'The operations to perform.',
+				description: 'The operations to perform',
 				default: {},
 				options: [
 					{
@@ -947,7 +947,7 @@ export class EditImage implements INodeType {
 									loadOptionsMethod: 'getFonts',
 								},
 								default: 'default',
-								description: 'The font to use.',
+								description: 'The font to use',
 							},
 						],
 					},
@@ -974,7 +974,7 @@ export class EditImage implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'File name to set in binary data.',
+						description: 'File name to set in binary data',
 					},
 					{
 						displayName: 'Font',
@@ -991,7 +991,7 @@ export class EditImage implements INodeType {
 							loadOptionsMethod: 'getFonts',
 						},
 						default: 'default',
-						description: 'The font to use.',
+						description: 'The font to use',
 					},
 					{
 						displayName: 'Format',
@@ -1020,7 +1020,7 @@ export class EditImage implements INodeType {
 							},
 						],
 						default: 'jpeg',
-						description: 'Set the output image format.',
+						description: 'Set the output image format',
 					},
 					{
 						displayName: 'Quality',
@@ -1040,7 +1040,7 @@ export class EditImage implements INodeType {
 								],
 							},
 						},
-						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best).',
+						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best)',
 					},
 				],
 			},

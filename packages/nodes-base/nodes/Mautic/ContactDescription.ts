@@ -100,7 +100,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the contact.',
+		description: 'Email address of the contact',
 	},
 	{
 		displayName: 'First Name',
@@ -322,7 +322,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -341,14 +341,14 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 							},
 						],
 					},
@@ -670,7 +670,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -689,14 +689,14 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 							},
 						],
 					},
@@ -714,7 +714,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Email address of the contact.',
+				description: 'Email address of the contact',
 			},
 			{
 				displayName: 'Fax',
@@ -1262,7 +1262,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1286,7 +1286,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 30,
 		},
 		default: 30,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1349,7 +1349,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'String or search command to filter entities by.',
+				description: 'String or search command to filter entities by',
 			},
 			{
 				displayName: 'Order By',
@@ -1393,7 +1393,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'desc',
 					},
 				],
-				description: 'Sort direction: ASC or DESC.',
+				description: 'Sort direction: ASC or DESC',
 			},
 			{
 				displayName: 'Published Only',
@@ -1410,7 +1410,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Only return currently published entities.',
+				description: 'Only return currently published entities',
 			},
 			{
 				displayName: 'Minimal',
@@ -1427,7 +1427,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Return only array of entities without additional lists in it.',
+				description: 'Return only array of entities without additional lists in it',
 			},
 			{
 				displayName: 'RAW Data',

@@ -165,7 +165,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
+				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
 			},
 		],
 	},
@@ -212,7 +212,7 @@ export const threadFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						placeholder: 'ZXhhbXBsZSBmaWxl',
-						description: 'Base64-encoded stream of data.',
+						description: 'Base64-encoded stream of data',
 					},
 				],
 			},
@@ -231,7 +231,7 @@ export const threadFields: INodeProperties[] = [
 			},
 		],
 		default: {},
-		description: 'Array of supported attachments to add to the message.',
+		description: 'Array of supported attachments to add to the message',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                thread:getAll                               */
@@ -269,7 +269,7 @@ export const threadFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -292,6 +292,6 @@ export const threadFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

@@ -42,7 +42,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -66,7 +66,7 @@ export const alertFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	// required attributs
 	{
@@ -506,7 +506,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -590,7 +590,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 		],
 	},
@@ -739,7 +739,7 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Description',
@@ -747,14 +747,14 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true.',
+				description: 'if true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',
@@ -814,7 +814,7 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Title of the alert.',
+				description: 'Title of the alert',
 			},
 			{
 				displayName: 'TLP',
@@ -928,7 +928,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',

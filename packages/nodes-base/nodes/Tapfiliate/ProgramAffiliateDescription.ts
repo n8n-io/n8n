@@ -87,7 +87,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -111,14 +111,14 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'approved',
 				type: 'boolean',
 				default: true,
-				description: `An optional approval status.`,
+				description: 'An optional approval status',
 			},
 			{
 				displayName: 'Coupon',
 				name: 'coupon',
 				type: 'string',
 				default: '',
-				description: 'An optional coupon for this affiliate.',
+				description: 'An optional coupon for this affiliate',
 			},
 		],
 	},
@@ -161,7 +161,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -202,7 +202,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -245,7 +245,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -287,7 +287,7 @@ export const programAffiliateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'If set to true, all the results will be returned',
 	},
 	{
 		displayName: 'Limit',
@@ -311,7 +311,7 @@ export const programAffiliateFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -335,28 +335,28 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
-				description: 'Retrieves affiliates for a certain affiliate group.',
+				description: 'Retrieves affiliates for a certain affiliate group',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'An email address.',
+				description: 'An email address',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Retrieves children for a certain parent affiliate.',
+				description: 'Retrieves children for a certain parent affiliate',
 			},
 			{
 				displayName: 'Source ID',
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'Source ID.',
+				description: 'Source ID',
 			},
 		],
 	},

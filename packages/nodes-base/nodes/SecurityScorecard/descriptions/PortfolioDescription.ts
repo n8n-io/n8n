@@ -57,7 +57,7 @@ export const portfolioFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -81,7 +81,7 @@ export const portfolioFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Number of results to return',
 	},
 	{
 		displayName: 'Portfolio ID',

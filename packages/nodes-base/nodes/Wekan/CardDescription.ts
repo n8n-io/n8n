@@ -72,7 +72,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'List ID',
@@ -96,7 +96,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to create card in.',
+		description: 'The ID of the list to create card in',
 	},
 	{
 		displayName: 'Title',
@@ -115,7 +115,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The title of the card.',
+		description: 'The title of the card',
 	},
 	{
 		displayName: 'Swimlane ID',
@@ -139,7 +139,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The swimlane ID of the new card.',
+		description: 'The swimlane ID of the new card',
 	},
 	{
 		displayName: 'Author ID',
@@ -160,7 +160,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The author ID.',
+		description: 'The author ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -187,14 +187,14 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of assignee IDs attached to the card.',
+				description: 'The new list of assignee IDs attached to the card',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The new description of the card.',
+				description: 'The new description of the card',
 			},
 			{
 				displayName: 'Members',
@@ -204,7 +204,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of member IDs attached to the card.',
+				description: 'The new list of member IDs attached to the card',
 			},
 		],
 	},
@@ -231,7 +231,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'List ID',
@@ -255,7 +255,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.',
+		description: 'The ID of the list that card belongs to',
 	},
 	{
 		displayName: 'Card ID',
@@ -280,7 +280,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to delete.',
+		description: 'The ID of the card to delete',
 	},
 
 	// ----------------------------------
@@ -305,7 +305,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'List ID',
@@ -329,7 +329,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.',
+		description: 'The ID of the list that card belongs to',
 	},
 	{
 		displayName: 'Card ID',
@@ -347,7 +347,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to get.',
+		description: 'The ID of the card to get',
 	},
 
 	// ----------------------------------
@@ -372,7 +372,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'From Object',
@@ -426,7 +426,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.',
+		description: 'The ID of the list that card belongs to',
 	},
 	{
 		displayName: 'Swimlane ID',
@@ -452,7 +452,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the swimlane that card belongs to.',
+		description: 'The ID of the swimlane that card belongs to',
 	},
 	{
 		displayName: 'Return All',
@@ -469,7 +469,7 @@ export const cardFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -493,7 +493,7 @@ export const cardFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	// ----------------------------------
@@ -518,7 +518,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'List ID',
@@ -542,7 +542,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.',
+		description: 'The ID of the list that card belongs to',
 	},
 	{
 		displayName: 'Card ID',
@@ -567,7 +567,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to update.',
+		description: 'The ID of the card to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -594,7 +594,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Update the owner of the card.',
+				description: 'Update the owner of the card',
 			},
 			{
 				displayName: 'Assignees',
@@ -604,7 +604,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of assignee IDs attached to the card.',
+				description: 'The new list of assignee IDs attached to the card',
 			},
 			{
 				displayName: 'Color',
@@ -713,35 +713,35 @@ export const cardFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The new color of the card.',
+				description: 'The new color of the card',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The new description of the card.',
+				description: 'The new description of the card',
 			},
 			{
 				displayName: 'Due At',
 				name: 'dueAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The new due at field of the card.',
+				description: 'The new due at field of the card',
 			},
 			{
 				displayName: 'End At',
 				name: 'endAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The new end at field of the card.',
+				description: 'The new end at field of the card',
 			},
 			{
 				displayName: 'Label IDs',
 				name: 'labelIds',
 				type: 'string',
 				default: '',
-				description: 'The label IDs attached to the card.',
+				description: 'The label IDs attached to the card',
 			},
 			{
 				displayName: 'List ID',
@@ -754,7 +754,7 @@ export const cardFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The new list ID of the card (move operation).',
+				description: 'The new list ID of the card (move operation)',
 			},
 			{
 				displayName: 'Members',
@@ -764,14 +764,14 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of member IDs attached to the card.',
+				description: 'The new list of member IDs attached to the card',
 			},
 			{
 				displayName: 'Over Time',
 				name: 'isOverTime',
 				type: 'boolean',
 				default: false,
-				description: 'The new over time field of the card.',
+				description: 'The new over time field of the card',
 			},
 			{
 				displayName: 'Parent ID',
@@ -785,21 +785,21 @@ export const cardFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The parent of the card.',
+				description: 'The parent of the card',
 			},
 			{
 				displayName: 'Received At',
 				name: 'receivedAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The new received at field of the card.',
+				description: 'The new received at field of the card',
 			},
 			{
 				displayName: 'Sort',
 				name: 'sort',
 				type: 'number',
 				default: 0,
-				description: 'The internally used sort value of a card.',
+				description: 'The internally used sort value of a card',
 			},
 			{
 				displayName: 'Spent Time',
@@ -809,14 +809,14 @@ export const cardFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: '',
-				description: 'The new spent time field of the card.',
+				description: 'The new spent time field of the card',
 			},
 			{
 				displayName: 'Start At',
 				name: 'startAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The new start at field of the card.',
+				description: 'The new start at field of the card',
 			},
 			{
 				displayName: 'Swimlane ID',
@@ -829,14 +829,14 @@ export const cardFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The new swimlane ID of the card.',
+				description: 'The new swimlane ID of the card',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'The new title of the card.',
+				description: 'The new title of the card',
 			},
 		],
 	},
