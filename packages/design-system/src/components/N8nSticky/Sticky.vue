@@ -46,15 +46,16 @@
             @input="onInput"
 						ref="input"
           />
-          <div v-if="shouldShowFooter" :class="$style.footer">
-            <n8n-text
-              size="xsmall"
-              aligh="right"
-            >
-							<span v-html="t('sticky.markdownHint')"></span>
-            </n8n-text>
-          </div>
+
         </div>
+				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+					<n8n-text
+						size="xsmall"
+						aligh="right"
+					>
+						<span v-html="t('sticky.markdownHint')"></span>
+					</n8n-text>
+				</div>
       </template>
     </resize>
   </div>
@@ -218,7 +219,7 @@ export default mixins(Locale).extend({
 }
 
 .footer {
-  padding: var(--spacing-5xs) 0 var(--spacing-2xs);
+  padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
   display: flex;
   justify-content: flex-end;
 }
