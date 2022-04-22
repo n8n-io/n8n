@@ -142,8 +142,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
-				description: `Sending subsequent requests referencing the same service and with the same incident_key
-				 will result in those requests being rejected if an open incident matches that incident_key.`,
+				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key.',
 			},
 			{
 				displayName: 'Priority ID',

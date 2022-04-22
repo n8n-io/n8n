@@ -133,8 +133,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: `Optional column IDs, URLs, or names (fragile and discouraged),
-				specifying columns to be used as upsert keys. If more than one separate by a comma (,)`,
+				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,)',
 			},
 		],
 	},
@@ -202,11 +201,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because
-		they're easily prone to being changed by users. If you're
-		using a name, be sure to URI-encode it. If there are
-		multiple rows with the same value in the identifying column,
-		an arbitrary one will be selected`,
+		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
 	},
 	{
 		displayName: 'Options',
@@ -569,11 +564,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because
-		they're easily prone to being changed by users. If you're
-		using a name, be sure to URI-encode it. If there are multiple
-		rows with the same value in the identifying column, an arbitrary
-		one will be selected`,
+		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
 	},
 	{
 		displayName: 'Column',

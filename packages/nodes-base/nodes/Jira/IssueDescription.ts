@@ -282,8 +282,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's
-				Recently viewed project list, as shown under Projects in Jira.`,
+				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira.',
 			},
 		],
 	},
@@ -607,9 +606,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's
-				Recently viewed project list, as shown under Projects in Jira. This also populates the
-				JQL issues search lastViewed field.`,
+				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira. This also populates the JQL issues search lastViewed field.',
 			},
 		],
 	},
@@ -882,8 +879,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: `The subject of the email notification for the issue. If this is not specified,
-				then the subject is set to the issue key and summary.`,
+				description: 'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 			{
 				displayName: 'Text Body',
@@ -893,8 +889,7 @@ export const issueFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `The subject of the email notification for the issue.
-				If this is not specified, then the subject is set to the issue key and summary.`,
+				description: 'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 		],
 	},
@@ -1136,8 +1131,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether transitions with the condition Hide
-				From User Condition are included in the response.`,
+				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response.',
 			},
 		],
 	},

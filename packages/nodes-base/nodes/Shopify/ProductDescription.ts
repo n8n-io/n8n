@@ -592,8 +592,7 @@ export const productFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Fields the product will return, formatted as a string of comma-separated values.
-				By default all the fields are returned`,
+				description: 'Fields the product will return, formatted as a string of comma-separated values. By default all the fields are returned',
 			},
 		],
 	},

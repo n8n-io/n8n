@@ -1063,9 +1063,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed
-		if for example needed for labels which expects the value
-		to be an array.`,
+		description: 'The value is JSON and will be parsed as such. Is needed if for example needed for labels which expects the value to be an array.',
 	},
 	{
 		displayName: 'Value',

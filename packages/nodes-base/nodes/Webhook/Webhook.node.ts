@@ -301,9 +301,7 @@ export class Webhook implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to write the data of
-									the received file to. If the data gets received via "Form-Data Multipart"
-									it will be the prefix and a number starting with 0 will be attached to it.`,
+						description: 'Name of the binary property to write the data of the received file to. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 					},
 					{
 						displayName: 'Ignore Bots',
