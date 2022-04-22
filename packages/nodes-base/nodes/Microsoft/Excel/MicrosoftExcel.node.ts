@@ -153,7 +153,7 @@ export class MicrosoftExcel implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
 		let responseData;

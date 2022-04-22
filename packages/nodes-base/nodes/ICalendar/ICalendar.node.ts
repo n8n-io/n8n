@@ -299,7 +299,7 @@ export class ICalendar implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (operation === 'createEventFile') {
