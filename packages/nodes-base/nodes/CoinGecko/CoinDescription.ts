@@ -275,7 +275,7 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The contract address of tokens, comma separated.',
+		description: 'The contract address of tokens, comma-separated.',
 	},
 	{
 		displayName: 'Base Currency',
@@ -488,7 +488,7 @@ export const coinFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'bitcoin',
 				default: '',
-				description: 'Filter results by comma separated list of coin ID.',
+				description: 'Filter results by comma-separated list of coin ID.',
 			},
 			{
 				displayName: 'Category',

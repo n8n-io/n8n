@@ -55,7 +55,6 @@ export class AwsTextract implements INodeType {
 					},
 				],
 				default: 'analyzeExpense',
-				description: '',
 			},
 			{
 				displayName: 'Input Data Field Name',

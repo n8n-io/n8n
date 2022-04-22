@@ -149,7 +149,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				},
 				default: {},
-				description: '',
 				placeholder: 'Add Option',
 				options: [
 					{

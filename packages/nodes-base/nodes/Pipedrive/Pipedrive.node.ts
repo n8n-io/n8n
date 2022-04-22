@@ -3580,7 +3580,7 @@ export class Pipedrive implements INodeType {
 						name: 'exclude',
 						type: 'string',
 						default: '',
-						description: 'A comma separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
+						description: 'A comma-separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
 					},
 				],
 			},

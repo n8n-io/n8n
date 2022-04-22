@@ -299,7 +299,6 @@ const typeEquation: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 ];
 
@@ -385,7 +384,6 @@ export const text = (displayOptions: IDisplayOptions): INodeProperties[] => [
 							},
 						],
 						default: 'text',
-						description: '',
 					},
 					...typeText,
 					...typeMention,

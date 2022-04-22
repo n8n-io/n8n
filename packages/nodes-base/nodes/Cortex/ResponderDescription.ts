@@ -448,7 +448,6 @@ export const responderFields: INodeProperties[] = [
 												value: 'user-agent',
 											},
 										],
-										description: '',
 									},
 									{
 										displayName: 'Data',
@@ -462,7 +461,6 @@ export const responderFields: INodeProperties[] = [
 											},
 										},
 										default: '',
-										description: '',
 									},
 									{
 										displayName: 'Binary Property',
@@ -476,21 +474,18 @@ export const responderFields: INodeProperties[] = [
 											},
 										},
 										default: 'data',
-										description: '',
 									},
 									{
 										displayName: 'Message',
 										name: 'message',
 										type: 'string',
 										default: '',
-										description: '',
 									},
 									{
 										displayName: 'Tags',
 										name: 'tags',
 										type: 'string',
 										default: '',
-										description: '',
 									},
 								],
 							},

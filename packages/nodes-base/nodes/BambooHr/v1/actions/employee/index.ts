@@ -49,7 +49,6 @@ export const descriptions: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: '',
 	},
 	...create.description,
 	...get.description,
