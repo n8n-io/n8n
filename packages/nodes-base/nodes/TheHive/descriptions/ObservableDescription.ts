@@ -382,7 +382,7 @@ export const observableFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -410,7 +410,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'updateFields',
 		type: 'collection',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -530,7 +530,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		required: false,
-		default: '',
+		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {

@@ -329,7 +329,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		required: false,
-		default: '',
+		default: {},
 		options: [
 			{
 				displayName: 'Custom Fields',
@@ -433,7 +433,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		required: false,
-		default: '',
+		default: {},
 		options: [
 			{
 				displayName: 'Custom Fields',

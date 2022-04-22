@@ -272,7 +272,7 @@ export class AwsRekognition implements INodeType {
 						displayName: 'Word Filter',
 						name: 'wordFilterUi',
 						type: 'collection',
-						default: '',
+						default: {},
 						placeholder: 'Add Word Filter',
 						displayOptions: {
 							show: {
