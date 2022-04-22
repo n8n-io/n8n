@@ -307,8 +307,7 @@ export class OneSimpleApi implements INodeType {
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-            This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						description: 'Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it\'s necessary',
 					},
 				],
 			},
@@ -536,8 +535,7 @@ export class OneSimpleApi implements INodeType {
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-            This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						description: 'Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it\'s necessary',
 					},
 					{
 						displayName: 'Full Page',

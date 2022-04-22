@@ -385,6 +385,7 @@ module.exports = {
 				"n8n-nodes-base/node-param-collection-type-unsorted-items": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-fixed-collection": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-multi-options": "error",
+				"n8n-nodes-base/node-param-description-excess-inner-whitespace": "error",
 				"n8n-nodes-base/node-param-description-empty-string": "error",
 				"n8n-nodes-base/node-param-description-comma-separated-hyphen": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-simplify": "error",

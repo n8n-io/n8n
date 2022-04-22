@@ -234,8 +234,7 @@ export class Signl4 implements INodeType {
 						],
 					},
 				},
-				description: `If the event originates from a record in a 3rd party system, use this parameter to pass
-				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.`,
+				description: 'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.',
 			},
 		],
 	};
