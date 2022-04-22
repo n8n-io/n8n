@@ -399,8 +399,8 @@ export class AwsTranscribe implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'transcriptionJob') {
@@ -493,7 +493,7 @@ export class AwsTranscribe implements INodeType {
 
 						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
 							responseData = await this.helpers.request({ method: 'GET', uri: responseData.Transcript.TranscriptFileUri, json: true });
-							const simple = this.getNodeParameter('simple');
+							const simple = this.getNodeParameter('simple', 0);
 							if (simple === true) {
 								responseData = { transcript: responseData.results.transcripts.map((data: IDataObject) => data.transcript).join(' ') };
 							}
@@ -502,7 +502,7 @@ export class AwsTranscribe implements INodeType {
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const action = 'Transcribe.ListTranscriptionJobs';
 						const body: IDataObject = {};
 

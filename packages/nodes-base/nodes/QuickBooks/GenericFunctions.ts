@@ -50,8 +50,8 @@ export async function quickBooksApiRequest(
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource') as string;
-	const operation = this.getNodeParameter('operation');
+	const resource = this.getNodeParameter('resource', 0) as string;
+	const operation = this.getNodeParameter('operation', 0);
 
 	let isDownload = false;
 
@@ -180,7 +180,7 @@ export async function handleListing(
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 
-	const filters = this.getNodeParameter('filters', i) as IDataObject;
+	const filters = this.getNodeParameter('filters', i);
 	if (filters.query) {
 		qs.query += ` ${filters.query}`;
 	}

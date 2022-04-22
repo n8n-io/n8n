@@ -323,7 +323,7 @@ export class ZendeskTrigger implements INodeType {
 					const message: IDataObject = {};
 					const resultAll = [], resultAny = [];
 					const conditions = this.getNodeParameter('conditions') as IDataObject;
-					const options = this.getNodeParameter('options') as IDataObject;
+					const options = this.getNodeParameter('options', 0) as IDataObject;
 
 					if (Object.keys(conditions).length === 0) {
 						throw new NodeOperationError(this.getNode(), 'You must have at least one condition');

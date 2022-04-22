@@ -197,8 +197,8 @@ export class NotionV1 implements INodeType {
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'block') {
 
@@ -285,7 +285,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const simple = this.getNodeParameter('simple');
+					const simple = this.getNodeParameter('simple', 0);
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('options.filter', i, {}) as IDataObject;

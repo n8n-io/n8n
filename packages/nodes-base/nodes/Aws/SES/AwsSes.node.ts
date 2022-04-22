@@ -929,8 +929,8 @@ export class AwsSes implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -1010,7 +1010,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'send') {
 
-						const email = this.getNodeParameter('email', i) as string[];
+						const email = this.getNodeParameter('email', i) as unknown as string[];
 
 						const templateName = this.getNodeParameter('templateName', i) as string;
 

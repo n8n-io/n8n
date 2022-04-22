@@ -235,8 +235,8 @@ export class Harvest implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -553,7 +553,7 @@ export class Harvest implements INodeType {
 
 						body.first_name = this.getNodeParameter('firstName', i) as string;
 						body.last_name = this.getNodeParameter('lastName', i) as string;
-						body.email = this.getNodeParameter('email', i) as string;
+						body.email = this.getNodeParameter('email', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);

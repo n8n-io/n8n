@@ -129,15 +129,15 @@ export class SendGrid implements INodeType {
 		let responseData;
 		const timezone = this.getTimezone();
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		// https://sendgrid.com/docs/api-reference/
 		if (resource === 'contact') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = '/marketing/contacts';
 						let method = 'GET';
 						const body: IDataObject = {};
@@ -173,7 +173,7 @@ export class SendGrid implements INodeType {
 							const contactId = this.getNodeParameter('contactId', i) as string;
 							endpoint = `/marketing/contacts/${contactId}`;
 						} else {
-							const email = this.getNodeParameter('email', i) as string;
+							const email = this.getNodeParameter('email', i);
 							endpoint = '/marketing/contacts/search';
 							method = 'POST';
 							Object.assign(body, { query: `email LIKE '${email}' ` });
@@ -198,7 +198,7 @@ export class SendGrid implements INodeType {
 					const contacts = [];
 					let lists;
 					for (let i = 0; i < length; i++) {
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
 							i,

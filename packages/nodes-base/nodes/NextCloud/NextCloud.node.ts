@@ -1136,7 +1136,7 @@ export class NextCloud implements INodeType {
 						} else if (bodyParameters.shareType === 7) {
 							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
 						} else if (bodyParameters.shareType === 4) {
-							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
+							bodyParameters.shareWith = this.getNodeParameter('email', i);
 						} else if (bodyParameters.shareType === 1) {
 							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
 						}
@@ -1159,7 +1159,7 @@ export class NextCloud implements INodeType {
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 
 						body = `userid=${userid}&email=${email}`;
 

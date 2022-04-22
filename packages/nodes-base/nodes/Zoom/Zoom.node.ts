@@ -172,8 +172,8 @@ export class Zoom implements INodeType {
 		const returnData: IDataObject[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -459,7 +459,7 @@ export class Zoom implements INodeType {
 				// 	if (operation === 'create') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrantcreate
 				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
-				// 		const emailId = this.getNodeParameter('email', i) as string;
+				// 		const emailId = this.getNodeParameter('email', i);
 				// 		body.email = emailId;
 				// 		const firstName = this.getNodeParameter('firstName', i) as string;
 				// 		body.first_name = firstName;

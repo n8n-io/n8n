@@ -113,7 +113,7 @@ export class LemlistTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const options = this.getNodeParameter('options') as IDataObject;
+				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const event = this.getNodeParameter('event') as string[];
 				const body: IDataObject = {
 					targetUrl: webhookUrl,

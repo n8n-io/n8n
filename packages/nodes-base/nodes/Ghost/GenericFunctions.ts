@@ -17,7 +17,7 @@ import jwt from 'jsonwebtoken';
 
 export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const source = this.getNodeParameter('source');
+	const source = this.getNodeParameter('source', 0);
 
 	let credentials;
 	let version;

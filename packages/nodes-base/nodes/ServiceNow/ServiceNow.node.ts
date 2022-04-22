@@ -214,8 +214,8 @@ export class ServiceNow implements INodeType {
 			},
 			// Get all the table column to display them to user
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const resource = this.getNodeParameter('resource') as string;
-				const operation = this.getNodeParameter('operation') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
 				const returnData: INodePropertyOptions[] = [];
 				let tableName;
 				if (resource === 'tableRecord') {
@@ -256,14 +256,14 @@ export class ServiceNow implements INodeType {
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource');
-				const operation = this.getNodeParameter('operation');
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				const qs = {
 					sysparm_fields: 'sys_id,user_name',
 				};
 				if (resource === 'incident' && operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 					const group = additionalFields.assignment_group;
 
 					const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_grmember', {}, {
@@ -368,13 +368,13 @@ export class ServiceNow implements INodeType {
 			},
 			async getIncidentSubcategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getNodeParameter('operation');
+				const operation = this.getNodeParameter('operation', 0);
 				let category;
 				if (operation === 'update') {
 					const updateFields = this.getNodeParameter('updateFields') as IDataObject;
 					category = updateFields.category;
 				} else {
-					const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 					category = additionalFields.category;
 				}
 				const qs = {
@@ -452,8 +452,8 @@ export class ServiceNow implements INodeType {
 		const length = items.length;
 		let responseData = {};
 		let qs: IDataObject;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {

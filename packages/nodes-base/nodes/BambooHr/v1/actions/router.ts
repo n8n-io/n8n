@@ -18,13 +18,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter<BambooHr>('resource', i);
+		const resource = this.getNodeParameter('resource', i);
 		const operation = this.getNodeParameter('operation', i);
 
 		const bamboohr = {
 			resource,
 			operation,
-		} as BambooHr;
+		} as unknown as BambooHr;
 
 		if (bamboohr.operation === 'delete') {
 			//@ts-ignore

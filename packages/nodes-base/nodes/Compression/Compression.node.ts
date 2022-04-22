@@ -201,13 +201,13 @@ export class Compression implements INodeType {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
 		const returnData: INodeExecutionData[] = [];
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 
 				if (operation === 'decompress') {
-					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName')).split(',').map(key => key.trim());
+					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0)).split(',').map(key => key.trim());
 
 					const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
@@ -261,7 +261,7 @@ export class Compression implements INodeType {
 				}
 
 				if (operation === 'compress') {
-					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName')).split(',').map(key => key.trim());
+					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0)).split(',').map(key => key.trim());
 
 					const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
 

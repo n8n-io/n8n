@@ -84,8 +84,8 @@ export class Box implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -237,7 +237,7 @@ export class Box implements INodeType {
 						if (accessibleBy === 'user') {
 							const useEmail = this.getNodeParameter('useEmail', i) as boolean;
 							if (useEmail) {
-								body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+								body.accessible_by['login'] = this.getNodeParameter('email', i);
 							} else {
 								body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
 							}
@@ -264,7 +264,7 @@ export class Box implements INodeType {
 						}
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -440,7 +440,7 @@ export class Box implements INodeType {
 						if (accessibleBy === 'user') {
 							const useEmail = this.getNodeParameter('useEmail', i) as boolean;
 							if (useEmail) {
-								body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+								body.accessible_by['login'] = this.getNodeParameter('email', i);
 							} else {
 								body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
 							}

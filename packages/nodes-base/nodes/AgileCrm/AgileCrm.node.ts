@@ -111,8 +111,8 @@ export class AgileCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -132,8 +132,8 @@ export class AgileCrm implements INodeType {
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
 
 				} else if (operation === 'getAll') {
-					const simple = this.getNodeParameter('simple');
-					const returnAll = this.getNodeParameter('returnAll');
+					const simple = this.getNodeParameter('simple', 0);
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const filterType = this.getNodeParameter('filterType', i) as string;
 					const sort = this.getNodeParameter('options.sort.sort', i, {}) as { direction: string, field: string };
 					const body: IDataObject = {};
@@ -179,7 +179,7 @@ export class AgileCrm implements INodeType {
 						body.page_size = 100;
 						responseData = await agileCrmApiRequestAllItems.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined, undefined, true);
 					} else {
-						body.page_size = this.getNodeParameter('limit');
+						body.page_size = this.getNodeParameter('limit', 0);
 						responseData = await agileCrmApiRequest.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined, undefined, true);
 					}
 
@@ -513,14 +513,14 @@ export class AgileCrm implements INodeType {
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
 
 				} else if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll');
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const endpoint = 'api/opportunity';
 
 					if (returnAll) {
 						const limit = 100;
 						responseData = await agileCrmApiRequestAllItems.call(this, 'GET', endpoint, undefined, { page_size: limit });
 					} else {
-						const limit = this.getNodeParameter('limit');
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, { page_size: limit });
 					}
 

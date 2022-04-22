@@ -486,30 +486,37 @@ type StringReturnTypeParam =
 	| 'company'
 	| 'currency'
 	| 'description'
+	| 'email'
 	| 'event'
 	| 'from'
 	| 'message'
 	| 'name'
 	| 'password'
+	| 'operation'
 	| 'path'
 	| 'query'
 	| 'range'
+	| 'resource'
 	| 'source'
 	| 'subject'
 	| 'text'
 	| 'title'
+	| 'to'
 	| 'topic'
 	| 'url';
+
+type NumberReturnTypeParam = 'limit';
 
 type BooleanReturnTypeParam =
 	| 'binaryData'
 	| 'download'
 	| 'jsonParameters'
+	| 'returnAll'
 	| 'rawData'
 	| 'resolveData'
 	| 'simple';
 
-type IDataObjectReturnTypeParam = 'additionalFields' | 'options' | 'updateFields';
+type IDataObjectReturnTypeParam = 'additionalFields' | 'filters' | 'options' | 'updateFields';
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
@@ -527,27 +534,10 @@ export interface IExecuteFunctions {
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	//------------------------------------------------
-	getNodeParameter<T extends { resource: string }>(
-		parameterName: 'resource',
-		itemIndex?: number,
-	): T['resource'];
-	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	//--------------------------------------------------
-	getNodeParameter(parameterName: 'limit', itemIndex?: number): number;
-	getNodeParameter(parameterName: 'returnAll', itemIndex?: number): boolean;
-	getNodeParameter(parameterName: 'resource', itemIndex?: number): string;
-	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex?: number): string;
-	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex?: number): boolean;
-	getNodeParameter(
-		parameterName: IDataObjectReturnTypeParam,
-		itemIndex?: number,
-		fallbackValue?: object,
-	): IDataObject;
-	getNodeParameter<T extends string | IDataObject>(parameterName: 'filters', itemIndex?: number): T;
-	getNodeParameter<T extends string | string[]>(parameterName: 'email', itemIndex?: number): T;
-	getNodeParameter<T extends string | string[]>(parameterName: 'to', itemIndex?: number): T;
-	//--------------------------------------------------
+	getNodeParameter(parameterName: NumberReturnTypeParam, itemIndex: number): number;
+	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex: number): string;
+	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex: number): boolean;
+	getNodeParameter(parameterName: IDataObjectReturnTypeParam, itemIndex: number): IDataObject;
 	getNodeParameter(
 		parameterName: string,
 		itemIndex: number,

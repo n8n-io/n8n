@@ -18,7 +18,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter<SyncroMsp>('resource', i);
+		const resource = this.getNodeParameter('resource', i);
 		let operation = this.getNodeParameter('operation', i);
 		if (operation === 'del') {
 			operation = 'delete';

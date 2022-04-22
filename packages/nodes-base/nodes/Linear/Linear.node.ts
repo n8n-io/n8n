@@ -161,8 +161,8 @@ export class Linear implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'issue') {
@@ -217,7 +217,7 @@ export class Linear implements INodeType {
 						if (returnAll) {
 							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body);
 						} else {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							body.variables.first = limit;
 							responseData = await linearApiRequest.call(this, body);
 							responseData = responseData.data.issues.nodes;

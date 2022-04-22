@@ -223,8 +223,8 @@ export class HaloPSA implements INodeType {
 
 		const tokens = await getAccessTokens.call(this);
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		//====================================================================
 		//                        Main Loop
@@ -284,7 +284,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
@@ -392,7 +392,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
@@ -502,7 +502,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
@@ -611,7 +611,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};

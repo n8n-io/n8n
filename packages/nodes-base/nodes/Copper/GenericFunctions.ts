@@ -176,7 +176,7 @@ export async function handleListing(
 		return await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
 	}
 
-	const limit = this.getNodeParameter('limit');
+	const limit = this.getNodeParameter('limit', 0);
 	responseData = await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
 	return responseData.slice(0, limit);
 }

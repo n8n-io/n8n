@@ -82,7 +82,7 @@ export class MqttTrigger implements INodeType {
 			topicsQoS[topic] = (qos) ? { qos: parseInt(qos, 10) } : { qos: 0 };
 		}
 
-		const options = this.getNodeParameter('options') as IDataObject;
+		const options = this.getNodeParameter('options', 0) as IDataObject;
 
 		if (!topics) {
 			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');

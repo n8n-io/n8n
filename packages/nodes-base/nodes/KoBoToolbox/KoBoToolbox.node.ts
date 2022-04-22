@@ -137,8 +137,8 @@ export class KoBoToolbox implements INodeType {
 		let returnData: any[] = [];
 		const binaryItems: INodeExecutionData[] = [];
 		const items = this.getInputData();
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -169,7 +169,7 @@ export class KoBoToolbox implements INodeType {
 							}
 						}
 					};
-					const formFilterOptions = this.getNodeParameter('filters', i) as IDataObject;
+					const formFilterOptions = this.getNodeParameter('filters', i);
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: '/api/v2/assets/',

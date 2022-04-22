@@ -239,7 +239,7 @@ export class MySql implements INodeType {
 
 		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 		let returnItems = [];
 
 		if (operation === 'executeQuery') {
@@ -287,7 +287,7 @@ export class MySql implements INodeType {
 				const columns = columnString.split(',').map(column => column.trim());
 				const insertItems = copyInputItems(items, columns);
 				const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
-				const options = this.getNodeParameter('options');
+				const options = this.getNodeParameter('options', 0);
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 

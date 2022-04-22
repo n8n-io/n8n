@@ -141,7 +141,7 @@ export class OpenThesaurus implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {

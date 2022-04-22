@@ -154,7 +154,7 @@ export class KeapTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const rawData = this.getNodeParameter('rawData') as boolean;
+		const rawData = this.getNodeParameter('rawData', 0) as boolean;
 		const headers = this.getHeaderData() as IDataObject;
 		const bodyData = this.getBodyData() as IDataObject;
 

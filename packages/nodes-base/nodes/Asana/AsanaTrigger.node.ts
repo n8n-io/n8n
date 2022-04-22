@@ -131,7 +131,7 @@ export class AsanaTrigger implements INodeType {
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
-				const resource = this.getNodeParameter('resource') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
 
 				const workspace = this.getNodeParameter('workspace') as string;
 
@@ -158,7 +158,7 @@ export class AsanaTrigger implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The name of the Asana Trigger Node is not allowed to contain any spaces!');
 				}
 
-				const resource = this.getNodeParameter('resource') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
 
 				const endpoint = `/webhooks`;
 

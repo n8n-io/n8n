@@ -38,7 +38,7 @@ export class SseTrigger implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const url = this.getNodeParameter('url') as string;
+		const url = this.getNodeParameter('url', 0) as string;
 
 		const eventSource = new EventSource(url);
 

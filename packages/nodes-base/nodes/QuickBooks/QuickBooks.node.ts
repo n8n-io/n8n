@@ -193,8 +193,8 @@ export class QuickBooks implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -570,7 +570,7 @@ export class QuickBooks implements INodeType {
 						const estimateId = this.getNodeParameter('estimateId', i) as string;
 
 						const qs = {
-							sendTo: this.getNodeParameter('email', i) as string,
+							sendTo: this.getNodeParameter('email', i),
 						} as IDataObject;
 
 						const endpoint = `/v3/company/${companyId}/${resource}/${estimateId}/send`;
@@ -713,7 +713,7 @@ export class QuickBooks implements INodeType {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 
 						const qs = {
-							sendTo: this.getNodeParameter('email', i) as string,
+							sendTo: this.getNodeParameter('email', i),
 						} as IDataObject;
 
 						const endpoint = `/v3/company/${companyId}/${resource}/${invoiceId}/send`;
@@ -885,7 +885,7 @@ export class QuickBooks implements INodeType {
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
 
 						const qs = {
-							sendTo: this.getNodeParameter('email', i) as string,
+							sendTo: this.getNodeParameter('email', i),
 						} as IDataObject;
 
 						const endpoint = `/v3/company/${companyId}/${resource}/${paymentId}/send`;

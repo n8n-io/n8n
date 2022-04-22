@@ -268,8 +268,8 @@ export class Mocean implements INodeType {
 				operation = this.getNodeParameter('operation', itemIndex, '') as string;
 				text = this.getNodeParameter('message', itemIndex, '') as string;
 				requesetMethod = 'POST';
-				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
-				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
+				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '');
+				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '');
 
 				if (resource === 'voice') {
 					const language: string = this.getNodeParameter('language', itemIndex) as string;

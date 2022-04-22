@@ -270,7 +270,7 @@ export class CrateDb implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -297,7 +297,7 @@ export class CrateDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const additionalFields = this.getNodeParameter('additionalFields');
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = additionalFields.mode ?? 'multiple' as string;
 
 			if(mode === 'independently') {

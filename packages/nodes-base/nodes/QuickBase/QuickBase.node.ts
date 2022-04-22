@@ -134,8 +134,8 @@ export class QuickBase implements INodeType {
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'field') {
 			if (operation === 'getAll') {
@@ -229,11 +229,11 @@ export class QuickBase implements INodeType {
 			if (operation === 'create') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const simple = this.getNodeParameter('simple');
+				const simple = this.getNodeParameter('simple', 0);
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options');
+				const options = this.getNodeParameter('options', 0);
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -369,13 +369,13 @@ export class QuickBase implements INodeType {
 
 				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
 
-				const simple = this.getNodeParameter('simple');
+				const simple = this.getNodeParameter('simple', 0);
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options');
+				const options = this.getNodeParameter('options', 0);
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -442,7 +442,7 @@ export class QuickBase implements INodeType {
 			if (operation === 'upsert') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const simple = this.getNodeParameter('simple');
+				const simple = this.getNodeParameter('simple', 0);
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
@@ -450,7 +450,7 @@ export class QuickBase implements INodeType {
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options');
+				const options = this.getNodeParameter('options', 0);
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};

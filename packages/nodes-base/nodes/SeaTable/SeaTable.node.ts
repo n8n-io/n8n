@@ -127,8 +127,8 @@ export class SeaTable implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -222,16 +222,16 @@ export class SeaTable implements INodeType {
 					for (let i = 0; i < items.length; i++) {
 						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
 						qs.table_name = tableName;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const options = this.getNodeParameter('options', i);
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						Object.assign(qs, filters, options);
 
 						if (returnAll) {
 							responseData = await setableApiRequestAllItems.call(this, ctx, 'rows', 'GET', endpoint, body, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}

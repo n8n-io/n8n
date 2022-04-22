@@ -298,8 +298,8 @@ export class Slack implements INodeType {
 		let qs: IDataObject;
 		let responseData;
 		const authentication = this.getNodeParameter('authentication', 0) as string;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -364,7 +364,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/conversations.list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.types) {
 							qs.types = (filters.types as string[]).join(',');
 						}
@@ -383,7 +383,7 @@ export class Slack implements INodeType {
 					if (operation === 'history') {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.channel = channel;
 						if (filters.inclusive) {
 							qs.inclusive = filters.inclusive as boolean;
@@ -423,8 +423,8 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.members
 					if (operation === 'member') {
-						const returnAll = this.getNodeParameter('returnAll');
-						const resolveData = this.getNodeParameter('resolveData');
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const resolveData = this.getNodeParameter('resolveData', 0);
 						qs.channel = this.getNodeParameter('channelId', i) as string;
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/conversations.members', {}, qs);
@@ -476,7 +476,7 @@ export class Slack implements INodeType {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const ts = this.getNodeParameter('ts', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.channel = channel;
 						qs.ts = ts;
 						if (filters.inclusive) {
@@ -986,7 +986,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/files.list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.channelId) {
 							qs.channel = filters.channelId as string;
 						}

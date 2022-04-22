@@ -477,8 +477,8 @@ export class ClickUp implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -618,7 +618,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(this, 'GET', `/folder/${folderId}`);
 					}
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const spaceId = this.getNodeParameter('space', i) as string;
 						if (filters.archived) {
 							qs.archived = filters.archived as boolean;
@@ -785,7 +785,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'guest') {
 					if (operation === 'create') {
 						const teamId = this.getNodeParameter('team', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							email,
@@ -954,7 +954,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.archived) {
 							qs.archived = filters.archived as boolean;
 						}
@@ -1142,7 +1142,7 @@ export class ClickUp implements INodeType {
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('team', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const timezone = this.getTimezone();
 						Object.assign(qs, filters);
 
@@ -1377,7 +1377,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}`);
 					}
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const folderless = this.getNodeParameter('folderless', i) as boolean;
 						if (filters.archived) {

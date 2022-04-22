@@ -921,8 +921,8 @@ export class Nasa implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -990,10 +990,10 @@ export class Nasa implements INodeType {
 
 					if (operation === 'getAll') {
 
-						returnAll = this.getNodeParameter('returnAll');
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.size = this.getNodeParameter('limit');
+							qs.size = this.getNodeParameter('limit', 0);
 						}
 
 						propertyName = 'near_earth_objects';

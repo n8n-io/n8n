@@ -335,8 +335,8 @@ export class ActiveCampaign implements INodeType {
 			try {
 
 				dataKey = undefined;
-				resource = this.getNodeParameter('resource');
-				operation = this.getNodeParameter('operation');
+				resource = this.getNodeParameter('resource', 0);
+				operation = this.getNodeParameter('operation', 0);
 
 				requestMethod = 'GET';
 				endpoint = '';
@@ -361,7 +361,7 @@ export class ActiveCampaign implements INodeType {
 						dataKey = 'contact';
 
 						body.contact = {
-							email: this.getNodeParameter('email', i) as string,
+							email: this.getNodeParameter('email', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -493,7 +493,7 @@ export class ActiveCampaign implements INodeType {
 
 						endpoint = `/api/3/accounts`;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 
 					} else if (operation === 'update') {
@@ -942,7 +942,7 @@ export class ActiveCampaign implements INodeType {
 
 						body.ecomOrder = {
 							source: this.getNodeParameter('source', i),
-							email: this.getNodeParameter('email', i) as string,
+							email: this.getNodeParameter('email', i),
 							totalPrice: this.getNodeParameter('totalPrice', i) as number,
 							currency: this.getNodeParameter('currency', i)!.toString().toUpperCase() as string,
 							externalCreatedDate: this.getNodeParameter('externalCreatedDate', i) as string,
@@ -1041,7 +1041,7 @@ export class ActiveCampaign implements INodeType {
 						body.ecomCustomer = {
 							connectionid: this.getNodeParameter('connectionid', i) as string,
 							externalid: this.getNodeParameter('externalid', i) as string,
-							email: this.getNodeParameter('email', i) as string,
+							email: this.getNodeParameter('email', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);

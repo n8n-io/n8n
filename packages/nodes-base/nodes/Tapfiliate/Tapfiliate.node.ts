@@ -107,8 +107,8 @@ export class Tapfiliate implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'affiliate') {
@@ -116,7 +116,7 @@ export class Tapfiliate implements INodeType {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-post
 						const firstname = this.getNodeParameter('firstname', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							firstname,
@@ -159,7 +159,7 @@ export class Tapfiliate implements INodeType {
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 						if (returnAll) {
 							responseData = await tapfiliateApiRequestAllItems.call(this, 'GET', `/affiliates/`, {}, qs);
@@ -241,7 +241,7 @@ export class Tapfiliate implements INodeType {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
 						const programId = this.getNodeParameter('programId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 						if (returnAll) {
 							responseData = await tapfiliateApiRequestAllItems.call(this, 'GET', `/programs/${programId}/affiliates/`, {}, qs);

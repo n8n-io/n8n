@@ -127,8 +127,8 @@ export class SecurityScorecard implements INodeType {
 		let responseData;
 		const length = (items.length as unknown) as number;
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 
@@ -186,7 +186,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll');
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -195,7 +195,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit');
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -227,9 +227,9 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll');
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
-					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
+					const filterParams = this.getNodeParameter('filters', i);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -327,7 +327,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll');
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -376,8 +376,8 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactor') {
-					const simple = this.getNodeParameter('simple');
-					const returnAll = this.getNodeParameter('returnAll');
+					const simple = this.getNodeParameter('simple', 0);
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const industry = this.getNodeParameter('industry', i);
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -399,7 +399,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactorHistorical') {
-					const simple = this.getNodeParameter('simple');
+					const simple = this.getNodeParameter('simple', 0);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const industry = this.getNodeParameter('industry', i);
 					const options = this.getNodeParameter('options', i);
@@ -447,7 +447,7 @@ export class SecurityScorecard implements INodeType {
 				if (operation === 'getFactor') {
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
-					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
+					const filterParams = this.getNodeParameter('filters', i);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -467,7 +467,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactorHistorical') {
-					const simple = this.getNodeParameter('simple');
+					const simple = this.getNodeParameter('simple', 0);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const options = this.getNodeParameter('options', i);
@@ -502,7 +502,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getHistoricalScore') {
-					const simple = this.getNodeParameter('simple');
+					const simple = this.getNodeParameter('simple', 0);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
 					const options = this.getNodeParameter('options', i);

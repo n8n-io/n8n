@@ -311,7 +311,7 @@ export class HubspotTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 				const events = (this.getNodeParameter('eventsUi') as IDataObject || {}).eventValues as IDataObject[] || [];
-				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
 					targetUrl: webhookUrl,

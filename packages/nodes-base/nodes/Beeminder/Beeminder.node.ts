@@ -329,8 +329,8 @@ export class Beeminder implements INodeType {
 		const length = items.length as unknown as number;
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let results;
 
 
@@ -361,7 +361,7 @@ export class Beeminder implements INodeType {
 						Object.assign(data, options);
 
 						if (returnAll === false) {
-							data.count = this.getNodeParameter('limit');
+							data.count = this.getNodeParameter('limit', 0);
 						}
 
 						results = await getAllDatapoints.call(this, data);

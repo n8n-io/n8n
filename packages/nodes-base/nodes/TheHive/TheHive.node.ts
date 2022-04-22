@@ -136,7 +136,7 @@ export class TheHive implements INodeType {
 		loadOptions: {
 			async loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// request the analyzers from instance
-				const resource = mapResource(this.getNodeParameter('resource') as string);
+				const resource = mapResource(this.getNodeParameter('resource', 0) as string);
 				const resourceId = this.getNodeParameter('id');
 				const endpoint = `/connector/cortex/responder/${resource}/${resourceId}`;
 
@@ -319,8 +319,8 @@ export class TheHive implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {

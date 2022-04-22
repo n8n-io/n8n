@@ -170,7 +170,7 @@ export class RealtimeDatabase implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		let responseData;
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 		//https://firebase.google.com/docs/reference/rest/database
 
 

@@ -134,8 +134,8 @@ export class Wordpress implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -303,7 +303,7 @@ export class Wordpress implements INodeType {
 						const username = this.getNodeParameter('username', i) as string;
 						const firstName = this.getNodeParameter('firstName', i) as string;
 						const lastName = this.getNodeParameter('lastName', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const password = this.getNodeParameter('password', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IUser = {

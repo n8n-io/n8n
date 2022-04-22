@@ -166,7 +166,7 @@ export class StravaTrigger implements INodeType {
 						for (error of errors) {
 							// if there is a subscription already created
 							if (error.resource === 'PushSubscription' && error.code === 'already exists') {
-								const options = this.getNodeParameter('options') as IDataObject;
+								const options = this.getNodeParameter('options', 0) as IDataObject;
 								//get the current subscription
 								const webhooks = await stravaApiRequest.call(this, 'GET', `/push_subscriptions`, {});
 
@@ -227,7 +227,7 @@ export class StravaTrigger implements INodeType {
 		const query = this.getQueryData() as IDataObject;
 		const object = this.getNodeParameter('object');
 		const event = this.getNodeParameter('event');
-		const resolveData = this.getNodeParameter('resolveData') as boolean;
+		const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
 
 		let objectType, eventType;
 

@@ -1858,8 +1858,8 @@ export class Mailchimp implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -1883,7 +1883,7 @@ export class Mailchimp implements INodeType {
 					//https://mailchimp.com/developer/reference/lists/list-members/#post_/lists/-list_id-/members
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const status = this.getNodeParameter('status', i) as Status;
 						const options = this.getNodeParameter('options', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
@@ -1970,7 +1970,7 @@ export class Mailchimp implements INodeType {
 					if (operation === 'delete') {
 
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 
 						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/actions/delete-permanent`, 'POST');
 						responseData = { success: true };
@@ -1979,7 +1979,7 @@ export class Mailchimp implements INodeType {
 					if (operation === 'get') {
 
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const options = this.getNodeParameter('options', i);
 
 						if (options.fields) {
@@ -2035,7 +2035,7 @@ export class Mailchimp implements INodeType {
 					if (operation === 'update') {
 
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: ICreateMemberBody = {
@@ -2128,7 +2128,7 @@ export class Mailchimp implements INodeType {
 				//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const tags = this.getNodeParameter('tags', i) as string[];
 						const options = this.getNodeParameter('options', i);
 
@@ -2155,7 +2155,7 @@ export class Mailchimp implements INodeType {
 					if (operation === 'delete') {
 
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const tags = this.getNodeParameter('tags', i) as string[];
 						const options = this.getNodeParameter('options', i);
 

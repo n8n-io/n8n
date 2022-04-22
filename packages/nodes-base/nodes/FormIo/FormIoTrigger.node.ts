@@ -190,7 +190,7 @@ export class FormIoTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
-		const simple = this.getNodeParameter('simple') as boolean;
+		const simple = this.getNodeParameter('simple', 0) as boolean;
 		let response = req.body.request;
 		if (simple === true) {
 			response = response.data;

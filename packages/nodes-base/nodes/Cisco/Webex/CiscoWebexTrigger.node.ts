@@ -577,7 +577,7 @@ export class CiscoWebexTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const resource = this.getNodeParameter('resource') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
 				const event = this.getNodeParameter('event') as string;
 
 				// Check all the webhooks which exist already if it is identical to the
@@ -598,7 +598,7 @@ export class CiscoWebexTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event') as string;
-				const resource = this.getNodeParameter('resource') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
 				const credentials = await this.getCredentials('ciscoWebexOAuth2Api');
 				const secret = getAutomaticSecret(credentials);

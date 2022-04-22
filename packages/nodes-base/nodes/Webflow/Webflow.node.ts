@@ -138,8 +138,8 @@ export class Webflow implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const qs: IDataObject = {};
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -212,14 +212,14 @@ export class Webflow implements INodeType {
 
 						// https://developers.webflow.com/#get-all-items-for-a-collection
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 						const qs: IDataObject = {};
 
 						if (returnAll === true) {
 							responseData = await webflowApiRequestAllItems.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
 							responseData = responseData.items;
 						}

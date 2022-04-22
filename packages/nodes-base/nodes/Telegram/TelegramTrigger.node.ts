@@ -215,7 +215,7 @@ export class TelegramTrigger implements INodeType {
 
 		const bodyData = this.getBodyData() as IEvent;
 
-		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 		if (additionalFields.download === true) {
 

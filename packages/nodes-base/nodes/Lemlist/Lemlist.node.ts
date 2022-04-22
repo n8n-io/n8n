@@ -110,8 +110,8 @@ export class Lemlist implements INodeType {
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -134,7 +134,7 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#activities
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
@@ -146,7 +146,7 @@ export class Lemlist implements INodeType {
 						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 

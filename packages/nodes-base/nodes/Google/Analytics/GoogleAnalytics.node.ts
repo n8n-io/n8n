@@ -153,8 +153,8 @@ export class GoogleAnalytics implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let method = '';
 		const qs: IDataObject = {};
@@ -168,7 +168,7 @@ export class GoogleAnalytics implements INodeType {
 						method = 'POST';
 						endpoint = '/v4/reports:batchGet';
 						const viewId = this.getNodeParameter('viewId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
 							i,
@@ -251,7 +251,7 @@ export class GoogleAnalytics implements INodeType {
 						endpoint = '/v4/userActivity:search';
 						const viewId = this.getNodeParameter('viewId', i);
 						const userId = this.getNodeParameter('userId', i);
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
 							i,
@@ -269,7 +269,7 @@ export class GoogleAnalytics implements INodeType {
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(this, 'sessions', method, endpoint, body);
 						} else {
-							body.pageSize = this.getNodeParameter('limit');
+							body.pageSize = this.getNodeParameter('limit', 0);
 							responseData = await googleApiRequest.call(this, method, endpoint, body);
 							responseData = responseData.sessions;
 						}

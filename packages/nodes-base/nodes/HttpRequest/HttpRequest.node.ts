@@ -655,7 +655,7 @@ export class HttpRequest implements INodeType {
 
 		// TODO: Should have a setting which makes clear that this parameter can not change for each item
 		const requestMethod = this.getNodeParameter('requestMethod', 0) as string;
-		const parametersAreJson = this.getNodeParameter('jsonParameters');
+		const parametersAreJson = this.getNodeParameter('jsonParameters', 0);
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 		let httpBasicAuth;

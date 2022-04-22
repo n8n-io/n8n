@@ -125,7 +125,7 @@ export class AirtableTrigger implements INodeType {
 
 		const qs: IDataObject = {};
 
-		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 		const base = this.getNodeParameter('baseId') as string;
 

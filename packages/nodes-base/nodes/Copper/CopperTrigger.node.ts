@@ -123,7 +123,7 @@ export class CopperTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const resource = this.getNodeParameter('resource') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
 				const event = this.getNodeParameter('event') as string;
 				const endpoint = '/webhooks';
 				const body: IDataObject = {

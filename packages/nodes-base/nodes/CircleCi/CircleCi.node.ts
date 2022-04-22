@@ -64,8 +64,8 @@ export class CircleCi implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -83,7 +83,7 @@ export class CircleCi implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						let slug = this.getNodeParameter('projectSlug', i) as string;
 

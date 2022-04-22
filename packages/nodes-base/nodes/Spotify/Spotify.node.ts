@@ -889,8 +889,8 @@ export class Spotify implements INodeType {
 		let propertyName = '';
 		let responseData;
 
-		const operation = this.getNodeParameter('operation');
-		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// Set initial values
 		requestMethod = 'GET';
@@ -1038,7 +1038,7 @@ export class Spotify implements INodeType {
 						requestMethod = 'GET';
 						propertyName = 'albums.items';
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -1087,7 +1087,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -1170,7 +1170,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -1302,7 +1302,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -1346,7 +1346,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,

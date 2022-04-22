@@ -134,8 +134,8 @@ export class Demio implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -152,7 +152,7 @@ export class Demio implements INodeType {
 						}
 					}
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, filters);
@@ -168,7 +168,7 @@ export class Demio implements INodeType {
 					if (operation === 'register') {
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const firstName = this.getNodeParameter('firstName', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
@@ -192,7 +192,7 @@ export class Demio implements INodeType {
 				if (resource === 'report') {
 					if (operation === 'get') {
 						const sessionId = this.getNodeParameter('dateId', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 

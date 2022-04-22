@@ -1388,6 +1388,8 @@ export function getNode(node: INode): INode {
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
+ * Overloads are listed in [`packages/workflow/src/Interfaces.ts`](https://github.com/n8n-io/n8n/blob/master/packages/workflow/src/Interfaces.ts)
+ *
  * @export
  * @param {Workflow} workflow
  * @param {(IRunExecutionData | null)} runExecutionData
@@ -1406,12 +1408,12 @@ export function getNodeParameter(
 	connectionInputData: INodeExecutionData[],
 	node: INode,
 	parameterName: string,
-	itemIndex = 0,
+	itemIndex: number,
 	mode: WorkflowExecuteMode,
 	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
-): any {
+): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -1609,7 +1611,15 @@ export function getExecutePollFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1755,7 +1765,15 @@ export function getExecuteTriggerFunctions(
 			getActivationMode: (): WorkflowActivateMode => {
 				return activation;
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2212,7 +2230,15 @@ export function getExecuteSingleFunctions(
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2374,7 +2400,15 @@ export function getLoadOptionsFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2496,7 +2530,15 @@ export function getExecuteHookFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2650,7 +2692,15 @@ export function getExecuteWebhookFunctions(
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;

@@ -182,9 +182,9 @@ export class Storyblok implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const source = this.getNodeParameter('source');
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const source = this.getNodeParameter('source', 0);
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -196,7 +196,7 @@ export class Storyblok implements INodeType {
 							responseData = responseData.story;
 						}
 						if (operation === 'getAll') {
-							const filters = this.getNodeParameter('filters', i) as string;
+							const filters = this.getNodeParameter('filters', i) as unknown as string;
 							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
@@ -285,7 +285,7 @@ export class Storyblok implements INodeType {
 						}
 						if (operation === 'getAll') {
 							const space = this.getNodeParameter('space', i) as string;
-							const filters = this.getNodeParameter('filters', i) as string;
+							const filters = this.getNodeParameter('filters', i) as unknown as string;
 							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 

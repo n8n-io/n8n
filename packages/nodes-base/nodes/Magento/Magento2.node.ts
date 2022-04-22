@@ -287,15 +287,15 @@ export class Magento2 implements INodeType {
 		const length = (items.length as unknown) as number;
 		const timezone = this.getTimezone();
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'customer') {
 					if (operation === 'create') {
 						// https://magento.redoc.ly/2.3.7-admin/tag/customerscustomerId#operation/customerCustomerRepositoryV1SavePut
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const firstname = this.getNodeParameter('firstname', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
 
@@ -369,7 +369,7 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
 						const filterType = this.getNodeParameter('filterType', i) as string;
 						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -400,7 +400,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/customers/search`, {}, qs as unknown as IDataObject);
 
 						} else {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/customers/search`, {}, qs as unknown as IDataObject);
 							responseData = responseData.items;
@@ -412,7 +412,7 @@ export class Magento2 implements INodeType {
 						const customerId = this.getNodeParameter('customerId', i) as string;
 						const firstName = this.getNodeParameter('firstName', i) as string;
 						const lastName = this.getNodeParameter('lastName', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 
 						const {
 							addresses,
@@ -509,7 +509,7 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/orders#operation/salesOrderRepositoryV1GetListGet
 						const filterType = this.getNodeParameter('filterType', i) as string;
 						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -539,7 +539,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/orders`, {}, qs as unknown as IDataObject);
 
 						} else {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/orders`, {}, qs as unknown as IDataObject);
 							responseData = responseData.items;
@@ -602,7 +602,7 @@ export class Magento2 implements INodeType {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
 						const filterType = this.getNodeParameter('filterType', i) as string;
 						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -632,7 +632,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/products`, {}, qs as unknown as IDataObject);
 
 						} else {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products`, {}, qs as unknown as IDataObject);
 							responseData = responseData.items;

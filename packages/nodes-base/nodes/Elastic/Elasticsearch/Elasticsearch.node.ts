@@ -79,7 +79,7 @@ export class Elasticsearch implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -159,16 +159,16 @@ export class Elasticsearch implements INodeType {
 						qs._source = true;
 					}
 
-					const returnAll = this.getNodeParameter('returnAll');
+					const returnAll = this.getNodeParameter('returnAll', 0);
 
 					if (!returnAll) {
-						qs.size = this.getNodeParameter('limit');
+						qs.size = this.getNodeParameter('limit', 0);
 					}
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 					responseData = responseData.hits.hits;
 
-					const simple = this.getNodeParameter('simple');
+					const simple = this.getNodeParameter('simple', 0);
 
 					if (simple) {
 						responseData = responseData.map((item: IDataObject) => {

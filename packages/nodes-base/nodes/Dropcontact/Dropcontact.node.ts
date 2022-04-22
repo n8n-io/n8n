@@ -288,15 +288,15 @@ export class Dropcontact implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const entryData = this.getInputData();
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		// tslint:disable-next-line: no-any
 		let responseData: any;
 		const returnData: IDataObject[] = [];
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
-				const options = this.getNodeParameter('options');
+				const options = this.getNodeParameter('options', 0);
 				const data = [];
 				const simplify = this.getNodeParameter('simplify', 0) as boolean;
 
@@ -304,7 +304,7 @@ export class Dropcontact implements INodeType {
 				const language = options.language ? options.language : 'en';
 
 				for (let i = 0; i < entryData.length; i++) {
-					const email = this.getNodeParameter('email', i) as string;
+					const email = this.getNodeParameter('email', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {};
 					if (email !== '') {

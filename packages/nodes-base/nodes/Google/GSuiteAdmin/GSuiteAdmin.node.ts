@@ -127,13 +127,13 @@ export class GSuiteAdmin implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'group') {
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/insert
 				if (operation === 'create') {
-					const email = this.getNodeParameter('email', i) as string;
+					const email = this.getNodeParameter('email', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 

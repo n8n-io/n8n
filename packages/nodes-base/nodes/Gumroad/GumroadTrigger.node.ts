@@ -101,7 +101,7 @@ export class GumroadTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const resource = this.getNodeParameter('resource') as string;
+				const resource = this.getNodeParameter('resource', 0) as string;
 				const endpoint = '/resource_subscriptions';
 				const body: IDataObject = {
 					post_url: webhookUrl,

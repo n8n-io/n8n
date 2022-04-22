@@ -204,7 +204,7 @@ export class FacebookTrigger implements INodeType {
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
 				const fields = this.getNodeParameter('fields') as string[];
-				const options = this.getNodeParameter('options') as IDataObject;
+				const options = this.getNodeParameter('options', 0) as IDataObject;
 
 				const body = {
 					object: snakeCase(object),

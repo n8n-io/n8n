@@ -109,8 +109,8 @@ export class Iterable implements INodeType {
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'event') {
 			if (operation === 'track') {
@@ -211,7 +211,7 @@ export class Iterable implements INodeType {
 					let endpoint;
 
 					if (by === 'email') {
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						endpoint = `/users/${email}`;
 					} else {
 						const userId = this.getNodeParameter('userId', i) as string;
@@ -240,7 +240,7 @@ export class Iterable implements INodeType {
 					let endpoint;
 
 					if (by === 'email') {
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						endpoint = `/users/getByEmail`;
 						qs.email = email;
 					} else {
@@ -302,7 +302,7 @@ export class Iterable implements INodeType {
 
 				const identifier = this.getNodeParameter('identifier', 0) as string;
 
-				const additionalFields = this.getNodeParameter('additionalFields');
+				const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 				const body: IDataObject = {
 					listId: parseInt(listId, 10),

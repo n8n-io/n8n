@@ -273,8 +273,8 @@ export class Zendesk implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource');
-				const operation = this.getNodeParameter('operation');
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developer.zendesk.com/api-reference/ticketing/introduction/
 				if (resource === 'ticket') {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets
@@ -548,7 +548,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#list-users
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, options);
 
@@ -570,7 +570,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#search-users
 					if (operation === 'search') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, options);
 

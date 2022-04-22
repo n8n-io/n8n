@@ -151,8 +151,8 @@ export class GoToWebinar implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -243,7 +243,7 @@ export class GoToWebinar implements INodeType {
 
 						if (body.external === true) {
 							body.givenName = this.getNodeParameter('givenName', i) as string;
-							body.email = this.getNodeParameter('email', i) as string;
+							body.email = this.getNodeParameter('email', i);
 						}
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers`;
@@ -316,7 +316,7 @@ export class GoToWebinar implements INodeType {
 						const body = [
 							{
 								name: this.getNodeParameter('name', i),
-								email: this.getNodeParameter('email', i) as string,
+								email: this.getNodeParameter('email', i),
 							},
 						] as IDataObject[];
 
@@ -382,7 +382,7 @@ export class GoToWebinar implements INodeType {
 						const body = {
 							firstName: this.getNodeParameter('firstName', i) as string,
 							lastName: this.getNodeParameter('lastName', i) as string,
-							email: this.getNodeParameter('email', i) as string,
+							email: this.getNodeParameter('email', i),
 							responses: [],
 						} as IDataObject;
 
@@ -491,10 +491,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const {
@@ -608,10 +608,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { times } = this.getNodeParameter('additionalFields', i) as {

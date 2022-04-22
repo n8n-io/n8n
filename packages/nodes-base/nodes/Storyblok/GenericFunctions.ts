@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('source');
+	const authenticationMethod = this.getNodeParameter('source', 0);
 
 	let options: OptionsWithUri = {
 		headers: {

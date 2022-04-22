@@ -222,8 +222,8 @@ export class NotionV2 implements INodeType {
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let download = false;
 
 		if (resource === 'block') {
@@ -262,7 +262,7 @@ export class NotionV2 implements INodeType {
 		if (resource === 'database') {
 
 			if (operation === 'get') {
-				const simple = this.getNodeParameter('simple');
+				const simple = this.getNodeParameter('simple', 0);
 				for (let i = 0; i < length; i++) {
 					const databaseId = extractDatabaseId(this.getNodeParameter('databaseId', i) as string);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
@@ -274,7 +274,7 @@ export class NotionV2 implements INodeType {
 			}
 
 			if (operation === 'getAll') {
-				const simple = this.getNodeParameter('simple');
+				const simple = this.getNodeParameter('simple', 0);
 				for (let i = 0; i < length; i++) {
 					const body: IDataObject = {
 						filter: { property: 'object', value: 'database' },
@@ -390,7 +390,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					download = this.getNodeParameter('options.downloadFiles', 0, false) as boolean;
-					const simple = this.getNodeParameter('simple');
+					const simple = this.getNodeParameter('simple', 0);
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filterType = this.getNodeParameter('filterType', 0) as string;

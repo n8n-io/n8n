@@ -30,8 +30,8 @@ export async function goToWebinarApiRequest(
 	option: IDataObject = {},
 ) {
 
-	const operation = this.getNodeParameter('operation');
-	const resource = this.getNodeParameter('resource');
+	const operation = this.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -127,10 +127,10 @@ export async function handleGetAll(
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string) {
-	const returnAll = this.getNodeParameter('returnAll');
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		qs.limit = this.getNodeParameter('limit');
+		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
 	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);

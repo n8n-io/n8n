@@ -127,8 +127,8 @@ export class Supabase implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
 			if (operation === 'create') {
@@ -241,7 +241,7 @@ export class Supabase implements INodeType {
 
 			if (operation === 'getAll') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll');
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
@@ -268,7 +268,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit');
+						qs.limit = this.getNodeParameter('limit', 0);
 					}
 
 					let rows;

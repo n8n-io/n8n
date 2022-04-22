@@ -171,8 +171,8 @@ export class Twist implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -205,7 +205,7 @@ export class Twist implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.workspace_id = workspaceId;
 						Object.assign(qs, filters);
 
@@ -328,7 +328,7 @@ export class Twist implements INodeType {
 					if (operation === 'getAll') {
 						const threadId = this.getNodeParameter('threadId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.thread_id = threadId;
 
 						Object.assign(qs, filters);
@@ -676,7 +676,7 @@ export class Twist implements INodeType {
 					if (operation === 'getAll') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.channel_id = channelId;
 
 						Object.assign(qs, filters);

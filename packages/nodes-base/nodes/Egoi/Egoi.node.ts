@@ -589,15 +589,15 @@ export class Egoi implements INodeType {
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
-		const operation = this.getNodeParameter('operation');
-		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
 
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 
 						const resolveData = this.getNodeParameter('resolveData', i);
 
@@ -653,7 +653,7 @@ export class Egoi implements INodeType {
 							const contactId = this.getNodeParameter('contactId', i) as string;
 							endpoint = `/lists/${listId}/contacts/${contactId}`;
 						} else {
-							const email = this.getNodeParameter('email', i) as string;
+							const email = this.getNodeParameter('email', i);
 							endpoint = `/lists/${listId}/contacts?email=${email}`;
 						}
 
@@ -681,7 +681,7 @@ export class Egoi implements INodeType {
 
 						const listId = this.getNodeParameter('list', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const simple = this.getNodeParameter('simple', i);
 

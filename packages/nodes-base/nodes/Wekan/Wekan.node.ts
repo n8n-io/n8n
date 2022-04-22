@@ -236,8 +236,8 @@ export class Wekan implements INodeType {
 		let returnAll;
 		let limit;
 
-		const operation = this.getNodeParameter('operation');
-		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// For Post
 		let body: IDataObject;

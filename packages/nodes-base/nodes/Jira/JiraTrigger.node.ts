@@ -373,7 +373,7 @@ export class JiraTrigger implements INodeType {
 
 				let events = this.getNodeParameter('events', []) as string[];
 
-				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 				const endpoint = `/webhooks/1.0/webhook`;
 

@@ -82,7 +82,7 @@ export class RedisTrigger implements INodeType {
 
 		const channels = (this.getNodeParameter('channels') as string).split(',');
 
-		const options = this.getNodeParameter('options') as IDataObject;
+		const options = this.getNodeParameter('options', 0) as IDataObject;
 
 		if (!channels) {
 			throw new NodeOperationError(this.getNode(), 'Channels are mandatory!');

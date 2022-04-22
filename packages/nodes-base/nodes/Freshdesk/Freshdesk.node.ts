@@ -1144,8 +1144,8 @@ export class Freshdesk implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'ticket') {
@@ -1157,7 +1157,7 @@ export class Freshdesk implements INodeType {
 						const priority = this.getNodeParameter('priority', i) as string;
 						const source = this.getNodeParameter('source', i);
 						const options = this.getNodeParameter('options', i);
-						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
+						//const jsonActive = this.getNodeParameter('jsonParameters', 0) as boolean;
 						const body: ICreateTicketBody = {
 							// @ts-ignore
 							status: Status[capitalize(status)],
@@ -1365,7 +1365,7 @@ export class Freshdesk implements INodeType {
 					//https://developers.freshdesk.com/api/#create_contact
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i);
-						const email = this.getNodeParameter('email', i) as string;
+						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
 						if (additionalFields.customFields) {

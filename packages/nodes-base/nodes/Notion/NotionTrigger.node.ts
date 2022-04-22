@@ -120,7 +120,7 @@ export class NotionTrigger implements INodeType {
 		const webhookData = this.getWorkflowStaticData('node');
 		const databaseId = this.getNodeParameter('databaseId') as string;
 		const event = this.getNodeParameter('event') as string;
-		const simple = this.getNodeParameter('simple') as boolean;
+		const simple = this.getNodeParameter('simple', 0) as boolean;
 
 		const now = moment().utc().format();
 

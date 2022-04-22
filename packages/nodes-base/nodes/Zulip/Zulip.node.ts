@@ -150,14 +150,14 @@ export class Zulip implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
 					//https://zulipchat.com/api/send-message
 					if (operation === 'sendPrivate') {
-						const to = (this.getNodeParameter('to', i) as string[]).join(',');
+						const to = (this.getNodeParameter('to', i) as unknown as string[]).join(',');
 						const content = this.getNodeParameter('content', i) as string;
 						const body: IMessage = {
 							type: 'private',
@@ -410,7 +410,7 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'create') {
-						body.email = this.getNodeParameter('email', i) as string;
+						body.email = this.getNodeParameter('email', i);
 						body.password = this.getNodeParameter('password', i);
 						body.full_name = this.getNodeParameter('fullName', i) as string;
 						body.short_name = this.getNodeParameter('shortName', i) as string;

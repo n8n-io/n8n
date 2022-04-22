@@ -91,8 +91,8 @@ export class Contentful implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		const items = this.getInputData();
@@ -148,7 +148,7 @@ export class Contentful implements INodeType {
 					} else if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const rawData = additionalFields.rawData;
@@ -194,7 +194,7 @@ export class Contentful implements INodeType {
 								responseData = assets;
 							}
 						} else {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
 							responseData = responseData.items;
@@ -231,7 +231,7 @@ export class Contentful implements INodeType {
 
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const rawData = additionalFields.rawData;
@@ -299,7 +299,7 @@ export class Contentful implements INodeType {
 
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const env = this.getNodeParameter('environmentId', i) as string;
 
@@ -307,7 +307,7 @@ export class Contentful implements INodeType {
 							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
 
 						} else {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
 							responseData = responseData.items;

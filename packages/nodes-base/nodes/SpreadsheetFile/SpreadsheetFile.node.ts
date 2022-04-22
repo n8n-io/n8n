@@ -321,7 +321,7 @@ export class SpreadsheetFile implements INodeType {
 
 		const items = this.getInputData();
 
-		const operation = this.getNodeParameter('operation');
+		const operation = this.getNodeParameter('operation', 0);
 
 		const newItems: INodeExecutionData[] = [];
 
@@ -413,7 +413,7 @@ export class SpreadsheetFile implements INodeType {
 			try {
 
 				// Write the workflow data to spreadsheet file
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 

@@ -166,8 +166,8 @@ export class ElasticSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -577,7 +577,7 @@ export class ElasticSecurity implements INodeType {
 								projectKey: this.getNodeParameter('projectKey', i) as string,
 							};
 							body.secrets = {
-								email: this.getNodeParameter('email', i) as string,
+								email: this.getNodeParameter('email', i),
 								apiToken: this.getNodeParameter('apiToken', i) as string,
 							};
 						} else if (connectorType === '.resilient') {

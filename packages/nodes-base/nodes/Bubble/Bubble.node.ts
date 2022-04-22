@@ -63,8 +63,8 @@ export class Bubble implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -135,13 +135,13 @@ export class Bubble implements INodeType {
 					//         object: getAll
 					// ----------------------------------
 
-					const returnAll = this.getNodeParameter('returnAll');
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
 					const endpoint = `/obj/${typeName}`;
 
-					const jsonParameters = this.getNodeParameter('jsonParameters');
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const options = this.getNodeParameter('options', i);
 
 					if (jsonParameters === false) {
@@ -166,7 +166,7 @@ export class Bubble implements INodeType {
 					if (returnAll === true) {
 						responseData = await bubbleApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit');
+						qs.limit = this.getNodeParameter('limit', 0);
 						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.response.results;
 					}

@@ -86,10 +86,10 @@ export async function mispApiRequestAllItems(
 	endpoint: string,
 ) {
 	const responseData = await mispApiRequest.call(this, 'GET', endpoint);
-	const returnAll = this.getNodeParameter('returnAll');
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		const limit = this.getNodeParameter('limit');
+		const limit = this.getNodeParameter('limit', 0);
 		return responseData.slice(0, limit);
 	}
 

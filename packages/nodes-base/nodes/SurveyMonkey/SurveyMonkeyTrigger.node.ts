@@ -534,7 +534,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				];
 
 				if (event === 'response_completed') {
-					const resolveData = this.getNodeParameter('resolveData') as boolean;
+					const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
 					if (resolveData) {
 						if (objectType === 'survey') {
 							endpoint = `/surveys/${responseData.resources.survey_id}/responses/${responseData.object_id}/details`;

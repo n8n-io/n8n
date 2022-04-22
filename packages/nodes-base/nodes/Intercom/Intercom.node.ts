@@ -128,8 +128,8 @@ export class Intercom implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				qs = {};
-				const resource = this.getNodeParameter('resource');
-				const operation = this.getNodeParameter('operation');
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developers.intercom.com/intercom-api-reference/reference#leads
 				if (resource === 'lead') {
 					if (operation === 'create' || operation === 'update') {
@@ -137,7 +137,7 @@ export class Intercom implements INodeType {
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: ILead = {};
 						if (operation === 'create') {
-							body.email = this.getNodeParameter('email', i) as string;
+							body.email = this.getNodeParameter('email', i);
 						}
 						if (additionalFields.email) {
 							body.email = additionalFields.email as string;
@@ -245,7 +245,7 @@ export class Intercom implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 
 						try {
@@ -402,7 +402,7 @@ export class Intercom implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 
 						try {
@@ -496,7 +496,7 @@ export class Intercom implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 
 						try {

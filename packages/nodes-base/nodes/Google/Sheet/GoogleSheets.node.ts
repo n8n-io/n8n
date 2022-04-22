@@ -1045,8 +1045,8 @@ export class GoogleSheets implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
-		const operation = this.getNodeParameter('operation');
-		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		if (resource === 'sheet') {
 
@@ -1056,7 +1056,7 @@ export class GoogleSheets implements INodeType {
 
 			let range = '';
 			if (!['create', 'delete', 'remove'].includes(operation)) {
-				range = this.getNodeParameter('range');
+				range = this.getNodeParameter('range', 0);
 			}
 
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
@@ -1115,7 +1115,7 @@ export class GoogleSheets implements INodeType {
 					try {
 						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
-						const simple = this.getNodeParameter('simple');
+						const simple = this.getNodeParameter('simple', 0);
 						const properties = { ...options };
 
 						if (options.tabColor) {
@@ -1232,7 +1232,7 @@ export class GoogleSheets implements INodeType {
 				//         read
 				// ----------------------------------
 				try {
-					const rawData = this.getNodeParameter('rawData');
+					const rawData = this.getNodeParameter('rawData', 0);
 
 					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
@@ -1298,7 +1298,7 @@ export class GoogleSheets implements INodeType {
 				//         update
 				// ----------------------------------
 				try {
-					const rawData = this.getNodeParameter('rawData');
+					const rawData = this.getNodeParameter('rawData', 0);
 
 					const items = this.getInputData();
 

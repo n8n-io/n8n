@@ -112,8 +112,8 @@ export class CiscoWebex implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -233,7 +233,7 @@ export class CiscoWebex implements INodeType {
 						const qs: IDataObject = {
 							roomId: this.getNodeParameter('roomId', i),
 						};
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 
@@ -339,7 +339,7 @@ export class CiscoWebex implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs: IDataObject = {
@@ -466,7 +466,7 @@ export class CiscoWebex implements INodeType {
 		// 		for (let i = 0; i < items.length; i++) {
 		// 			try {
 		// 				const meetingId = this.getNodeParameter('meetingId', i) as string;
-		// 				const filters = this.getNodeParameter('filters', i) as IDataObject;
+		// 				const filters = this.getNodeParameter('filters', i);
 		// 				const returnAll = this.getNodeParameter('returnAll', i);
 
 		// 				const qs: IDataObject = {

@@ -105,8 +105,8 @@ export class AwsS3 implements INodeType {
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			const headers: IDataObject = {};
 			try {
@@ -173,11 +173,11 @@ export class AwsS3 implements INodeType {
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListAllMyBucketsResult.Buckets.Bucket', 's3', 'GET', '');
 						} else {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListAllMyBucketsResult.Buckets.Bucket', 's3', 'GET', '', '', qs);
 							responseData = responseData.slice(0, qs.limit);
 						}
@@ -187,8 +187,8 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll');
-						const additionalFields = this.getNodeParameter('additionalFields');
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 						if (additionalFields.prefix) {
 							qs['prefix'] = additionalFields.prefix as string;
@@ -224,7 +224,7 @@ export class AwsS3 implements INodeType {
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						} else {
-							qs['max-keys'] = this.getNodeParameter('limit');
+							qs['max-keys'] = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 							responseData = responseData.ListBucketResult.Contents;
 						}
@@ -311,8 +311,8 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options');
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', 0);
 
 						if (options.folderKey) {
 							qs['prefix'] = options.folderKey as string;
@@ -331,7 +331,7 @@ export class AwsS3 implements INodeType {
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						} else {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						}
 						if (Array.isArray(responseData)) {
@@ -488,8 +488,8 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll');
-						const options = this.getNodeParameter('options');
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', 0);
 
 						if (options.folderKey) {
 							qs['prefix'] = options.folderKey as string;
@@ -510,7 +510,7 @@ export class AwsS3 implements INodeType {
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 						} else {
-							qs.limit = this.getNodeParameter('limit');
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
 							responseData = responseData.splice(0, qs.limit);
 						}
@@ -594,7 +594,7 @@ export class AwsS3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName');
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');

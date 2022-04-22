@@ -104,8 +104,8 @@ export class Raindrop implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource');
-		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -187,7 +187,7 @@ export class Raindrop implements INodeType {
 
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 
@@ -290,7 +290,7 @@ export class Raindrop implements INodeType {
 						//        collection: getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll');
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const endpoint = this.getNodeParameter('type', i) === 'parent'
 							? '/collections'
@@ -300,7 +300,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 
@@ -429,7 +429,7 @@ export class Raindrop implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const filter = this.getNodeParameter('filters', i) as IDataObject;
+						const filter = this.getNodeParameter('filters', i);
 
 						if (filter.collectionId) {
 							endpoint += `/${filter.collectionId}`;
@@ -439,7 +439,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit');
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					}
