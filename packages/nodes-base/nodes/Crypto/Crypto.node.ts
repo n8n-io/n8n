@@ -441,7 +441,7 @@ export class Crypto implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const action = this.getNodeParameter('action', 0) as string;
 
 		let item: INodeExecutionData;

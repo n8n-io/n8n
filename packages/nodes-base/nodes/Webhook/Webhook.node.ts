@@ -53,6 +53,7 @@ export class Webhook implements INodeType {
 		defaults: {
 			name: 'Webhook',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		credentials: [

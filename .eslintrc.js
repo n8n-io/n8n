@@ -376,6 +376,12 @@ module.exports = {
 			rules: {
 				"n8n-nodes-base/node-param-default-missing": "error",
 				"n8n-nodes-base/node-class-description-missing-subtitle": "error"
+				"n8n-nodes-base/node-class-description-inputs-wrong-trigger-node": "error",
+				"n8n-nodes-base/node-class-description-inputs-wrong-regular-node": "error",
+				"n8n-nodes-base/node-class-description-outputs-wrong": "error",
+				"n8n-nodes-base/node-execute-block-double-assertion-for-items": "error",
+				"n8n-nodes-base/node-param-default-wrong-for-collection": "error",
+				"n8n-nodes-base/node-param-default-wrong-for-boolean": "error"
 			 }
 		},
 	],

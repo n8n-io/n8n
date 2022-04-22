@@ -143,7 +143,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'All Day',
 				name: 'allday',
-				type: 'boolean',
+				type: 'options',
 				options: [
 					{
 						name: 'Yes',
@@ -780,7 +780,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'All Day',
 				name: 'allday',
-				type: 'boolean',
+				type: 'options',
 				options: [
 					{
 						name: 'Yes',
