@@ -376,7 +376,8 @@ module.exports = {
 			rules: {
 				"n8n-nodes-base/node-param-default-missing": "error",
 				"n8n-nodes-base/node-class-description-inputs-wrong-trigger-node": "error",
-				"n8n-nodes-base/node-class-description-inputs-wrong-regular-node": "error"
+				"n8n-nodes-base/node-class-description-inputs-wrong-regular-node": "error",
+				"n8n-nodes-base/node-class-description-outputs-wrong": "error"
 			 }
 		},
 	],
