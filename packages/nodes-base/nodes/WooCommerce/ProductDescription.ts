@@ -183,7 +183,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable.',
+				description: 'If the product is downloadable.',
 			},
 			{
 				displayName: 'External URL',
@@ -701,7 +701,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable.',
+				description: 'If the product is downloadable.',
 			},
 			{
 				displayName: 'External URL',

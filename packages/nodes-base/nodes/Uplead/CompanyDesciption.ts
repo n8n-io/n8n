@@ -43,7 +43,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'the name of the company (e.g – amazon)',
+		description: 'The name of the company (e.g – amazon)',
 	},
 	{
 		displayName: 'Domain',
@@ -60,6 +60,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'the domain name (e.g – amazon.com)',
+		description: 'The domain name (e.g – amazon.com)',
 	},
 ];

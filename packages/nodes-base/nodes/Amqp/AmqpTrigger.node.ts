@@ -42,7 +42,7 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'name of the queue of topic to listen to',
+				description: 'Name of the queue of topic to listen to',
 			},
 			{
 				displayName: 'Clientname',

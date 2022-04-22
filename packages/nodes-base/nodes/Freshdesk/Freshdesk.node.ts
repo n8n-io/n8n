@@ -484,7 +484,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by a comma (,) tags that have been associated with the ticket`,
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
@@ -846,7 +846,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by a comma (,) tags that have been associated with the ticket`,
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',

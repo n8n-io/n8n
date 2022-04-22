@@ -347,7 +347,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -466,7 +466,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status',
+				description: 'Status',
 			},
 			{
 				displayName: 'Start Date',
@@ -484,7 +484,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -943,7 +943,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'task ID',
+		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */

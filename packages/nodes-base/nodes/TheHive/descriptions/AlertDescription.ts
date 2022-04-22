@@ -356,7 +356,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'if true, the alert becomes active when updated default=true',
+		description: 'If true, the alert becomes active when updated default=true',
 	},
 	{
 		displayName: 'Artifacts',
@@ -754,7 +754,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true.',
+				description: 'If true, the alert becomes active when updated default=true.',
 			},
 			{
 				displayName: 'Severity',
@@ -935,7 +935,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'follow',
 				type: 'boolean',
 				default: false,
-				description: 'if true, the alert becomes active when updated default=true',
+				description: 'If true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',

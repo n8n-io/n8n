@@ -204,7 +204,7 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'activity ID',
+		description: 'Activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -325,7 +325,7 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'activity ID',
+		description: 'Activity ID',
 	},
 	{
 		displayName: 'RAW Data',

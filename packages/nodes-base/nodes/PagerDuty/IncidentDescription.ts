@@ -448,7 +448,7 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'urgencies of the incidents to be returned. Defaults to all urgencies. Account must have the urgencies ability to do this',
+				description: 'Urgencies of the incidents to be returned. Defaults to all urgencies. Account must have the urgencies ability to do this',
 			},
 			{
 				displayName: 'User IDs',

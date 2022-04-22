@@ -173,7 +173,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
-				description: 'the date the ticket was created',
+				description: 'The date the ticket was created',
 			},
 			{
 				displayName: 'Description',

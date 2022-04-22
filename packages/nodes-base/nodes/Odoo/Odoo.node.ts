@@ -126,7 +126,7 @@ export class Odoo implements INodeType {
 						name: capitalCase(optionField.name),
 						value: optionField.name,
 						// nodelinter-ignore-next-line
-						description: `name: ${optionField?.name}, type: ${optionField?.type} required: ${optionField?.required}`,
+						description: 'Name: ,, type: , required: ,',
 					};
 				});
 
@@ -165,7 +165,7 @@ export class Odoo implements INodeType {
 					return {
 						name: model.name,
 						value: model.model,
-						description: `model: ${model.model}<br> modules: ${model.modules}`,
+						description: 'Model: ,<br> modules: ,',
 					};
 				});
 				return options as INodePropertyOptions[];

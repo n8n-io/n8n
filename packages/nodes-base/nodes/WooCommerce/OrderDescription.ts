@@ -760,7 +760,7 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
+		description: 'Order ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -1466,7 +1466,7 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
+		description: 'Order ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:getAll                           */
@@ -1686,6 +1686,6 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
+		description: 'Order ID.',
 	},
 ];

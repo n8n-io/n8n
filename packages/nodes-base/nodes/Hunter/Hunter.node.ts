@@ -55,7 +55,7 @@ export class Hunter implements INodeType {
 					},
 				],
 				default: 'domainSearch',
-				description: 'operation to consume.',
+				description: 'Operation to consume.',
 			},
 			{
 				displayName: 'Domain',

@@ -472,7 +472,7 @@ export const observableFields: INodeProperties[] = [
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'sighted previously',
+				description: 'Sighted previously',
 				type: 'boolean',
 				default: false,
 			},

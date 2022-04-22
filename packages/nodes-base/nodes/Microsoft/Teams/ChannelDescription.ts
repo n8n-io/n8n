@@ -115,7 +115,7 @@ export const channelFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `channel's description`,
+				description: 'Channel\'s description',
 			},
 			{
 				displayName: 'Type',
@@ -182,7 +182,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'channel ID',
+		description: 'Channel ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -230,7 +230,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'channel ID',
+		description: 'Channel ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -378,7 +378,7 @@ export const channelFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `channel's description`,
+				description: 'Channel\'s description',
 			},
 		],
 	},

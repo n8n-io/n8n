@@ -380,7 +380,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'update can use the key field on the table, or any other supported unique field.',
+		description: 'Update can use the key field on the table, or any other supported unique field.',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -505,7 +505,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'update can use the key field on the table, or any other supported unique field.',
+		description: 'Update can use the key field on the table, or any other supported unique field.',
 	},
 	{
 		displayName: 'Merge Field ID',

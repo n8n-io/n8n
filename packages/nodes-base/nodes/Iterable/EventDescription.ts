@@ -138,7 +138,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description: `userId that was passed into the updateUser call`,
+				description: 'UserId that was passed into the updateUser call',
 			},
 		],
 	},

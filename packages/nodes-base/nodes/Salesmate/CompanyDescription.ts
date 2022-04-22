@@ -243,7 +243,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'company ID',
+		description: 'Company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -418,7 +418,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'company ID',
+		description: 'Company ID',
 	},
 	{
 		displayName: 'RAW Data',

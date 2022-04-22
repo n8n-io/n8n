@@ -101,7 +101,7 @@ export class HubspotTrigger implements INodeType {
 									{
 										name: 'Contact Property Changed',
 										value: 'contact.propertyChange',
-										description: `to get notified if a specified property is changed for any contact in a customer's account. `,
+										description: 'To get notified if a specified property is changed for any contact in a customer\'s account. ',
 									},
 									{
 										name: 'Company Created',

@@ -357,7 +357,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'deal ID',
+		description: 'Deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -589,7 +589,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'deal ID',
+		description: 'Deal ID',
 	},
 	{
 		displayName: 'RAW Data',
