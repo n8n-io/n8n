@@ -231,7 +231,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.instance.destroyDraggable(nodeIdName); // todo
 		},
 		onResize(deltas:  { width: number, height: number, left: boolean, top: boolean }) {
-			const minHeight = 180;
+			const minHeight = 80;
 			const minWidth = 150;
 			const deltaWidth = deltas.width / this.nodeViewScale;
 			const deltaHeight = deltas.height / this.nodeViewScale;
