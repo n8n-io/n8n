@@ -94,7 +94,7 @@ export class Netlify implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};

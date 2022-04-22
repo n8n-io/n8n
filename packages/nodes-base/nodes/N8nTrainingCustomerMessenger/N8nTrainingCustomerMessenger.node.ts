@@ -46,7 +46,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		let responseData;
 
 		for (let i = 0; i < length; i++) {

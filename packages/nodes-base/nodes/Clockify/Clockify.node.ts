@@ -231,7 +231,7 @@ export class Clockify implements INodeType {
 
 		const returnData: IDataObject[] = [];
 
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 
 		const qs: IDataObject = {};
 

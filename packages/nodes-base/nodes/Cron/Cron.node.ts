@@ -31,6 +31,7 @@ export class Cron implements INodeType {
 			name: 'Cron',
 			color: '#00FF00',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		properties: [

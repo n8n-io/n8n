@@ -50,6 +50,7 @@ export class ClockifyTrigger implements INodeType {
 				required: true,
 				default: '',
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Trigger',
 				name: 'watchField',

@@ -215,7 +215,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'options',
 		placeholder: 'Add Option',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -264,7 +264,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'collection',
 		name: 'updateFields',
 		placeholder: 'Add Field',
-		default: '',
+		default: {},
 		required: false,
 		displayOptions: {
 			show: {
