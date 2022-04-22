@@ -226,7 +226,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true',
+				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Default',
@@ -277,7 +277,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
@@ -292,7 +292,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true',
+				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Default',

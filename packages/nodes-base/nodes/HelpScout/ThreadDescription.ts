@@ -49,7 +49,6 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 	{
 		displayName: 'Type',
@@ -230,7 +229,7 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 		],
-		default: '',
+		default: {},
 		description: 'Array of supported attachments to add to the message.',
 	},
 /* -------------------------------------------------------------------------- */
@@ -252,7 +251,6 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 	{
 		displayName: 'Return All',

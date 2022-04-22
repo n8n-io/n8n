@@ -56,7 +56,7 @@ return item;`,
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		const cleanupData = (inputData: IDataObject): IDataObject => {

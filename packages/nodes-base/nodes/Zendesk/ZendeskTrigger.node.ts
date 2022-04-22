@@ -104,7 +104,6 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'support',
-				description: '',
 			},
 			{
 				displayName: 'Options',

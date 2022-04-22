@@ -45,7 +45,6 @@ export const messageAttachmentFields: INodeProperties[] = [
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
-		description: 'Message ID',
 		type: 'string',
 		required: true,
 		default: '',
@@ -66,7 +65,6 @@ export const messageAttachmentFields: INodeProperties[] = [
 	{
 		displayName: 'Attachment ID',
 		name: 'attachmentId',
-		description: 'Attachment ID',
 		type: 'string',
 		required: true,
 		default: '',
