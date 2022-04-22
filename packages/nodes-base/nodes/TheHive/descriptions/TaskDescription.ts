@@ -246,7 +246,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: `User who owns the task. This is automatically set to current user when status is set to InProgress`,
+				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress',
 			},
 			{
 				displayName: 'Start Date',
@@ -303,7 +303,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: `User who owns the task. This is automatically set to current user when status is set to InProgress`,
+				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress',
 			},
 			{
 				displayName: 'Start Date',
@@ -422,7 +422,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: `User who owns the task. This is automatically set to current user when status is set to InProgress`,
+				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress',
 			},
 			{
 				displayName: 'Start Date',

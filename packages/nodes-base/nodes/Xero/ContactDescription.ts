@@ -479,7 +479,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: `Contacts with a status of ARCHIVED will be included in the response`,
+				description: 'Contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',
@@ -514,7 +514,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
+				description: 'The where parameter allows you to filter on endpoints and elements that don\'t have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>',
 			},
 		],
 	},

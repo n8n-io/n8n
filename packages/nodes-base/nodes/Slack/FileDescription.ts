@@ -148,7 +148,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'threadTs',
 				type: 'string',
 				default: '',
-				description: `Provide another message's ts value to upload this file as a reply. Never use a reply's ts value; use its parent instead.`,
+				description: 'Provide another message\'s ts value to upload this file as a reply. Never use a reply\'s ts value; use its parent instead.',
 			},
 			{
 				displayName: 'Title',

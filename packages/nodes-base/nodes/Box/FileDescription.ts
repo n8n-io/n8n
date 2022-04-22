@@ -583,7 +583,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's email address to share the file with.`,
+		description: 'The user\'s email address to share the file with.',
 	},
 	{
 		displayName: 'User ID',
@@ -606,7 +606,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's ID to share the file with.`,
+		description: 'The user\'s ID to share the file with.',
 	},
 	{
 		displayName: 'Group ID',
@@ -626,7 +626,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The group's ID to share the file with.`,
+		description: 'The group\'s ID to share the file with.',
 	},
 	{
 		displayName: 'Role',
@@ -704,7 +704,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: `Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
+				description: 'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
 			},
 			{
 				displayName: 'Expires At',

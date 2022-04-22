@@ -201,7 +201,7 @@ export const userListFields: INodeProperties[] = [
 				name: 'channelUnsubscribe',
 				type: 'boolean',
 				default: false,
-				description: `Unsubscribe email from list's associated channel - essentially a global unsubscribe`,
+				description: 'Unsubscribe email from list\'s associated channel - essentially a global unsubscribe',
 			},
 		],
 	},

@@ -914,7 +914,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
-				description: `When set to true you'll only retrieve Invoices created by your app`,
+				description: 'When set to true you\'ll only retrieve Invoices created by your app',
 			},
 			{
 				displayName: 'Order By',
@@ -969,7 +969,7 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
+				description: 'The where parameter allows you to filter on endpoints and elements that don\'t have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>',
 			},
 		],
 	},

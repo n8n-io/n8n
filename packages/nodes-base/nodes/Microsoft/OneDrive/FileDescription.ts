@@ -99,7 +99,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `The new name for the copy. If this isn't provided, the same name will be used as the original.`,
+				description: 'The new name for the copy. If this isn\'t provided, the same name will be used as the original.',
 			},
 		],
 	},

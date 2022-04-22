@@ -165,14 +165,14 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Labels',
@@ -185,7 +185,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -196,7 +196,7 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 		],
 	},
@@ -380,7 +380,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Bucket ID',
@@ -394,7 +394,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Group ID',
@@ -413,7 +413,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -424,7 +424,7 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
 				displayName: 'Plan ID',

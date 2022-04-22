@@ -77,7 +77,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: `Phone number. No structure is enforced`,
+	description: 'Phone number. No structure is enforced',
 },
 {
 	displayName: 'Option',

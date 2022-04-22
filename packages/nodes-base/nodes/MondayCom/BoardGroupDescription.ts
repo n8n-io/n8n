@@ -28,7 +28,7 @@ export const boardGroupOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Get list of groups in a board`,
+				description: 'Get list of groups in a board',
 			},
 		],
 		default: 'create',
@@ -77,7 +77,7 @@ export const boardGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The group name`,
+		description: 'The group name',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 boardGroup:delete                          */

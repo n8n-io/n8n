@@ -18,7 +18,7 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Add Update',
 				value: 'addUpdate',
-				description: `Add an update to an item.`,
+				description: 'Add an update to an item.',
 			},
 			{
 				name: 'Change Column Value',
@@ -33,12 +33,12 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an item in a board's group`,
+				description: 'Create an item in a board\'s group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an item`,
+				description: 'Delete an item',
 			},
 			{
 				name: 'Get',
@@ -171,7 +171,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The column's unique identifier.`,
+		description: 'The column\'s unique identifier.',
 	},
 	{
 		displayName: 'Value',
@@ -231,7 +231,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Item's ID`,
+		description: 'Item\'s ID',
 	},
 	{
 		displayName: 'Column Values',
@@ -316,7 +316,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The new item's name.`,
+		description: 'The new item\'s name.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -366,7 +366,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Item's ID`,
+		description: 'Item\'s ID',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:get                              */
@@ -387,7 +387,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Item's ID (Multiple can be added separated by comma)`,
+		description: 'Item\'s ID (Multiple can be added separated by comma)',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:getAll                           */
@@ -522,7 +522,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The column's unique identifier.`,
+		description: 'The column\'s unique identifier.',
 	},
 	{
 		displayName: 'Column Value',
@@ -622,7 +622,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The item's ID`,
+		description: 'The item\'s ID',
 	},
 	{
 		displayName: 'Group ID',

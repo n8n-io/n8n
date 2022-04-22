@@ -48,7 +48,7 @@ export const opportunityOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of opportunity's metadata`,
+				description: 'Returns an overview of opportunity\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -88,7 +88,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the opportunity already exists`,
+		description: 'The field to check to see if the opportunity already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -106,7 +106,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the opportunity. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the opportunity. Otherwise create a new one',
 	},
 	{
 		displayName: 'Name',

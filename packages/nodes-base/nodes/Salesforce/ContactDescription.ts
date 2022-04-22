@@ -48,7 +48,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of contact's metadata`,
+				description: 'Returns an overview of contact\'s metadata',
 			},
 			{
 				name: 'Get All',
@@ -93,7 +93,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the contact already exists`,
+		description: 'The field to check to see if the contact already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -111,7 +111,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the contact. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the contact. Otherwise create a new one',
 	},
 	{
 		displayName: 'Last Name',
@@ -307,7 +307,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Mailing Postal Code',
@@ -630,7 +630,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Other City',

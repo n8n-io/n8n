@@ -30,17 +30,17 @@ export const expenseOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an expense`,
+				description: 'Create an expense',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an expense`,
+				description: 'Update an expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an expense`,
+				description: 'Delete an expense',
 			},
 		],
 		default: 'getAll',

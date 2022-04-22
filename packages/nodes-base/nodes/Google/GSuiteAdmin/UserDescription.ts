@@ -140,7 +140,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user's final email address will be jhon@example.com.`,
+		description: 'The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user\'s final email address will be jhon@example.com.',
 	},
 	{
 		displayName: 'Make Admin',
@@ -302,7 +302,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: `Indicates if this is the user's primary phone number. A user may only have one primary phone number.`,
+								description: 'Indicates if this is the user\'s primary phone number. A user may only have one primary phone number.',
 							},
 						],
 					},
@@ -374,7 +374,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
@@ -395,7 +395,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
 	},
 	{
 		displayName: 'Projection',
@@ -464,7 +464,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: `A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.`,
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.',
 			},
 			{
 				displayName: 'View Type',
@@ -598,14 +598,14 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: `A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.`,
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.',
 			},
 			{
 				displayName: 'Customer',
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description: `The unique ID for the customer's G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain`,
+				description: 'The unique ID for the customer\'s G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain',
 			},
 			{
 				displayName: 'Domain',
@@ -640,7 +640,7 @@ export const userFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
+				description: 'Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>',
 			},
 			{
 				displayName: 'Show Deleted',
@@ -706,7 +706,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -876,7 +876,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: `Indicates if this is the user's primary phone number. A user may only have one primary phone number.`,
+								description: 'Indicates if this is the user\'s primary phone number. A user may only have one primary phone number.',
 							},
 						],
 					},
@@ -887,7 +887,7 @@ export const userFields: INodeProperties[] = [
 				name: 'primaryEmail',
 				type: 'string',
 				default: '',
-				description: `The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.`,
+				description: 'The user\'s primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.',
 			},
 			{
 				displayName: 'Secondary Emails',

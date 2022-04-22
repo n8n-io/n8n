@@ -186,7 +186,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas`,
+						description: 'Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas',
 					},
 					{
 						displayName: 'Message ID',
@@ -390,7 +390,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to a particular room type`,
+						description: 'Limit to a particular room type',
 					},
 					{
 						displayName: 'Type',
@@ -418,7 +418,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to a particular room type`,
+						description: 'Limit to a particular room type',
 					},
 					// {
 					// 	displayName: 'Call Type',

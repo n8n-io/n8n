@@ -86,7 +86,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The board's name`,
+		description: 'The board\'s name',
 	},
 	{
 		displayName: 'Kind',
@@ -118,7 +118,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The board's kind (public / private / share)`,
+		description: 'The board\'s kind (public / private / share)',
 	},
 	{
 		displayName: 'Additional Fields',

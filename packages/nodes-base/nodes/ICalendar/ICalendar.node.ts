@@ -132,7 +132,7 @@ export class ICalendar implements INodeType {
 										name: 'rsvp',
 										type: 'boolean',
 										default: false,
-										description: `Whether the attendee has to confirm attendance or not.`,
+										description: 'Whether the attendee has to confirm attendance or not.',
 									},
 								],
 							},
@@ -217,7 +217,7 @@ export class ICalendar implements INodeType {
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: `A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>)`,
+						description: 'A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>)',
 					},
 					{
 						displayName: 'Organizer',
@@ -283,7 +283,7 @@ export class ICalendar implements INodeType {
 						name: 'uid',
 						type: 'string',
 						default: '',
-						description: `Universally unique id for the event (will be auto-generated if not specified here). Should be globally unique.`,
+						description: 'Universally unique id for the event (will be auto-generated if not specified here). Should be globally unique.',
 					},
 					{
 						displayName: 'URL',

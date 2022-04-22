@@ -69,7 +69,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -111,7 +111,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'approved',
 				type: 'boolean',
 				default: true,
-				description: `An optional approval status.`,
+				description: 'An optional approval status.',
 			},
 			{
 				displayName: 'Coupon',
@@ -144,7 +144,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -185,7 +185,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -227,7 +227,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -270,7 +270,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.',
 	},
 	{
 		displayName: 'Return All',

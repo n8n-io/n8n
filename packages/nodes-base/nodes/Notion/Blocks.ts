@@ -169,7 +169,7 @@ const typeMention: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: `An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date`,
+		description: 'An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date',
 	},
 	{
 		displayName: 'User ID',
@@ -282,7 +282,7 @@ const typeMention: INodeProperties[] = [
 		},
 		type: 'dateTime',
 		default: '',
-		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
+		description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 	},
 ];
 
