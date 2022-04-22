@@ -57,8 +57,6 @@ spec:
         env:
         - name: DB_TYPE
           value: "postgresdb"
-        - name: N8N_HOST
-          value: "https://stage-crm-integration.cgpo2o.cn/"
         - name: NODE_ENV
           value: "staging"
         - name: DB_POSTGRESDB_DATABASE
