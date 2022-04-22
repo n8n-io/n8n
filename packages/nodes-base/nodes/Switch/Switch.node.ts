@@ -22,6 +22,7 @@ export class Switch implements INodeType {
 			color: '#506000',
 		},
 		inputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
 		outputNames: ['0', '1', '2', '3'],
 		properties: [
