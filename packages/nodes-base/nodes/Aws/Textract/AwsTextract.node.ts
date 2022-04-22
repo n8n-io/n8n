@@ -83,7 +83,7 @@ export class AwsTextract implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data.',
+				description: 'Return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

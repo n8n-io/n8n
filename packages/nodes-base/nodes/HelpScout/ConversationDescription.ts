@@ -188,15 +188,14 @@ export const conversationFields: INodeProperties[] = [
 				name: 'assignTo',
 				type: 'number',
 				default: 0,
-				description: 'The Help Scout user assigned to the conversation.',
+				description: 'The Help Scout user assigned to the conversation',
 			},
 			{
 				displayName: 'Auto Reply',
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: `When autoReply is set to true, an auto reply will be sent
-				as long as there is at least one customer thread in the conversation.`,
+				description: 'When autoReply is set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
 			},
 			{
 				displayName: 'Closed At',
@@ -229,7 +228,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: `When imported is set to true, no outgoing emails or notifications will be generated.`,
+				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
 			},
 			{
 				displayName: 'Tags',
@@ -246,7 +245,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'user',
 				type: 'number',
 				default: 0,
-				description: 'ID of the user who is adding the conversation and threads.',
+				description: 'ID of the user who is adding the conversation and threads',
 			},
 		],
 	},
@@ -310,7 +309,7 @@ export const conversationFields: INodeProperties[] = [
 							alwaysOpenEditWindow: true,
 						},
 						default: '',
-						description: 'The message text.',
+						description: 'The message text',
 					},
 					{
 						displayName: 'Bcc',
@@ -328,7 +327,7 @@ export const conversationFields: INodeProperties[] = [
 							multipleValueButtonText: 'Add Email',
 						},
 						default: [],
-						description: 'Email addresses.',
+						description: 'Email addresses',
 					},
 					{
 						displayName: 'Cc',
@@ -346,7 +345,7 @@ export const conversationFields: INodeProperties[] = [
 							multipleValueButtonText: 'Add Email',
 						},
 						default: [],
-						description: 'Email addresses.',
+						description: 'Email addresses',
 					},
 					{
 						displayName: 'Draft',
@@ -424,7 +423,7 @@ export const conversationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -447,7 +446,7 @@ export const conversationFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',

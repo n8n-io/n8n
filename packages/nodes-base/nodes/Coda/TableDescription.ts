@@ -78,7 +78,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -102,7 +102,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to create the row in.',
+		description: 'The table to create the row in',
 	},
 	{
 		displayName: 'Options',
@@ -126,15 +126,14 @@ export const tableFields: INodeProperties[] = [
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
-				description: `If true, the API will not attempt to parse the data in any way.`,
+				description: 'If true, the API will not attempt to parse the data in any way',
 			},
 			{
 				displayName: 'Key Columns',
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: `Optional column IDs, URLs, or names (fragile and discouraged),
-				specifying columns to be used as upsert keys. If more than one separate by a comma (,)`,
+				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,)',
 			},
 		],
 	},
@@ -160,7 +159,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -184,7 +183,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Row ID',
@@ -202,11 +201,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because
-		they're easily prone to being changed by users. If you're
-		using a name, be sure to URI-encode it. If there are
-		multiple rows with the same value in the identifying column,
-		an arbitrary one will be selected`,
+		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
 	},
 	{
 		displayName: 'Options',
@@ -230,7 +225,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Use Column Names',
@@ -258,7 +253,7 @@ export const tableFields: INodeProperties[] = [
 						value: 'rich',
 					},
 				],
-				description: `The format that cell values are returned as.`,
+				description: 'The format that cell values are returned as',
 			},
 		],
 	},
@@ -284,7 +279,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -308,7 +303,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from.',
+		description: 'The table to get the rows from',
 	},
 	{
 		displayName: 'Return All',
@@ -325,7 +320,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -349,7 +344,7 @@ export const tableFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -383,7 +378,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Sort By',
@@ -428,14 +423,14 @@ export const tableFields: INodeProperties[] = [
 						value: 'rich',
 					},
 				],
-				description: `The format that cell values are returned as.`,
+				description: 'The format that cell values are returned as',
 			},
 			{
 				displayName: 'Visible Only',
 				name: 'visibleOnly',
 				type: 'boolean',
 				default: false,
-				description: `If true, returns only visible rows and columns for the table.`,
+				description: 'If true, returns only visible rows and columns for the table',
 			},
 		],
 	},
@@ -461,7 +456,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -485,7 +480,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to delete the row in.',
+		description: 'The table to delete the row in',
 	},
 	{
 		displayName: 'Row ID',
@@ -503,7 +498,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Row IDs to delete.',
+		description: 'Row IDs to delete',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:pushButton                         */
@@ -527,7 +522,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -551,7 +546,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Row ID',
@@ -569,11 +564,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because
-		they're easily prone to being changed by users. If you're
-		using a name, be sure to URI-encode it. If there are multiple
-		rows with the same value in the identifying column, an arbitrary
-		one will be selected`,
+		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
 	},
 	{
 		displayName: 'Column',
@@ -621,7 +612,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -645,7 +636,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Column ID',
@@ -663,7 +654,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:getAllColumns                      */
@@ -687,7 +678,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -711,7 +702,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Return All',
@@ -728,7 +719,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -752,6 +743,6 @@ export const tableFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

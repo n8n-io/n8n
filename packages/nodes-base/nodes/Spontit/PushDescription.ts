@@ -45,8 +45,7 @@ export const pushFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `To provide text in a push, supply one of either "content" or "pushContent" (or both).
-		Limited to 2500 characters. (Required if a value for "pushContent" is not provided).`,
+		description: 'To provide text in a push, supply one of either "content" or "pushContent" (or both). Limited to 2500 characters. (Required if a value for "pushContent" is not provided).',
 	},
 	{
 		displayName: 'Additional Fields',

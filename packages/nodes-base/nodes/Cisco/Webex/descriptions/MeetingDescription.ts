@@ -410,7 +410,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'sendEmail',
 				type: 'boolean',
 				default: true,
-				description: 'Whether or not to send emails to host and invitees.',
+				description: 'Whether or not to send emails to host and invitees',
 			},
 		],
 	},
@@ -485,7 +485,7 @@ export const meetingFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Return all results',
 		displayOptions: {
 			show: {
 				resource: [

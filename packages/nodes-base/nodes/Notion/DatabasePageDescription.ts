@@ -276,8 +276,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: `Name of the options you want to set.
-						Multiples can be defined separated by comma`,
+						description: 'Name of the options you want to set. Multiples can be defined separated by comma',
 					},
 					{
 						displayName: 'Option',
@@ -463,8 +462,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: `
-						An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
+						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 					},
 					{
 						displayName: 'Timezone',
@@ -874,8 +872,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: `
-						An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
+						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 					},
 					{
 						displayName: 'Timezone',
