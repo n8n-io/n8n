@@ -382,9 +382,11 @@ module.exports = {
 				"n8n-nodes-base/node-execute-block-double-assertion-for-items": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-collection": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-boolean": "error",
+				"n8n-nodes-base/node-param-collection-type-unsorted-items": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-fixed-collection": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-multi-options": "error",
 				"n8n-nodes-base/node-param-description-comma-separated-hyphen": "error",
+				"n8n-nodes-base/node-param-default-wrong-for-simplify": "error",
 			 }
 		},
 	],
