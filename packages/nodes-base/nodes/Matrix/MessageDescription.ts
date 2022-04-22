@@ -248,7 +248,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		description: 'Other options',
 		placeholder: 'Add options',
 		options: [
 			{

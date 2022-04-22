@@ -163,7 +163,6 @@ export const payoutFields: INodeProperties[] = [
 							},
 						],
 						default: 'USD',
-						description: 'Currency',
 					},
 					{
 						displayName: 'Amount',
@@ -205,7 +204,6 @@ export const payoutFields: INodeProperties[] = [
 							},
 						],
 						default: 'paypal',
-						description: 'The recipient wallet',
 					},
 				],
 			},

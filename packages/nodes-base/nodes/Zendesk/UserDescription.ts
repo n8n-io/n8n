@@ -338,7 +338,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -602,7 +601,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   user:getAll                              */
@@ -781,7 +779,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                             user:getRelatedData                            */

@@ -88,7 +88,6 @@ export const issueFields: INodeProperties[] = [
 				'jiraVersion',
 			],
 		},
-		description: 'Project',
 	},
 	{
 		displayName: 'Issue Type',
@@ -130,7 +129,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Summary',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -157,14 +155,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Assignee',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description',
 			},
 			{
 				displayName: 'Components',
@@ -224,7 +220,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -238,7 +233,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -255,7 +249,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
@@ -265,7 +258,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Reporter',
@@ -275,15 +267,13 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Reporter',
 			},
 			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's
-				Recently viewed project list, as shown under Projects in Jira.`,
+				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira.',
 			},
 		],
 	},
@@ -307,7 +297,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Update Fields',
@@ -334,14 +323,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Assignee',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -396,7 +383,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -410,7 +396,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -427,7 +412,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
@@ -437,7 +421,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Reporter',
@@ -447,14 +430,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Reporter',
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Summary',
 			},
 			{
 				displayName: 'Status ID',
@@ -488,7 +469,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Delete Subtasks',
@@ -506,7 +486,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Delete Subtasks',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -528,7 +507,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -608,9 +586,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's
-				Recently viewed project list, as shown under Projects in Jira. This also populates the
-				JQL issues search lastViewed field.`,
+				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira. This also populates the JQL issues search lastViewed field.',
 			},
 		],
 	},
@@ -770,7 +746,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Return All',
@@ -832,7 +807,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -882,8 +856,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: `The subject of the email notification for the issue. If this is not specified,
-				then the subject is set to the issue key and summary.`,
+				description: 'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 			{
 				displayName: 'Text Body',
@@ -893,8 +866,7 @@ export const issueFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `The subject of the email notification for the issue.
-				If this is not specified, then the subject is set to the issue key and summary.`,
+				description: 'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 		],
 	},
@@ -1098,7 +1070,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -1136,8 +1107,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether transitions with the condition Hide
-				From User Condition are included in the response.`,
+				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response.',
 			},
 		],
 	},

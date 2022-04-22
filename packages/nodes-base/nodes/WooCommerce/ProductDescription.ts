@@ -135,7 +135,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
 				displayName: 'Categories',
@@ -313,7 +312,6 @@ export const productFields: INodeProperties[] = [
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -351,7 +349,6 @@ export const productFields: INodeProperties[] = [
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -372,7 +369,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -583,7 +579,6 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -653,7 +648,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
 				displayName: 'Categories',
@@ -838,7 +832,6 @@ export const productFields: INodeProperties[] = [
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -876,7 +869,6 @@ export const productFields: INodeProperties[] = [
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -897,7 +889,6 @@ export const productFields: INodeProperties[] = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -1108,7 +1099,6 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   product:getAll                           */
@@ -1430,6 +1420,5 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 ];

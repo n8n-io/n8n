@@ -102,14 +102,12 @@ export const orderFields: INodeProperties[] = [
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Set Paid',
@@ -464,7 +462,6 @@ export const orderFields: INodeProperties[] = [
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
@@ -760,7 +757,6 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -815,14 +811,12 @@ export const orderFields: INodeProperties[] = [
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Status',
@@ -1170,7 +1164,6 @@ export const orderFields: INodeProperties[] = [
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
@@ -1466,7 +1459,6 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:getAll                           */
@@ -1686,6 +1678,5 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 ];

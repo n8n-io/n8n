@@ -133,7 +133,6 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'toPersonId',
-		description: 'The person ID',
 		type: 'string',
 		required: true,
 		default: '',

@@ -300,15 +300,13 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The page size',
 					},
 					{
 						displayName: 'Force Refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-            This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						description: 'Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it\'s necessary',
 					},
 				],
 			},
@@ -529,15 +527,13 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The screen size',
 					},
 					{
 						displayName: 'Force Refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-            This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						description: 'Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it\'s necessary',
 					},
 					{
 						displayName: 'Full Page',
@@ -622,7 +618,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'From Currency',
 			},
 			{
 				displayName: 'To Currency',
@@ -641,7 +636,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'To Currency',
 			},
 			// information: imageMetadata
 			{
@@ -723,7 +717,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email Address',
 			},
 			// utility: expandURL
 			{

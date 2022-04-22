@@ -222,7 +222,6 @@ export const userFields: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source',
 			},
 			{
 				displayName: 'State',
@@ -701,7 +700,6 @@ export const userFields: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source',
 			},
 			{
 				displayName: 'State',
