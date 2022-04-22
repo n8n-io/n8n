@@ -493,7 +493,7 @@ export const alertFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		type: 'collection',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -577,7 +577,7 @@ export const alertFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		type: 'collection',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -604,7 +604,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [

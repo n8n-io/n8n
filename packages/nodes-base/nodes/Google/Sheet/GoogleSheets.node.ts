@@ -863,7 +863,7 @@ export class GoogleSheets implements INodeType {
 						name: 'gridProperties',
 						type: 'collection',
 						placeholder: 'Add Property',
-						default: '',
+						default: {},
 						options: [
 							{
 								displayName: 'Column Count',
