@@ -687,7 +687,6 @@
     ]
   },
   "devDependencies": {
-    "eslint-plugin-n8n-nodes-base": "^1.0.28",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
     "@types/cheerio": "^0.22.15",
