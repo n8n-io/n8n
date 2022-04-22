@@ -143,7 +143,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'All Day',
 				name: 'allday',
-				type: 'boolean',
+				type: 'options',
 				options: [
 					{
 						name: 'Yes',
@@ -154,7 +154,6 @@ export const eventFields: INodeProperties[] = [
 						value: 'no',
 					},
 				],
-				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
 				default: 'no',
 				description: 'Wheater the event is all day or not',
 			},
@@ -781,7 +780,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'All Day',
 				name: 'allday',
-				type: 'boolean',
+				type: 'options',
 				options: [
 					{
 						name: 'Yes',
@@ -792,7 +791,7 @@ export const eventFields: INodeProperties[] = [
 						value: 'no',
 					},
 				],
-				default: false,
+				default: 'no',
 				description: 'Wheater the event is all day or not',
 			},
 			{
