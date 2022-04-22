@@ -65,7 +65,7 @@ export const listEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list whose list entries are to be retrieved.',
+		description: 'The unique id of the list whose list entries are to be retrieved',
 	},
 	{
 		displayName: 'Entity ID',
@@ -83,7 +83,7 @@ export const listEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the entity (person, organization, or opportunity) to add to this list.',
+		description: 'The unique id of the entity (person, organization, or opportunity) to add to this list',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -133,7 +133,7 @@ export const listEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list that contains the specified list_entry_id.',
+		description: 'The unique id of the list that contains the specified list_entry_id',
 	},
 	{
 		displayName: 'List Entry ID',
@@ -151,7 +151,7 @@ export const listEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list entry object to be retrieved.',
+		description: 'The unique id of the list entry object to be retrieved',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 listEntry:getAll                           */
@@ -174,7 +174,7 @@ export const listEntryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The unique id of the list whose list entries are to be retrieved.',
+		description: 'The unique id of the list whose list entries are to be retrieved',
 	},
 	{
 		displayName: 'Return All',
@@ -191,7 +191,7 @@ export const listEntryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -215,7 +215,7 @@ export const listEntryFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 listEntry:delete                           */
@@ -239,7 +239,7 @@ export const listEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list that contains the specified list_entry_id.',
+		description: 'The unique id of the list that contains the specified list_entry_id',
 	},
 	{
 		displayName: 'List Entry ID',
@@ -257,6 +257,6 @@ export const listEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list entry object to be deleted.',
+		description: 'The unique id of the list entry object to be deleted',
 	},
 ];

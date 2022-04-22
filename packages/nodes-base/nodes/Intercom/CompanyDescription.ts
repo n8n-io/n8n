@@ -76,7 +76,6 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'List by',
 	},
 	{
 		displayName: 'Value',
@@ -111,7 +110,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -135,7 +134,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -156,7 +155,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -180,7 +179,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -251,7 +250,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'What property to use to query the company.',
+		description: 'What property to use to query the company',
 	},
 	{
 		displayName: 'Value',
@@ -397,7 +396,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -443,6 +442,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

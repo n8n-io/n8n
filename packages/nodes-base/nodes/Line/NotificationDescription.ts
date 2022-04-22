@@ -125,7 +125,7 @@ export const notificationFields: INodeProperties[] = [
 									},
 								},
 								default: 'data',
-								description: `Name of the property that holds the binary data.`,
+								description: 'Name of the property that holds the binary data',
 							},
 						],
 					},
@@ -157,7 +157,6 @@ export const notificationFields: INodeProperties[] = [
 								name: 'stickerId',
 								type: 'number',
 								default: '',
-								description: 'Sticker ID',
 							},
 							{
 								displayName: 'Sticker Package ID',

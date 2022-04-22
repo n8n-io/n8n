@@ -38,7 +38,7 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Deactive',
 				value: 'deactive',
-				description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
+				description: 'Deactivates the user and revokes all its sessions by archiving its user object',
 			},
 			{
 				name: 'Get All',

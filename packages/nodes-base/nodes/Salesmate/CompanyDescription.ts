@@ -243,7 +243,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -418,7 +417,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -455,7 +453,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -479,7 +477,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -519,14 +517,14 @@ export const companyFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to return.',
+				description: 'Comma-separated list of fields to return',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by.',
+				description: 'The field to sort by',
 			},
 			{
 				displayName: 'Sort Order',
@@ -543,7 +541,6 @@ export const companyFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},
@@ -685,7 +682,7 @@ export const companyFields: INodeProperties[] = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 									{
 										displayName: 'Value',

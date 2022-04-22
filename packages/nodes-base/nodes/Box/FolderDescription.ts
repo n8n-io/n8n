@@ -116,7 +116,7 @@ export const folderFields: INodeProperties[] = [
 					{
 						name: 'Collaborators',
 						value: 'collaborators',
-						description: 'Only emails from registered email addresses for collaborators will be accepted.',
+						description: 'Only emails from registered email addresses for collaborators will be accepted',
 					},
 					{
 						name: 'Open',
@@ -155,7 +155,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -176,7 +175,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 	{
 		displayName: 'Recursive',
@@ -193,7 +191,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Delete a folder that is not empty by recursively deleting the folder and all of its content.',
+		description: 'Delete a folder that is not empty by recursively deleting the folder and all of its content',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -231,7 +229,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -255,7 +253,7 @@ export const folderFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -341,7 +339,7 @@ export const folderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'pdf,png,gif',
-				description: 'Limits search results to a comma-separated list of file extensions.',
+				description: 'Limits search results to a comma-separated list of file extensions',
 			},
 			{
 				displayName: 'Folder IDs',
@@ -365,7 +363,7 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Limits search results to a user scope.',
+				description: 'Limits search results to a user scope',
 			},
 			{
 				displayName: 'Size Range',
@@ -390,7 +388,7 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: 'relevance',
-				description: 'returns the results ordered in descending order by date at which the item was last modified.',
+				description: 'returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
 				displayName: 'Trash Content',
@@ -407,7 +405,7 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: 'non_trashed_only',
-				description: 'Controls if search results include the trash.',
+				description: 'Controls if search results include the trash',
 			},
 			{
 				displayName: 'Update At Range',
@@ -467,7 +465,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the folder to share.',
+		description: 'The ID of the folder to share',
 	},
 	{
 		displayName: 'Accessible By',
@@ -494,7 +492,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: 'user',
-		description: 'The type of object the file will be shared with.',
+		description: 'The type of object the file will be shared with',
 	},
 	{
 		displayName: 'Use Email',
@@ -514,7 +512,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether identify the user by email or ID.',
+		description: 'Whether identify the user by email or ID',
 	},
 	{
 		displayName: 'Email',
@@ -537,7 +535,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's email address to share the folder with.`,
+		description: 'The user\'s email address to share the folder with',
 	},
 	{
 		displayName: 'User ID',
@@ -560,7 +558,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's ID to share the folder with.`,
+		description: 'The user\'s ID to share the folder with',
 	},
 	{
 		displayName: 'Group ID',
@@ -580,7 +578,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The group's ID to share the folder with.`,
+		description: 'The group\'s ID to share the folder with',
 	},
 	{
 		displayName: 'Role',
@@ -634,7 +632,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: 'editor',
-		description: 'The level of access granted.',
+		description: 'The level of access granted',
 	},
 	{
 		displayName: 'Options',
@@ -679,7 +677,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'notify',
 				type: 'boolean',
 				default: false,
-				description: 'Whether if users should receive email notification for the action performed.',
+				description: 'Whether if users should receive email notification for the action performed',
 			},
 		],
 	},
@@ -703,7 +701,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -727,21 +724,21 @@ export const folderFields: INodeProperties[] = [
 				name: 'can_non_owners_invite',
 				type: 'boolean',
 				default: false,
-				description: 'Specifies if users who are not the owner of the folder can invite new collaborators to the folder.',
+				description: 'Specifies if users who are not the owner of the folder can invite new collaborators to the folder',
 			},
 			{
 				displayName: 'Can Non-Owners View Colaborators',
 				name: 'can_non_owners_view_collaborators',
 				type: 'boolean',
 				default: false,
-				description: 'Restricts collaborators who are not the owner of this folder from viewing other collaborations on this folder.',
+				description: 'Restricts collaborators who are not the owner of this folder from viewing other collaborations on this folder',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The optional description of this folder.',
+				description: 'The optional description of this folder',
 			},
 			{
 				displayName: 'Fields',
@@ -762,7 +759,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The optional new name for this folder.',
+				description: 'The optional new name for this folder',
 			},
 			{
 				displayName: 'Parent ID',
@@ -778,7 +775,7 @@ export const folderFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Share link information.',
+				description: 'Share link information',
 				placeholder: 'Add Shared Link Config',
 				default: {},
 				options: [
@@ -831,21 +828,21 @@ export const folderFields: INodeProperties[] = [
 								name: 'can_download',
 								type: 'boolean',
 								default: false,
-								description: 'If the shared link allows for downloading of files.',
+								description: 'If the shared link allows for downloading of files',
 							},
 							{
 								displayName: 'Unshared At',
 								name: 'unshared_at',
 								type: 'dateTime',
 								default: '',
-								description: 'The timestamp at which this shared link will expire.',
+								description: 'The timestamp at which this shared link will expire',
 							},
 							{
 								displayName: 'Vanity Name',
 								name: 'vanity_name',
 								type: 'string',
 								default: '',
-								description: 'Defines a custom vanity name to use in the shared link URL, for example https://app.box.com/v/my-shared-link.',
+								description: 'Defines a custom vanity name to use in the shared link URL, for example https://app.box.com/v/my-shared-link',
 							},
 						],
 					},

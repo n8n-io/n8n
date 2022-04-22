@@ -55,7 +55,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the user to get information about.',
+		description: 'The ID of the user to get information about',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -80,6 +80,6 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the user to get the online status of.',
+		description: 'The ID of the user to get the online status of',
 	},
 ];

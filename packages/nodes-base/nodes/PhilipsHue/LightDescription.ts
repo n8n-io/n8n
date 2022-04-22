@@ -82,7 +82,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -106,7 +106,7 @@ export const lightFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -169,7 +169,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'On/Off state of the light.',
+		description: 'On/Off state of the light',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -201,7 +201,7 @@ export const lightFields: INodeProperties[] = [
 					{
 						name: 'Select',
 						value: 'select',
-						description: 'The light is performing one breathe cycle.',
+						description: 'The light is performing one breathe cycle',
 					},
 					{
 						name: 'LSelect',
@@ -221,7 +221,7 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 100,
-				description: 'The brightness value to set the light to.Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
+				description: 'The brightness value to set the light to.Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum)',
 			},
 			{
 				displayName: 'Brightness Increments',
@@ -283,7 +283,7 @@ export const lightFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The dynamic effect of the light.',
+				description: 'The dynamic effect of the light',
 			},
 			{
 				displayName: 'Hue',

@@ -68,12 +68,12 @@ export class Intercom implements INodeType {
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Companies allow you to represent commercial organizations using your product.',
+						description: 'Companies allow you to represent commercial organizations using your product',
 					},
 					{
 						name: 'Lead',
 						value: 'lead',
-						description: 'Leads are useful for representing logged-out users of your application.',
+						description: 'Leads are useful for representing logged-out users of your application',
 					},
 					{
 						name: 'User',

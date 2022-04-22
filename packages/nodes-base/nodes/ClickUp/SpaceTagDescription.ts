@@ -110,7 +110,7 @@ export const spaceTagFields: INodeProperties[] = [
 		displayName: 'New Name',
 		name: 'newName',
 		type: 'string',
-		description: 'New name to set for the tag.',
+		description: 'New name to set for the tag',
 		default: '',
 		displayOptions: {
 			show: {
@@ -175,7 +175,7 @@ export const spaceTagFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -199,6 +199,6 @@ export const spaceTagFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

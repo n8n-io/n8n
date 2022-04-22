@@ -112,7 +112,6 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Line Items',
@@ -211,14 +210,13 @@ export const invoiceFields: INodeProperties[] = [
 						],
 						default: '',
 						required: true,
-						description: 'Tax Type',
 					},
 					{
 						displayName: 'Tax Amount',
 						name: 'taxAmount',
 						type: 'string',
 						default: '',
-						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
+						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 					},
 					{
 						displayName: 'Line Amount',
@@ -470,7 +468,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Invoice ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -506,7 +503,6 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'Contact ID',
 			},
 			{
 				displayName: 'Currency',
@@ -671,14 +667,13 @@ export const invoiceFields: INodeProperties[] = [
 								],
 								default: '',
 								required: true,
-								description: 'Tax Type',
 							},
 							{
 								displayName: 'Tax Amount',
 								name: 'taxAmount',
 								type: 'string',
 								default: '',
-								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
+								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 							},
 							{
 								displayName: 'Line Amount',
@@ -832,7 +827,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Invoice ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   invoice:getAll                           */
@@ -872,7 +866,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -896,7 +890,7 @@ export const invoiceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -945,7 +939,6 @@ export const invoiceFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Statuses',

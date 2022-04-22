@@ -88,7 +88,6 @@ export const issueFields: INodeProperties[] = [
 				'jiraVersion',
 			],
 		},
-		description: 'Project',
 	},
 	{
 		displayName: 'Issue Type',
@@ -130,7 +129,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Summary',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -157,14 +155,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Assignee',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description',
 			},
 			{
 				displayName: 'Components',
@@ -202,14 +198,14 @@ export const issueFields: INodeProperties[] = [
 										'project',
 									],
 								},
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 								default: '',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 								default: '',
 							},
 						],
@@ -224,7 +220,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -238,7 +233,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -255,7 +249,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
@@ -265,7 +258,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Reporter',
@@ -275,14 +267,13 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Reporter',
 			},
 			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira.',
+				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira',
 			},
 		],
 	},
@@ -306,7 +297,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Update Fields',
@@ -333,14 +323,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Assignee',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -366,14 +354,14 @@ export const issueFields: INodeProperties[] = [
 										'issueKey',
 									],
 								},
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 								default: '',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 								default: '',
 							},
 						],
@@ -395,7 +383,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -409,7 +396,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -426,7 +412,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
@@ -436,7 +421,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Reporter',
@@ -446,14 +430,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Reporter',
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Summary',
 			},
 			{
 				displayName: 'Status ID',
@@ -463,7 +445,7 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTransitions',
 				},
 				default: '',
-				description: 'The ID of the issue status.',
+				description: 'The ID of the issue status',
 			},
 		],
 	},
@@ -487,7 +469,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Delete Subtasks',
@@ -505,7 +486,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Delete Subtasks',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -527,7 +507,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -546,7 +525,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: `Return a simplified output of the issues fields.`,
+		description: 'Return a simplified output of the issues fields',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -630,7 +609,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -654,7 +633,7 @@ export const issueFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -682,7 +661,7 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Changelog',
 						value: 'changelog',
-						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent.',
+						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent',
 					},
 					{
 						name: 'Editmeta',
@@ -697,22 +676,22 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Operations',
 						value: 'operations',
-						description: 'Returns all possible operations for the issue.',
+						description: 'Returns all possible operations for the issue',
 					},
 					{
 						name: 'Rendered Fields',
 						value: 'renderedFields',
-						description: ' Returns field values rendered in HTML format.',
+						description: ' Returns field values rendered in HTML format',
 					},
 					{
 						name: 'Schema',
 						value: 'schema',
-						description: 'Returns the schema describing a field type.',
+						description: 'Returns the schema describing a field type',
 					},
 					{
 						name: 'Transitions',
 						value: 'transitions',
-						description: ' Returns all possible transitions for the issue.',
+						description: ' Returns all possible transitions for the issue',
 					},
 					{
 						name: 'Versioned Representations',
@@ -744,7 +723,7 @@ export const issueFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'A JQL expression.',
+				description: 'A JQL expression',
 			},
 		],
 	},
@@ -767,7 +746,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Return All',
@@ -784,7 +762,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -808,7 +786,7 @@ export const issueFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:notify                                */
@@ -829,7 +807,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -872,7 +849,7 @@ export const issueFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The HTML body of the email notification for the issue.',
+				description: 'The HTML body of the email notification for the issue',
 			},
 			{
 				displayName: 'Subject',
@@ -901,7 +878,7 @@ export const issueFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		description: 'The recipients of the email notification for the issue.',
+		description: 'The recipients of the email notification for the issue',
 		default: {},
 		displayOptions: {
 			show: {
@@ -925,7 +902,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'reporter',
 						type: 'boolean',
-						description: `Indicates whether the notification should be sent to the issue's reporter.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s reporter',
 						default: false,
 					},
 					{
@@ -933,21 +910,21 @@ export const issueFields: INodeProperties[] = [
 						name: 'assignee',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's assignees.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Watchers',
 						name: 'watchers',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's assignees.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Voters',
 						name: 'voters',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's voters.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s voters',
 					},
 					{
 						displayName: 'Users',
@@ -957,7 +934,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: `List of users to receive the notification.`,
+						description: 'List of users to receive the notification',
 					},
 					{
 						displayName: 'Groups',
@@ -967,7 +944,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: `List of groups to receive the notification.`,
+						description: 'List of groups to receive the notification',
 					},
 				],
 
@@ -995,7 +972,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The recipients of the email notification for the issue.',
+		description: 'The recipients of the email notification for the issue',
 	},
 	{
 		displayName: 'Notification Recipients Restrictions',
@@ -1005,7 +982,7 @@ export const issueFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		description: 'Restricts the notifications to users with the specified permissions.',
+		description: 'Restricts the notifications to users with the specified permissions',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1033,7 +1010,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: `List of users to receive the notification.`,
+						description: 'List of users to receive the notification',
 					},
 					{
 						displayName: 'Groups',
@@ -1043,7 +1020,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: `List of groups to receive the notification.`,
+						description: 'List of groups to receive the notification',
 					},
 				],
 
@@ -1071,7 +1048,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Restricts the notifications to users with the specified permissions.',
+		description: 'Restricts the notifications to users with the specified permissions',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1093,7 +1070,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -1124,14 +1100,14 @@ export const issueFields: INodeProperties[] = [
 				name: 'transitionId',
 				type: 'string',
 				default: '',
-				description: 'The ID of the transition.',
+				description: 'The ID of the transition',
 			},
 			{
 				displayName: 'Skip Remote Only Condition',
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response.',
+				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response',
 			},
 		],
 	},

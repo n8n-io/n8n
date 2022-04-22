@@ -13,17 +13,17 @@ export const accountOperations: INodeProperties[] = [
 			{
 				name: 'Get Balances',
 				value: 'getBalances',
-				description: 'Retrieve balances for all account currencies of this user.',
+				description: 'Retrieve balances for all account currencies of this user',
 			},
 			{
 				name: 'Get Currencies',
 				value: 'getCurrencies',
-				description: 'Retrieve currencies in the borderless account of this user.',
+				description: 'Retrieve currencies in the borderless account of this user',
 			},
 			{
 				name: 'Get Statement',
 				value: 'getStatement',
-				description: 'Retrieve the statement for the borderless account of this user.',
+				description: 'Retrieve the statement for the borderless account of this user',
 			},
 		],
 		displayOptions: {
@@ -49,7 +49,7 @@ export const accountFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve the balance of.',
+		description: 'ID of the user profile to retrieve the balance of',
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +73,7 @@ export const accountFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile whose account to retrieve the statement of.',
+		description: 'ID of the user profile whose account to retrieve the statement of',
 		displayOptions: {
 			show: {
 				resource: [
@@ -97,7 +97,7 @@ export const accountFields: INodeProperties[] = [
 				'profileId',
 			],
 		},
-		description: 'ID of the borderless account to retrieve the statement of.',
+		description: 'ID of the borderless account to retrieve the statement of',
 		displayOptions: {
 			show: {
 				resource: [
@@ -115,7 +115,7 @@ export const accountFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		// TODO: preload
-		description: 'Code of the currency of the borderless account to retrieve the statement of.',
+		description: 'Code of the currency of the borderless account to retrieve the statement of',
 		displayOptions: {
 			show: {
 				resource: [
@@ -149,17 +149,17 @@ export const accountFields: INodeProperties[] = [
 				name: 'lineStyle',
 				type: 'options',
 				default: 'COMPACT',
-				description: 'Line style to retrieve the statement in.',
+				description: 'Line style to retrieve the statement in',
 				options: [
 					{
 						name: 'Compact',
 						value: 'COMPACT',
-						description: 'Single line per transaction.',
+						description: 'Single line per transaction',
 					},
 					{
 						name: 'Flat',
 						value: 'FLAT',
-						description: 'Separate lines for transaction fees.',
+						description: 'Separate lines for transaction fees',
 					},
 				],
 			},
