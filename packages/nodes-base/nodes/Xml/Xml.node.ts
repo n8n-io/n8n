@@ -96,7 +96,7 @@ export class Xml implements INodeType {
 						name: 'cdata',
 						type: 'boolean',
 						default: false,
-						description: ' wrap text nodes in <![CDATA[ ... ]]> instead of escaping when necessary. Does not add <![CDATA[ ... ]]> if it is not required.',
+						description: 'wrap text nodes in <![CDATA[ ... ]]> instead of escaping when necessary. Does not add <![CDATA[ ... ]]> if it is not required.',
 					},
 					{
 						displayName: 'Character Key',

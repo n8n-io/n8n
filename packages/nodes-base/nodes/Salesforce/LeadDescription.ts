@@ -194,7 +194,7 @@ export const leadFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -449,7 +449,7 @@ export const leadFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{

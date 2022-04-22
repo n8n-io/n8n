@@ -350,7 +350,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'Busy',
 						value: 'opaque',
-						description: ' The event does block time on the calendar.',
+						description: 'The event does block time on the calendar.',
 					},
 				],
 				default: 'opaque',
@@ -934,7 +934,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'All',
 						value: 'all',
-						description: ' Notifications are sent to all guests',
+						description: 'Notifications are sent to all guests',
 					},
 					{
 						name: 'External Only',
@@ -970,7 +970,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'Busy',
 						value: 'opaque',
-						description: ' The event does block time on the calendar.',
+						description: 'The event does block time on the calendar.',
 					},
 				],
 				default: 'opaque',

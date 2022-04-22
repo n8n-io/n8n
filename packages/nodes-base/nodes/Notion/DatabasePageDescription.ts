@@ -462,7 +462,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
+						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 					},
 					{
 						displayName: 'Timezone',
@@ -872,7 +872,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
+						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 					},
 					{
 						displayName: 'Timezone',

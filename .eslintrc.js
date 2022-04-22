@@ -394,6 +394,7 @@ module.exports = {
 				"n8n-nodes-base/node-param-description-missing-for-simplify": "error",
 				"n8n-nodes-base/node-param-description-missing-for-ignore-ssl-issues": "error",
 				"n8n-nodes-base/node-param-description-identical-to-display-name": "error",
+				"n8n-nodes-base/node-param-description-untrimmed": "error",
 			 }
 		},
 	],

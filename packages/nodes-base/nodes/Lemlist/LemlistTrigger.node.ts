@@ -70,7 +70,7 @@ export class LemlistTrigger implements INodeType {
 							loadOptionsMethod: 'getCampaigns',
 						},
 						default: '',
-						description: ` We'll call this hook only for this campaignId.`,
+						description: 'We\'ll call this hook only for this campaignId.',
 					},
 					{
 						displayName: 'Is First',

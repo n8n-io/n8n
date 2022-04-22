@@ -681,7 +681,7 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Rendered Fields',
 						value: 'renderedFields',
-						description: ' Returns field values rendered in HTML format.',
+						description: 'Returns field values rendered in HTML format.',
 					},
 					{
 						name: 'Schema',
@@ -691,7 +691,7 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Transitions',
 						value: 'transitions',
-						description: ' Returns all possible transitions for the issue.',
+						description: 'Returns all possible transitions for the issue.',
 					},
 					{
 						name: 'Versioned Representations',

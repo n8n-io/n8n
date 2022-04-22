@@ -234,7 +234,7 @@ export const formFields: INodeProperties[] = [
 										name: 'value',
 										type: 'boolean',
 										default: false,
-										description: ' Whether or not the visitor checked the checkbox for this subscription type.',
+										description: 'Whether or not the visitor checked the checkbox for this subscription type.',
 									},
 									{
 										displayName: 'Text',
