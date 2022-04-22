@@ -239,7 +239,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: 'The topic of the message. Only required for stream messages',
+				description: 'The topic of the message. Only required for stream messages.',
 			},
 		],
 	},

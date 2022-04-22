@@ -249,7 +249,7 @@ export const observableFields: INodeProperties[] = [
 				value: TLP.red,
 			},
 		],
-		description: 'Traffict Light Protocol (TLP). Default=Amber',
+		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
 		displayName: 'IOC',
@@ -313,7 +313,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Status of the observable. Default=Ok',
+		description: 'Status of the observable. Default=Ok.',
 	},
 	// required for analyzer execution
 	{
@@ -460,7 +460,7 @@ export const observableFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 			{
 				displayName: 'IOC',
@@ -491,7 +491,7 @@ export const observableFields: INodeProperties[] = [
 						value: 'Deleted',
 					},
 				],
-				description: 'Status of the observable. Default=Ok',
+				description: 'Status of the observable. Default=Ok.',
 			},
 		],
 	},
@@ -638,7 +638,7 @@ export const observableFields: INodeProperties[] = [
 						value: 'Deleted',
 					},
 				],
-				description: 'Status of the observable. Default=Ok',
+				description: 'Status of the observable. Default=Ok.',
 			},
 			{
 				displayName: 'TLP',
@@ -663,7 +663,7 @@ export const observableFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 			{
 				displayName: 'Value',

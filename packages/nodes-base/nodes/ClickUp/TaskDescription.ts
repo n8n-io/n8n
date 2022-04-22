@@ -395,7 +395,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -458,7 +458,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Status',

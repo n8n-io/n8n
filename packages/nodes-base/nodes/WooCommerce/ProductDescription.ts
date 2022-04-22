@@ -151,7 +151,7 @@ export const productFields: INodeProperties[] = [
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
@@ -400,7 +400,7 @@ export const productFields: INodeProperties[] = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
@@ -664,7 +664,7 @@ export const productFields: INodeProperties[] = [
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
@@ -920,7 +920,7 @@ export const productFields: INodeProperties[] = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',

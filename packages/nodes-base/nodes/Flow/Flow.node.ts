@@ -50,7 +50,7 @@ export class Flow implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-						description: `Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones`,
+						description: 'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
 					},
 				],
 				default: 'task',

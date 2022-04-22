@@ -106,7 +106,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the account. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the account. Otherwise create a new one.',
 	},
 	{
 		displayName: 'Name',
@@ -338,7 +338,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. City maximum size is 40 characters',
+				description: 'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Shipping Country',
@@ -616,7 +616,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. City maximum size is 40 characters',
+				description: 'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Shipping Country',

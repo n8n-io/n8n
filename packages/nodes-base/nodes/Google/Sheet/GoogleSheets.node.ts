@@ -179,7 +179,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
+				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
 			},
 			{
 				displayName: 'Range',
