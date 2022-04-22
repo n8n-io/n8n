@@ -262,7 +262,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy. The path should start with "/"',
+				description: 'The path of file or folder to copy. The path should start with "/".',
 			},
 			{
 				displayName: 'To Path',
@@ -282,7 +282,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder. The path should start with "/"',
+				description: 'The destination path of file or folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -330,7 +330,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move. The path should start with "/"',
+				description: 'The path of file or folder to move. The path should start with "/".',
 			},
 			{
 				displayName: 'To Path',
@@ -350,7 +350,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder. The path should start with "/"',
+				description: 'The new path of file or folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -432,7 +432,6 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				description: '',
 			},
 			{
 				displayName: 'File Content',
@@ -744,7 +743,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019/',
-				description: 'The path of which to list the content. The path should start with "/"',
+				description: 'The path of which to list the content. The path should start with "/".',
 			},
 
 			// ----------------------------------

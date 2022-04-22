@@ -297,7 +297,6 @@ export const objectFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -471,7 +470,7 @@ export const objectFields: INodeProperties[] = [
 					},
 				},
 				placeholder: `[ { "key": "name", "constraint_type": "text contains", "value": "cafe" } , { "key": "address", "constraint_type": "geographic_search", "value": { "range":10, "origin_address":"New York" } } ]`,
-				description: 'Refine the list that is returned by the Data API with search constraints, exactly as you define a search in Bubble. See <a href="https://manual.bubble.io/core-resources/api/data-api#search-constraints">link</a>',
+				description: 'Refine the list that is returned by the Data API with search constraints, exactly as you define a search in Bubble. See <a href="https://manual.bubble.io/core-resources/api/data-api#search-constraints">link</a>.',
 			},
 			{
 				displayName: 'Sort',
@@ -492,7 +491,7 @@ export const objectFields: INodeProperties[] = [
 								name: 'sort_field',
 								type: 'string',
 								default: '',
-								description: `Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order`,
+								description: 'Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order.',
 							},
 							{
 								displayName: 'Descending',

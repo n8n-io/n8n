@@ -65,7 +65,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Campaign ID',
@@ -108,7 +107,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -182,7 +181,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -557,7 +556,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -637,7 +636,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},

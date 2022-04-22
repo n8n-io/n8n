@@ -56,7 +56,6 @@ export const descriptions: INodeProperties[] = [
 			},
 		],
 		default: 'delete',
-		description: '',
 	},
 	...del.description,
 	...download.description,

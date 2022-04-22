@@ -55,7 +55,6 @@ export class AwsTextract implements INodeType {
 					},
 				],
 				default: 'analyzeExpense',
-				description: '',
 			},
 			{
 				displayName: 'Input Data Field Name',
@@ -70,7 +69,7 @@ export class AwsTextract implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG',
+				description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 			},
 			{
 				displayName: 'Simplify Response',

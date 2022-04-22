@@ -71,7 +71,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -121,7 +120,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'First Name',
 	},
 	{
 		displayName: 'Last Name',
@@ -141,7 +139,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Last Name',
 	},
 	{
 		displayName: 'Primary Company',
@@ -164,7 +161,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Primary company',
 	},
 	{
 		displayName: 'Position',
@@ -184,7 +180,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Position',
 	},
 	{
 		displayName: 'Title',
@@ -204,7 +199,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title',
 	},
 	{
 		displayName: 'Body',
@@ -438,7 +432,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Social Media',
@@ -521,14 +515,12 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -743,7 +735,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'First Name',
 			},
 			{
 				displayName: 'Has Purchased',
@@ -852,7 +843,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Position',
 			},
 			{
 				displayName: 'Primary Company',
@@ -869,7 +859,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Primary company',
 			},
 			{
 				displayName: 'Prospect or Customer',
@@ -937,7 +926,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Title',
@@ -951,7 +940,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Title',
 			},
 			{
 				displayName: 'Social Media',
@@ -1062,7 +1050,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Action',
@@ -1181,7 +1168,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Action',
@@ -1243,7 +1229,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1309,7 +1294,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1436,8 +1420,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: true,
-				description: `By default only the data of the fields get returned. If this
-							  options gets set the RAW response with all data gets returned.`,
+				description: 'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
 			},
 		],
 	},

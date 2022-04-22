@@ -195,8 +195,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: `Comma-separated list of the fields to be included into the new document.`,
 		},
 
 		// ----------------------------------
@@ -231,8 +230,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: `Comma-separated list of the fields to be included into the new document.`,
 		},
 		{
 			displayName: 'Upsert',
