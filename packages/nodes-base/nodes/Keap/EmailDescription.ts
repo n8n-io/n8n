@@ -456,7 +456,7 @@ export const emailFields: INodeProperties[] = [
 				],
 			},
 		],
-		default: '',
+		default: {},
 		description: 'Attachments to be sent with each copy of the email, maximum of 10 with size of 1MB each',
 	},
 ];

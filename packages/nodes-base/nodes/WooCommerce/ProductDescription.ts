@@ -427,7 +427,7 @@ export const productFields: INodeProperties[] = [
 		name: 'dimensionsUi',
 		placeholder: 'Add Dimension',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -477,7 +477,7 @@ export const productFields: INodeProperties[] = [
 		name: 'imagesUi',
 		placeholder: 'Add Image',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -527,7 +527,7 @@ export const productFields: INodeProperties[] = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -952,7 +952,7 @@ export const productFields: INodeProperties[] = [
 		name: 'dimensionsUi',
 		placeholder: 'Add Dimension',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -1002,7 +1002,7 @@ export const productFields: INodeProperties[] = [
 		name: 'imagesUi',
 		placeholder: 'Add Image',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1052,7 +1052,7 @@ export const productFields: INodeProperties[] = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},

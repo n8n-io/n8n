@@ -238,7 +238,7 @@ export class Pushover implements INodeType {
 								],
 							},
 						],
-						default: '',
+						default: {},
 					},
 					{
 						displayName: 'Device',

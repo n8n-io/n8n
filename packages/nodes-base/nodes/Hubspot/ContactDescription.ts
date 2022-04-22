@@ -915,7 +915,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Filter Groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Filter Group',
 		typeOptions: {
 			multipleValues: true,
@@ -940,7 +940,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Filters',
 						name: 'filtersUi',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						placeholder: 'Add Filter',
 						typeOptions: {
 							multipleValues: true,

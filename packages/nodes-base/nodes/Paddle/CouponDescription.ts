@@ -643,7 +643,7 @@ export const couponFields: INodeProperties[] = [
 				displayName: 'Discount',
 				name: 'discount',
 				type: 'fixedCollection',
-				default: 'discountProperties',
+				default: {},
 				options: [
 					{
 						displayName: 'Discount Properties',

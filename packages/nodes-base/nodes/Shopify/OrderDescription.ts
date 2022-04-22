@@ -73,7 +73,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'billingAddressUi',
 				placeholder: 'Add Billing Address',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -152,7 +152,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'discountCodesUi',
 				placeholder: 'Add Discount Code',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -302,7 +302,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'shippingAddressUi',
 				placeholder: 'Add Shipping',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -859,7 +859,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'shippingAddressUi',
 				placeholder: 'Add Shipping',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},

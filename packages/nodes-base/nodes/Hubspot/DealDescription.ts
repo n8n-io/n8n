@@ -618,7 +618,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Filter Groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Filter Group',
 		typeOptions: {
 			multipleValues: true,
@@ -643,7 +643,7 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Filters',
 						name: 'filtersUi',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						placeholder: 'Add Filter',
 						typeOptions: {
 							multipleValues: true,

@@ -170,7 +170,7 @@ export class Jenkins implements INodeType {
 					},
 				},
 				required: true,
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
