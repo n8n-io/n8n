@@ -1413,7 +1413,16 @@ export function getNodeParameter(
 	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+):
+	| NodeParameterValue
+	| INodeParameters
+	| NodeParameterValue[]
+	| INodeParameters[]
+	| object
+	| string
+	| boolean
+	| number
+	| IDataObject {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -1977,7 +1986,16 @@ export function getExecuteFunctions(
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
-			getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any): any => {
+			getNodeParameter: (
+				parameterName: string,
+				itemIndex: number,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2126,7 +2144,7 @@ export function getExecuteFunctions(
 				normalizeItems,
 			},
 		};
-	})(workflow, runExecutionData, connectionInputData, inputData, node);
+	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
 
 /**
