@@ -518,11 +518,11 @@ export class Switch implements INodeType {
 			},
 
 
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Fallback Output',
 				name: 'fallbackOutput',
 				type: 'options',
-				default: '-1',
 				displayOptions: {
 					show: {
 						mode: [
