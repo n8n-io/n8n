@@ -7,7 +7,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeProperties,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -126,7 +125,11 @@ export async function quickBooksApiRequestAllItems(
 	const maxResults = 1000;
 	const returnData: IDataObject[] = [];
 
-	const maxCount = await getCount.call(this, method, endpoint, qs);
+	const maxCountQuery = {
+		query: `SELECT COUNT(*) FROM ${resource}`,
+	} as IDataObject;
+
+	const maxCount = await getCount.call(this, method, endpoint, maxCountQuery);
 
 	const originalQuery = qs.query as string;
 
