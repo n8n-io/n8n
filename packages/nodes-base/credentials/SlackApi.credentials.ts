@@ -34,8 +34,8 @@ export class SlackApi implements ICredentialType {
 			{
 				type: 'responseSuccessBody',
 				properties: {
-					key: 'ok',
-					value: false,
+					key: 'error',
+					value: 'invalid_auth',
 					message: 'Invalid access token',
 				},
 			},
