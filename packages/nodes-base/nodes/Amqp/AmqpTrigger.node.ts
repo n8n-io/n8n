@@ -86,7 +86,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Parse the body to an object.',
+						description: 'Parse the body to an object',
 					},
 					{
 						displayName: 'Messages per Cicle',
@@ -100,7 +100,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'onlyBody',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property.',
+						description: 'Returns only the body property',
 					},
 					{
 						displayName: 'Reconnect',
@@ -121,7 +121,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'sleepTime',
 						type: 'number',
 						default: 10,
-						description: 'Milliseconds to sleep after every cicle.',
+						description: 'Milliseconds to sleep after every cicle',
 					},
 				],
 			},

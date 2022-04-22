@@ -123,7 +123,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security.',
+				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security',
 			},
 			{
 				displayName: 'Resume',

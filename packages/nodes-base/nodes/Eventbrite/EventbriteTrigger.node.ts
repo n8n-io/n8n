@@ -174,7 +174,7 @@ export class EventbriteTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'One or more action to subscribe to.',
+				description: 'One or more action to subscribe to',
 			},
 			{
 				displayName: 'Resolve Data',

@@ -124,7 +124,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'city',
 				type: 'string',
 				default: '',
-				description: 'The city where the company is located.',
+				description: 'The city where the company is located',
 			},
 			{
 				displayName: 'Close Date',
@@ -155,7 +155,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'countryRegion',
 				type: 'string',
 				default: '',
-				description: 'The country/region in which the company or organization is located.',
+				description: 'The country/region in which the company or organization is located',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -179,7 +179,7 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
@@ -197,7 +197,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `A short statement about the company's mission and goals.`,
+				description: 'A short statement about the company\'s mission and goals',
 			},
 			{
 				displayName: 'Facebook Fans',
@@ -224,14 +224,14 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs.',
+				description: 'The type of business the company performs',
 			},
 			{
 				displayName: 'Is Public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates that the company is publicly traded.',
+				description: 'Indicates that the company is publicly traded',
 			},
 			{
 				displayName: 'Lead Status',
@@ -385,7 +385,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc.',
+				description: 'The optional classification of this company record - prospect, partner, etc',
 			},
 			{
 				displayName: 'Web Technologies',
@@ -476,7 +476,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'city',
 				type: 'string',
 				default: '',
-				description: 'The city where the company is located.',
+				description: 'The city where the company is located',
 			},
 			{
 				displayName: 'Close Date',
@@ -507,7 +507,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'countryRegion',
 				type: 'string',
 				default: '',
-				description: 'The country/region in which the company or organization is located.',
+				description: 'The country/region in which the company or organization is located',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -531,7 +531,7 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
@@ -549,7 +549,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `A short statement about the company's mission and goals.`,
+				description: 'A short statement about the company\'s mission and goals',
 			},
 			{
 				displayName: 'Facebook Fans',
@@ -576,14 +576,14 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs.',
+				description: 'The type of business the company performs',
 			},
 			{
 				displayName: 'Is Public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates that the company is publicly traded.',
+				description: 'Indicates that the company is publicly traded',
 			},
 			{
 				displayName: 'Lead Status',
@@ -743,7 +743,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc.',
+				description: 'The optional classification of this company record - prospect, partner, etc',
 			},
 			{
 				displayName: 'Web Technologies',
@@ -838,7 +838,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -862,7 +862,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -949,7 +949,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -974,7 +974,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -1045,7 +1045,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1069,7 +1069,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',

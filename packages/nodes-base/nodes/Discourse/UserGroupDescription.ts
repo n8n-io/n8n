@@ -70,7 +70,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group.',
+		description: 'ID of the group',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -110,7 +110,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group to remove.',
+		description: 'ID of the group to remove',
 	},
 
 ];

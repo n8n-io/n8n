@@ -157,7 +157,7 @@ export const dealFields: INodeProperties[] = [
 									loadOptionsMethod: 'getDealCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
@@ -272,7 +272,7 @@ export const dealFields: INodeProperties[] = [
 									loadOptionsMethod: 'getDealCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
@@ -392,7 +392,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -416,7 +416,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -507,7 +507,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -532,7 +532,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -587,7 +587,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -611,7 +611,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filter Groups',

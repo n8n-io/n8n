@@ -108,7 +108,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                deal:create                                 */
@@ -132,7 +132,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Closing date of deal.',
+		description: 'Closing date of deal',
 	},
 	{
 		displayName: 'Expected Value',
@@ -157,7 +157,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: 1,
-		description: 'Expected Value of deal.',
+		description: 'Expected Value of deal',
 	},
 	{
 		displayName: 'Milestone',
@@ -178,7 +178,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Milestone of deal.',
+		description: 'Milestone of deal',
 	},
 	{
 		displayName: 'Name',
@@ -199,7 +199,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of deal.',
+		description: 'Name of deal',
 	},
 	{
 		displayName: 'Probability',
@@ -224,7 +224,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: 50,
-		description: 'Expected probability.',
+		description: 'Expected probability',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -263,7 +263,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.`,
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -294,7 +294,7 @@ export const dealFields: INodeProperties[] = [
 					multipleValueButtonText: 'Add ID',
 				},
 				default: [],
-				description: 'Unique contact identifiers.',
+				description: 'Unique contact identifiers',
 			},
 			{
 				displayName: 'Custom Data',
@@ -315,14 +315,14 @@ export const dealFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 							},
 						],
 					},
@@ -412,7 +412,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.`,
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -443,14 +443,14 @@ export const dealFields: INodeProperties[] = [
 					maxValue: 10000,
 				},
 				default: '',
-				description: 'Expected Value of deal.',
+				description: 'Expected Value of deal',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of deal.',
+				description: 'Name of deal',
 			},
 			{
 				displayName: 'Probability',
@@ -461,7 +461,7 @@ export const dealFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'Expected Value of deal.',
+				description: 'Expected Value of deal',
 			},
 			{
 				displayName: 'Contact Ids',
@@ -472,7 +472,7 @@ export const dealFields: INodeProperties[] = [
 					multipleValueButtonText: 'Add ID',
 				},
 				default: [],
-				description: 'Unique contact identifiers.',
+				description: 'Unique contact identifiers',
 			},
 			{
 				displayName: 'Custom Data',
@@ -493,14 +493,14 @@ export const dealFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 							},
 						],
 					},

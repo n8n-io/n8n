@@ -63,7 +63,7 @@ export const fieldFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Returns a list of your user contacts',
 	},
 	{
 		displayName: 'Limit',
@@ -87,7 +87,7 @@ export const fieldFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',

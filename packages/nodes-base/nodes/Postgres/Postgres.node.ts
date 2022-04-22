@@ -104,7 +104,7 @@ export class Postgres implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -238,7 +238,7 @@ export class Postgres implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},

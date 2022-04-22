@@ -56,7 +56,7 @@ export const reactionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message.',
+		description: 'Channel containing the message',
 	},
 	{
 		displayName: 'Emoji',
@@ -75,7 +75,7 @@ export const reactionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of emoji.',
+		description: 'Name of emoji',
 		placeholder: '+1',
 	},
 	{
@@ -96,6 +96,6 @@ export const reactionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Timestamp of the message.`,
+		description: 'Timestamp of the message',
 	},
 ];

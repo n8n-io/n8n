@@ -43,7 +43,7 @@ export class TheHiveTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						name: 'Alert Created',

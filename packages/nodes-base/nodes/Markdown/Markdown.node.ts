@@ -176,8 +176,7 @@ export class Markdown implements INodeType {
 						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">.',
+						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">',
 					},
 					{
 						displayName: 'Line Start Escape Pattern',

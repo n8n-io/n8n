@@ -150,7 +150,7 @@ export const contactTagFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -174,6 +174,6 @@ export const contactTagFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];
