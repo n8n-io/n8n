@@ -172,7 +172,7 @@ export const productFields: INodeProperties[] = [
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: `<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>`,
+						description: '<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>.',
 					},
 					{
 						displayName: 'Width',
@@ -390,7 +390,7 @@ export const productFields: INodeProperties[] = [
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: `<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>`,
+						description: '<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>.',
 					},
 					{
 						displayName: 'Width',
@@ -592,8 +592,7 @@ export const productFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Fields the product will return, formatted as a string of comma-separated values.
-				By default all the fields are returned`,
+				description: 'Fields the product will return, formatted as a string of comma-separated values. By default all the fields are returned',
 			},
 		],
 	},

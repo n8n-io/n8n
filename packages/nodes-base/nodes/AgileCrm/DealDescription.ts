@@ -231,7 +231,6 @@ export const dealFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -302,7 +301,6 @@ export const dealFields: INodeProperties[] = [
 				name: 'customData',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -381,7 +379,6 @@ export const dealFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -482,7 +479,6 @@ export const dealFields: INodeProperties[] = [
 				name: 'customData',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
 				},

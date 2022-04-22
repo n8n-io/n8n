@@ -283,7 +283,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 					],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{
@@ -335,7 +335,6 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 				},
 			},
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Options',
@@ -571,7 +570,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			typeOptions: {
 				multipleValues: true,
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Custom Attribute',
 			options: [
 				{

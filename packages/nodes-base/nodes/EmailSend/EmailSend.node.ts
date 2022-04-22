@@ -100,7 +100,7 @@ export class EmailSend implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma separated.',
+				description: 'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
 			},
 			{
 				displayName: 'Options',
@@ -126,7 +126,7 @@ export class EmailSend implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {

@@ -78,7 +78,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -102,21 +102,19 @@ export const orderFields: INodeProperties[] = [
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Set Paid',
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items',
+				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -173,7 +171,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'billingUi',
 		placeholder: 'Add Billing',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -263,7 +261,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'couponLinesUi',
 		placeholder: 'Add Coupon Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -295,7 +293,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -332,7 +330,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -395,7 +393,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -432,7 +430,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -464,7 +462,6 @@ export const orderFields: INodeProperties[] = [
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
@@ -506,7 +503,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -543,7 +540,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -586,7 +583,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'shippingUi',
 		placeholder: 'Add Shipping',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -664,7 +661,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'shippingLinesUi',
 		placeholder: 'Add Shipping Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -710,7 +707,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -760,7 +757,6 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -791,7 +787,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -815,14 +811,12 @@ export const orderFields: INodeProperties[] = [
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Status',
@@ -879,7 +873,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'billingUi',
 		placeholder: 'Add Billing',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -969,7 +963,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'couponLinesUi',
 		placeholder: 'Add Coupon Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1001,7 +995,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1038,7 +1032,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1101,7 +1095,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1138,7 +1132,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1170,7 +1164,6 @@ export const orderFields: INodeProperties[] = [
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
@@ -1212,7 +1205,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1249,7 +1242,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1292,7 +1285,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'shippingUi',
 		placeholder: 'Add Shipping',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -1370,7 +1363,7 @@ export const orderFields: INodeProperties[] = [
 		name: 'shippingLinesUi',
 		placeholder: 'Add Shipping Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1416,7 +1409,7 @@ export const orderFields: INodeProperties[] = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1466,7 +1459,6 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:getAll                           */
@@ -1686,6 +1678,5 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 ];

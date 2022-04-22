@@ -341,7 +341,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact Ids to receive the email. Multiple can be added seperated by comma',
+		description: 'Contact Ids to receive the email. Multiple can be added seperated by comma.',
 	},
 	{
 		displayName: 'Subject',
@@ -456,7 +456,7 @@ export const emailFields: INodeProperties[] = [
 				],
 			},
 		],
-		default: '',
+		default: {},
 		description: 'Attachments to be sent with each copy of the email, maximum of 10 with size of 1MB each',
 	},
 ];

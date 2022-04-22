@@ -284,7 +284,7 @@ export class HackerNews implements INodeType {
 								description: 'Returns query results filtered by Front Page tag',
 							},
 						],
-						default: '',
+						default: [],
 						description: 'Tags for filtering the results of the query.',
 					},
 				],

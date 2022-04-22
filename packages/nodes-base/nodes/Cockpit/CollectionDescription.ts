@@ -122,7 +122,7 @@ export const collectionFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '_id,name',
-				description: 'Comma separated list of fields to get.',
+				description: 'Comma-separated list of fields to get.',
 			},
 			{
 				displayName: 'Filter Query',
@@ -192,7 +192,6 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The entry ID.',
 	},
 
 	// Collection:entry:create

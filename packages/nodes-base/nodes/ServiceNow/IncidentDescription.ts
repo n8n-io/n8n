@@ -115,7 +115,6 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getBusinessServices',
 				},
 				default: '',
-				description: 'The business service',
 			},
 			{
 				displayName: 'Caller ID',
@@ -176,7 +175,6 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The contact type',
 			},
 			{
 				displayName: 'Description',
@@ -531,7 +529,6 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getBusinessServices',
 				},
 				default: '',
-				description: 'The business service',
 			},
 			{
 				displayName: 'Caller ID',
@@ -592,7 +589,6 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The contact type',
 			},
 			{
 				displayName: 'Description',
@@ -632,7 +628,7 @@ export const incidentFields: INodeProperties[] = [
 				},
 				default: '',
 				// nodelinter-ignore-next-line
-				description: 'The resolution code of the incident. \'close_code\' in metadata',
+				description: 'The resolution code of the incident. \'close_code\' in metadata.',
 			},
 			{
 				displayName: 'On Hold Reason',
