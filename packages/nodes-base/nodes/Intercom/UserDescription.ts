@@ -446,7 +446,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Unsubscribed From Emails',
 				name: 'unsubscribedFromEmails',
 				type: 'boolean',
-				default: '',
+				default: false,
 				placeholder: '',
 				description: 'Whether the user is unsubscribed from emails',
 			},

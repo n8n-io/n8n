@@ -99,7 +99,7 @@ export const trackFields: INodeProperties[] = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -418,7 +418,7 @@ export const trackFields: INodeProperties[] = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{

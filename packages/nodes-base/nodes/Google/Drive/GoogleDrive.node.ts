@@ -1275,7 +1275,7 @@ export class GoogleDrive implements INodeType {
 								],
 							},
 						},
-						default: '',
+						default: false,
 						description: `<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>`,
 					},
 					{

@@ -277,7 +277,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
