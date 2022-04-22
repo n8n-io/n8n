@@ -30,7 +30,7 @@ import {
 	filters,
 } from './Filters';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
@@ -55,7 +55,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			json: true,
 		};
 		options = Object.assign({}, options, option);
-		const credentials = await this.getCredentials('notionApi') as IDataObject;
+		const credentials = await this.getCredentials('notionApi');
 		if (!uri) {
 			//do not include the API Key when downloading files, else the request fails
 			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;

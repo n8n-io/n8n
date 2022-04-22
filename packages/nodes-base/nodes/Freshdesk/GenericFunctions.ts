@@ -16,10 +16,6 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 
 	const credentials = await this.getCredentials('freshdeskApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const apiKey = `${credentials.apiKey}:X`;
 
 	const endpoint = 'freshdesk.com/api/v2';

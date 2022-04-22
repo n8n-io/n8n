@@ -141,6 +141,12 @@ export class ExecuteWorkflow implements INodeType {
 				required: true,
 				description: 'The URL from which to load the workflow from.',
 			},
+			{
+				displayName: 'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
+				name: 'executeWorkflowNotice',
+				type: 'notice',
+				default: '',
+			},
 		],
 	};
 

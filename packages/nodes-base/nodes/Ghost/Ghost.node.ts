@@ -23,7 +23,7 @@ import {
 	postOperations,
 } from './PostDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Ghost implements INodeType {
 	description: INodeTypeDescription = {

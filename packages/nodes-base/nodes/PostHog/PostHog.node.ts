@@ -37,7 +37,7 @@ import {
 	identityOperations,
 } from './IdentityDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class PostHog implements INodeType {
 	description: INodeTypeDescription = {

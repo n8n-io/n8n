@@ -9,7 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import * as mqtt from 'mqtt';
+import mqtt from 'mqtt';
 
 import {
 	IClientOptions,
@@ -108,7 +108,7 @@ export class Mqtt implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = (items.length as unknown) as number;
-		const credentials = await this.getCredentials('mqtt') as IDataObject;
+		const credentials = await this.getCredentials('mqtt');
 
 		const protocol = credentials.protocol as string || 'mqtt';
 		const host = credentials.host as string;

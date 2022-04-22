@@ -4,8 +4,8 @@ import { Command, flags } from '@oclif/command';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
 
@@ -111,7 +111,7 @@ export class ExportWorkflowsCommand extends Command {
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const workflows = await Db.collections.Workflow!.find(findQuery);
+			const workflows = await Db.collections.Workflow.find(findQuery);
 
 			if (workflows.length === 0) {
 				throw new Error('No workflows found with specified filters.');

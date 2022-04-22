@@ -13,8 +13,8 @@ import {
 	dirname,
 } from 'path';
 
-import * as ftpClient from 'promise-ftp';
-import * as sftpClient from 'ssh2-sftp-client';
+import ftpClient from 'promise-ftp';
+import sftpClient from 'ssh2-sftp-client';
 
 interface ReturnFtpItem {
 	type: string;
@@ -402,10 +402,6 @@ export class Ftp implements INodeType {
 			credentials = await this.getCredentials('ftp');
 		}
 		try {
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
-			}
 
 			let ftp: ftpClient;
 			let sftp: sftpClient;

@@ -13,7 +13,7 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
@@ -26,11 +26,11 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 	if (source === 'contentApi') {
 		//https://ghost.org/faq/api-versioning/
 		version = 'v3';
-		credentials = await this.getCredentials('ghostContentApi') as IDataObject;
+		credentials = await this.getCredentials('ghostContentApi');
 		query.key = credentials.apiKey as string;
 	} else {
 		version = 'v2';
-		credentials = await this.getCredentials('ghostAdminApi') as IDataObject;
+		credentials = await this.getCredentials('ghostAdminApi');
 		// Create the token (including decoding secret)
 		const [id, secret] = (credentials.apiKey as string).split(':');
 

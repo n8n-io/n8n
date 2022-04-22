@@ -24,7 +24,7 @@ import {
 	beeminderApiRequest,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -306,10 +306,6 @@ export class Beeminder implements INodeType {
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 
 				const credentials = await this.getCredentials('beeminderApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				const endpoint = `/users/${credentials.user}/goals.json`;
 

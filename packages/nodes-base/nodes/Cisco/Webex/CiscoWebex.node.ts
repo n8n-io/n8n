@@ -28,7 +28,7 @@ import {
 	messageOperations,
 } from './descriptions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {

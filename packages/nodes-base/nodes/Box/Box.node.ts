@@ -26,7 +26,7 @@ import {
 	folderOperations,
 } from './FolderDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	noCase,

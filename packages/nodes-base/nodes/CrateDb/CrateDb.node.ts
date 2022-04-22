@@ -16,7 +16,7 @@ import {
 	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
 
-import * as pgPromise from 'pg-promise';
+import pgPromise from 'pg-promise';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -252,10 +252,6 @@ export class CrateDb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('crateDb');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const pgp = pgPromise();
 

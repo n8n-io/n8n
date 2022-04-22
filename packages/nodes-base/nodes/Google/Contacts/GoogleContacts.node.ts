@@ -23,7 +23,7 @@ import {
 	contactOperations,
 } from './ContactDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 import { IData } from '../Analytics/Interfaces';
 
 export class GoogleContacts implements INodeType {

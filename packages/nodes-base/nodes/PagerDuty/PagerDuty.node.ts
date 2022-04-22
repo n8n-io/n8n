@@ -45,7 +45,7 @@ import {
 	snakeCase,
 } from 'change-case';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class PagerDuty implements INodeType {
 	description: INodeTypeDescription = {
