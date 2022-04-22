@@ -67,7 +67,9 @@
 			<div class="node-creator-button">
 				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
 				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
-					<n8n-icon-button v-if="isAddStickyButtonVisible" size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+					<transition name="sticky-button-transition">
+						<n8n-icon-button v-if="isAddStickyButtonVisible" size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+					</transition>
 				</div>
 			</div>
 		</div>
@@ -3105,6 +3107,20 @@ export default mixins(
 			border-color: var(--color-primary);
 			color: var(--color-primary);
 		}
+	}
+}
+
+.sticky-button-transition {
+	&-enter-active,
+	&-leave-active {
+		transition-property: opacity;
+		transition-duration: 100ms;
+		transition-timing-function: linear;
+	}
+
+	&-enter,
+	&-leave-to {
+		opacity: 0;
 	}
 }
 
