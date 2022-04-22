@@ -946,7 +946,7 @@ export class AwsSes implements INodeType {
 
 						const templateContent = this.getNodeParameter('templateContent', i) as string;
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const templateSubject = this.getNodeParameter('templateSubject', i) as string;
 
@@ -967,7 +967,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'delete') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [
 							`Action=DeleteCustomVerificationEmailTemplate`,
@@ -981,7 +981,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'get') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [
 							`TemplateName=${templateName}`,
@@ -1012,7 +1012,7 @@ export class AwsSes implements INodeType {
 
 						const email = this.getNodeParameter('email', i) as unknown as string[];
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -1033,7 +1033,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'update') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -1078,7 +1078,7 @@ export class AwsSes implements INodeType {
 
 						const subject = this.getNodeParameter('subject', i);
 
-						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
+						const fromEmail = this.getNodeParameter('fromEmail', i);
 
 						const isBodyHtml = this.getNodeParameter('isBodyHtml', i) as boolean;
 
@@ -1136,13 +1136,13 @@ export class AwsSes implements INodeType {
 
 						const toAddresses = this.getNodeParameter('toAddresses', i) as string[];
 
-						const template = this.getNodeParameter('templateName', i) as string;
+						const template = this.getNodeParameter('templateName', i);
 
-						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
+						const fromEmail = this.getNodeParameter('fromEmail', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						const templateDataUi = this.getNodeParameter('templateDataUi', i) as IDataObject;
+						const templateDataUi = this.getNodeParameter('templateDataUi', i);
 
 						const params = [
 							`Template=${template}`,
@@ -1205,7 +1205,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'create') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const subjectPart = this.getNodeParameter('subjectPart', i) as string;
 
@@ -1230,7 +1230,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'delete') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [
 							`TemplateName=${templateName}`,
@@ -1243,7 +1243,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'get') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [
 							`TemplateName=${templateName}`,
@@ -1272,7 +1272,7 @@ export class AwsSes implements INodeType {
 
 					if (operation === 'update') {
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 

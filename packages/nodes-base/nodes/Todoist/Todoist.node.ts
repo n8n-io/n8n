@@ -608,7 +608,7 @@ export class Todoist implements INodeType {
 					}
 					if (operation === 'close') {
 						//https://developer.todoist.com/rest/v1/#close-a-task
-						const id = this.getNodeParameter('taskId', i) as string;
+						const id = this.getNodeParameter('taskId', i);
 
 						responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/close`);
 
@@ -617,7 +617,7 @@ export class Todoist implements INodeType {
 					}
 					if (operation === 'delete') {
 						//https://developer.todoist.com/rest/v1/#delete-a-task
-						const id = this.getNodeParameter('taskId', i) as string;
+						const id = this.getNodeParameter('taskId', i);
 
 						responseData = await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
 
@@ -626,7 +626,7 @@ export class Todoist implements INodeType {
 					}
 					if (operation === 'get') {
 						//https://developer.todoist.com/rest/v1/#get-an-active-task
-						const id = this.getNodeParameter('taskId', i) as string;
+						const id = this.getNodeParameter('taskId', i);
 
 						responseData = await todoistApiRequest.call(this, 'GET', `/tasks/${id}`);
 					}
@@ -659,7 +659,7 @@ export class Todoist implements INodeType {
 					}
 					if (operation === 'reopen') {
 						//https://developer.todoist.com/rest/v1/#get-an-active-task
-						const id = this.getNodeParameter('taskId', i) as string;
+						const id = this.getNodeParameter('taskId', i);
 
 						responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
 
@@ -668,7 +668,7 @@ export class Todoist implements INodeType {
 
 					if (operation === 'update') {
 						//https://developer.todoist.com/rest/v1/#update-a-task
-						const id = this.getNodeParameter('taskId', i) as string;
+						const id = this.getNodeParameter('taskId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IBodyCreateTask = {};

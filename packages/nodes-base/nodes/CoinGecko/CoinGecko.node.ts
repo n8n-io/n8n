@@ -188,7 +188,7 @@ export class CoinGecko implements INodeType {
 						const searchBy = this.getNodeParameter('searchBy', i) as string;
 
 						if (searchBy === 'coinId') {
-							const coinId = this.getNodeParameter('coinId', i) as string;
+							const coinId = this.getNodeParameter('coinId', i);
 
 							responseData = await coinGeckoApiRequest.call(
 								this,
@@ -200,7 +200,7 @@ export class CoinGecko implements INodeType {
 						}
 
 						if (searchBy === 'contractAddress') {
-							const platformId = this.getNodeParameter('platformId', i) as string;
+							const platformId = this.getNodeParameter('platformId', i);
 							const contractAddress = this.getNodeParameter('contractAddress', i) as string;
 
 							responseData = await coinGeckoApiRequest.call(
@@ -299,7 +299,7 @@ export class CoinGecko implements INodeType {
 						}
 
 						if (searchBy === 'contractAddress') {
-							const platformId = this.getNodeParameter('platformId', i) as string;
+							const platformId = this.getNodeParameter('platformId', i);
 							const contractAddresses = this.getNodeParameter('contractAddresses', i) as string;
 
 							qs.contract_addresses = contractAddresses;
@@ -318,7 +318,7 @@ export class CoinGecko implements INodeType {
 					if (operation === 'ticker') {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const coinId = this.getNodeParameter('coinId', i) as string;
+						const coinId = this.getNodeParameter('coinId', i);
 						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
@@ -356,7 +356,7 @@ export class CoinGecko implements INodeType {
 					//https://www.coingecko.com/api/documentations/v3#/coins/get_coins__id__history
 					if (operation === 'history') {
 
-						const coinId = this.getNodeParameter('coinId', i) as string;
+						const coinId = this.getNodeParameter('coinId', i);
 						const date = this.getNodeParameter('date', i) as string;
 						const options = this.getNodeParameter('options', i);
 
@@ -399,7 +399,7 @@ export class CoinGecko implements INodeType {
 						}
 
 						if (searchBy === 'contractAddress') {
-							const platformId = this.getNodeParameter('platformId', i) as string;
+							const platformId = this.getNodeParameter('platformId', i);
 							const contractAddress = this.getNodeParameter('contractAddress', i) as string;
 
 							respData = await coinGeckoApiRequest.call(

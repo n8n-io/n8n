@@ -484,6 +484,7 @@ type StringReturnTypeParam =
 	| 'binaryPropertyName'
 	| 'binaryProperty'
 	| 'company'
+	| 'color'
 	| 'currency'
 	| 'description'
 	| 'email'
@@ -518,6 +519,22 @@ type BooleanReturnTypeParam =
 
 type IDataObjectReturnTypeParam = 'additionalFields' | 'filters' | 'options' | 'updateFields';
 
+type StringEndPattern =
+	| 'Url'
+	| 'Id'
+	| 'Color'
+	| 'Name'
+	| 'name'
+	| 'Path'
+	| 'Key'
+	| 'Date'
+	| 'Json'
+	| 'Type'
+	| 'Email'
+	| 'Slug';
+
+type IDataObjectEndPattern = 'Ui';
+
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
 	evaluateExpression(
@@ -538,6 +555,14 @@ export interface IExecuteFunctions {
 	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex: number): string;
 	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex: number): boolean;
 	getNodeParameter(parameterName: IDataObjectReturnTypeParam, itemIndex: number): IDataObject;
+	getNodeParameter<T extends `${string}${StringEndPattern}`>(
+		parameterName: T,
+		itemIndex: number,
+	): string;
+	getNodeParameter<T extends `${string}${IDataObjectEndPattern}`>(
+		parameterName: T,
+		itemIndex: number,
+	): IDataObject;
 	getNodeParameter(
 		parameterName: string,
 		itemIndex: number,

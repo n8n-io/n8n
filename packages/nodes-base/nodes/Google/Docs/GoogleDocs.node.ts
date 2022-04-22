@@ -184,7 +184,7 @@ export class GoogleDocs implements INodeType {
 
 						// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
-						const folderId = this.getNodeParameter('folderId', i) as string;
+						const folderId = this.getNodeParameter('folderId', i);
 
 						const body: IDataObject = {
 							name: this.getNodeParameter('title', i),

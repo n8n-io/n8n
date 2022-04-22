@@ -432,7 +432,7 @@ export class Wise implements INodeType {
 						// https://api-docs.transferwise.com/#transfers-fund
 
 						const profileId = this.getNodeParameter('profileId', i);
-						const transferId = this.getNodeParameter('transferId', i) as string;
+						const transferId = this.getNodeParameter('transferId', i);
 
 						const endpoint = `v3/profiles/${profileId}/transfers/${transferId}/payments`;
 						responseData = await wiseApiRequest.call(this, 'POST', endpoint, { type: 'BALANCE' }, {});

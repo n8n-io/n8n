@@ -248,7 +248,7 @@ export class Clockify implements INodeType {
 
 					if (operation === 'create') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
 						const name = this.getNodeParameter('name', i);
 
@@ -278,9 +278,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'delete') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -295,9 +295,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'get') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -312,7 +312,7 @@ export class Clockify implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -345,9 +345,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'update') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -376,7 +376,7 @@ export class Clockify implements INodeType {
 
 					if (operation === 'create') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
 						const name = this.getNodeParameter('name', i);
 
@@ -395,9 +395,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'delete') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const tagId = this.getNodeParameter('tagId', i) as string;
+						const tagId = this.getNodeParameter('tagId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -414,7 +414,7 @@ export class Clockify implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -447,9 +447,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'update') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const tagId = this.getNodeParameter('tagId', i) as string;
+						const tagId = this.getNodeParameter('tagId', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -474,7 +474,7 @@ export class Clockify implements INodeType {
 							i,
 						) as string;
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
 						const name = this.getNodeParameter('name', i);
 
@@ -509,9 +509,9 @@ export class Clockify implements INodeType {
 							i,
 						) as string;
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -528,9 +528,9 @@ export class Clockify implements INodeType {
 							i,
 						) as string;
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -549,7 +549,7 @@ export class Clockify implements INodeType {
 							i,
 						) as string;
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
 						const filters = this.getNodeParameter(
 							'filters',
@@ -585,9 +585,9 @@ export class Clockify implements INodeType {
 							i,
 						) as string;
 
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('projectId', i);
 
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						const updateFields = this.getNodeParameter(
 							'updateFields',
@@ -619,7 +619,7 @@ export class Clockify implements INodeType {
 
 						const timezone = this.getTimezone();
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
 						const start = this.getNodeParameter('start', i) as string;
 
@@ -653,9 +653,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'delete') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
+						const timeEntryId = this.getNodeParameter('timeEntryId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -670,9 +670,9 @@ export class Clockify implements INodeType {
 
 					if (operation === 'get') {
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
+						const timeEntryId = this.getNodeParameter('timeEntryId', i);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -687,9 +687,9 @@ export class Clockify implements INodeType {
 
 						const timezone = this.getTimezone();
 
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 
-						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
+						const timeEntryId = this.getNodeParameter('timeEntryId', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 

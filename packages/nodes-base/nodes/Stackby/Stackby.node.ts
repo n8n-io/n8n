@@ -196,7 +196,7 @@ export class Stackby implements INodeType {
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
 				try {
-					const stackId = this.getNodeParameter('stackId', i) as string;
+					const stackId = this.getNodeParameter('stackId', i);
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
 					const rowIds = this.getNodeParameter('id', i) as string;
 					qs.rowIds = [rowIds];
@@ -215,7 +215,7 @@ export class Stackby implements INodeType {
 		if (operation === 'delete') {
 			for (let i = 0; i < length; i++) {
 				try {
-					const stackId = this.getNodeParameter('stackId', i) as string;
+					const stackId = this.getNodeParameter('stackId', i);
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
 					const rowIds = this.getNodeParameter('id', i) as string;
 					qs.rowIds = [rowIds];
@@ -238,7 +238,7 @@ export class Stackby implements INodeType {
 				const records: { [key: string]: IRecord[] } = {};
 				let key = '';
 				for (let i = 0; i < length; i++) {
-					const stackId = this.getNodeParameter('stackId', i) as string;
+					const stackId = this.getNodeParameter('stackId', i);
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
 					const columns = this.getNodeParameter('columns', i) as string;
 					const columnList = columns.split(',').map(column => column.trim());
@@ -278,7 +278,7 @@ export class Stackby implements INodeType {
 		if (operation === 'list') {
 			for (let i = 0; i < length; i++) {
 				try {
-					const stackId = this.getNodeParameter('stackId', i) as string;
+					const stackId = this.getNodeParameter('stackId', i);
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
 					const returnAll = this.getNodeParameter('returnAll', 0);
 

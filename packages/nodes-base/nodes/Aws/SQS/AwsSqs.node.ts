@@ -341,7 +341,7 @@ export class AwsSqs implements INodeType {
 						params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
 					}
 
-					const messageGroupId = this.getNodeParameter('messageGroupId', i) as string;
+					const messageGroupId = this.getNodeParameter('messageGroupId', i);
 					if (messageGroupId) {
 						params.push(`MessageGroupId=${messageGroupId}`);
 					}

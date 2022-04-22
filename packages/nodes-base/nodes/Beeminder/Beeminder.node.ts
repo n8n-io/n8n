@@ -337,7 +337,7 @@ export class Beeminder implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'datapoint') {
-					const goalName = this.getNodeParameter('goalName', i) as string;
+					const goalName = this.getNodeParameter('goalName', i);
 					if (operation === 'create') {
 						const value = this.getNodeParameter('value', i) as number;
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
@@ -367,7 +367,7 @@ export class Beeminder implements INodeType {
 						results = await getAllDatapoints.call(this, data);
 					}
 					else if (operation === 'update') {
-						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const datapointId = this.getNodeParameter('datapointId', i);
 						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
 						const data: IDataObject = {
 							goalName,
@@ -380,7 +380,7 @@ export class Beeminder implements INodeType {
 						results = await updateDatapoint.call(this, data);
 					}
 					else if (operation === 'delete') {
-						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const datapointId = this.getNodeParameter('datapointId', i);
 						const data: IDataObject = {
 							goalName,
 							datapointId,

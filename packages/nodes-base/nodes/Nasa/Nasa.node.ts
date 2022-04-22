@@ -975,7 +975,7 @@ export class Nasa implements INodeType {
 
 					if (operation === 'get') {
 
-						const asteroidId = this.getNodeParameter('asteroidId', i) as IDataObject;
+						const asteroidId = this.getNodeParameter('asteroidId', i) as unknown as IDataObject;
 
 						includeCloseApproachData = additionalFields.includeCloseApproachData as boolean;
 

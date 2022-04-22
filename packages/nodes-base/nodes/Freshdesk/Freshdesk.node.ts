@@ -1246,7 +1246,7 @@ export class Freshdesk implements INodeType {
 					}
 					//https://developers.freshdesk.com/api/#update_ticket
 					if (operation === 'update') {
-						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const ticketId = this.getNodeParameter('ticketId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICreateTicketBody = {};
 
@@ -1319,7 +1319,7 @@ export class Freshdesk implements INodeType {
 					}
 					//https://developers.freshdesk.com/api/#view_a_ticket
 					if (operation === 'get') {
-						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const ticketId = this.getNodeParameter('ticketId', i);
 						responseData = await freshdeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`);
 					}
 					//https://developers.freshdesk.com/api/#list_all_tickets
@@ -1358,7 +1358,7 @@ export class Freshdesk implements INodeType {
 					}
 					//https://developers.freshdesk.com/api/#delete_a_ticket
 					if (operation === 'delete') {
-						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const ticketId = this.getNodeParameter('ticketId', i);
 						responseData = await freshdeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
 					}
 				} else if (resource === 'contact') {
@@ -1386,10 +1386,10 @@ export class Freshdesk implements INodeType {
 						responseData = await freshdeskApiRequest.call(this, 'POST', '/contacts', body);
 					//https://developers.freshdesk.com/api/#delete_contact
 					} else if (operation === 'delete') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await freshdeskApiRequest.call(this, 'DELETE', `/contacts/${contactId}`, {});
 					} else if (operation === 'get') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await freshdeskApiRequest.call(this, 'GET', `/contacts/${contactId}`, {});
 					//https://developers.freshdesk.com/api/#list_all_contacts
 					} else if (operation === 'getAll') {
@@ -1397,7 +1397,7 @@ export class Freshdesk implements INodeType {
 						responseData = await freshdeskApiRequest.call(this, 'GET', '/contacts', {}, qs);
 					//https://developers.freshdesk.com/api/#update_contact
 					} else if (operation === 'update') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
 						if (additionalFields.customFields) {

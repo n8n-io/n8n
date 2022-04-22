@@ -563,7 +563,7 @@ export class Chargebee implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter('invoiceId', i);
 						endpoint = `invoices/${invoiceId.trim()}/pdf`;
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);

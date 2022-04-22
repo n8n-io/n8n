@@ -358,8 +358,8 @@ export class FreshworksCrm implements INodeType {
 							is_allday: boolean;
 						};
 
-						const startDate = this.getNodeParameter('fromDate', i) as string;
-						const endDate = this.getNodeParameter('endDate', i) as string;
+						const startDate = this.getNodeParameter('fromDate', i);
+						const endDate = this.getNodeParameter('endDate', i);
 						const attendees = this.getNodeParameter('attendees.attendee', i, []) as [{ type: string, contactId: string, userId: string }];
 
 						const timezone = additionalFields.time_zone ?? defaultTimezone;

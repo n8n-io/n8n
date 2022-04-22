@@ -78,7 +78,7 @@ export class Strava implements INodeType {
 
 						const type = this.getNodeParameter('type', i) as string;
 
-						const startDate = this.getNodeParameter('startDate', i) as string;
+						const startDate = this.getNodeParameter('startDate', i);
 
 						const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
@@ -105,7 +105,7 @@ export class Strava implements INodeType {
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
 					if (operation === 'get') {
-						const activityId = this.getNodeParameter('activityId', i) as string;
+						const activityId = this.getNodeParameter('activityId', i);
 
 						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
 					}
@@ -118,7 +118,7 @@ export class Strava implements INodeType {
 							'getLaps': 'laps',
 						};
 
-						const activityId = this.getNodeParameter('activityId', i) as string;
+						const activityId = this.getNodeParameter('activityId', i);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -131,7 +131,7 @@ export class Strava implements INodeType {
 					}
 					//https://developers.strava.com/docs/reference/#api-Streams-getActivityStreams
 					if (operation === 'getStreams') {
-						const activityId = this.getNodeParameter('activityId', i) as string;
+						const activityId = this.getNodeParameter('activityId', i);
 						const keys = this.getNodeParameter('keys', i) as string[];
 						qs.keys = keys.toString();
 						qs.key_by_type = true;
@@ -153,7 +153,7 @@ export class Strava implements INodeType {
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
 					if (operation === 'update') {
-						const activityId = this.getNodeParameter('activityId', i) as string;
+						const activityId = this.getNodeParameter('activityId', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 

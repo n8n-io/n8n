@@ -122,7 +122,7 @@ export class MailerLite implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#single-subscriber
 					if (operation === 'get') {
-						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
+						const subscriberId = this.getNodeParameter('subscriberId', i);
 
 						responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers/${subscriberId}`);
 					}
@@ -145,7 +145,7 @@ export class MailerLite implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber
 					if (operation === 'update') {
-						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
+						const subscriberId = this.getNodeParameter('subscriberId', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 

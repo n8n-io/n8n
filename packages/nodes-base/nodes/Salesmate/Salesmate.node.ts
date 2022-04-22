@@ -359,7 +359,7 @@ export class Salesmate implements INodeType {
 							};
 						}
 					} else {
-						const json = validateJSON(this.getNodeParameter('filtersJson', i) as string);
+						const json = validateJSON(this.getNodeParameter('filtersJson', i));
 						body = json;
 					}
 					if (returnAll) {
@@ -525,7 +525,7 @@ export class Salesmate implements INodeType {
 							};
 						}
 					} else {
-						const json = validateJSON(this.getNodeParameter('filtersJson', i) as string);
+						const json = validateJSON(this.getNodeParameter('filtersJson', i));
 						body = json;
 					}
 					if (returnAll) {
@@ -715,7 +715,7 @@ export class Salesmate implements INodeType {
 							};
 						}
 					} else {
-						const json = validateJSON(this.getNodeParameter('filtersJson', i) as string);
+						const json = validateJSON(this.getNodeParameter('filtersJson', i));
 						body = json;
 					}
 					if (returnAll) {

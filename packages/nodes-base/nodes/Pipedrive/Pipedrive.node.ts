@@ -4298,7 +4298,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const activityId = this.getNodeParameter('activityId', i) as number;
+						const activityId = this.getNodeParameter('activityId', i) as unknown as number;
 						endpoint = `/activities/${activityId}`;
 
 					} else if (operation === 'get') {
@@ -4308,7 +4308,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						const activityId = this.getNodeParameter('activityId', i) as number;
+						const activityId = this.getNodeParameter('activityId', i) as unknown as number;
 
 						endpoint = `/activities/${activityId}`;
 
@@ -4345,7 +4345,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const activityId = this.getNodeParameter('activityId', i) as number;
+						const activityId = this.getNodeParameter('activityId', i) as unknown as number;
 						endpoint = `/activities/${activityId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -4381,7 +4381,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/deals/${dealId}`;
 
 					} else if (operation === 'duplicate') {
@@ -4391,7 +4391,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'POST';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/deals/${dealId}/duplicate`;
 
 					} else if (operation === 'get') {
@@ -4401,7 +4401,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/deals/${dealId}`;
 
 					} else if (operation === 'getAll') {
@@ -4427,7 +4427,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/deals/${dealId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -4483,7 +4483,7 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const dealId = this.getNodeParameter('dealId', i) as string;
+						const dealId = this.getNodeParameter('dealId', i);
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
@@ -4512,11 +4512,11 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						const dealId = this.getNodeParameter('dealId', i) as string;
+						const dealId = this.getNodeParameter('dealId', i);
 
 						endpoint = `/deals/${dealId}/products`;
 
-						body.product_id  = this.getNodeParameter('productId', i) as string;
+						body.product_id  = this.getNodeParameter('productId', i);
 						body.item_price = this.getNodeParameter('item_price', i) as string;
 						body.quantity = this.getNodeParameter('quantity', i) as string;
 
@@ -4529,7 +4529,7 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const dealId = this.getNodeParameter('dealId', i) as string;
+						const dealId = this.getNodeParameter('dealId', i);
 
 						endpoint = `/deals/${dealId}/products`;
 
@@ -4539,8 +4539,8 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'DELETE';
-						const dealId = this.getNodeParameter('dealId', i) as string;
-						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
+						const dealId = this.getNodeParameter('dealId', i);
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i);
 
 						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
 
@@ -4550,8 +4550,8 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						const dealId = this.getNodeParameter('dealId', i) as string;
-						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
+						const dealId = this.getNodeParameter('dealId', i);
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i);
 
 						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
 
@@ -4599,7 +4599,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const fileId = this.getNodeParameter('fileId', i) as number;
+						const fileId = this.getNodeParameter('fileId', i) as unknown as number;
 						endpoint = `/files/${fileId}`;
 
 					} else if (operation === 'download') {
@@ -4610,7 +4610,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 						downloadFile = true;
 
-						const fileId = this.getNodeParameter('fileId', i) as number;
+						const fileId = this.getNodeParameter('fileId', i) as unknown as number;
 						endpoint = `/files/${fileId}/download`;
 
 					} else if (operation === 'get') {
@@ -4620,7 +4620,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						const fileId = this.getNodeParameter('fileId', i) as number;
+						const fileId = this.getNodeParameter('fileId', i) as unknown as number;
 						endpoint = `/files/${fileId}`;
 
 					}
@@ -4644,7 +4644,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const noteId = this.getNodeParameter('noteId', i) as number;
+						const noteId = this.getNodeParameter('noteId', i) as unknown as number;
 						endpoint = `/notes/${noteId}`;
 
 					} else if (operation === 'get') {
@@ -4654,7 +4654,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						const noteId = this.getNodeParameter('noteId', i) as number;
+						const noteId = this.getNodeParameter('noteId', i) as unknown as number;
 						endpoint = `/notes/${noteId}`;
 
 					} else if (operation === 'getAll') {
@@ -4679,7 +4679,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const noteId = this.getNodeParameter('noteId', i) as number;
+						const noteId = this.getNodeParameter('noteId', i) as unknown as number;
 						endpoint = `/notes/${noteId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -4840,7 +4840,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const organizationId = this.getNodeParameter('organizationId', i) as unknown as number;
 						endpoint = `/organizations/${organizationId}`;
 
 					} else if (operation === 'get') {
@@ -4850,7 +4850,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const organizationId = this.getNodeParameter('organizationId', i) as unknown as number;
 						endpoint = `/organizations/${organizationId}`;
 
 					} else if (operation === 'getAll') {
@@ -4872,7 +4872,7 @@ export class Pipedrive implements INodeType {
 						//         organization:update
 						// ----------------------------------
 
-						const id = this.getNodeParameter('organizationId', i) as string;
+						const id = this.getNodeParameter('organizationId', i);
 
 						requestMethod = 'PUT';
 						endpoint = `/organizations/${id}`;
@@ -4931,7 +4931,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const personId = this.getNodeParameter('personId', i) as number;
+						const personId = this.getNodeParameter('personId', i) as unknown as number;
 						endpoint = `/persons/${personId}`;
 
 					} else if (operation === 'get') {
@@ -4941,7 +4941,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						const personId = this.getNodeParameter('personId', i) as number;
+						const personId = this.getNodeParameter('personId', i) as unknown as number;
 						endpoint = `/persons/${personId}`;
 
 					} else if (operation === 'getAll') {
@@ -5008,7 +5008,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const personId = this.getNodeParameter('personId', i) as number;
+						const personId = this.getNodeParameter('personId', i) as unknown as number;
 						endpoint = `/persons/${personId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);

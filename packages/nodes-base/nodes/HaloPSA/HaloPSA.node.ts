@@ -237,7 +237,7 @@ export class HaloPSA implements INodeType {
 
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const name = this.getNodeParameter('clientName', i) as string;
+						const name = this.getNodeParameter('clientName', i);
 						const body: IDataObject = {
 							name,
 							...additionalFields,
@@ -253,10 +253,10 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const clientId = this.getNodeParameter('clientId', i) as string;
+						const clientId = this.getNodeParameter('clientId', i);
 						// const reasign = this.getNodeParameter('reasign', i) as boolean;
 						// if (reasign) {
-						// 	const reasigmentCliendId = this.getNodeParameter('reasigmentCliendId', i) as string;
+						// 	const reasigmentCliendId = this.getNodeParameter('reasigmentCliendId', i);
 						// 	await reasignTickets.call(this, clientId, reasigmentCliendId, tokens.access_token);
 						// }
 
@@ -269,7 +269,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const clientId = this.getNodeParameter('clientId', i) as string;
+						const clientId = this.getNodeParameter('clientId', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						let response;
 						response = await haloPSAApiRequest.call(
@@ -320,7 +320,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const clientId = this.getNodeParameter('clientId', i) as IDataObject;
+						const clientId = this.getNodeParameter('clientId', i) as unknown as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: clientId,
@@ -348,8 +348,8 @@ export class HaloPSA implements INodeType {
 					];
 
 					if (operation === 'create') {
-						const name = this.getNodeParameter('siteName', i) as string;
-						const clientId = this.getNodeParameter('clientId', i) as string;
+						const name = this.getNodeParameter('siteName', i);
+						const clientId = this.getNodeParameter('clientId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							name,
@@ -367,7 +367,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const siteId = this.getNodeParameter('siteId', i) as string;
+						const siteId = this.getNodeParameter('siteId', i);
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
@@ -377,7 +377,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const siteId = this.getNodeParameter('siteId', i) as string;
+						const siteId = this.getNodeParameter('siteId', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						let response;
 						response = await haloPSAApiRequest.call(
@@ -428,7 +428,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const siteId = this.getNodeParameter('siteId', i) as IDataObject;
+						const siteId = this.getNodeParameter('siteId', i) as unknown as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: siteId,
@@ -458,7 +458,7 @@ export class HaloPSA implements INodeType {
 					if (operation === 'create') {
 						const summary = this.getNodeParameter('summary', i) as string;
 						const details = this.getNodeParameter('details', i) as string;
-						const ticketType = this.getNodeParameter('ticketType', i) as string;
+						const ticketType = this.getNodeParameter('ticketType', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							tickettype_id: ticketType,
@@ -477,7 +477,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const ticketId = this.getNodeParameter('ticketId', i);
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
@@ -487,7 +487,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const ticketId = this.getNodeParameter('ticketId', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						let response;
 						response = await haloPSAApiRequest.call(
@@ -538,7 +538,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const ticketId = this.getNodeParameter('ticketId', i) as IDataObject;
+						const ticketId = this.getNodeParameter('ticketId', i) as unknown as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: ticketId,
@@ -567,8 +567,8 @@ export class HaloPSA implements INodeType {
 					];
 
 					if (operation === 'create') {
-						const name = this.getNodeParameter('userName', i) as string;
-						const siteId = this.getNodeParameter('siteId', i) as string;
+						const name = this.getNodeParameter('userName', i);
+						const siteId = this.getNodeParameter('siteId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							name,
@@ -586,7 +586,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
@@ -596,7 +596,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						let response;
 						response = await haloPSAApiRequest.call(
@@ -647,7 +647,7 @@ export class HaloPSA implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const userId = this.getNodeParameter('userId', i) as IDataObject;
+						const userId = this.getNodeParameter('userId', i) as unknown as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: userId,

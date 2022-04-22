@@ -78,14 +78,14 @@ export class Yourls implements INodeType {
 					}
 
 					if (operation === 'expand') {
-						const shortUrl = this.getNodeParameter('shortUrl', i) as string;
+						const shortUrl = this.getNodeParameter('shortUrl', i);
 						qs.shorturl = shortUrl;
 						qs.action = 'expand';
 						responseData = await yourlsApiRequest.call(this, 'GET', {}, qs);
 					}
 
 					if (operation === 'stats') {
-						const shortUrl = this.getNodeParameter('shortUrl', i) as string;
+						const shortUrl = this.getNodeParameter('shortUrl', i);
 						qs.shorturl = shortUrl;
 						qs.action = 'url-stats';
 						responseData = await yourlsApiRequest.call(this, 'GET', {}, qs);

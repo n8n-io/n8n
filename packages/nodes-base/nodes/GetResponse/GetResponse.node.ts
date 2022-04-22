@@ -174,7 +174,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'create') {
 						const email = this.getNodeParameter('email', i);
 
-						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -206,7 +206,7 @@ export class GetResponse implements INodeType {
 					}
 					//https://apireference.getresponse.com/?_ga=2.160836350.2102802044.1604719933-1897033509.1604598019#operation/deleteContact
 					if (operation === 'delete') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						const options = this.getNodeParameter('options', i);
 
@@ -218,7 +218,7 @@ export class GetResponse implements INodeType {
 					}
 					//https://apireference.getresponse.com/?_ga=2.160836350.2102802044.1604719933-1897033509.1604598019#operation/getContactById
 					if (operation === 'get') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						const options = this.getNodeParameter('options', i);
 
@@ -288,7 +288,7 @@ export class GetResponse implements INodeType {
 					//https://apireference.getresponse.com/?_ga=2.160836350.2102802044.1604719933-1897033509.1604598019#operation/updateContact
 					if (operation === 'update') {
 
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 

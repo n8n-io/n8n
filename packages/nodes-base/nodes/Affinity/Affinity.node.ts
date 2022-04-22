@@ -181,8 +181,8 @@ export class Affinity implements INodeType {
 				if (resource === 'listEntry') {
 					//https://api-docs.affinity.co/#create-a-new-list-entry
 					if (operation === 'create') {
-						const listId = this.getNodeParameter('listId', i) as string;
-						const entityId = this.getNodeParameter('entityId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
+						const entityId = this.getNodeParameter('entityId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							entity_id: parseInt(entityId, 10),
@@ -192,14 +192,14 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#get-a-specific-list-entry
 					if (operation === 'get') {
-						const listId = this.getNodeParameter('listId', i) as string;
-						const listEntryId = this.getNodeParameter('listEntryId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
+						const listEntryId = this.getNodeParameter('listEntryId', i);
 						responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
 					}
 					//https://api-docs.affinity.co/#get-all-list-entries
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const listId = this.getNodeParameter('listId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
 						if (returnAll === true) {
 							responseData = await affinityApiRequestAllItems.call(this, 'list_entries', 'GET', `/lists/${listId}/list-entries`, {}, qs);
 						} else {
@@ -210,16 +210,16 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#delete-a-specific-list-entry
 					if (operation === 'delete') {
-						const listId = this.getNodeParameter('listId', i) as string;
-						const listEntryId = this.getNodeParameter('listEntryId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
+						const listEntryId = this.getNodeParameter('listEntryId', i);
 						responseData = await affinityApiRequest.call(this, 'DELETE', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
 					}
 				}
 				if (resource === 'person') {
 					//https://api-docs.affinity.co/#create-a-new-person
 					if (operation === 'create') {
-						const firstName = this.getNodeParameter('firstName', i) as string;
-						const lastName = this.getNodeParameter('lastName', i) as string;
+						const firstName = this.getNodeParameter('firstName', i);
+						const lastName = this.getNodeParameter('lastName', i);
 						const emails = this.getNodeParameter('emails', i) as string[];
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPerson = {
@@ -234,7 +234,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#update-a-person
 					if (operation === 'update') {
-						const personId = this.getNodeParameter('personId', i) as number;
+						const personId = this.getNodeParameter('personId', i) as unknown as number;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const emails = this.getNodeParameter('emails', i) as string[];
 						const body: IPerson = {
@@ -253,7 +253,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#get-a-specific-person
 					if (operation === 'get') {
-						const personId = this.getNodeParameter('personId', i) as number;
+						const personId = this.getNodeParameter('personId', i) as unknown as number;
 						const options = this.getNodeParameter('options', i);
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
@@ -280,7 +280,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#delete-a-person
 					if (operation === 'delete') {
-						const personId = this.getNodeParameter('personId', i) as number;
+						const personId = this.getNodeParameter('personId', i) as unknown as number;
 						responseData = await affinityApiRequest.call(this, 'DELETE', `/persons/${personId}`, {}, qs);
 					}
 				}
@@ -301,7 +301,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#update-an-organization
 					if (operation === 'update') {
-						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const organizationId = this.getNodeParameter('organizationId', i) as unknown as number;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IOrganization = {};
 						if (updateFields.name) {
@@ -317,7 +317,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#get-a-specific-organization
 					if (operation === 'get') {
-						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const organizationId = this.getNodeParameter('organizationId', i) as unknown as number;
 						const options = this.getNodeParameter('options', i);
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
@@ -344,7 +344,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#delete-an-organization
 					if (operation === 'delete') {
-						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const organizationId = this.getNodeParameter('organizationId', i) as unknown as number;
 						responseData = await affinityApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {}, qs);
 					}
 				}

@@ -138,7 +138,7 @@ export class Shopify implements INodeType {
 						const discount = additionalFields.discountCodesUi as IDataObject;
 						const billing = additionalFields.billingAddressUi as IDataObject;
 						const shipping = additionalFields.shippingAddressUi as IDataObject;
-						const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject).lineItemValues as IDataObject[];
+						const lineItem = (this.getNodeParameter('limeItemsUi', i)).lineItemValues as IDataObject[];
 						if (lineItem === undefined) {
 							throw new NodeOperationError(this.getNode(), 'At least one line item has to be added');
 						}
@@ -193,13 +193,13 @@ export class Shopify implements INodeType {
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#destroy-2020-04
 					if (operation === 'delete') {
-						const orderId = this.getNodeParameter('orderId', i) as string;
+						const orderId = this.getNodeParameter('orderId', i);
 						responseData = await shopifyApiRequest.call(this, 'DELETE', `/orders/${orderId}.json`);
 						responseData = { success: true };
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#show-2020-04
 					if (operation === 'get') {
-						const orderId = this.getNodeParameter('orderId', i) as string;
+						const orderId = this.getNodeParameter('orderId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.fields) {
 							qs.fields = options.fields as string;
@@ -261,7 +261,7 @@ export class Shopify implements INodeType {
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#update-2019-10
 					if (operation === 'update') {
-						const orderId = this.getNodeParameter('orderId', i) as string;
+						const orderId = this.getNodeParameter('orderId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const shipping = updateFields.shippingAddressUi as IDataObject;
 						const body: IOrder = {};

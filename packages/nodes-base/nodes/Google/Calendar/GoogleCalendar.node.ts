@@ -384,7 +384,7 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/events/delete
 					if (operation === 'delete') {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
-						const eventId = this.getNodeParameter('eventId', i) as string;
+						const eventId = this.getNodeParameter('eventId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.sendUpdates) {
 							qs.sendUpdates = options.sendUpdates as number;
@@ -400,7 +400,7 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/events/get
 					if (operation === 'get') {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
-						const eventId = this.getNodeParameter('eventId', i) as string;
+						const eventId = this.getNodeParameter('eventId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.maxAttendees) {
 							qs.maxAttendees = options.maxAttendees as number;
@@ -478,7 +478,7 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/events/patch
 					if (operation === 'update') {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
-						const eventId = this.getNodeParameter('eventId', i) as string;
+						const eventId = this.getNodeParameter('eventId', i);
 						const useDefaultReminders = this.getNodeParameter(
 							'useDefaultReminders',
 							i,

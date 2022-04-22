@@ -541,7 +541,7 @@ export class Markdown implements INodeType {
 			try {
 				if (mode === 'htmlToMarkdown') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
+					const destinationKey = this.getNodeParameter('destinationKey', i);
 
 					const textReplaceOption = this.getNodeParameter('options.textReplace.values', i, []) as IDataObject[];
 					options.textReplace = !isEmpty(textReplaceOption)
@@ -582,7 +582,7 @@ export class Markdown implements INodeType {
 
 				if (mode === 'markdownToHtml') {
 					const markdown = this.getNodeParameter('markdown', i) as string;
-					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
+					const destinationKey = this.getNodeParameter('destinationKey', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const converter = new Converter();

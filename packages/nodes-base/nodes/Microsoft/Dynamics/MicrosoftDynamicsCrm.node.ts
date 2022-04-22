@@ -161,14 +161,14 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'delete') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/update-delete-entities-using-web-api#basic-delete
-						const accountId = this.getNodeParameter('accountId', i) as string;
+						const accountId = this.getNodeParameter('accountId', i);
 						await microsoftApiRequest.call(this, 'DELETE', `/accounts(${accountId})`, {}, qs);
 						responseData = { success: true };
 					}
 
 					if (operation === 'get') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/retrieve-entity-using-web-api
-						const accountId = this.getNodeParameter('accountId', i) as string;
+						const accountId = this.getNodeParameter('accountId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.returnFields) {
 							qs['$select'] = (options.returnFields as string[]).join(',');
@@ -203,7 +203,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const accountId = this.getNodeParameter('accountId', i) as string;
+						const accountId = this.getNodeParameter('accountId', i);
 						// tslint:disable-next-line: no-any
 						const updateFields = this.getNodeParameter('updateFields', i) as { addresses: { address: [{ [key: string]: any }] } };
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };

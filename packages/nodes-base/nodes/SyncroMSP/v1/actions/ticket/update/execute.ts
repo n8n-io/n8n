@@ -14,7 +14,7 @@ import {
 
 
 export async function updateTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('ticketId', index) as IDataObject;
+	const id = this.getNodeParameter('ticketId', index) as unknown as IDataObject;
 	const { assetId, customerId, dueDate, issueType, status, subject, ticketType, contactId } = this.getNodeParameter('updateFields', index) as IDataObject;
 
 

@@ -251,7 +251,7 @@ export class Ghost implements INodeType {
 
 						if (operation === 'delete') {
 
-							const postId = this.getNodeParameter('postId', i) as string;
+							const postId = this.getNodeParameter('postId', i);
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
 
@@ -305,7 +305,7 @@ export class Ghost implements INodeType {
 
 						if (operation === 'update') {
 
-							const postId = this.getNodeParameter('postId', i) as string;
+							const postId = this.getNodeParameter('postId', i);
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 

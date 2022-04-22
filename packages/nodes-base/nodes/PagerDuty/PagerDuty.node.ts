@@ -222,10 +222,10 @@ export class PagerDuty implements INodeType {
 					//https://api-reference.pagerduty.com/#!/Incidents/post_incidents
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i);
-						const serviceId = this.getNodeParameter('serviceId', i) as string;
+						const serviceId = this.getNodeParameter('serviceId', i);
 						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i) as IDataObject).conferenceBridgeValues as IDataObject;
+						const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i)).conferenceBridgeValues as IDataObject;
 						const body: IIncident = {
 							type: 'incident',
 							title,
@@ -269,7 +269,7 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents_id
 					if (operation === 'get') {
-						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const incidentId = this.getNodeParameter('incidentId', i);
 						responseData = await pagerDutyApiRequest.call(this, 'GET', `/incidents/${incidentId}`);
 						responseData = responseData.incident;
 					}
@@ -300,9 +300,9 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Incidents/put_incidents_id
 					if (operation === 'update') {
-						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const incidentId = this.getNodeParameter('incidentId', i);
 						const email = this.getNodeParameter('email', i);
-						const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i) as IDataObject).conferenceBridgeValues as IDataObject;
+						const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i)).conferenceBridgeValues as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IIncident = {
 							type: 'incident',
@@ -353,7 +353,7 @@ export class PagerDuty implements INodeType {
 				if (resource === 'incidentNote') {
 					//https://api-reference.pagerduty.com/#!/Incidents/post_incidents_id_notes
 					if (operation === 'create') {
-						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const incidentId = this.getNodeParameter('incidentId', i);
 						const content = this.getNodeParameter('content', i) as string;
 						const email = this.getNodeParameter('email', i);
 						const body: IDataObject = {
@@ -363,7 +363,7 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents_id_notes
 					if (operation === 'getAll') {
-						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const incidentId = this.getNodeParameter('incidentId', i);
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await pagerDutyApiRequestAllItems.call(this, 'notes', 'GET', `/incidents/${incidentId}/notes`, {}, qs);
@@ -377,7 +377,7 @@ export class PagerDuty implements INodeType {
 				if (resource === 'logEntry') {
 					//https://api-reference.pagerduty.com/#!/Log_Entries/get_log_entries_id
 					if (operation === 'get') {
-						const logEntryId = this.getNodeParameter('logEntryId', i) as string;
+						const logEntryId = this.getNodeParameter('logEntryId', i);
 						responseData = await pagerDutyApiRequest.call(this, 'GET', `/log_entries/${logEntryId}`);
 						responseData = responseData.log_entry;
 					}
@@ -399,7 +399,7 @@ export class PagerDuty implements INodeType {
 				if (resource === 'user') {
 					//https://developer.pagerduty.com/api-reference/reference/REST/openapiv3.json/paths/~1users~1%7Bid%7D/get
 					if (operation === 'get') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						responseData = await pagerDutyApiRequest.call(this, 'GET', `/users/${userId}`);
 						responseData = responseData.user;
 					}

@@ -212,7 +212,7 @@ export class Cortex implements INodeType {
 
 						const analyzer = this.getNodeParameter('analyzer', i) as string;
 
-						const observableType = this.getNodeParameter('observableType', i) as string;
+						const observableType = this.getNodeParameter('observableType', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -301,7 +301,7 @@ export class Cortex implements INodeType {
 					//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-1
 					if (operation === 'get') {
 
-						const jobId = this.getNodeParameter('jobId', i) as string;
+						const jobId = this.getNodeParameter('jobId', i);
 
 						responseData = await cortexApiRequest.call(
 							this,
@@ -312,7 +312,7 @@ export class Cortex implements INodeType {
 					//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-and-report
 					if (operation === 'report') {
 
-						const jobId = this.getNodeParameter('jobId', i) as string;
+						const jobId = this.getNodeParameter('jobId', i);
 
 						responseData = await cortexApiRequest.call(
 							this,
@@ -326,7 +326,7 @@ export class Cortex implements INodeType {
 					if (operation === 'execute') {
 						const responderId = (this.getNodeParameter('responder', i) as string).split('::')[0];
 
-						const entityType = this.getNodeParameter('entityType', i) as string;
+						const entityType = this.getNodeParameter('entityType', i);
 
 						const isJSON = this.getNodeParameter('jsonObject', i) as boolean;
 						let body: IDataObject;

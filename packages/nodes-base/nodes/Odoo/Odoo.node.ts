@@ -324,7 +324,7 @@ export class Odoo implements INodeType {
 							delete additionalFields.address;
 						}
 
-						const name = this.getNodeParameter('contactName', i) as string;
+						const name = this.getNodeParameter('contactName', i);
 						const fields: IDataObject = {
 							name,
 							...additionalFields,
@@ -342,7 +342,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -356,7 +356,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
@@ -406,7 +406,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						let updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.address) {
@@ -451,7 +451,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
+						const customResourceId = this.getNodeParameter('customResourceId', i);
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -465,7 +465,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
+						const customResourceId = this.getNodeParameter('customResourceId', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
@@ -516,7 +516,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
+						const customResourceId = this.getNodeParameter('customResourceId', i);
 						const fields = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
 						responseData = await odooUpdate.call(
 							this,
@@ -553,7 +553,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const noteId = this.getNodeParameter('noteId', i) as string;
+						const noteId = this.getNodeParameter('noteId', i);
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -567,7 +567,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const noteId = this.getNodeParameter('noteId', i) as string;
+						const noteId = this.getNodeParameter('noteId', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
@@ -617,7 +617,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const noteId = this.getNodeParameter('noteId', i) as string;
+						const noteId = this.getNodeParameter('noteId', i);
 						const memo = this.getNodeParameter('memo', i) as string;
 						const fields: IDataObject = {
 							memo,
@@ -639,7 +639,7 @@ export class Odoo implements INodeType {
 				if (resource === 'opportunity') {
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const name = this.getNodeParameter('opportunityName', i) as string;
+						const name = this.getNodeParameter('opportunityName', i);
 						const fields: IDataObject = {
 							name,
 							...additionalFields,
@@ -658,7 +658,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+						const opportunityId = this.getNodeParameter('opportunityId', i);
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -672,7 +672,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+						const opportunityId = this.getNodeParameter('opportunityId', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = options.fieldsList as IDataObject[] || [];
 						responseData = await odooGet.call(
@@ -722,7 +722,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+						const opportunityId = this.getNodeParameter('opportunityId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						responseData = await odooUpdate.call(
 							this,

@@ -175,7 +175,7 @@ export class AwsLambda implements INodeType {
 			try {
 				const params = {
 					FunctionName: this.getNodeParameter('function', i) as string,
-					InvocationType: this.getNodeParameter('invocationType', i) as string,
+					InvocationType: this.getNodeParameter('invocationType', i),
 					Payload: this.getNodeParameter('payload', i) as string,
 					Qualifier: this.getNodeParameter('qualifier', i) as string,
 				};

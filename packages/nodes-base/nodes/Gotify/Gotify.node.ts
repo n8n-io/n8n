@@ -215,7 +215,7 @@ export class Gotify implements INodeType {
 						);
 					}
 					if (operation === 'delete') {
-						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i);
 
 						responseData = await gotifyApiRequest.call(
 							this,

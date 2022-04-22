@@ -349,7 +349,7 @@ export class Dropcontact implements INodeType {
 
 			if (operation === 'fetchRequest') {
 				for (let i = 0; i < entryData.length; i++) {
-					const requestId = this.getNodeParameter('requestId', i) as string;
+					const requestId = this.getNodeParameter('requestId', i);
 					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${requestId}`, {}, {}) as { request_id: string, error: string, success: boolean };
 					if (!responseData.success) {
 						if (this.continueOnFail()) {

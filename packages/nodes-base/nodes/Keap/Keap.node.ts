@@ -298,10 +298,10 @@ export class Keap implements INodeType {
 			if (resource === 'company') {
 				//https://developer.keap.com/docs/rest/#!/Company/createCompanyUsingPOST
 				if (operation === 'create') {
-					const addresses = (this.getNodeParameter('addressesUi', i) as IDataObject).addressesValues as IDataObject[];
-					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
-					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
-					const companyName = this.getNodeParameter('companyName', i) as string;
+					const addresses = (this.getNodeParameter('addressesUi', i)).addressesValues as IDataObject[];
+					const faxes = (this.getNodeParameter('faxesUi', i)).faxesValues as IDataObject[];
+					const phones = (this.getNodeParameter('phonesUi', i)).phonesValues as IDataObject[];
+					const companyName = this.getNodeParameter('companyName', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ICompany = {
 						company_name: companyName,
@@ -342,11 +342,11 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/createOrUpdateContactUsingPUT
 				if (operation === 'upsert') {
 					const duplicateOption = this.getNodeParameter('duplicateOption', i) as string;
-					const addresses = (this.getNodeParameter('addressesUi', i) as IDataObject).addressesValues as IDataObject[];
-					const emails = (this.getNodeParameter('emailsUi', i) as IDataObject).emailsValues as IDataObject[];
-					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
-					const socialAccounts = (this.getNodeParameter('socialAccountsUi', i) as IDataObject).socialAccountsValues as IDataObject[];
-					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
+					const addresses = (this.getNodeParameter('addressesUi', i)).addressesValues as IDataObject[];
+					const emails = (this.getNodeParameter('emailsUi', i)).emailsValues as IDataObject[];
+					const faxes = (this.getNodeParameter('faxesUi', i)).faxesValues as IDataObject[];
+					const socialAccounts = (this.getNodeParameter('socialAccountsUi', i)).socialAccountsValues as IDataObject[];
+					const phones = (this.getNodeParameter('phonesUi', i)).phonesValues as IDataObject[];
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IContact = {
 						duplicate_option: pascalCase(duplicateOption),
@@ -428,13 +428,13 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/deleteContactUsingDELETE
 				if (operation === 'delete') {
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 					responseData = await keapApiRequest.call(this, 'DELETE', `/contacts/${contactId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/getContactUsingGET
 				if (operation === 'get') {
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 					const options = this.getNodeParameter('options', i);
 					if (options.fields) {
 						qs.optional_properties = options.fields as string;
@@ -478,8 +478,8 @@ export class Keap implements INodeType {
 			if (resource === 'contactNote') {
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/createNoteUsingPOST
 				if (operation === 'create') {
-					const userId = this.getNodeParameter('userId', i) as number;
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+					const userId = this.getNodeParameter('userId', i) as unknown as number;
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: INote = {
 						user_id: userId,
@@ -494,13 +494,13 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/deleteNoteUsingDELETE
 				if (operation === 'delete') {
-					const noteId = this.getNodeParameter('noteId', i) as string;
+					const noteId = this.getNodeParameter('noteId', i);
 					responseData = await keapApiRequest.call(this, 'DELETE', `/notes/${noteId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/getNoteUsingGET
 				if (operation === 'get') {
-					const noteId = this.getNodeParameter('noteId', i) as string;
+					const noteId = this.getNodeParameter('noteId', i);
 					responseData = await keapApiRequest.call(this, 'GET', `/notes/${noteId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/listNotesUsingGET
@@ -519,7 +519,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/updatePropertiesOnNoteUsingPATCH
 				if (operation === 'update') {
-					const noteId = this.getNodeParameter('noteId', i) as string;
+					const noteId = this.getNodeParameter('noteId', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: INote = {};
 					keysToSnakeCase(additionalFields);
@@ -533,7 +533,7 @@ export class Keap implements INodeType {
 			if (resource === 'contactTag') {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/applyTagsToContactIdUsingPOST
 				if (operation === 'create') {
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 					const tagIds = this.getNodeParameter('tagIds', i) as number[];
 					const body: IDataObject = {
 						tagIds,
@@ -542,7 +542,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/removeTagsFromContactUsingDELETE_1
 				if (operation === 'delete') {
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 					const tagIds = this.getNodeParameter('tagIds', i) as string;
 					qs.ids = tagIds;
 					responseData = await keapApiRequest.call(this, 'DELETE', `/contacts/${contactId}/tags`, {}, qs);
@@ -551,7 +551,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listAppliedTagsUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 					if (returnAll) {
 						responseData = await keapApiRequestAllItems.call(this, 'tags', 'GET', `/contacts/${contactId}/tags`, {}, qs);
 					} else {
@@ -564,12 +564,12 @@ export class Keap implements INodeType {
 			if (resource === 'ecommerceOrder') {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/createOrderUsingPOST
 				if (operation === 'create') {
-					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const orderDate = this.getNodeParameter('orderDate', i) as string;
+					const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
+					const orderDate = this.getNodeParameter('orderDate', i);
 					const orderTitle = this.getNodeParameter('orderTitle', i) as string;
-					const orderType = this.getNodeParameter('orderType', i) as string;
-					const orderItems = (this.getNodeParameter('orderItemsUi', i) as IDataObject).orderItemsValues as IDataObject[];
-					const shippingAddress = (this.getNodeParameter('addressUi', i) as IDataObject).addressValues as IDataObject;
+					const orderType = this.getNodeParameter('orderType', i);
+					const orderItems = (this.getNodeParameter('orderItemsUi', i)).orderItemsValues as IDataObject[];
+					const shippingAddress = (this.getNodeParameter('addressUi', i)).addressValues as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceOrder = {
 						contact_id: contactId,
@@ -590,13 +590,13 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/deleteOrderUsingDELETE
 				if (operation === 'delete') {
-					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
+					const orderId = parseInt(this.getNodeParameter('orderId', i), 10);
 					responseData = await keapApiRequest.call(this, 'DELETE', `/orders/${orderId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/getOrderUsingGET
 				if (operation === 'get') {
-					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
+					const orderId = parseInt(this.getNodeParameter('orderId', i), 10);
 					responseData = await keapApiRequest.call(this, 'get', `/orders/${orderId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
@@ -617,7 +617,7 @@ export class Keap implements INodeType {
 			if (resource === 'ecommerceProduct') {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/createProductUsingPOST
 				if (operation === 'create') {
-					const productName = this.getNodeParameter('productName', i) as string;
+					const productName = this.getNodeParameter('productName', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceProduct = {
 						product_name: productName,
@@ -628,13 +628,13 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/deleteProductUsingDELETE
 				if (operation === 'delete') {
-					const productId = this.getNodeParameter('productId', i) as string;
+					const productId = this.getNodeParameter('productId', i);
 					responseData = await keapApiRequest.call(this, 'DELETE', `/products/${productId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/retrieveProductUsingGET
 				if (operation === 'get') {
-					const productId = this.getNodeParameter('productId', i) as string;
+					const productId = this.getNodeParameter('productId', i);
 					responseData = await keapApiRequest.call(this, 'get', `/products/${productId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
@@ -668,7 +668,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
 				if (operation === 'deleteRecord') {
-					const emailRecordId = parseInt(this.getNodeParameter('emailRecordId', i) as string, 10);
+					const emailRecordId = parseInt(this.getNodeParameter('emailRecordId', i), 10);
 					responseData = await keapApiRequest.call(this, 'DELETE', `/emails/${emailRecordId}`);
 					responseData = { success: true };
 				}
@@ -688,7 +688,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
 				if (operation === 'send') {
-					const userId = this.getNodeParameter('userId', i) as number;
+					const userId = this.getNodeParameter('userId', i) as unknown as number;
 					const contactIds = ((this.getNodeParameter('contactIds', i) as string).split(',') as string[]).map((e) => (parseInt(e, 10)));
 					const subject = this.getNodeParameter('subject', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -700,7 +700,7 @@ export class Keap implements INodeType {
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
 
-					const attachmentsUi = this.getNodeParameter('attachmentsUi', i) as IDataObject;
+					const attachmentsUi = this.getNodeParameter('attachmentsUi', i);
 					let attachments: IAttachment[] = [];
 					if (attachmentsUi) {
 						if (attachmentsUi.attachmentsValues) {
@@ -738,7 +738,7 @@ export class Keap implements INodeType {
 			if (resource === 'file') {
 				//https://developer.infusionsoft.com/docs/rest/#!/File/deleteFileUsingDELETE
 				if (operation === 'delete') {
-					const fileId = parseInt(this.getNodeParameter('fileId', i) as string, 10);
+					const fileId = parseInt(this.getNodeParameter('fileId', i), 10);
 					responseData = await keapApiRequest.call(this, 'DELETE', `/files/${fileId}`);
 					responseData = { success: true };
 				}
@@ -775,7 +775,7 @@ export class Keap implements INodeType {
 						file_association: fileAssociation.toUpperCase(),
 					};
 					if (fileAssociation === 'contact') {
-						const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
+						const contactId = parseInt(this.getNodeParameter('contactId', i), 10);
 						body.contact_id = contactId;
 					}
 					if (binaryData) {
@@ -795,7 +795,7 @@ export class Keap implements INodeType {
 						body.file_name = item[binaryPropertyName as string].fileName;
 
 					} else {
-						const fileName = this.getNodeParameter('fileName', i) as string;
+						const fileName = this.getNodeParameter('fileName', i);
 						const fileData = this.getNodeParameter('fileData', i) as string;
 						body.file_name = fileName;
 						body.file_data = fileData;

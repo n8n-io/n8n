@@ -339,7 +339,7 @@ export class Signl4 implements INodeType {
 
 						const data: IDataObject = {};
 
-						data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
+						data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i);
 
 						data['X-S4-Status'] = 'resolved';
 

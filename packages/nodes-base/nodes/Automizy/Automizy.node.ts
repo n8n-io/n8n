@@ -147,7 +147,7 @@ export class Automizy implements INodeType {
 			if (resource === 'contact') {
 
 				if (operation === 'create') {
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const email = this.getNodeParameter('email', i);
 
@@ -182,7 +182,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'delete') {
-					const contactId = this.getNodeParameter('contactId', i) as string;
+					const contactId = this.getNodeParameter('contactId', i);
 
 					responseData = await automizyApiRequest.call(
 						this,
@@ -194,7 +194,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'get') {
-					const contactId = this.getNodeParameter('contactId', i) as string;
+					const contactId = this.getNodeParameter('contactId', i);
 
 					responseData = await automizyApiRequest.call(
 						this,
@@ -206,7 +206,7 @@ export class Automizy implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -294,7 +294,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'delete') {
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					responseData = await automizyApiRequest.call(
 						this,
@@ -306,7 +306,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'get') {
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					responseData = await automizyApiRequest.call(
 						this,
@@ -355,7 +355,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'update') {
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const name = this.getNodeParameter('name', i);
 

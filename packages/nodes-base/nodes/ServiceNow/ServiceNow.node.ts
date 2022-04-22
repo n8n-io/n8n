@@ -606,7 +606,7 @@ export class ServiceNow implements INodeType {
 
 					if (operation === 'create') {
 
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};
 
@@ -630,14 +630,14 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'delete') {
 
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const id = this.getNodeParameter('id', i) as string;
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/${tableName}/${id}`);
 						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i);
 
@@ -650,7 +650,7 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'getAll') {
 
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i);
 
@@ -670,7 +670,7 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'update') {
 
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const id = this.getNodeParameter('id', i) as string;
 						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};
@@ -725,7 +725,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/sys_user/${id}`, {}, qs);
 							responseData = response.result;
 						} else {
-							const userName = this.getNodeParameter('user_name', i) as string;
+							const userName = this.getNodeParameter('user_name', i);
 							qs.sysparm_query = `user_name=${userName}`;
 							qs.sysparm_limit = 1;
 							const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/sys_user', {}, qs);

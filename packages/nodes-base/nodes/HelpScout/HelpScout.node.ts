@@ -175,13 +175,13 @@ export class HelpScout implements INodeType {
 				if (resource === 'conversation') {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/create
 					if (operation === 'create') {
-						const mailboxId = this.getNodeParameter('mailboxId', i) as number;
+						const mailboxId = this.getNodeParameter('mailboxId', i) as unknown as number;
 						const status = this.getNodeParameter('status', i) as string;
 						const subject = this.getNodeParameter('subject', i);
 						const type = this.getNodeParameter('type', i) as string;
 						const resolveData = this.getNodeParameter('resolveData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const threads = (this.getNodeParameter('threadsUi', i) as IDataObject).threadsValues as IDataObject[];
+						const threads = (this.getNodeParameter('threadsUi', i)).threadsValues as IDataObject[];
 						const body: IConversation = {
 							mailboxId,
 							status,
@@ -231,13 +231,13 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/delete
 					if (operation === 'delete') {
-						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						const conversationId = this.getNodeParameter('conversationId', i);
 						responseData = await helpscoutApiRequest.call(this, 'DELETE', `/v2/conversations/${conversationId}`);
 						responseData = { success: true };
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/get
 					if (operation === 'get') {
-						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						const conversationId = this.getNodeParameter('conversationId', i);
 						responseData = await helpscoutApiRequest.call(this, 'GET', `/v2/conversations/${conversationId}`);
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/list
@@ -259,12 +259,12 @@ export class HelpScout implements INodeType {
 					if (operation === 'create') {
 						const resolveData = this.getNodeParameter('resolveData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const chats = (this.getNodeParameter('chatsUi', i) as IDataObject).chatsValues as IDataObject[];
-						const address = (this.getNodeParameter('addressUi', i) as IDataObject).addressValue as IDataObject;
-						const emails = (this.getNodeParameter('emailsUi', i) as IDataObject).emailsValues as IDataObject[];
-						const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
-						const socialProfiles = (this.getNodeParameter('socialProfilesUi', i) as IDataObject).socialProfilesValues as IDataObject[];
-						const websites = (this.getNodeParameter('websitesUi', i) as IDataObject).websitesValues as IDataObject[];
+						const chats = (this.getNodeParameter('chatsUi', i)).chatsValues as IDataObject[];
+						const address = (this.getNodeParameter('addressUi', i)).addressValue as IDataObject;
+						const emails = (this.getNodeParameter('emailsUi', i)).emailsValues as IDataObject[];
+						const phones = (this.getNodeParameter('phonesUi', i)).phonesValues as IDataObject[];
+						const socialProfiles = (this.getNodeParameter('socialProfilesUi', i)).socialProfilesValues as IDataObject[];
+						const websites = (this.getNodeParameter('websitesUi', i)).websitesValues as IDataObject[];
 						let body: ICustomer = {};
 						body = Object.assign({}, additionalFields);
 						if (body.age) {
@@ -310,7 +310,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/get
 					if (operation === 'get') {
-						const customerId = this.getNodeParameter('customerId', i) as string;
+						const customerId = this.getNodeParameter('customerId', i);
 						responseData = await helpscoutApiRequest.call(this, 'GET', `/v2/customers/${customerId}`);
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/list
@@ -328,7 +328,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/overwrite/
 					if (operation === 'update') {
-						const customerId = this.getNodeParameter('customerId', i) as string;
+						const customerId = this.getNodeParameter('customerId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						let body: ICustomer = {};
 						body = Object.assign({}, updateFields);
@@ -345,7 +345,7 @@ export class HelpScout implements INodeType {
 				if (resource === 'mailbox') {
 					//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/get
 					if (operation === 'get') {
-						const mailboxId = this.getNodeParameter('mailboxId', i) as string;
+						const mailboxId = this.getNodeParameter('mailboxId', i);
 						responseData = await helpscoutApiRequest.call(this, 'GET', `/v2/mailboxes/${mailboxId}`, {}, qs);
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/list
@@ -363,11 +363,11 @@ export class HelpScout implements INodeType {
 				if (resource === 'thread') {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/chat
 					if (operation === 'create') {
-						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						const conversationId = this.getNodeParameter('conversationId', i);
 						const type = this.getNodeParameter('type', i) as string;
 						const text = this.getNodeParameter('text', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
+						const attachments = this.getNodeParameter('attachmentsUi', i);
 						const body: IThread = {
 							text,
 							attachments: [],
@@ -419,7 +419,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						const conversationId = this.getNodeParameter('conversationId', i);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.threads', 'GET', `/v2/conversations/${conversationId}/threads`);
 						} else {

@@ -184,7 +184,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 					if (operation === 'update') {
-						const postId = this.getNodeParameter('postId', i) as string;
+						const postId = this.getNodeParameter('postId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IPost = {
 							id: parseInt(postId, 10),
@@ -229,7 +229,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
 					if (operation === 'get') {
-						const postId = this.getNodeParameter('postId', i) as string;
+						const postId = this.getNodeParameter('postId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.password) {
 							qs.password = options.password as string;
@@ -288,7 +288,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
 					if (operation === 'delete') {
-						const postId = this.getNodeParameter('postId', i) as string;
+						const postId = this.getNodeParameter('postId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.force) {
 							qs.force = options.force as boolean;
@@ -300,9 +300,9 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/users/#create-a-user
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i);
-						const username = this.getNodeParameter('username', i) as string;
-						const firstName = this.getNodeParameter('firstName', i) as string;
-						const lastName = this.getNodeParameter('lastName', i) as string;
+						const username = this.getNodeParameter('username', i);
+						const firstName = this.getNodeParameter('firstName', i);
+						const lastName = this.getNodeParameter('lastName', i);
 						const email = this.getNodeParameter('email', i);
 						const password = this.getNodeParameter('password', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -330,7 +330,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 					if (operation === 'update') {
-						const userId = this.getNodeParameter('userId', i) as number;
+						const userId = this.getNodeParameter('userId', i) as unknown as number;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IUser = {
 							id: userId,
@@ -369,7 +369,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user
 					if (operation === 'get') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.context) {
 							qs.context = options.context as string;

@@ -105,8 +105,8 @@ export class GoogleContacts implements INodeType {
 				if (resource === 'contact') {
 					//https://developers.google.com/calendar/v3/reference/events/insert
 					if (operation === 'create') {
-						const familyName = this.getNodeParameter('familyName', i) as string;
-						const givenName = this.getNodeParameter('givenName', i) as string;
+						const familyName = this.getNodeParameter('familyName', i);
+						const givenName = this.getNodeParameter('givenName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
@@ -228,7 +228,7 @@ export class GoogleContacts implements INodeType {
 					}
 					//https://developers.google.com/people/api/rest/v1/people/deleteContact
 					if (operation === 'delete') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
@@ -239,7 +239,7 @@ export class GoogleContacts implements INodeType {
 					}
 					//https://developers.google.com/people/api/rest/v1/people/get
 					if (operation === 'get') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
 						const rawData = this.getNodeParameter('rawData', i);
 
@@ -332,7 +332,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'update') {
 						const updatePersonFields = [];
 
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						const fields = this.getNodeParameter('fields', i) as string[];
 

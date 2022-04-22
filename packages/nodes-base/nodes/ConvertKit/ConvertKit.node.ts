@@ -417,7 +417,7 @@ export class ConvertKit implements INodeType {
 
 					if (operation === 'add') {
 
-						const tagId = this.getNodeParameter('tagId', i) as string;
+						const tagId = this.getNodeParameter('tagId', i);
 
 						const email = this.getNodeParameter('email', i);
 
@@ -449,7 +449,7 @@ export class ConvertKit implements INodeType {
 
 					if (operation === 'getAll') {
 
-						const tagId = this.getNodeParameter('tagId', i) as string;
+						const tagId = this.getNodeParameter('tagId', i);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -467,7 +467,7 @@ export class ConvertKit implements INodeType {
 
 					if (operation === 'delete') {
 
-						const tagId = this.getNodeParameter('tagId', i) as string;
+						const tagId = this.getNodeParameter('tagId', i);
 
 						const email = this.getNodeParameter('email', i);
 

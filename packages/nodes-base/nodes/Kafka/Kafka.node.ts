@@ -283,14 +283,14 @@ export class Kafka implements INodeType {
 				let headers;
 
 				if (jsonParameters === true) {
-					headers = this.getNodeParameter('headerParametersJson', i) as string;
+					headers = this.getNodeParameter('headerParametersJson', i);
 					try {
 						headers = JSON.parse(headers);
 					} catch (exception) {
 						throw new NodeOperationError(this.getNode(), 'Headers must be a valid json');
 					}
 				} else {
-					const values = (this.getNodeParameter('headersUi', i) as IDataObject).headerValues as IDataObject[];
+					const values = (this.getNodeParameter('headersUi', i)).headerValues as IDataObject[];
 					headers = {};
 					if (values !== undefined) {
 						for (const value of values) {

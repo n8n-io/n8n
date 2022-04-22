@@ -352,8 +352,8 @@ export class Hunter implements INodeType {
 				//https://hunter.io/api-documentation/v2#email-finder
 				if (operation === 'emailFinder') {
 					const domain = this.getNodeParameter('domain', i) as string;
-					const firstname = this.getNodeParameter('firstname', i) as string;
-					const lastname = this.getNodeParameter('lastname', i) as string;
+					const firstname = this.getNodeParameter('firstname', i);
+					const lastname = this.getNodeParameter('lastname', i);
 					qs.first_name = firstname;
 					qs.last_name = lastname;
 					qs.domain = domain;

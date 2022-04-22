@@ -2114,7 +2114,7 @@ export class Asana implements INodeType {
 						//         subtask:create
 						// ----------------------------------
 
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						requestMethod = 'POST';
 						endpoint = `/tasks/${taskId}/subtasks`;
@@ -2133,7 +2133,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						//        subtask:getAll
 						// ----------------------------------
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -2434,7 +2434,7 @@ export class Asana implements INodeType {
 						//         get
 						// ----------------------------------
 
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 
 						requestMethod = 'GET';
 						endpoint = `/users/${userId}`;

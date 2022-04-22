@@ -216,11 +216,11 @@ export class Xero implements INodeType {
 				//https://developer.xero.com/documentation/api/invoices
 				if (resource === 'invoice') {
 					if (operation === 'create') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
 						const type = this.getNodeParameter('type', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const contactId = this.getNodeParameter('contactId', i) as string;
-						const lineItemsValues = ((this.getNodeParameter('lineItemsUi', i) as IDataObject).lineItemsValues as IDataObject[]);
+						const contactId = this.getNodeParameter('contactId', i);
+						const lineItemsValues = ((this.getNodeParameter('lineItemsUi', i)).lineItemsValues as IDataObject[]);
 
 						const body: IInvoice = {
 							organizationId,
@@ -307,8 +307,8 @@ export class Xero implements INodeType {
 						responseData = responseData.Invoices;
 					}
 					if (operation === 'update') {
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
+						const invoiceId = this.getNodeParameter('invoiceId', i);
+						const organizationId = this.getNodeParameter('organizationId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IInvoice = {
@@ -403,13 +403,13 @@ export class Xero implements INodeType {
 						responseData = responseData.Invoices;
 					}
 					if (operation === 'get') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
+						const invoiceId = this.getNodeParameter('invoiceId', i);
 						responseData = await xeroApiRequest.call(this, 'GET', `/Invoices/${invoiceId}`, { organizationId });
 						responseData = responseData.Invoices;
 					}
 					if (operation === 'getAll') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.statuses) {
@@ -436,7 +436,7 @@ export class Xero implements INodeType {
 				}
 				if (resource === 'contact') {
 					if (operation === 'create') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
 						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const addressesUi = additionalFields.addressesUi as IDataObject;
@@ -538,13 +538,13 @@ export class Xero implements INodeType {
 						responseData = responseData.Contacts;
 					}
 					if (operation === 'get') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await xeroApiRequest.call(this, 'GET', `/Contacts/${contactId}`, { organizationId });
 						responseData = responseData.Contacts;
 					}
 					if (operation === 'getAll') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.includeArchived) {
@@ -567,8 +567,8 @@ export class Xero implements INodeType {
 
 					}
 					if (operation === 'update') {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const organizationId = this.getNodeParameter('organizationId', i);
+						const contactId = this.getNodeParameter('contactId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const addressesUi = updateFields.addressesUi as IDataObject;
 						const phonesUi = updateFields.phonesUi as IDataObject;

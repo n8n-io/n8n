@@ -650,7 +650,7 @@ export class Egoi implements INodeType {
 						let endpoint = '';
 
 						if (by === 'id') {
-							const contactId = this.getNodeParameter('contactId', i) as string;
+							const contactId = this.getNodeParameter('contactId', i);
 							endpoint = `/lists/${listId}/contacts/${contactId}`;
 						} else {
 							const email = this.getNodeParameter('email', i);
@@ -704,7 +704,7 @@ export class Egoi implements INodeType {
 
 					if (operation === 'update') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);

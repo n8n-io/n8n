@@ -182,9 +182,9 @@ export class GoToWebinar implements INodeType {
 						//         attendee: get
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const sessionKey = this.getNodeParameter('sessionKey', i) as string;
-						const registrantKey = this.getNodeParameter('registrantKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const sessionKey = this.getNodeParameter('sessionKey', i);
+						const registrantKey = this.getNodeParameter('registrantKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees/${registrantKey}`;
 						responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
@@ -195,8 +195,8 @@ export class GoToWebinar implements INodeType {
 						//        attendee: getAll
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const sessionKey = this.getNodeParameter('sessionKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const sessionKey = this.getNodeParameter('sessionKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees`;
 						responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
@@ -207,9 +207,9 @@ export class GoToWebinar implements INodeType {
 						//     attendee: getDetails
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const sessionKey = this.getNodeParameter('sessionKey', i) as string;
-						const registrantKey = this.getNodeParameter('registrantKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const sessionKey = this.getNodeParameter('sessionKey', i);
+						const registrantKey = this.getNodeParameter('registrantKey', i);
 						const details = this.getNodeParameter('details', i) as string;
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees/${registrantKey}/${details}`;
@@ -231,18 +231,18 @@ export class GoToWebinar implements INodeType {
 						//        coorganizer: create
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const body = {
 							external: this.getNodeParameter('isExternal', i) as boolean,
 						} as IDataObject;
 
 						if (body.external === false) {
-							body.organizerKey = this.getNodeParameter('organizerKey', i) as string;
+							body.organizerKey = this.getNodeParameter('organizerKey', i);
 						}
 
 						if (body.external === true) {
-							body.givenName = this.getNodeParameter('givenName', i) as string;
+							body.givenName = this.getNodeParameter('givenName', i);
 							body.email = this.getNodeParameter('email', i);
 						}
 
@@ -255,8 +255,8 @@ export class GoToWebinar implements INodeType {
 						//       coorganizer: delete
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const coorganizerKey = this.getNodeParameter('coorganizerKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const coorganizerKey = this.getNodeParameter('coorganizerKey', i);
 
 						const qs = {
 							external: this.getNodeParameter('isExternal', i) as boolean,
@@ -272,7 +272,7 @@ export class GoToWebinar implements INodeType {
 						//        coorganizer: getAll
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers`;
 						responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
@@ -283,8 +283,8 @@ export class GoToWebinar implements INodeType {
 						//       coorganizer: reinvite
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const coorganizerKey = this.getNodeParameter('coorganizerKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const coorganizerKey = this.getNodeParameter('coorganizerKey', i);
 
 						const qs = {
 							external: this.getNodeParameter('isExternal', i) as boolean,
@@ -311,7 +311,7 @@ export class GoToWebinar implements INodeType {
 						//         panelist: create
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const body = [
 							{
@@ -329,8 +329,8 @@ export class GoToWebinar implements INodeType {
 						//         panelist: delete
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const panelistKey = this.getNodeParameter('panelistKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const panelistKey = this.getNodeParameter('panelistKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists/${panelistKey}`;
 						responseData = await goToWebinarApiRequest.call(this, 'DELETE', endpoint, {}, {});
@@ -342,7 +342,7 @@ export class GoToWebinar implements INodeType {
 						//         panelist: getAll
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists`;
 						responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
@@ -353,8 +353,8 @@ export class GoToWebinar implements INodeType {
 						//        panelist: reinvite
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const panelistKey = this.getNodeParameter('panelistKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const panelistKey = this.getNodeParameter('panelistKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists/${panelistKey}/resendInvitation`;
 						responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, {});
@@ -376,12 +376,12 @@ export class GoToWebinar implements INodeType {
 						//         registrant: create
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const qs = {} as IDataObject;
 						const body = {
-							firstName: this.getNodeParameter('firstName', i) as string,
-							lastName: this.getNodeParameter('lastName', i) as string,
+							firstName: this.getNodeParameter('firstName', i),
+							lastName: this.getNodeParameter('lastName', i),
 							email: this.getNodeParameter('email', i),
 							responses: [],
 						} as IDataObject;
@@ -432,8 +432,8 @@ export class GoToWebinar implements INodeType {
 						//        registrant: delete
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const registrantKey = this.getNodeParameter('registrantKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const registrantKey = this.getNodeParameter('registrantKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants/${registrantKey}`;
 						responseData = await goToWebinarApiRequest.call(this, 'DELETE', endpoint, {}, {});
@@ -445,8 +445,8 @@ export class GoToWebinar implements INodeType {
 						//        registrant: get
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const registrantKey = this.getNodeParameter('registrantKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const registrantKey = this.getNodeParameter('registrantKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants/${registrantKey}`;
 						responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
@@ -457,7 +457,7 @@ export class GoToWebinar implements INodeType {
 						//        registrant: getAll
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants`;
 						responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
@@ -477,8 +477,8 @@ export class GoToWebinar implements INodeType {
 						//         session: get
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const sessionKey = this.getNodeParameter('sessionKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const sessionKey = this.getNodeParameter('sessionKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}`;
 						responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
@@ -533,8 +533,8 @@ export class GoToWebinar implements INodeType {
 						//         session: getDetails
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const sessionKey = this.getNodeParameter('sessionKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
+						const sessionKey = this.getNodeParameter('sessionKey', i);
 						const details = this.getNodeParameter('details', i) as string;
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/${details}`;
@@ -575,7 +575,7 @@ export class GoToWebinar implements INodeType {
 						//         webinar: delete
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const { sendCancellationEmails } = this.getNodeParameter('additionalFields', i);
 
@@ -595,7 +595,7 @@ export class GoToWebinar implements INodeType {
 						//         webinar: get
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
 						responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
@@ -637,7 +637,7 @@ export class GoToWebinar implements INodeType {
 						//         webinar: update
 						// ----------------------------------
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+						const webinarKey = this.getNodeParameter('webinarKey', i);
 
 						const qs = {
 							notifyParticipants: this.getNodeParameter('notifyParticipants', i) as boolean,

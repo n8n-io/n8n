@@ -1919,7 +1919,7 @@ export class Mailchimp implements INodeType {
 							body.tags = options.tags.split(',') as string[];
 						}
 						if (!jsonActive) {
-							const locationValues = (this.getNodeParameter('locationFieldsUi', i) as IDataObject).locationFieldsValues as IDataObject;
+							const locationValues = (this.getNodeParameter('locationFieldsUi', i)).locationFieldsValues as IDataObject;
 							if (locationValues) {
 								const location: ILocation = {};
 								for (const key of Object.keys(locationValues)) {
@@ -1931,7 +1931,7 @@ export class Mailchimp implements INodeType {
 								}
 								body.location = location;
 							}
-							const mergeFieldsValues = (this.getNodeParameter('mergeFieldsUi', i) as IDataObject).mergeFieldsValues as IDataObject[];
+							const mergeFieldsValues = (this.getNodeParameter('mergeFieldsUi', i)).mergeFieldsValues as IDataObject[];
 							if (mergeFieldsValues) {
 								const mergeFields = {};
 								for (let i = 0; i < mergeFieldsValues.length; i++) {
@@ -1941,7 +1941,7 @@ export class Mailchimp implements INodeType {
 								body.merge_fields = mergeFields;
 							}
 
-							const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject).groupsValues as IDataObject[];
+							const groupsValues = (this.getNodeParameter('groupsUi', i)).groupsValues as IDataObject[];
 							if (groupsValues) {
 								const groups = {};
 								for (let i = 0; i < groupsValues.length; i++) {
@@ -1951,9 +1951,9 @@ export class Mailchimp implements INodeType {
 								body.interests = groups;
 							}
 						} else {
-							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
-							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+							const locationJson = validateJSON(this.getNodeParameter('locationJson', i));
+							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i));
+							const groupJson = validateJSON(this.getNodeParameter('groupJson', i));
 							if (locationJson) {
 								body.location = locationJson;
 							}
@@ -2107,9 +2107,9 @@ export class Mailchimp implements INodeType {
 								}
 							}
 						} else {
-							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
-							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+							const locationJson = validateJSON(this.getNodeParameter('locationJson', i));
+							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i));
+							const groupJson = validateJSON(this.getNodeParameter('groupJson', i));
 
 							if (locationJson) {
 								body.location = locationJson;
@@ -2236,29 +2236,29 @@ export class Mailchimp implements INodeType {
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
 					if (operation === 'send') {
-						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i);
 						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {});
 						responseData = { success: true };
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
 					if (operation === 'get') {
-						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i);
 						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {});
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
 					if (operation === 'delete') {
-						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i);
 						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {});
 						responseData = { success: true };
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
 					if (operation === 'replicate') {
-						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i);
 						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {});
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
 					if (operation === 'resend') {
-						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i);
 						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {});
 					}
 				}

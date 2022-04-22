@@ -405,7 +405,7 @@ export class TheHive implements INodeType {
 							...prepareOptional(additionalFields),
 						};
 
-						const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
+						const artifactUi = this.getNodeParameter('artifactUi', i);
 
 						if (artifactUi) {
 
@@ -652,7 +652,7 @@ export class TheHive implements INodeType {
 					if (operation === 'merge') {
 						const alertId = this.getNodeParameter('id', i) as string;
 
-						const caseId = this.getNodeParameter('caseId', i) as string;
+						const caseId = this.getNodeParameter('caseId', i);
 
 						responseData = await theHiveApiRequest.call(
 							this,
@@ -904,9 +904,9 @@ export class TheHive implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 
 						let body: IDataObject = {
-							dataType: this.getNodeParameter('dataType', i) as string,
+							dataType: this.getNodeParameter('dataType', i),
 							message: this.getNodeParameter('message', i),
-							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+							startDate: Date.parse(this.getNodeParameter('startDate', i)),
 							tlp: this.getNodeParameter('tlp', i) as number,
 							ioc: this.getNodeParameter('ioc', i) as boolean,
 							sighted: this.getNodeParameter('sighted', i) as boolean,
@@ -1325,7 +1325,7 @@ export class TheHive implements INodeType {
 							title: this.getNodeParameter('title', i),
 							description: this.getNodeParameter('description', i),
 							severity: this.getNodeParameter('severity', i),
-							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+							startDate: Date.parse(this.getNodeParameter('startDate', i)),
 							owner: this.getNodeParameter('owner', i),
 							flag: this.getNodeParameter('flag', i),
 							tlp: this.getNodeParameter('tlp', i),
@@ -1558,7 +1558,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'create') {
-						const caseId = this.getNodeParameter('caseId', i) as string;
+						const caseId = this.getNodeParameter('caseId', i);
 
 						const body: IDataObject = {
 							title: this.getNodeParameter('title', i),
@@ -1684,7 +1684,7 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						const caseId = this.getNodeParameter('caseId', i) as string;
+						const caseId = this.getNodeParameter('caseId', i);
 
 						const options = this.getNodeParameter('options', i);
 
@@ -1859,11 +1859,11 @@ export class TheHive implements INodeType {
 				if (resource === 'log') {
 					if (operation === 'create') {
 
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						let body: IDataObject = {
 							message: this.getNodeParameter('message', i),
-							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+							startDate: Date.parse(this.getNodeParameter('startDate', i)),
 							status: this.getNodeParameter('status', i),
 						};
 						const optionals = this.getNodeParameter('options', i);
@@ -2026,7 +2026,7 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						let endpoint;
 

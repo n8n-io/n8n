@@ -257,7 +257,7 @@ export class CiscoWebex implements INodeType {
 						// ----------------------------------------
 
 						// https://developer.webex.com/docs/api/v1/messages/edit-a-message
-						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i);
 						const markdown = this.getNodeParameter('markdown', i) as boolean;
 
 						const endpoint = `/messages/${messageId}`;
@@ -309,7 +309,7 @@ export class CiscoWebex implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const meetingId = this.getNodeParameter('meetingId', i) as string;
+						const meetingId = this.getNodeParameter('meetingId', i);
 						const options = this.getNodeParameter('options', i);
 
 						const qs: IDataObject = {
@@ -321,7 +321,7 @@ export class CiscoWebex implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const meetingId = this.getNodeParameter('meetingId', i) as string;
+						const meetingId = this.getNodeParameter('meetingId', i);
 						const options = this.getNodeParameter('options', i);
 						let headers = {};
 
@@ -365,7 +365,7 @@ export class CiscoWebex implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const meetingId = this.getNodeParameter('meetingId', i) as string;
+						const meetingId = this.getNodeParameter('meetingId', i);
 						const invitees = this.getNodeParameter('updateFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -437,9 +437,9 @@ export class CiscoWebex implements INodeType {
 
 		// 	if (operation === 'download') {
 		// 		for (let i = 0; i < items.length; i++) {
-		// 			const transcriptId = this.getNodeParameter('transcriptId', i) as string;
+		// 			const transcriptId = this.getNodeParameter('transcriptId', i);
 		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-		// 			const meetingId = this.getNodeParameter('meetingId', i) as string;
+		// 			const meetingId = this.getNodeParameter('meetingId', i);
 		// 			const options = this.getNodeParameter('options', i);
 
 		// 			const qs: IDataObject = {
@@ -465,7 +465,7 @@ export class CiscoWebex implements INodeType {
 		// 	if (operation === 'getAll') {
 		// 		for (let i = 0; i < items.length; i++) {
 		// 			try {
-		// 				const meetingId = this.getNodeParameter('meetingId', i) as string;
+		// 				const meetingId = this.getNodeParameter('meetingId', i);
 		// 				const filters = this.getNodeParameter('filters', i);
 		// 				const returnAll = this.getNodeParameter('returnAll', i);
 

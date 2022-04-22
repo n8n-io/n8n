@@ -152,7 +152,7 @@ export class ActionNetwork implements INodeType {
 						//            attendance: create
 						// ----------------------------------------
 
-						const personId = this.getNodeParameter('personId', i) as string;
+						const personId = this.getNodeParameter('personId', i);
 						const eventId = this.getNodeParameter('eventId', i);
 
 						const body = makeOsdiLink(personId) as IDataObject;
@@ -386,7 +386,7 @@ export class ActionNetwork implements INodeType {
 						//            signature: create
 						// ----------------------------------------
 
-						const personId = this.getNodeParameter('personId', i) as string;
+						const personId = this.getNodeParameter('personId', i);
 						const petitionId = this.getNodeParameter('petitionId', i);
 
 						const body = makeOsdiLink(personId) as IDataObject;
@@ -502,7 +502,7 @@ export class ActionNetwork implements INodeType {
 						//             personTag: add
 						// ----------------------------------------
 
-						const personId = this.getNodeParameter('personId', i) as string;
+						const personId = this.getNodeParameter('personId', i);
 						const tagId = this.getNodeParameter('tagId', i);
 
 						const body = makeOsdiLink(personId) as IDataObject;

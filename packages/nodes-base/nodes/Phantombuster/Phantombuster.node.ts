@@ -126,7 +126,7 @@ export class Phantombuster implements INodeType {
 				if (resource === 'agent') {
 					//https://hub.phantombuster.com/reference#post_agents-delete-1
 					if (operation === 'delete') {
-						const agentId = this.getNodeParameter('agentId', i) as string;
+						const agentId = this.getNodeParameter('agentId', i);
 
 						responseData = await phantombusterApiRequest.call(
 							this,
@@ -139,7 +139,7 @@ export class Phantombuster implements INodeType {
 					}
 					//https://hub.phantombuster.com/reference#get_agents-fetch-1
 					if (operation === 'get') {
-						const agentId = this.getNodeParameter('agentId', i) as string;
+						const agentId = this.getNodeParameter('agentId', i);
 
 						responseData = await phantombusterApiRequest.call(
 							this,
@@ -151,7 +151,7 @@ export class Phantombuster implements INodeType {
 					}
 					//https://hub.phantombuster.com/reference#get_agents-fetch-output-1
 					if (operation === 'getOutput') {
-						const agentId = this.getNodeParameter('agentId', i) as string;
+						const agentId = this.getNodeParameter('agentId', i);
 
 						const resolveData = this.getNodeParameter('resolveData', i);
 
@@ -202,7 +202,7 @@ export class Phantombuster implements INodeType {
 					}
 					//https://hub.phantombuster.com/reference#post_agents-launch-1
 					if (operation === 'launch') {
-						const agentId = this.getNodeParameter('agentId', i) as string;
+						const agentId = this.getNodeParameter('agentId', i);
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 

@@ -947,7 +947,7 @@ export class Dropbox implements INodeType {
 						requestMethod = 'POST';
 						body = {
 							from_path: this.getNodeParameter('path', i),
-							to_path: this.getNodeParameter('toPath', i) as string,
+							to_path: this.getNodeParameter('toPath', i),
 						};
 
 						endpoint = 'https://api.dropboxapi.com/2/files/copy_v2';
@@ -972,7 +972,7 @@ export class Dropbox implements INodeType {
 						requestMethod = 'POST';
 						body = {
 							from_path: this.getNodeParameter('path', i),
-							to_path: this.getNodeParameter('toPath', i) as string,
+							to_path: this.getNodeParameter('toPath', i),
 						};
 
 						endpoint = 'https://api.dropboxapi.com/2/files/move_v2';

@@ -155,7 +155,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'delete') {
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const portfolioId = this.getNodeParameter('portfolioId', i);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'DELETE',
@@ -165,7 +165,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'update') {
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const portfolioId = this.getNodeParameter('portfolioId', i);
 					const name = this.getNodeParameter('name', i);
 					const description = this.getNodeParameter('description', i);
 					const privacy = this.getNodeParameter('privacy', i) as string;
@@ -205,7 +205,7 @@ export class SecurityScorecard implements INodeType {
 
 			if (resource === 'portfolioCompany') {
 				if (operation === 'add') {
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const portfolioId = this.getNodeParameter('portfolioId', i);
 					const domain = this.getNodeParameter('domain', i);
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -216,7 +216,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'remove') {
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const portfolioId = this.getNodeParameter('portfolioId', i);
 					const domain = this.getNodeParameter('domain', i);
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -228,7 +228,7 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0);
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const portfolioId = this.getNodeParameter('portfolioId', i);
 					const filterParams = this.getNodeParameter('filters', i);
 					responseData = await scorecardApiRequest.call(
 						this,

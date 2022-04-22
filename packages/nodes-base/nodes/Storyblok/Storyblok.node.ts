@@ -271,14 +271,14 @@ export class Storyblok implements INodeType {
 						// }
 						if (operation === 'delete') {
 							const space = this.getNodeParameter('space', i) as string;
-							const storyId = this.getNodeParameter('storyId', i) as string;
+							const storyId = this.getNodeParameter('storyId', i);
 
 							responseData = await storyblokApiRequest.call(this, 'DELETE', `/v1/spaces/${space}/stories/${storyId}`);
 							responseData = responseData.story;
 						}
 						if (operation === 'get') {
 							const space = this.getNodeParameter('space', i) as string;
-							const storyId = this.getNodeParameter('storyId', i) as string;
+							const storyId = this.getNodeParameter('storyId', i);
 
 							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}`);
 							responseData = responseData.story;
@@ -300,7 +300,7 @@ export class Storyblok implements INodeType {
 						}
 						if (operation === 'publish') {
 							const space = this.getNodeParameter('space', i) as string;
-							const storyId = this.getNodeParameter('storyId', i) as string;
+							const storyId = this.getNodeParameter('storyId', i);
 							const options = this.getNodeParameter('options', i);
 							const query: IDataObject = {};
 							// Not sure if these two options work
@@ -316,7 +316,7 @@ export class Storyblok implements INodeType {
 						}
 						if (operation === 'unpublish') {
 							const space = this.getNodeParameter('space', i) as string;
-							const storyId = this.getNodeParameter('storyId', i) as string;
+							const storyId = this.getNodeParameter('storyId', i);
 
 							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/unpublish`);
 							responseData = responseData.story;

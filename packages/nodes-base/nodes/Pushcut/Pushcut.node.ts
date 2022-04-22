@@ -185,7 +185,7 @@ export class Pushcut implements INodeType {
 
 			if (resource === 'notification') {
 				if (operation === 'send') {
-					const notificationName = this.getNodeParameter('notificationName', i) as string;
+					const notificationName = this.getNodeParameter('notificationName', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 

@@ -126,7 +126,7 @@ export async function handleBinaryData(
 
 	items[i].binary = items[i].binary ?? {};
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
-	items[i].binary![binaryProperty].fileName = this.getNodeParameter('fileName', i) as string;
+	items[i].binary![binaryProperty].fileName = this.getNodeParameter('fileName', i);
 	items[i].binary![binaryProperty].fileExtension = 'pdf';
 
 	return items;

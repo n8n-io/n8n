@@ -212,7 +212,7 @@ export class Autopilot implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						responseData = await autopilotApiRequest.call(
 							this,
@@ -224,7 +224,7 @@ export class Autopilot implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						responseData = await autopilotApiRequest.call(
 							this,
@@ -256,9 +256,9 @@ export class Autopilot implements INodeType {
 				if (resource === 'contactJourney') {
 					if (operation === 'add') {
 
-						const triggerId = this.getNodeParameter('triggerId', i) as string;
+						const triggerId = this.getNodeParameter('triggerId', i);
 
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						responseData = await autopilotApiRequest.call(
 							this,
@@ -272,9 +272,9 @@ export class Autopilot implements INodeType {
 				if (resource === 'contactList') {
 					if (['add', 'remove', 'exist'].includes(operation)) {
 
-						const listId = this.getNodeParameter('listId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
 
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 
 						const method: { [key: string]: string } = {
 							'add': 'POST',
@@ -300,7 +300,7 @@ export class Autopilot implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const listId = this.getNodeParameter('listId', i) as string;
+						const listId = this.getNodeParameter('listId', i);
 
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i);

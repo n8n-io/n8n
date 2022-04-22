@@ -126,7 +126,7 @@ export class UrlScanIo implements INodeType {
 						//               scan: get
 						// ----------------------------------------
 
-						const scanId = this.getNodeParameter('scanId', i) as string;
+						const scanId = this.getNodeParameter('scanId', i);
 						responseData = await urlScanIoApiRequest.call(this, 'GET', `/result/${scanId}`);
 
 					} else if (operation === 'getAll') {

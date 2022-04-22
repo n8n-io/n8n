@@ -133,8 +133,8 @@ export class ERPNext implements INodeType {
 
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = this.getNodeParameter('docType', i);
+					const documentName = this.getNodeParameter('documentName', i);
 
 					responseData = await erpNextApiRequest.call(this, 'GET', `/api/resource/${docType}/${documentName}`);
 					responseData = responseData.data;
@@ -148,7 +148,7 @@ export class ERPNext implements INodeType {
 
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
 
-					const docType = this.getNodeParameter('docType', i) as string;
+					const docType = this.getNodeParameter('docType', i);
 					const endpoint = `/api/resource/${docType}`;
 
 					const {
@@ -213,7 +213,7 @@ export class ERPNext implements INodeType {
 						body[property.field] = property.value;
 					});
 
-					const docType = this.getNodeParameter('docType', i) as string;
+					const docType = this.getNodeParameter('docType', i);
 
 					responseData = await erpNextApiRequest.call(this, 'POST', `/api/resource/${docType}`, body);
 					responseData = responseData.data;
@@ -226,8 +226,8 @@ export class ERPNext implements INodeType {
 
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = this.getNodeParameter('docType', i);
+					const documentName = this.getNodeParameter('documentName', i);
 
 					responseData = await erpNextApiRequest.call(this, 'DELETE', `/api/resource/${docType}/${documentName}`);
 
@@ -249,8 +249,8 @@ export class ERPNext implements INodeType {
 						body[property.field] = property.value;
 					});
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = this.getNodeParameter('docType', i);
+					const documentName = this.getNodeParameter('documentName', i);
 
 					responseData = await erpNextApiRequest.call(this, 'PUT', `/api/resource/${docType}/${documentName}`, body);
 					responseData = responseData.data;

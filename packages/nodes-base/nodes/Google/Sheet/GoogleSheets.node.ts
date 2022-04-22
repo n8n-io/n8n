@@ -1113,7 +1113,7 @@ export class GoogleSheets implements INodeType {
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
-						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+						const spreadsheetId = this.getNodeParameter('sheetId', i);
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const simple = this.getNodeParameter('simple', 0);
 						const properties = { ...options };
@@ -1272,7 +1272,7 @@ export class GoogleSheets implements INodeType {
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
 						const sheetId = this.getNodeParameter('id', i) as string;
-						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+						const spreadsheetId = this.getNodeParameter('sheetId', i);
 
 						const requests = [{
 							deleteSheet: {

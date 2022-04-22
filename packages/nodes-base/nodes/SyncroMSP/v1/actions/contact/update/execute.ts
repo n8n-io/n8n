@@ -13,7 +13,7 @@ import {
 
 
 export async function updateContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('contactId', index) as IDataObject;
+	const id = this.getNodeParameter('contactId', index) as unknown as IDataObject;
 	const { address, customerId, email, name, notes, phone } = this.getNodeParameter('updateFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;

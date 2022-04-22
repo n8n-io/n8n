@@ -143,7 +143,7 @@ export class QuickBase implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
 					const options = this.getNodeParameter('options', i);
 
@@ -169,11 +169,11 @@ export class QuickBase implements INodeType {
 		if (resource === 'file') {
 			if (operation === 'delete') {
 				for (let i = 0; i < length; i++) {
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
-					const recordId = this.getNodeParameter('recordId', i) as string;
+					const recordId = this.getNodeParameter('recordId', i);
 
-					const fieldId = this.getNodeParameter('fieldId', i) as string;
+					const fieldId = this.getNodeParameter('fieldId', i);
 
 					const versionNumber = this.getNodeParameter('versionNumber', i) as string;
 
@@ -187,11 +187,11 @@ export class QuickBase implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
-					const recordId = this.getNodeParameter('recordId', i) as string;
+					const recordId = this.getNodeParameter('recordId', i);
 
-					const fieldId = this.getNodeParameter('fieldId', i) as string;
+					const fieldId = this.getNodeParameter('fieldId', i);
 
 					const versionNumber = this.getNodeParameter('versionNumber', i) as string;
 
@@ -294,7 +294,7 @@ export class QuickBase implements INodeType {
 
 			if (operation === 'delete') {
 				for (let i = 0; i < length; i++) {
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
 					const where = this.getNodeParameter('where', i) as string;
 
@@ -314,7 +314,7 @@ export class QuickBase implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
 					const options = this.getNodeParameter('options', i);
 
@@ -525,9 +525,9 @@ export class QuickBase implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
-					const reportId = this.getNodeParameter('reportId', i) as string;
+					const reportId = this.getNodeParameter('reportId', i);
 
 					qs.tableId = tableId;
 
@@ -562,9 +562,9 @@ export class QuickBase implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 
-					const reportId = this.getNodeParameter('reportId', i) as string;
+					const reportId = this.getNodeParameter('reportId', i);
 
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i);
 
 					qs.tableId = tableId;
 

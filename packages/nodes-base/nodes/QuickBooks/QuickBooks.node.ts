@@ -537,7 +537,7 @@ export class QuickBooks implements INodeType {
 						//         estimate: get
 						// ----------------------------------
 
-						const estimateId = this.getNodeParameter('estimateId', i) as string;
+						const estimateId = this.getNodeParameter('estimateId', i);
 						const download = this.getNodeParameter('download', i);
 
 						if (download) {
@@ -567,7 +567,7 @@ export class QuickBooks implements INodeType {
 						//         estimate: send
 						// ----------------------------------
 
-						const estimateId = this.getNodeParameter('estimateId', i) as string;
+						const estimateId = this.getNodeParameter('estimateId', i);
 
 						const qs = {
 							sendTo: this.getNodeParameter('email', i),
@@ -680,7 +680,7 @@ export class QuickBooks implements INodeType {
 						//         invoice: get
 						// ----------------------------------
 
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter('invoiceId', i);
 						const download = this.getNodeParameter('download', i);
 
 						if (download) {
@@ -710,7 +710,7 @@ export class QuickBooks implements INodeType {
 						//         invoice: send
 						// ----------------------------------
 
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter('invoiceId', i);
 
 						const qs = {
 							sendTo: this.getNodeParameter('email', i),
@@ -852,7 +852,7 @@ export class QuickBooks implements INodeType {
 						//         payment: get
 						// ----------------------------------
 
-						const paymentId = this.getNodeParameter('paymentId', i) as string;
+						const paymentId = this.getNodeParameter('paymentId', i);
 						const download = this.getNodeParameter('download', i);
 
 						if (download) {
@@ -882,7 +882,7 @@ export class QuickBooks implements INodeType {
 						//         payment: send
 						// ----------------------------------
 
-						const paymentId = this.getNodeParameter('paymentId', i) as string;
+						const paymentId = this.getNodeParameter('paymentId', i);
 
 						const qs = {
 							sendTo: this.getNodeParameter('email', i),

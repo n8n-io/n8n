@@ -198,7 +198,7 @@ export class SeaTable implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const tableId = this.getNodeParameter('tableId', 0) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
+						const rowId = this.getNodeParameter('rowId', i);
 						const response = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${rowId}`, {}, { table_id: tableId, convert: true }) as IDataObject;
 						returnData.push(response);
 
@@ -250,7 +250,7 @@ export class SeaTable implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const tableName = this.getNodeParameter('tableName', 0) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
+						const rowId = this.getNodeParameter('rowId', i);
 						const body: IDataObject = {
 							table_name: tableName,
 							row_id: rowId,
@@ -279,7 +279,7 @@ export class SeaTable implements INodeType {
 				let rowInput: IRowObject = {};
 
 				for (let i = 0; i < items.length; i++) {
-					const rowId = this.getNodeParameter('rowId', i) as string;
+					const rowId = this.getNodeParameter('rowId', i);
 					rowInput = {} as IRowObject;
 					try {
 						if (fieldsToSend === 'autoMapInputData') {

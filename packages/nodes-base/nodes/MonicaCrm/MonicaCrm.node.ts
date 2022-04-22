@@ -778,7 +778,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/conversations#update-a-message-in-a-conversation
 						const conversationId = this.getNodeParameter('conversationId', i);
-						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i);
 						const endpoint = `/conversations/${conversationId}/messages/${messageId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
@@ -985,7 +985,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/notes#create-a-reminder
 
-						const initialDate = this.getNodeParameter('initialDate', i) as string;
+						const initialDate = this.getNodeParameter('initialDate', i);
 
 						const body = {
 							contact_id: this.getNodeParameter('contactId', i),

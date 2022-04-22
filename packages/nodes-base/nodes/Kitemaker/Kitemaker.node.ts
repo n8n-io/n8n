@@ -242,7 +242,7 @@ export class Kitemaker implements INodeType {
 
 					const input = {
 						title: this.getNodeParameter('title', i),
-						statusId: this.getNodeParameter('statusId', i) as string[],
+						statusId: this.getNodeParameter('statusId', i) as unknown as string[],
 					};
 
 					if (!input.statusId.length) {
@@ -268,7 +268,7 @@ export class Kitemaker implements INodeType {
 					//         workItem: get
 					// ----------------------------------
 
-					const workItemId = this.getNodeParameter('workItemId', i) as string;
+					const workItemId = this.getNodeParameter('workItemId', i);
 
 					responseData = await kitemakerRequest.call(this, {
 						query: getWorkItem,
@@ -286,7 +286,7 @@ export class Kitemaker implements INodeType {
 					const allItems = await kitemakerRequestAllItems.call(this, {
 						query: getAllWorkItems,
 						variables: {
-							spaceId: this.getNodeParameter('spaceId', i) as string,
+							spaceId: this.getNodeParameter('spaceId', i),
 						},
 					});
 

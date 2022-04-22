@@ -109,7 +109,7 @@ export class CloudFirestore implements INodeType {
 				const simple = this.getNodeParameter('simple', 0);
 				const documentList = items.map((item: IDataObject, i: number) => {
 					const collection = this.getNodeParameter('collection', i) as string;
-					const documentId = this.getNodeParameter('documentId', i) as string;
+					const documentId = this.getNodeParameter('documentId', i);
 					return `projects/${projectId}/databases/${database}/documents/${collection}/${documentId}`;
 				});
 
@@ -202,10 +202,10 @@ export class CloudFirestore implements INodeType {
 				const responseData: IDataObject[] = [];
 
 				await Promise.all(items.map(async (item: IDataObject, i: number) => {
-					const projectId = this.getNodeParameter('projectId', i) as string;
+					const projectId = this.getNodeParameter('projectId', i);
 					const database = this.getNodeParameter('database', i) as string;
 					const collection = this.getNodeParameter('collection', i) as string;
-					const documentId = this.getNodeParameter('documentId', i) as string;
+					const documentId = this.getNodeParameter('documentId', i);
 
 					await googleApiRequest.call(
 						this,
@@ -224,7 +224,7 @@ export class CloudFirestore implements INodeType {
 
 				const updates = items.map((item: IDataObject, i: number) => {
 					const collection = this.getNodeParameter('collection', i) as string;
-					const updateKey = this.getNodeParameter('updateKey', i) as string;
+					const updateKey = this.getNodeParameter('updateKey', i);
 					// @ts-ignore
 					const documentId = item['json'][updateKey] as string;
 					const columns = this.getNodeParameter('columns', i) as string;
@@ -271,7 +271,7 @@ export class CloudFirestore implements INodeType {
 
 				// 	await Promise.all(items.map(async (item: IDataObject, i: number) => {
 				// 		const collection = this.getNodeParameter('collection', i) as string;
-				// 		const updateKey = this.getNodeParameter('updateKey', i) as string;
+				// 		const updateKey = this.getNodeParameter('updateKey', i);
 				// 		// @ts-ignore
 				// 		const documentId = item['json'][updateKey] as string;
 				// 		const columns = this.getNodeParameter('columns', i) as string;

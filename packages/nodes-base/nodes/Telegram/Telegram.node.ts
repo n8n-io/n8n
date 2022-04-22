@@ -1878,7 +1878,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'answerCallbackQuery';
 
-						body.callback_query_id = this.getNodeParameter('queryId', i) as string;
+						body.callback_query_id = this.getNodeParameter('queryId', i);
 
 						// Add additional fields
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -1891,7 +1891,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'answerInlineQuery';
 
-						body.inline_query_id = this.getNodeParameter('queryId', i) as string;
+						body.inline_query_id = this.getNodeParameter('queryId', i);
 						body.results = this.getNodeParameter('results', i) as string;
 
 						// Add additional fields
@@ -1907,7 +1907,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'getChat';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 
 					} else if (operation === 'leave') {
 						// ----------------------------------
@@ -1916,7 +1916,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'leaveChat';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 
 					} else if (operation === 'member') {
 						// ----------------------------------
@@ -1925,8 +1925,8 @@ export class Telegram implements INodeType {
 
 						endpoint = 'getChatMember';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.user_id = this.getNodeParameter('userId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
+						body.user_id = this.getNodeParameter('userId', i);
 
 					} else if (operation === 'setDescription') {
 						// ----------------------------------
@@ -1935,7 +1935,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'setChatDescription';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.description = this.getNodeParameter('description', i);
 
 					} else if (operation === 'setTitle') {
@@ -1945,7 +1945,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'setChatTitle';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.title = this.getNodeParameter('title', i);
 
 					}
@@ -1962,7 +1962,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'getFile';
 
-						body.file_id = this.getNodeParameter('fileId', i) as string;
+						body.file_id = this.getNodeParameter('fileId', i);
 					}
 
 				} else if (resource === 'message') {
@@ -1974,13 +1974,13 @@ export class Telegram implements INodeType {
 
 						endpoint = 'editMessageText';
 
-						const messageType = this.getNodeParameter('messageType', i) as string;
+						const messageType = this.getNodeParameter('messageType', i);
 
 						if (messageType === 'inlineMessage') {
-							body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
+							body.inline_message_id = this.getNodeParameter('inlineMessageId', i);
 						} else {
-							body.chat_id = this.getNodeParameter('chatId', i) as string;
-							body.message_id = this.getNodeParameter('messageId', i) as string;
+							body.chat_id = this.getNodeParameter('chatId', i);
+							body.message_id = this.getNodeParameter('messageId', i);
 						}
 
 						body.text = this.getNodeParameter('text', i);
@@ -1995,8 +1995,8 @@ export class Telegram implements INodeType {
 
 						endpoint = 'deleteMessage';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.message_id = this.getNodeParameter('messageId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
+						body.message_id = this.getNodeParameter('messageId', i);
 
 					} else if (operation === 'pinChatMessage') {
 						// ----------------------------------
@@ -2005,8 +2005,8 @@ export class Telegram implements INodeType {
 
 						endpoint = 'pinChatMessage';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.message_id = this.getNodeParameter('messageId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
+						body.message_id = this.getNodeParameter('messageId', i);
 
 						const { disable_notification } = this.getNodeParameter('additionalFields', i);
 						if (disable_notification) {
@@ -2020,8 +2020,8 @@ export class Telegram implements INodeType {
 
 						endpoint = 'unpinChatMessage';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.message_id = this.getNodeParameter('messageId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
+						body.message_id = this.getNodeParameter('messageId', i);
 
 					} else if (operation === 'sendAnimation') {
 						// ----------------------------------
@@ -2030,7 +2030,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendAnimation';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.animation = this.getNodeParameter('file', i, '') as string;
 
 						// Add additional fields and replyMarkup
@@ -2043,7 +2043,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendAudio';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.audio = this.getNodeParameter('file', i, '') as string;
 
 						// Add additional fields and replyMarkup
@@ -2056,7 +2056,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendChatAction';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.action = this.getNodeParameter('action', i) as string;
 
 					} else if (operation === 'sendDocument') {
@@ -2066,7 +2066,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendDocument';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.document = this.getNodeParameter('file', i, '') as string;
 
 						// Add additional fields and replyMarkup
@@ -2079,7 +2079,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendLocation';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.latitude = this.getNodeParameter('latitude', i) as string;
 						body.longitude = this.getNodeParameter('longitude', i) as string;
 
@@ -2093,7 +2093,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendMessage';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.text = this.getNodeParameter('text', i);
 
 						// Add additional fields and replyMarkup
@@ -2106,7 +2106,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendMediaGroup';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -2128,7 +2128,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendPhoto';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.photo = this.getNodeParameter('file', i, '') as string;
 
 						// Add additional fields and replyMarkup
@@ -2141,7 +2141,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendSticker';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.sticker = this.getNodeParameter('file', i, '') as string;
 
 						// Add additional fields and replyMarkup
@@ -2154,7 +2154,7 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendVideo';
 
-						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i);
 						body.video = this.getNodeParameter('file', i, '') as string;
 
 						// Add additional fields and replyMarkup

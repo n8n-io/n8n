@@ -180,7 +180,7 @@ export class Reddit implements INodeType {
 						// ----------------------------------
 
 						const subreddit = this.getNodeParameter('subreddit', i);
-						const postId = this.getNodeParameter('postId', i) as string;
+						const postId = this.getNodeParameter('postId', i);
 						const endpoint = `r/${subreddit}/comments/${postId}.json`;
 
 						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
@@ -281,7 +281,7 @@ export class Reddit implements INodeType {
 						// https://www.reddit.com/r/{subrreddit}/comments/{postId}.json
 
 						const subreddit = this.getNodeParameter('subreddit', i);
-						const postId = this.getNodeParameter('postId', i) as string;
+						const postId = this.getNodeParameter('postId', i);
 						const endpoint = `r/${subreddit}/comments/${postId}.json`;
 
 						responseData = await handleListing.call(this, i, endpoint);
@@ -461,7 +461,7 @@ export class Reddit implements INodeType {
 
 						// https://www.reddit.com/dev/api/#GET_user_{username}_{where}
 
-						const username = this.getNodeParameter('username', i) as string;
+						const username = this.getNodeParameter('username', i);
 						const details = this.getNodeParameter('details', i) as string;
 						const endpoint = `user/${username}/${details}.json`;
 

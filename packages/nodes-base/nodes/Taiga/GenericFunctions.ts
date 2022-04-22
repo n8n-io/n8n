@@ -125,7 +125,7 @@ export async function handleListing(
 	i: number,
 ) {
 	let responseData;
-	qs.project = this.getNodeParameter('projectId', i) as number;
+	qs.project = this.getNodeParameter('projectId', i) as unknown as number;
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {

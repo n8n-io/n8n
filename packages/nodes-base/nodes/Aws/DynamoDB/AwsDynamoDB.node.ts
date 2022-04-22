@@ -118,7 +118,7 @@ export class AwsDynamoDB implements INodeType {
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
-							TableName: this.getNodeParameter('tableName', i) as string,
+							TableName: this.getNodeParameter('tableName', i),
 						};
 
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
@@ -179,7 +179,7 @@ export class AwsDynamoDB implements INodeType {
 
 						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
-							TableName: this.getNodeParameter('tableName', i) as string,
+							TableName: this.getNodeParameter('tableName', i),
 							Key: {},
 							ReturnValues: this.getNodeParameter('returnValues', 0) as string,
 						};
@@ -304,7 +304,7 @@ export class AwsDynamoDB implements INodeType {
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
-							TableName: this.getNodeParameter('tableName', i) as string,
+							TableName: this.getNodeParameter('tableName', i),
 							ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
 						};
 

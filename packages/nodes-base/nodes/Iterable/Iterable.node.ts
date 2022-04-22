@@ -172,7 +172,7 @@ export class Iterable implements INodeType {
 					if (identifier === 'email') {
 						body.email = value;
 					} else {
-						body.preferUserId = this.getNodeParameter('preferUserId', i) as boolean;
+						body.preferUserId = this.getNodeParameter('preferUserId', i) as unknown as boolean;
 						body.userId = value;
 					}
 
@@ -214,7 +214,7 @@ export class Iterable implements INodeType {
 						const email = this.getNodeParameter('email', i);
 						endpoint = `/users/${email}`;
 					} else {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						endpoint = `/users/byUserId/${userId}`;
 					}
 
@@ -244,7 +244,7 @@ export class Iterable implements INodeType {
 						endpoint = `/users/getByEmail`;
 						qs.email = email;
 					} else {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						endpoint = `/users/byUserId/${userId}`;
 					}
 

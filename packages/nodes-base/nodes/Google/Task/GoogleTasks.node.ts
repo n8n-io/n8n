@@ -145,7 +145,7 @@ export class GoogleTasks implements INodeType {
 					if (operation === 'delete') {
 						//https://developers.google.com/tasks/v1/reference/tasks/delete
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 
 						responseData = await googleApiRequest.call(
 							this,
@@ -158,7 +158,7 @@ export class GoogleTasks implements INodeType {
 					if (operation === 'get') {
 						//https://developers.google.com/tasks/v1/reference/tasks/get
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
@@ -221,7 +221,7 @@ export class GoogleTasks implements INodeType {
 						body = {};
 						//https://developers.google.com/tasks/v1/reference/tasks/patch
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
 						const updateFields = this.getNodeParameter(
 							'updateFields',
 							i,

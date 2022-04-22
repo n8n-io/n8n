@@ -154,7 +154,7 @@ export class UptimeRobot implements INodeType {
 				if (resource === 'monitor') {
 					if (operation === 'create') {
 						body = {
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							url: this.getNodeParameter('url', i),
 							type: this.getNodeParameter('type', i) as number,
 						};
@@ -241,7 +241,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'create') {
 
 						body = {
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							value: this.getNodeParameter('value', i) as string,
 							type: this.getNodeParameter('type', i) as number,
 						};
@@ -300,7 +300,7 @@ export class UptimeRobot implements INodeType {
 
 						body = {
 							duration: this.getNodeParameter('duration', i) as number,
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							start_time: parsedStartTime,
 							type,
 						};
@@ -379,7 +379,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'create') {
 
 						body = {
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							monitors: this.getNodeParameter('monitors', i) as string,
 							...this.getNodeParameter('additionalFields', i),
 						};

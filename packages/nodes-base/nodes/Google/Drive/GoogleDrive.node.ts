@@ -2149,7 +2149,7 @@ export class GoogleDrive implements INodeType {
 						//         delete
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i);
 
 						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
@@ -2160,7 +2160,7 @@ export class GoogleDrive implements INodeType {
 						//         get
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i);
 
 						const qs: IDataObject = {};
 
@@ -2197,7 +2197,7 @@ export class GoogleDrive implements INodeType {
 						//         update
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i);
 
 						const body: IDataObject = {};
 
@@ -2215,7 +2215,7 @@ export class GoogleDrive implements INodeType {
 						//         copy
 						// ----------------------------------
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i);
 
 						const body: IDataObject = {
 							fields: queryFields,
@@ -2241,7 +2241,7 @@ export class GoogleDrive implements INodeType {
 						//         download
 						// ----------------------------------
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i);
 						const options = this.getNodeParameter('options', i);
 
 						const requestOptions = {
@@ -2481,7 +2481,7 @@ export class GoogleDrive implements INodeType {
 						//         file:update
 						// ----------------------------------
 
-						const id = this.getNodeParameter('fileId', i) as string;
+						const id = this.getNodeParameter('fileId', i);
 						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
 
 						const qs: IDataObject = {
@@ -2537,7 +2537,7 @@ export class GoogleDrive implements INodeType {
 						//         delete
 						// ----------------------------------
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i);
 
 						const response = await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`);
 
@@ -2549,9 +2549,9 @@ export class GoogleDrive implements INodeType {
 					}
 					if (operation === 'share') {
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i);
 
-						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
+						const permissions = this.getNodeParameter('permissionsUi', i);
 
 						const options = this.getNodeParameter('options', i);
 

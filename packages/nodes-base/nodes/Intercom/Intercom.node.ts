@@ -187,7 +187,7 @@ export class Intercom implements INodeType {
 							body.companies = companies;
 						}
 						if (!jsonActive) {
-							const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
+							const customAttributesValues = (this.getNodeParameter('customAttributesUi', i)).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
 								for (let i = 0; i < customAttributesValues.length; i++) {
@@ -197,7 +197,7 @@ export class Intercom implements INodeType {
 								body.custom_attributes = customAttributes;
 							}
 						} else {
-							const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i) as string);
+							const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i));
 							if (customAttributesJson) {
 								body.custom_attributes = customAttributesJson;
 							}
@@ -283,7 +283,7 @@ export class Intercom implements INodeType {
 						const body: IUser = {};
 
 						if (operation === 'create') {
-							const identifierType = this.getNodeParameter('identifierType', i) as string;
+							const identifierType = this.getNodeParameter('identifierType', i);
 							if (identifierType === 'email') {
 								body.email = this.getNodeParameter('idValue', i) as string;
 							} else if (identifierType === 'userId') {
@@ -348,7 +348,7 @@ export class Intercom implements INodeType {
 							body.session_count = additionalFields.sessionCount as number;
 						}
 						if (!jsonActive) {
-							const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
+							const customAttributesValues = (this.getNodeParameter('customAttributesUi', i)).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
 								for (let i = 0; i < customAttributesValues.length; i++) {
@@ -358,7 +358,7 @@ export class Intercom implements INodeType {
 								body.custom_attributes = customAttributes;
 							}
 						} else {
-							const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i) as string);
+							const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i));
 							if (customAttributesJson) {
 								body.custom_attributes = customAttributesJson;
 							}
@@ -429,7 +429,7 @@ export class Intercom implements INodeType {
 				//https://developers.intercom.com/intercom-api-reference/reference#companies
 				if (resource === 'company') {
 					if (operation === 'create' || operation === 'update') {
-						const id = this.getNodeParameter('companyId', i) as string;
+						const id = this.getNodeParameter('companyId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: ICompany = {
@@ -454,7 +454,7 @@ export class Intercom implements INodeType {
 							body.industry = additionalFields.industry as string;
 						}
 						if (!jsonActive) {
-							const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
+							const customAttributesValues = (this.getNodeParameter('customAttributesUi', i)).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
 								for (let i = 0; i < customAttributesValues.length; i++) {
@@ -464,7 +464,7 @@ export class Intercom implements INodeType {
 								body.custom_attributes = customAttributes;
 							}
 						} else {
-							const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i) as string);
+							const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i));
 							if (customAttributesJson) {
 								body.custom_attributes = customAttributesJson;
 							}

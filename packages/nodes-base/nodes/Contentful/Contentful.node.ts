@@ -154,7 +154,7 @@ export class Contentful implements INodeType {
 						const rawData = additionalFields.rawData;
 						additionalFields.rawData = undefined;
 
-						const env = this.getNodeParameter('environmentId', i) as string;
+						const env = this.getNodeParameter('environmentId', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -237,7 +237,7 @@ export class Contentful implements INodeType {
 						const rawData = additionalFields.rawData;
 						additionalFields.rawData = undefined;
 
-						const env = this.getNodeParameter('environmentId', i) as string;
+						const env = this.getNodeParameter('environmentId', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -301,7 +301,7 @@ export class Contentful implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const env = this.getNodeParameter('environmentId', i) as string;
+						const env = this.getNodeParameter('environmentId', i);
 
 						if (returnAll) {
 							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);

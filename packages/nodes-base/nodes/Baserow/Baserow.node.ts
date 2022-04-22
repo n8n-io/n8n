@@ -203,7 +203,7 @@ export class Baserow implements INodeType {
 
 					// https://api.baserow.io/api/redoc/#operation/get_database_table_row
 
-					const rowId = this.getNodeParameter('rowId', i) as string;
+					const rowId = this.getNodeParameter('rowId', i);
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					const row = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
 
@@ -255,7 +255,7 @@ export class Baserow implements INodeType {
 
 					// https://api.baserow.io/api/redoc/#operation/update_database_table_row
 
-					const rowId = this.getNodeParameter('rowId', i) as string;
+					const rowId = this.getNodeParameter('rowId', i);
 
 					const body: IDataObject = {};
 
@@ -294,7 +294,7 @@ export class Baserow implements INodeType {
 
 					// https://api.baserow.io/api/redoc/#operation/delete_database_table_row
 
-					const rowId = this.getNodeParameter('rowId', i) as string;
+					const rowId = this.getNodeParameter('rowId', i);
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					await baserowApiRequest.call(this, 'DELETE', endpoint, {}, {}, jwtToken);

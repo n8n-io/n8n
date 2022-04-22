@@ -160,7 +160,7 @@ export class UnleashedSoftware implements INodeType {
 				}
 
 				if (operation === 'get') {
-					const productId = this.getNodeParameter('productId', i) as string;
+					const productId = this.getNodeParameter('productId', i);
 					responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand/${productId}`);
 					convertNETDates(responseData);
 				}

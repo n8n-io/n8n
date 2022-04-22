@@ -121,7 +121,7 @@ export class Drift implements INodeType {
 					}
 					//https://devdocs.drift.com/docs/updating-a-contact
 					if (operation === 'update') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IContact = {};
 						if (updateFields.name) {
@@ -138,7 +138,7 @@ export class Drift implements INodeType {
 					}
 					//https://devdocs.drift.com/docs/retrieving-contact
 					if (operation === 'get') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await driftApiRequest.call(this, 'GET', `/contacts/${contactId}`);
 						responseData = responseData.data;
 					}
@@ -149,7 +149,7 @@ export class Drift implements INodeType {
 					}
 					//https://devdocs.drift.com/docs/removing-a-contact
 					if (operation === 'delete') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
+						const contactId = this.getNodeParameter('contactId', i);
 						responseData = await driftApiRequest.call(this, 'DELETE', `/contacts/${contactId}`);
 						responseData = { success: true };
 					}

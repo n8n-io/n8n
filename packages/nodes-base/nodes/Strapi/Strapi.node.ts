@@ -125,7 +125,7 @@ export class Strapi implements INodeType {
 
 						const body: IDataObject = {};
 
-						const contentType = this.getNodeParameter('contentType', i) as string;
+						const contentType = this.getNodeParameter('contentType', i);
 
 						const columns = this.getNodeParameter('columns', i) as string;
 
@@ -142,9 +142,9 @@ export class Strapi implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const contentType = this.getNodeParameter('contentType', i) as string;
+						const contentType = this.getNodeParameter('contentType', i);
 
-						const entryId = this.getNodeParameter('entryId', i) as string;
+						const entryId = this.getNodeParameter('entryId', i);
 
 						responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
 
@@ -155,7 +155,7 @@ export class Strapi implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const contentType = this.getNodeParameter('contentType', i) as string;
+						const contentType = this.getNodeParameter('contentType', i);
 
 						const options = this.getNodeParameter('options', i);
 
@@ -217,9 +217,9 @@ export class Strapi implements INodeType {
 
 					if (operation === 'get') {
 
-						const contentType = this.getNodeParameter('contentType', i) as string;
+						const contentType = this.getNodeParameter('contentType', i);
 
-						const entryId = this.getNodeParameter('entryId', i) as string;
+						const entryId = this.getNodeParameter('entryId', i);
 
 						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
 						apiVersion === 'v4'? returnData.push(responseData.data): returnData.push(responseData);
@@ -229,11 +229,11 @@ export class Strapi implements INodeType {
 
 						const body: IDataObject = {};
 
-						const contentType = this.getNodeParameter('contentType', i) as string;
+						const contentType = this.getNodeParameter('contentType', i);
 
 						const columns = this.getNodeParameter('columns', i) as string;
 
-						const updateKey = this.getNodeParameter('updateKey', i) as string;
+						const updateKey = this.getNodeParameter('updateKey', i);
 
 						const columnList = columns.split(',').map(column => column.trim());
 

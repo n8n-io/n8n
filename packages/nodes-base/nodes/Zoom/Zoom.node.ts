@@ -183,7 +183,7 @@ export class Zoom implements INodeType {
 
 					if (operation === 'get') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meeting
-						const meetingId = this.getNodeParameter('meetingId', i) as string;
+						const meetingId = this.getNodeParameter('meetingId', i);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
 							i,
@@ -228,7 +228,7 @@ export class Zoom implements INodeType {
 					}
 					if (operation === 'delete') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingdelete
-						const meetingId = this.getNodeParameter('meetingId', i) as string;
+						const meetingId = this.getNodeParameter('meetingId', i);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
 							i,
@@ -352,7 +352,7 @@ export class Zoom implements INodeType {
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate
-						const meetingId = this.getNodeParameter('meetingId', i) as string;
+						const meetingId = this.getNodeParameter('meetingId', i);
 						const updateFields = this.getNodeParameter(
 							'updateFields',
 							i,
@@ -458,10 +458,10 @@ export class Zoom implements INodeType {
 				// if (resource === 'meetingRegistrant') {
 				// 	if (operation === 'create') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrantcreate
-				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
+				// 		const meetingId = this.getNodeParameter('meetingId', i);
 				// 		const emailId = this.getNodeParameter('email', i);
 				// 		body.email = emailId;
-				// 		const firstName = this.getNodeParameter('firstName', i) as string;
+				// 		const firstName = this.getNodeParameter('firstName', i);
 				// 		body.first_name = firstName;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
@@ -516,7 +516,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// 	if (operation === 'getAll') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrants
-				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
+				// 		const meetingId = this.getNodeParameter('meetingId', i);
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
 				// 			i
@@ -539,7 +539,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// 	if (operation === 'update') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrantstatus
-				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
+				// 		const meetingId = this.getNodeParameter('meetingId', i);
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
 				// 			i
@@ -562,7 +562,7 @@ export class Zoom implements INodeType {
 				// if (resource === 'webinar') {
 				// 	if (operation === 'create') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinarcreate
-				// 		const userId = this.getNodeParameter('userId', i) as string;
+				// 		const userId = this.getNodeParameter('userId', i);
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
 				// 			i
@@ -655,7 +655,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// 	if (operation === 'get') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinar
-				// 		const webinarId = this.getNodeParameter('webinarId', i) as string;
+				// 		const webinarId = this.getNodeParameter('webinarId', i);
 
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
@@ -681,7 +681,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// 	if (operation === 'getAll') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinars
-				// 		const userId = this.getNodeParameter('userId', i) as string;
+				// 		const userId = this.getNodeParameter('userId', i);
 				// 		const returnAll = this.getNodeParameter('returnAll', i);
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/users/${userId}/webinars`, {}, qs);
@@ -693,7 +693,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// 	if (operation === 'delete') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinardelete
-				// 		const webinarId = this.getNodeParameter('webinarId', i) as string;
+				// 		const webinarId = this.getNodeParameter('webinarId', i);
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
 				// 			i
@@ -716,7 +716,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// 	if (operation === 'update') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinarupdate
-				// 		const webinarId = this.getNodeParameter('webinarId', i) as string;
+				// 		const webinarId = this.getNodeParameter('webinarId', i);
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
 				// 			i

@@ -1061,8 +1061,8 @@ export class ClickUp implements INodeType {
 				}
 				if (resource === 'taskTag') {
 					if (operation === 'add') {
-						const taskId = this.getNodeParameter('taskId', i) as string;
-						const name = this.getNodeParameter('tagName', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
+						const name = this.getNodeParameter('tagName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {};
 						Object.assign(qs, additionalFields);
@@ -1070,8 +1070,8 @@ export class ClickUp implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'remove') {
-						const taskId = this.getNodeParameter('taskId', i) as string;
-						const name = this.getNodeParameter('tagName', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
+						const name = this.getNodeParameter('tagName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {};
 						Object.assign(qs, additionalFields);
@@ -1081,14 +1081,14 @@ export class ClickUp implements INodeType {
 				}
 				if (resource === 'taskList') {
 					if (operation === 'add') {
-						const taskId = this.getNodeParameter('taskId', i) as string;
-						const listId = this.getNodeParameter('listId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
+						const listId = this.getNodeParameter('listId', i);
 						responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task/${taskId}`);
 						responseData = { success: true };
 					}
 					if (operation === 'remove') {
-						const taskId = this.getNodeParameter('taskId', i) as string;
-						const listId = this.getNodeParameter('listId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i);
+						const listId = this.getNodeParameter('listId', i);
 						responseData = await clickupApiRequest.call(this, 'DELETE', `/list/${listId}/task/${taskId}`);
 						responseData = { success: true };
 					}
@@ -1228,7 +1228,7 @@ export class ClickUp implements INodeType {
 					if (operation === 'add') {
 						const teamId = this.getNodeParameter('team', i) as string;
 						const timeEntryIds = this.getNodeParameter('timeEntryIds', i) as string;
-						const tagsUi = this.getNodeParameter('tagsUi', i) as IDataObject;
+						const tagsUi = this.getNodeParameter('tagsUi', i);
 						const body: IDataObject = {};
 						body.time_entry_ids = timeEntryIds.split(',');
 						if (tagsUi) {
@@ -1270,8 +1270,8 @@ export class ClickUp implements INodeType {
 					if (operation === 'create') {
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const name = this.getNodeParameter('name', i);
-						const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
-						const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
+						const foregroundColor = this.getNodeParameter('foregroundColor', i);
+						const backgroundColor = this.getNodeParameter('backgroundColor', i);
 						const body: IDataObject = {
 							tag: {
 								name,
@@ -1301,9 +1301,9 @@ export class ClickUp implements INodeType {
 					if (operation === 'update') {
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const tagName = this.getNodeParameter('name', i);
-						const newTagName = this.getNodeParameter('newName', i) as string;
-						const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
-						const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
+						const newTagName = this.getNodeParameter('newName', i);
+						const foregroundColor = this.getNodeParameter('foregroundColor', i);
+						const backgroundColor = this.getNodeParameter('backgroundColor', i);
 						const body: IDataObject = {
 							tag: {
 								name: newTagName,

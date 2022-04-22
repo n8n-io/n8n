@@ -1259,9 +1259,9 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const id = this.getNodeParameter('projectId', i) as string;
+						const id = this.getNodeParameter('projectId', i);
 
-						const tagName = this.getNodeParameter('tag_name', i) as string;
+						const tagName = this.getNodeParameter('tag_name', i);
 
 						endpoint = `/projects/${id}/releases/${tagName}`;
 					}
@@ -1272,9 +1272,9 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'GET';
 
-						const id = this.getNodeParameter('projectId', i) as string;
+						const id = this.getNodeParameter('projectId', i);
 
-						const tagName = this.getNodeParameter('tag_name', i) as string;
+						const tagName = this.getNodeParameter('tag_name', i);
 
 						endpoint = `/projects/${id}/releases/${tagName}`;
 					}
@@ -1285,7 +1285,7 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'GET';
 
-						const id = this.getNodeParameter('projectId', i) as string;
+						const id = this.getNodeParameter('projectId', i);
 
 						qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
@@ -1304,9 +1304,9 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const id = this.getNodeParameter('projectId', i) as string;
+						const id = this.getNodeParameter('projectId', i);
 
-						const tagName = this.getNodeParameter('tag_name', i) as string;
+						const tagName = this.getNodeParameter('tag_name', i);
 
 						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 						if(body.milestones){

@@ -152,8 +152,8 @@ export class Orbit implements INodeType {
 			try {
 				if (resource === 'activity') {
 					if (operation === 'create') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
@@ -182,7 +182,7 @@ export class Orbit implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						let endpoint = `/${workspaceId}/activities`;
@@ -200,7 +200,7 @@ export class Orbit implements INodeType {
 				}
 				if (resource === 'member') {
 					if (operation === 'upsert') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const member: IDataObject = {};
 						const identity: IDataObject = {};
@@ -247,7 +247,7 @@ export class Orbit implements INodeType {
 							member.url = additionalFields.url as string;
 						}
 
-						const data = (this.getNodeParameter('identityUi', i) as IDataObject).identityValue as IDataObject;
+						const data = (this.getNodeParameter('identityUi', i)).identityValue as IDataObject;
 						if (data) {
 							if (['github', 'twitter', 'discourse'].includes(data.source as string)) {
 								identity.source = data.source as string;
@@ -270,14 +270,14 @@ export class Orbit implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'delete') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}`);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						const resolve = this.getNodeParameter('resolveIdentities', 0) as boolean;
 						responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/${memberId}`);
 						if (resolve === true) {
@@ -286,7 +286,7 @@ export class Orbit implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
@@ -300,7 +300,7 @@ export class Orbit implements INodeType {
 						}
 					}
 					if (operation === 'lookup') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 						const source = this.getNodeParameter('source', i);
 
 						if (['github', 'twitter', 'discourse'].includes(source)) {
@@ -309,7 +309,7 @@ export class Orbit implements INodeType {
 							if (searchBy === 'id') {
 								qs.uid = this.getNodeParameter('id', i) as string;
 							} else {
-								qs.username = this.getNodeParameter('username', i) as string;
+								qs.username = this.getNodeParameter('username', i);
 							}
 							if (source === 'discourse') {
 								qs.source_host = this.getNodeParameter('host', i) as string;
@@ -323,8 +323,8 @@ export class Orbit implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'update') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 						};
@@ -377,16 +377,16 @@ export class Orbit implements INodeType {
 				}
 				if (resource === 'note') {
 					if (operation === 'create') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						const note = this.getNodeParameter('note', i) as string;
 
 						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/notes`, { body: note });
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						qs.resolveMember = this.getNodeParameter('resolveMember', 0) as boolean;
 						if (returnAll === true) {
@@ -398,9 +398,9 @@ export class Orbit implements INodeType {
 						}
 					}
 					if (operation === 'update') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
-						const noteId = this.getNodeParameter('noteId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
+						const noteId = this.getNodeParameter('noteId', i);
 						const note = this.getNodeParameter('note', i) as string;
 
 						responseData = await orbitApiRequest.call(this, 'PUT', `/${workspaceId}/members/${memberId}/notes/${noteId}`, { body: note });
@@ -409,8 +409,8 @@ export class Orbit implements INodeType {
 				}
 				if (resource === 'post') {
 					if (operation === 'create') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
 						const url = this.getNodeParameter('url', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
@@ -427,7 +427,7 @@ export class Orbit implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						let endpoint = `/${workspaceId}/activities`;
@@ -444,9 +444,9 @@ export class Orbit implements INodeType {
 						}
 					}
 					if (operation === 'delete') {
-						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const memberId = this.getNodeParameter('memberId', i) as string;
-						const postId = this.getNodeParameter('postId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i);
+						const memberId = this.getNodeParameter('memberId', i);
+						const postId = this.getNodeParameter('postId', i);
 
 						responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}/activities/${postId}`);
 						responseData = { success: true };

@@ -83,9 +83,9 @@ export class Sendy implements INodeType {
 			if (resource === 'campaign') {
 				if (operation === 'create') {
 
-					const fromName = this.getNodeParameter('fromName', i) as string;
+					const fromName = this.getNodeParameter('fromName', i);
 
-					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
+					const fromEmail = this.getNodeParameter('fromEmail', i);
 
 					const replyTo = this.getNodeParameter('replyTo', i) as string;
 
@@ -170,7 +170,7 @@ export class Sendy implements INodeType {
 
 					const email = this.getNodeParameter('email', i);
 
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -197,7 +197,7 @@ export class Sendy implements INodeType {
 
 				if (operation === 'count') {
 
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const body: IDataObject = {
 						list_id: listId,
@@ -229,7 +229,7 @@ export class Sendy implements INodeType {
 
 					const email = this.getNodeParameter('email', i);
 
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const body: IDataObject = {
 						email,
@@ -254,7 +254,7 @@ export class Sendy implements INodeType {
 
 					const email = this.getNodeParameter('email', i);
 
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const body: IDataObject = {
 						email,
@@ -279,7 +279,7 @@ export class Sendy implements INodeType {
 
 					const email = this.getNodeParameter('email', i);
 
-					const listId = this.getNodeParameter('listId', i) as string;
+					const listId = this.getNodeParameter('listId', i);
 
 					const body: IDataObject = {
 						email,

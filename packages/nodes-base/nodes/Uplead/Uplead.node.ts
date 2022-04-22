@@ -79,8 +79,8 @@ export class Uplead implements INodeType {
 				if (resource === 'person') {
 					if (operation === 'enrich') {
 						const email = this.getNodeParameter('email', i);
-						const firstname = this.getNodeParameter('firstname', i) as string;
-						const lastname = this.getNodeParameter('lastname', i) as string;
+						const firstname = this.getNodeParameter('firstname', i);
+						const lastname = this.getNodeParameter('lastname', i);
 						const domain = this.getNodeParameter('domain', i) as string;
 						if (email) {
 							qs.email = email;

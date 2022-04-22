@@ -374,7 +374,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const contactId = this.getNodeParameter('contactId', i) as number;
+						const contactId = this.getNodeParameter('contactId', i) as unknown as number;
 						endpoint = `/api/3/contacts/${contactId}`;
 
 					} else if (operation === 'get') {
@@ -384,7 +384,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const contactId = this.getNodeParameter('contactId', i) as number;
+						const contactId = this.getNodeParameter('contactId', i) as unknown as number;
 						endpoint = `/api/3/contacts/${contactId}`;
 
 					} else if (operation === 'getAll') {
@@ -422,7 +422,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const contactId = this.getNodeParameter('contactId', i) as number;
+						const contactId = this.getNodeParameter('contactId', i) as unknown as number;
 						endpoint = `/api/3/contacts/${contactId}`;
 
 						dataKey = 'contact';
@@ -461,7 +461,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const accountId = this.getNodeParameter('accountId', i) as number;
+						const accountId = this.getNodeParameter('accountId', i) as unknown as number;
 						endpoint = `/api/3/accounts/${accountId}`;
 
 					} else if (operation === 'get') {
@@ -471,7 +471,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const accountId = this.getNodeParameter('accountId', i) as number;
+						const accountId = this.getNodeParameter('accountId', i) as unknown as number;
 						endpoint = `/api/3/accounts/${accountId}`;
 
 					} else if (operation === 'getAll') {
@@ -503,7 +503,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const accountId = this.getNodeParameter('accountId', i) as number;
+						const accountId = this.getNodeParameter('accountId', i) as unknown as number;
 						endpoint = `/api/3/accounts/${accountId}`;
 
 						dataKey = 'account';
@@ -543,7 +543,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const accountContactId = this.getNodeParameter('accountContactId', i) as number;
+						const accountContactId = this.getNodeParameter('accountContactId', i) as unknown as number;
 						endpoint = `/api/3/accountContacts/${accountContactId}`;
 
 						dataKey = 'accountContact';
@@ -560,7 +560,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const accountContactId = this.getNodeParameter('accountContactId', i) as number;
+						const accountContactId = this.getNodeParameter('accountContactId', i) as unknown as number;
 						endpoint = `/api/3/accountContacts/${accountContactId}`;
 
 					} else {
@@ -579,8 +579,8 @@ export class ActiveCampaign implements INodeType {
 						dataKey = 'contactTag';
 
 						body.contactTag = {
-							contact: this.getNodeParameter('contactId', i) as string,
-							tag: this.getNodeParameter('tagId', i) as string,
+							contact: this.getNodeParameter('contactId', i),
+							tag: this.getNodeParameter('tagId', i),
 						} as IDataObject;
 
 					} else if (operation === 'remove') {
@@ -590,7 +590,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const contactTagId = this.getNodeParameter('contactTagId', i) as number;
+						const contactTagId = this.getNodeParameter('contactTagId', i) as unknown as number;
 						endpoint = `/api/3/contactTags/${contactTagId}`;
 
 					} else {
@@ -609,8 +609,8 @@ export class ActiveCampaign implements INodeType {
 						dataKey = 'contactTag';
 
 						body.contactList = {
-							list: this.getNodeParameter('listId', i) as string,
-							contact: this.getNodeParameter('contactId', i) as string,
+							list: this.getNodeParameter('listId', i),
+							contact: this.getNodeParameter('contactId', i),
 							status: 1,
 						} as IDataObject;
 
@@ -624,8 +624,8 @@ export class ActiveCampaign implements INodeType {
 						endpoint = '/api/3/contactLists';
 
 						body.contactList = {
-							list: this.getNodeParameter('listId', i) as string,
-							contact: this.getNodeParameter('contactId', i) as string,
+							list: this.getNodeParameter('listId', i),
+							contact: this.getNodeParameter('contactId', i),
 							status: 2,
 						} as IDataObject;
 
@@ -671,7 +671,7 @@ export class ActiveCampaign implements INodeType {
 
 						body.tag = {
 							tag: this.getNodeParameter('name', i),
-							tagType: this.getNodeParameter('tagType', i) as string,
+							tagType: this.getNodeParameter('tagType', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -684,7 +684,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const tagId = this.getNodeParameter('tagId', i) as number;
+						const tagId = this.getNodeParameter('tagId', i) as unknown as number;
 						endpoint = `/api/3/tags/${tagId}`;
 
 					} else if (operation === 'get') {
@@ -694,7 +694,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const tagId = this.getNodeParameter('tagId', i) as number;
+						const tagId = this.getNodeParameter('tagId', i) as unknown as number;
 						endpoint = `/api/3/tags/${tagId}`;
 
 					} else if (operation === 'getAll') {
@@ -723,7 +723,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const tagId = this.getNodeParameter('tagId', i) as number;
+						const tagId = this.getNodeParameter('tagId', i) as unknown as number;
 						endpoint = `/api/3/tags/${tagId}`;
 
 						dataKey = 'tag';
@@ -778,7 +778,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/api/3/deals/${dealId}`;
 
 						body.deal = {} as IDataObject;
@@ -793,7 +793,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/api/3/deals/${dealId}`;
 
 					} else if (operation === 'get') {
@@ -803,7 +803,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/api/3/deals/${dealId}`;
 
 					} else if (operation === 'getAll') {
@@ -835,7 +835,7 @@ export class ActiveCampaign implements INodeType {
 							note: this.getNodeParameter('dealNote', i) as string,
 						} as IDataObject;
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
 						endpoint = `/api/3/deals/${dealId}/notes`;
 
 					} else if (operation === 'updateNote') {
@@ -848,8 +848,8 @@ export class ActiveCampaign implements INodeType {
 							note: this.getNodeParameter('dealNote', i) as string,
 						} as IDataObject;
 
-						const dealId = this.getNodeParameter('dealId', i) as number;
-						const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
+						const dealId = this.getNodeParameter('dealId', i) as unknown as number;
+						const dealNoteId = this.getNodeParameter('dealNoteId', i) as unknown as number;
 						endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
 
 					} else {
@@ -869,8 +869,8 @@ export class ActiveCampaign implements INodeType {
 							service: this.getNodeParameter('service', i) as string,
 							externalid: this.getNodeParameter('externalid', i) as string,
 							name: this.getNodeParameter('name', i),
-							logoUrl: this.getNodeParameter('logoUrl', i) as string,
-							linkUrl: this.getNodeParameter('linkUrl', i) as string,
+							logoUrl: this.getNodeParameter('logoUrl', i),
+							linkUrl: this.getNodeParameter('linkUrl', i),
 						} as IDataObject;
 
 					} else if (operation === 'update') {
@@ -880,7 +880,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const connectionId = this.getNodeParameter('connectionId', i) as number;
+						const connectionId = this.getNodeParameter('connectionId', i) as unknown as number;
 						endpoint = `/api/3/connections/${connectionId}`;
 
 						body.connection = {} as IDataObject;
@@ -895,7 +895,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const connectionId = this.getNodeParameter('connectionId', i) as number;
+						const connectionId = this.getNodeParameter('connectionId', i) as unknown as number;
 						endpoint = `/api/3/connections/${connectionId}`;
 
 					} else if (operation === 'get') {
@@ -905,7 +905,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const connectionId = this.getNodeParameter('connectionId', i) as number;
+						const connectionId = this.getNodeParameter('connectionId', i) as unknown as number;
 						endpoint = `/api/3/connections/${connectionId}`;
 
 					} else if (operation === 'getAll') {
@@ -945,7 +945,7 @@ export class ActiveCampaign implements INodeType {
 							email: this.getNodeParameter('email', i),
 							totalPrice: this.getNodeParameter('totalPrice', i) as number,
 							currency: this.getNodeParameter('currency', i)!.toString().toUpperCase() as string,
-							externalCreatedDate: this.getNodeParameter('externalCreatedDate', i) as string,
+							externalCreatedDate: this.getNodeParameter('externalCreatedDate', i),
 							connectionid: this.getNodeParameter('connectionid', i) as number,
 							customerid: this.getNodeParameter('customerid', i) as number,
 						} as IDataObject;
@@ -960,7 +960,7 @@ export class ActiveCampaign implements INodeType {
 							addAdditionalFields(body.ecomOrder as IDataObject, { externalcheckoutid });
 						}
 
-						const abandonedDate = this.getNodeParameter('abandonedDate', i) as string;
+						const abandonedDate = this.getNodeParameter('abandonedDate', i);
 						if (abandonedDate !== '') {
 							addAdditionalFields(body.ecomOrder as IDataObject, { abandonedDate });
 						}
@@ -978,7 +978,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const orderId = this.getNodeParameter('orderId', i) as number;
+						const orderId = this.getNodeParameter('orderId', i) as unknown as number;
 						endpoint = `/api/3/ecomOrders/${orderId}`;
 
 						body.ecomOrder = {} as IDataObject;
@@ -993,7 +993,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const orderId = this.getNodeParameter('orderId', i) as number;
+						const orderId = this.getNodeParameter('orderId', i) as unknown as number;
 						endpoint = `/api/3/ecomOrders/${orderId}`;
 
 					} else if (operation === 'get') {
@@ -1003,7 +1003,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const orderId = this.getNodeParameter('orderId', i) as number;
+						const orderId = this.getNodeParameter('orderId', i) as unknown as number;
 						endpoint = `/api/3/ecomOrders/${orderId}`;
 
 					} else if (operation === 'getAll') {
@@ -1061,7 +1061,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
+						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as unknown as number;
 						endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
 
 						body.ecomCustomer = {} as IDataObject;
@@ -1083,7 +1083,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
+						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as unknown as number;
 						endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
 
 					} else if (operation === 'get') {
@@ -1093,7 +1093,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
+						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as unknown as number;
 						endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
 
 					} else if (operation === 'getAll') {
@@ -1126,7 +1126,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						const procuctId = this.getNodeParameter('procuctId', i) as number;
+						const procuctId = this.getNodeParameter('procuctId', i) as unknown as number;
 						endpoint = `/api/3/ecomOrderProducts/${procuctId}`;
 
 
@@ -1139,7 +1139,7 @@ export class ActiveCampaign implements INodeType {
 
 						//dataKey = 'ecomOrderProducts';
 
-						const orderId = this.getNodeParameter('orderId', i) as number;
+						const orderId = this.getNodeParameter('orderId', i) as unknown as number;
 						endpoint = `/api/3/ecomOrders/${orderId}/orderProducts`;
 
 					} else if (operation === 'getAll') {

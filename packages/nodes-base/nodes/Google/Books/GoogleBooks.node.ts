@@ -388,7 +388,7 @@ export class GoogleBooks implements INodeType {
 
 				if (resource === 'volume') {
 					if (operation === 'get') {
-						const volumeId = this.getNodeParameter('volumeId', i) as string;
+						const volumeId = this.getNodeParameter('volumeId', i);
 						responseData = await googleApiRequest.call(this, 'GET', `v1/volumes/${volumeId}`, {});
 					} else if (operation === 'getAll') {
 						const searchQuery = this.getNodeParameter('searchQuery', i) as string;
@@ -405,11 +405,11 @@ export class GoogleBooks implements INodeType {
 
 				if (resource === 'bookshelf') {
 					if (operation === 'get') {
-						const shelfId = this.getNodeParameter('shelfId', i) as string;
+						const shelfId = this.getNodeParameter('shelfId', i);
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
 						let endpoint;
 						if (myLibrary === false) {
-							const userId = this.getNodeParameter('userId', i) as string;
+							const userId = this.getNodeParameter('userId', i);
 							endpoint = `v1/users/${userId}/bookshelves/${shelfId}`;
 						} else {
 							endpoint = `v1/mylibrary/bookshelves/${shelfId}`;
@@ -421,7 +421,7 @@ export class GoogleBooks implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						let endpoint;
 						if (myLibrary === false) {
-							const userId = this.getNodeParameter('userId', i) as string;
+							const userId = this.getNodeParameter('userId', i);
 							endpoint = `v1/users/${userId}/bookshelves`;
 						} else {
 							endpoint = `v1/mylibrary/bookshelves`;
@@ -438,8 +438,8 @@ export class GoogleBooks implements INodeType {
 
 				if (resource === 'bookshelfVolume') {
 					if (operation === 'add') {
-						const shelfId = this.getNodeParameter('shelfId', i) as string;
-						const volumeId = this.getNodeParameter('volumeId', i) as string;
+						const shelfId = this.getNodeParameter('shelfId', i);
+						const volumeId = this.getNodeParameter('volumeId', i);
 						const body: IDataObject = {
 							volumeId,
 						};
@@ -447,17 +447,17 @@ export class GoogleBooks implements INodeType {
 					}
 
 					if (operation === 'clear') {
-						const shelfId = this.getNodeParameter('shelfId', i) as string;
+						const shelfId = this.getNodeParameter('shelfId', i);
 						responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/clearVolumes`);
 					}
 
 					if (operation === 'getAll') {
-						const shelfId = this.getNodeParameter('shelfId', i) as string;
+						const shelfId = this.getNodeParameter('shelfId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
 						let endpoint;
 						if (myLibrary === false) {
-							const userId = this.getNodeParameter('userId', i) as string;
+							const userId = this.getNodeParameter('userId', i);
 							endpoint = `v1/users/${userId}/bookshelves/${shelfId}/volumes`;
 						} else {
 							endpoint = `v1/mylibrary/bookshelves/${shelfId}/volumes`;
@@ -472,8 +472,8 @@ export class GoogleBooks implements INodeType {
 					}
 
 					if (operation === 'move') {
-						const shelfId = this.getNodeParameter('shelfId', i) as string;
-						const volumeId = this.getNodeParameter('volumeId', i) as string;
+						const shelfId = this.getNodeParameter('shelfId', i);
+						const volumeId = this.getNodeParameter('volumeId', i);
 						const volumePosition = this.getNodeParameter('volumePosition', i) as number;
 						const body: IDataObject = {
 							volumeId,
@@ -483,8 +483,8 @@ export class GoogleBooks implements INodeType {
 					}
 
 					if (operation === 'remove') {
-						const shelfId = this.getNodeParameter('shelfId', i) as string;
-						const volumeId = this.getNodeParameter('volumeId', i) as string;
+						const shelfId = this.getNodeParameter('shelfId', i);
+						const volumeId = this.getNodeParameter('volumeId', i);
 						const body: IDataObject = {
 							volumeId,
 						};

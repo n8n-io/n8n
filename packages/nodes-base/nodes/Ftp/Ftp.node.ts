@@ -473,9 +473,9 @@ export class Ftp implements INodeType {
 					}
 
 					if (operation === 'rename') {
-						const oldPath = this.getNodeParameter('oldPath', i) as string;
+						const oldPath = this.getNodeParameter('oldPath', i);
 						const { createDirectories = false } = this.getNodeParameter('options', i) as { createDirectories: boolean };
-						const newPath = this.getNodeParameter('newPath', i) as string;
+						const newPath = this.getNodeParameter('newPath', i);
 
 						if (createDirectories) {
 							await recursivelyCreateSftpDirs(sftp!, newPath);
@@ -583,9 +583,9 @@ export class Ftp implements INodeType {
 
 					if (operation === 'rename') {
 
-						const oldPath = this.getNodeParameter('oldPath', i) as string;
+						const oldPath = this.getNodeParameter('oldPath', i);
 
-						const newPath = this.getNodeParameter('newPath', i) as string;
+						const newPath = this.getNodeParameter('newPath', i);
 
 						responseData = await ftp!.rename(oldPath, newPath);
 

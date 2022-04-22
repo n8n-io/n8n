@@ -504,7 +504,7 @@ export class Medium implements INodeType {
 
 						// if user wants to publish it under a specific publication
 						if (underPublication) {
-							const publicationId = this.getNodeParameter('publicationId', i) as number;
+							const publicationId = this.getNodeParameter('publicationId', i) as unknown as number;
 
 							responseData = await mediumApiRequest.call(
 								this,

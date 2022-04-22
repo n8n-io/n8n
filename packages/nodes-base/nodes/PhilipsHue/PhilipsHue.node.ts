@@ -115,7 +115,7 @@ export class PhilipsHue implements INodeType {
 			if (resource === 'light') {
 				if (operation === 'update') {
 
-					const lightId = this.getNodeParameter('lightId', i) as string;
+					const lightId = this.getNodeParameter('lightId', i);
 
 					const on = this.getNodeParameter('on', i) as boolean;
 
@@ -157,7 +157,7 @@ export class PhilipsHue implements INodeType {
 				}
 				if (operation === 'delete') {
 
-					const lightId = this.getNodeParameter('lightId', i) as string;
+					const lightId = this.getNodeParameter('lightId', i);
 
 					const user = await getUser.call(this);
 
@@ -179,7 +179,7 @@ export class PhilipsHue implements INodeType {
 					}
 				}
 				if (operation === 'get') {
-					const lightId = this.getNodeParameter('lightId', i) as string;
+					const lightId = this.getNodeParameter('lightId', i);
 
 					const user = await getUser.call(this);
 

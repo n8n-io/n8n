@@ -318,7 +318,7 @@ export class Elasticsearch implements INodeType {
 
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-index.html
 
-					const indexId = this.getNodeParameter('indexId', i) as string;
+					const indexId = this.getNodeParameter('indexId', i);
 
 					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i);

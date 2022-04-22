@@ -72,7 +72,7 @@ export class HumanticAi implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'profile') {
 				if (operation === 'create') {
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userId = this.getNodeParameter('userId', i);
 					const sendResume = this.getNodeParameter('sendResume', i) as boolean;
 					qs.userid = userId;
 
@@ -120,7 +120,7 @@ export class HumanticAi implements INodeType {
 					}
 				}
 				if (operation === 'get') {
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userId = this.getNodeParameter('userId', i);
 					const options = this.getNodeParameter('options', i);
 
 					qs.userid = userId;
@@ -133,7 +133,7 @@ export class HumanticAi implements INodeType {
 					responseData = responseData.results;
 				}
 				if (operation === 'update') {
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userId = this.getNodeParameter('userId', i);
 					const sendResume = this.getNodeParameter('sendResume', i) as string;
 					qs.userid = userId;
 

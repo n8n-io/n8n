@@ -1883,7 +1883,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const filePath = this.getNodeParameter('filePath', i) as string;
+						const filePath = this.getNodeParameter('filePath', i);
 
 						const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
 						if (additionalParameters.author) {
@@ -1946,7 +1946,7 @@ export class Github implements INodeType {
 							body.branch = (additionalParameters.branch as IDataObject).branch;
 						}
 
-						const filePath = this.getNodeParameter('filePath', i) as string;
+						const filePath = this.getNodeParameter('filePath', i);
 						body.message = this.getNodeParameter('commitMessage', i) as string;
 
 						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
@@ -1955,7 +1955,7 @@ export class Github implements INodeType {
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
-						const filePath = this.getNodeParameter('filePath', i) as string;
+						const filePath = this.getNodeParameter('filePath', i);
 						const additionalParameters = this.getNodeParameter('additionalParameters', i) as IDataObject;
 
 						if (additionalParameters.reference) {
@@ -1965,7 +1965,7 @@ export class Github implements INodeType {
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
-						const filePath = this.getNodeParameter('filePath', i) as string;
+						const filePath = this.getNodeParameter('filePath', i);
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					}
 				} else if (resource === 'issue') {
@@ -2160,7 +2160,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'GET';
 
-						const reviewId = this.getNodeParameter('reviewId', i) as string;
+						const reviewId = this.getNodeParameter('reviewId', i);
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
@@ -2204,7 +2204,7 @@ export class Github implements INodeType {
 						requestMethod = 'PUT';
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-						const reviewId = this.getNodeParameter('reviewId', i) as string;
+						const reviewId = this.getNodeParameter('reviewId', i);
 
 						body.body = this.getNodeParameter('body', i) as string;
 

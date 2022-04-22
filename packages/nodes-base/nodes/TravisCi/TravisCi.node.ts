@@ -72,7 +72,7 @@ export class TravisCi implements INodeType {
 				if (resource === 'build') {
 					//https://developer.travis-ci.com/resource/build#find
 					if (operation === 'get') {
-						const buildId = this.getNodeParameter('buildId', i) as string;
+						const buildId = this.getNodeParameter('buildId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.include) {
@@ -109,12 +109,12 @@ export class TravisCi implements INodeType {
 					}
 					//https://developer.travis-ci.com/resource/build#cancel
 					if (operation === 'cancel') {
-						const buildId = this.getNodeParameter('buildId', i) as string;
+						const buildId = this.getNodeParameter('buildId', i);
 						responseData = await travisciApiRequest.call(this, 'POST', `/build/${buildId}/cancel`, {}, qs);
 					}
 					//https://developer.travis-ci.com/resource/build#restart
 					if (operation === 'restart') {
-						const buildId = this.getNodeParameter('buildId', i) as string;
+						const buildId = this.getNodeParameter('buildId', i);
 						responseData = await travisciApiRequest.call(this, 'POST', `/build/${buildId}/restart`, {}, qs);
 					}
 					//https://developer.travis-ci.com/resource/requests#create

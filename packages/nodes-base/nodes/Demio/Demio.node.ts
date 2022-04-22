@@ -141,7 +141,7 @@ export class Demio implements INodeType {
 			try {
 				if (resource === 'event') {
 					if (operation === 'get') {
-						const id = this.getNodeParameter('eventId', i) as string;
+						const id = this.getNodeParameter('eventId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.date_id !== undefined) {
@@ -166,8 +166,8 @@ export class Demio implements INodeType {
 
 					}
 					if (operation === 'register') {
-						const eventId = this.getNodeParameter('eventId', i) as string;
-						const firstName = this.getNodeParameter('firstName', i) as string;
+						const eventId = this.getNodeParameter('eventId', i);
+						const firstName = this.getNodeParameter('firstName', i);
 						const email = this.getNodeParameter('email', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -191,7 +191,7 @@ export class Demio implements INodeType {
 				}
 				if (resource === 'report') {
 					if (operation === 'get') {
-						const sessionId = this.getNodeParameter('dateId', i) as string;
+						const sessionId = this.getNodeParameter('dateId', i);
 						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);

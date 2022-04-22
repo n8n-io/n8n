@@ -153,7 +153,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/delete
 				if (operation === 'delete') {
-					const groupId = this.getNodeParameter('groupId', i) as string;
+					const groupId = this.getNodeParameter('groupId', i);
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -167,7 +167,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/get
 				if (operation === 'get') {
-					const groupId = this.getNodeParameter('groupId', i) as string;
+					const groupId = this.getNodeParameter('groupId', i);
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -216,7 +216,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/update
 				if (operation === 'update') {
-					const groupId = this.getNodeParameter('groupId', i) as string;
+					const groupId = this.getNodeParameter('groupId', i);
 
 					const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -238,13 +238,13 @@ export class GSuiteAdmin implements INodeType {
 				if (operation === 'create') {
 					const domain = this.getNodeParameter('domain', i) as string;
 
-					const firstName = this.getNodeParameter('firstName', i) as string;
+					const firstName = this.getNodeParameter('firstName', i);
 
-					const lastName = this.getNodeParameter('lastName', i) as string;
+					const lastName = this.getNodeParameter('lastName', i);
 
 					const password = this.getNodeParameter('password', i);
 
-					const username = this.getNodeParameter('username', i) as string;
+					const username = this.getNodeParameter('username', i);
 
 					const makeAdmin = this.getNodeParameter('makeAdmin', i) as boolean;
 
@@ -299,7 +299,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/users/delete
 				if (operation === 'delete') {
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userId = this.getNodeParameter('userId', i);
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -313,7 +313,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/users/get
 				if (operation === 'get') {
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userId = this.getNodeParameter('userId', i);
 
 					const projection = this.getNodeParameter('projection', i) as string;
 
@@ -391,7 +391,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/users/update
 				if (operation === 'update') {
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userId = this.getNodeParameter('userId', i);
 
 					const updateFields = this.getNodeParameter('updateFields', i);
 

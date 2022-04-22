@@ -12,7 +12,7 @@ import {
 } from '../../../transport';
 
 export async function createTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('customerId', index) as IDataObject;
+	const id = this.getNodeParameter('customerId', index) as unknown as IDataObject;
 	const subject = this.getNodeParameter('subject', index);
 	const { assetId, dueDate, issueType, status, contactId } = this.getNodeParameter('additionalFields', index) as IDataObject;
 

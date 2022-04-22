@@ -847,13 +847,13 @@ export class OneSimpleApi implements INodeType {
 
 				if (resource === 'socialProfile') {
 					if (operation === 'instagramProfile') {
-						const profileName = this.getNodeParameter('profileName', i) as string;
+						const profileName = this.getNodeParameter('profileName', i);
 						qs.profile = profileName;
 						responseData = await oneSimpleApiRequest.call(this, 'GET', '/instagram_profile', {}, qs);
 					}
 
 					if (operation === 'spotifyArtistProfile') {
-						const artistName = this.getNodeParameter('artistName', i) as string;
+						const artistName = this.getNodeParameter('artistName', i);
 						qs.profile = artistName;
 						responseData = await oneSimpleApiRequest.call(this, 'GET', '/spotify_profile', {}, qs);
 					}

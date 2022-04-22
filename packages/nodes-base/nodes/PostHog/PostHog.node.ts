@@ -109,7 +109,7 @@ export class PostHog implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const distinctId = this.getNodeParameter('distinctId', i) as string;
+						const distinctId = this.getNodeParameter('distinctId', i);
 
 						const alias = this.getNodeParameter('alias', i) as string;
 
@@ -152,9 +152,9 @@ export class PostHog implements INodeType {
 				try {
 					const events: IEvent[] = [];
 					for (let i = 0; i < length; i++) {
-						const eventName = this.getNodeParameter('eventName', i) as string;
+						const eventName = this.getNodeParameter('eventName', i);
 
-						const distinctId = this.getNodeParameter('distinctId', i) as string;
+						const distinctId = this.getNodeParameter('distinctId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -195,7 +195,7 @@ export class PostHog implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const distinctId = this.getNodeParameter('distinctId', i) as string;
+						const distinctId = this.getNodeParameter('distinctId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -233,7 +233,7 @@ export class PostHog implements INodeType {
 			if (operation === 'page' || operation === 'screen') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const distinctId = this.getNodeParameter('distinctId', i) as string;
+						const distinctId = this.getNodeParameter('distinctId', i);
 
 						const name = this.getNodeParameter('name', i);
 

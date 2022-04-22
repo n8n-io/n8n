@@ -567,7 +567,7 @@ export class Pushbullet implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const pushId = this.getNodeParameter('pushId', i) as string;
+						const pushId = this.getNodeParameter('pushId', i);
 
 						responseData = await pushbulletApiRequest.call(
 							this,
@@ -579,7 +579,7 @@ export class Pushbullet implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const pushId = this.getNodeParameter('pushId', i) as string;
+						const pushId = this.getNodeParameter('pushId', i);
 
 						const dismissed = this.getNodeParameter('dismissed', i) as boolean;
 

@@ -181,7 +181,7 @@ export class Zulip implements INodeType {
 					}
 					//https://zulipchat.com/api/update-message
 					if (operation === 'update') {
-						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IMessage = {};
 						if (updateFields.content) {
@@ -197,12 +197,12 @@ export class Zulip implements INodeType {
 					}
 					//https://zulipchat.com/api/get-raw-message
 					if (operation === 'get') {
-						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i);
 						responseData = await zulipApiRequest.call(this, 'GET', `/messages/${messageId}`);
 					}
 					//https://zulipchat.com/api/delete-message
 					if (operation === 'delete') {
-						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i);
 						responseData = await zulipApiRequest.call(this, 'DELETE', `/messages/${messageId}`);
 					}
 					//https://zulipchat.com/api/upload-file
@@ -279,7 +279,7 @@ export class Zulip implements INodeType {
 						body.subscriptions = JSON.stringify(subscriptions.properties);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
@@ -324,18 +324,18 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const streamId = this.getNodeParameter('streamId', i) as string;
+						const streamId = this.getNodeParameter('streamId', i);
 
 						responseData = await zulipApiRequest.call(this, 'DELETE', `/streams/${streamId}`, {});
 					}
 
 					if (operation === 'update') {
-						const streamId = this.getNodeParameter('streamId', i) as string;
+						const streamId = this.getNodeParameter('streamId', i);
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 
@@ -381,7 +381,7 @@ export class Zulip implements INodeType {
 					const body: IUser = {};
 
 					if (operation === 'get') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.clientGravatar) {
@@ -412,14 +412,14 @@ export class Zulip implements INodeType {
 					if (operation === 'create') {
 						body.email = this.getNodeParameter('email', i);
 						body.password = this.getNodeParameter('password', i);
-						body.full_name = this.getNodeParameter('fullName', i) as string;
-						body.short_name = this.getNodeParameter('shortName', i) as string;
+						body.full_name = this.getNodeParameter('fullName', i);
+						body.short_name = this.getNodeParameter('shortName', i);
 
 						responseData = await zulipApiRequest.call(this, 'POST', `/users`, body);
 					}
 
 					if (operation === 'update') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fullName) {
@@ -443,7 +443,7 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'deactivate') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userId = this.getNodeParameter('userId', i);
 
 						responseData = await zulipApiRequest.call(this, 'DELETE', `/users/${userId}`, body);
 					}

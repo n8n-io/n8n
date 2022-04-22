@@ -288,7 +288,7 @@ export class Zendesk implements INodeType {
 							comment,
 						};
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 
@@ -340,7 +340,7 @@ export class Zendesk implements INodeType {
 						const body: ITicket = {};
 
 						if (jsonParameters) {
-							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
+							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i);
 
 							if (updateFieldsJson !== '') {
 
@@ -407,7 +407,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#show-suspended-ticket
 					if (operation === 'get') {
-						const ticketType = this.getNodeParameter('ticketType', i) as string;
+						const ticketType = this.getNodeParameter('ticketType', i);
 						const ticketId = this.getNodeParameter('id', i) as string;
 						const endpoint = (ticketType === 'regular') ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
 						responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {});
@@ -416,7 +416,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#list-suspended-tickets
 					if (operation === 'getAll') {
-						const ticketType = this.getNodeParameter('ticketType', i) as string;
+						const ticketType = this.getNodeParameter('ticketType', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						qs.query = 'type:ticket';
@@ -450,7 +450,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#delete-ticket
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#delete-suspended-ticket
 					if (operation === 'delete') {
-						const ticketType = this.getNodeParameter('ticketType', i) as string;
+						const ticketType = this.getNodeParameter('ticketType', i);
 						const ticketId = this.getNodeParameter('id', i) as string;
 						const endpoint = (ticketType === 'regular') ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
 						responseData = await zendeskApiRequest.call(this, 'DELETE', endpoint, {});
@@ -471,7 +471,7 @@ export class Zendesk implements INodeType {
 				if (resource === 'ticketField') {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
 					if (operation === 'get') {
-						const ticketFieldId = this.getNodeParameter('ticketFieldId', i) as string;
+						const ticketFieldId = this.getNodeParameter('ticketFieldId', i);
 						responseData = await zendeskApiRequest.call(this, 'GET', `/ticket_fields/${ticketFieldId}`, {});
 						responseData = responseData.ticket_field;
 					}

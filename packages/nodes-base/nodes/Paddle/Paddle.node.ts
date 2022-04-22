@@ -196,7 +196,7 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
@@ -207,8 +207,8 @@ export class Paddle implements INodeType {
 							}
 
 						} else {
-							const discountType = this.getNodeParameter('discountType', i) as string;
-							const couponType = this.getNodeParameter('couponType', i) as string;
+							const discountType = this.getNodeParameter('discountType', i);
+							const couponType = this.getNodeParameter('couponType', i);
 							const discountAmount = this.getNodeParameter('discountAmount', i) as number;
 
 							if (couponType === 'product') {
@@ -260,7 +260,7 @@ export class Paddle implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const productId = this.getNodeParameter('productId', i) as string;
+						const productId = this.getNodeParameter('productId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/product/list_coupons';
 
@@ -281,7 +281,7 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
@@ -354,7 +354,7 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
@@ -403,7 +403,7 @@ export class Paddle implements INodeType {
 						}
 					}
 					if (operation === 'reschedule') {
-						const paymentId = this.getNodeParameter('paymentId', i) as number;
+						const paymentId = this.getNodeParameter('paymentId', i) as unknown as number;
 						const date = this.getNodeParameter('date', i) as Date;
 
 						body.payment_id = paymentId;
@@ -429,7 +429,7 @@ export class Paddle implements INodeType {
 						}
 					}
 					if (operation === 'get') {
-						const planId = this.getNodeParameter('planId', i) as string;
+						const planId = this.getNodeParameter('planId', i);
 
 						body.plan = planId;
 
@@ -457,7 +457,7 @@ export class Paddle implements INodeType {
 				if (resource === 'order') {
 					if (operation === 'get') {
 						const endpoint = '/1.0/order';
-						const checkoutId = this.getNodeParameter('checkoutId', i) as string;
+						const checkoutId = this.getNodeParameter('checkoutId', i);
 
 						body.checkout_id = checkoutId;
 
@@ -471,7 +471,7 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i);
 
 							if (additionalFieldsJson !== '') {
 								if (validateJSON(additionalFieldsJson) !== undefined) {

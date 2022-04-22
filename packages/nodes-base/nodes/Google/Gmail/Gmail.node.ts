@@ -227,7 +227,7 @@ export class Gmail implements INodeType {
 					}
 					if (operation === 'delete') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/delete
-						const labelId = this.getNodeParameter('labelId', i) as string[];
+						const labelId = this.getNodeParameter('labelId', i) as unknown as string[];
 
 						method = 'DELETE';
 						endpoint = `/gmail/v1/users/me/labels/${labelId}`;
@@ -379,7 +379,7 @@ export class Gmail implements INodeType {
 					}
 					if (operation === 'reply') {
 
-						const id = this.getNodeParameter('messageId', i) as string;
+						const id = this.getNodeParameter('messageId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -477,7 +477,7 @@ export class Gmail implements INodeType {
 
 						body = {
 							raw: await encodeEmail(email),
-							threadId: this.getNodeParameter('threadId', i) as string,
+							threadId: this.getNodeParameter('threadId', i),
 						};
 
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);

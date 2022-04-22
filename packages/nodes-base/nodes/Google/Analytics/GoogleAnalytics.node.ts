@@ -167,7 +167,7 @@ export class GoogleAnalytics implements INodeType {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						method = 'POST';
 						endpoint = '/v4/reports:batchGet';
-						const viewId = this.getNodeParameter('viewId', i) as string;
+						const viewId = this.getNodeParameter('viewId', i);
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',

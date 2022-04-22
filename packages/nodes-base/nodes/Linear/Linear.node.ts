@@ -167,7 +167,7 @@ export class Linear implements INodeType {
 			try {
 				if (resource === 'issue') {
 					if (operation === 'create') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i);
 						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IGraphqlBody = {
@@ -183,7 +183,7 @@ export class Linear implements INodeType {
 						responseData = responseData.data.issueCreate?.issue;
 					}
 					if (operation === 'delete') {
-						const issueId = this.getNodeParameter('issueId', i) as string;
+						const issueId = this.getNodeParameter('issueId', i);
 						const body: IGraphqlBody = {
 							query: query.deleteIssue(),
 							variables: {
@@ -195,7 +195,7 @@ export class Linear implements INodeType {
 						responseData = responseData?.data?.issueDelete;
 					}
 					if (operation === 'get') {
-						const issueId = this.getNodeParameter('issueId', i) as string;
+						const issueId = this.getNodeParameter('issueId', i);
 						const body: IGraphqlBody = {
 							query: query.getIssue(),
 							variables: {
@@ -224,7 +224,7 @@ export class Linear implements INodeType {
 						}
 					}
 					if (operation === 'update') {
-						const issueId = this.getNodeParameter('issueId', i) as string;
+						const issueId = this.getNodeParameter('issueId', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IGraphqlBody = {
 							query: query.updateIssue(),

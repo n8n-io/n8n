@@ -234,8 +234,8 @@ export class Coda implements INodeType {
 					const sendData = {} as IDataObject;
 					for (let i = 0; i < items.length; i++) {
 						qs = {};
-						const docId = this.getNodeParameter('docId', i) as string;
-						const tableId = this.getNodeParameter('tableId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const tableId = this.getNodeParameter('tableId', i);
 						const options = this.getNodeParameter('options', i);
 						const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 
@@ -286,9 +286,9 @@ export class Coda implements INodeType {
 			if (operation === 'getRow') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const tableId = this.getNodeParameter('tableId', i) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const tableId = this.getNodeParameter('tableId', i);
+						const rowId = this.getNodeParameter('rowId', i);
 						const options = this.getNodeParameter('options', i);
 
 						const endpoint = `/docs/${docId}/tables/${tableId}/rows/${rowId}`;
@@ -377,9 +377,9 @@ export class Coda implements INodeType {
 				try {
 					const sendData = {} as IDataObject;
 					for (let i = 0; i < items.length; i++) {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const tableId = this.getNodeParameter('tableId', i) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const tableId = this.getNodeParameter('tableId', i);
+						const rowId = this.getNodeParameter('rowId', i);
 						const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 
 						// Collect all the data for the different docs/tables
@@ -407,10 +407,10 @@ export class Coda implements INodeType {
 			if (operation === 'pushButton') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const tableId = this.getNodeParameter('tableId', i) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
-						const columnId = this.getNodeParameter('columnId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const tableId = this.getNodeParameter('tableId', i);
+						const rowId = this.getNodeParameter('rowId', i);
+						const columnId = this.getNodeParameter('columnId', i);
 						const endpoint = `/docs/${docId}/tables/${tableId}/rows/${rowId}/buttons/${columnId}`;
 						responseData = await codaApiRequest.call(this, 'POST', endpoint, {});
 						returnData.push(responseData);
@@ -428,9 +428,9 @@ export class Coda implements INodeType {
 			if (operation === 'getColumn') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const tableId = this.getNodeParameter('tableId', i) as string;
-						const columnId = this.getNodeParameter('columnId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const tableId = this.getNodeParameter('tableId', i);
+						const columnId = this.getNodeParameter('columnId', i);
 						const endpoint = `/docs/${docId}/tables/${tableId}/columns/${columnId}`;
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
 						returnData.push(responseData);
@@ -449,8 +449,8 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const docId = this.getNodeParameter('docId', i) as string;
-						const tableId = this.getNodeParameter('tableId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const tableId = this.getNodeParameter('tableId', i);
 						const endpoint = `/docs/${docId}/tables/${tableId}/columns`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
@@ -476,8 +476,8 @@ export class Coda implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const formulaId = this.getNodeParameter('formulaId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const formulaId = this.getNodeParameter('formulaId', i);
 						const endpoint = `/docs/${docId}/formulas/${formulaId}`;
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
 						returnData.push(responseData);
@@ -496,7 +496,7 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const docId = this.getNodeParameter('docId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
 						const endpoint = `/docs/${docId}/formulas`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
@@ -522,8 +522,8 @@ export class Coda implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const controlId = this.getNodeParameter('controlId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const controlId = this.getNodeParameter('controlId', i);
 						const endpoint = `/docs/${docId}/controls/${controlId}`;
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
 						returnData.push(responseData);
@@ -542,7 +542,7 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const docId = this.getNodeParameter('docId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
 						const endpoint = `/docs/${docId}/controls`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
@@ -567,8 +567,8 @@ export class Coda implements INodeType {
 			//https://coda.io/developers/apis/v1beta1#operation/getView
 			if (operation === 'get') {
 				for (let i = 0; i < items.length; i++) {
-					const docId = this.getNodeParameter('docId', i) as string;
-					const viewId = this.getNodeParameter('viewId', i) as string;
+					const docId = this.getNodeParameter('docId', i);
+					const viewId = this.getNodeParameter('viewId', i);
 					const endpoint = `/docs/${docId}/tables/${viewId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
 					returnData.push(responseData);
@@ -580,7 +580,7 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const docId = this.getNodeParameter('docId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
 						const endpoint = `/docs/${docId}/tables?tableTypes=view`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
@@ -651,9 +651,9 @@ export class Coda implements INodeType {
 			if (operation === 'deleteViewRow') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const viewId = this.getNodeParameter('viewId', i) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const viewId = this.getNodeParameter('viewId', i);
+						const rowId = this.getNodeParameter('rowId', i);
 						const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}`;
 						responseData = await codaApiRequest.call(this, 'DELETE', endpoint);
 						returnData.push.apply(returnData,responseData);
@@ -671,10 +671,10 @@ export class Coda implements INodeType {
 			if (operation === 'pushViewButton') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const docId = this.getNodeParameter('docId', i) as string;
-						const viewId = this.getNodeParameter('viewId', i) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
-						const columnId = this.getNodeParameter('columnId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const viewId = this.getNodeParameter('viewId', i);
+						const rowId = this.getNodeParameter('rowId', i);
+						const columnId = this.getNodeParameter('columnId', i);
 						const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}/buttons/${columnId}`;
 						responseData = await codaApiRequest.call(this, 'POST', endpoint);
 						returnData.push.apply(returnData,responseData);
@@ -692,8 +692,8 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const docId = this.getNodeParameter('docId', i) as string;
-						const viewId = this.getNodeParameter('viewId', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const viewId = this.getNodeParameter('viewId', i);
 						const endpoint = `/docs/${docId}/tables/${viewId}/columns`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
@@ -718,10 +718,10 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						qs = {};
-						const docId = this.getNodeParameter('docId', i) as string;
-						const viewId = this.getNodeParameter('viewId', i) as string;
-						const rowId = this.getNodeParameter('rowId', i) as string;
-						const keyName = this.getNodeParameter('keyName', i) as string;
+						const docId = this.getNodeParameter('docId', i);
+						const viewId = this.getNodeParameter('viewId', i);
+						const rowId = this.getNodeParameter('rowId', i);
+						const keyName = this.getNodeParameter('keyName', i);
 						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}`;

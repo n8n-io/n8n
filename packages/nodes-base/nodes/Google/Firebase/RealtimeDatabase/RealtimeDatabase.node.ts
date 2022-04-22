@@ -180,7 +180,7 @@ export class RealtimeDatabase implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				const projectId = this.getNodeParameter('projectId', i) as string;
+				const projectId = this.getNodeParameter('projectId', i);
 
 				let method = 'GET', attributes = '';
 				const document: IDataObject = {};

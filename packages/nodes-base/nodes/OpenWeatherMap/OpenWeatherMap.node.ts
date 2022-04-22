@@ -231,9 +231,9 @@ export class OpenWeatherMap implements INodeType {
 				// Get the location
 				locationSelection = this.getNodeParameter('locationSelection', i) as string;
 				if (locationSelection === 'cityName') {
-					qs.q = this.getNodeParameter('cityName', i) as string;
+					qs.q = this.getNodeParameter('cityName', i);
 				} else if (locationSelection === 'cityId') {
-					qs.id = this.getNodeParameter('cityId', i) as number;
+					qs.id = this.getNodeParameter('cityId', i) as unknown as number;
 				} else if (locationSelection === 'coordinates') {
 					qs.lat = this.getNodeParameter('latitude', i) as string;
 					qs.lon = this.getNodeParameter('longitude', i) as string;

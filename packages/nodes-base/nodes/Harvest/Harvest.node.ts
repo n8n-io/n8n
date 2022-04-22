@@ -277,9 +277,9 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'time_entries';
 
-						body.project_id = this.getNodeParameter('projectId', i) as string;
-						body.task_id = this.getNodeParameter('taskId', i) as string;
-						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.project_id = this.getNodeParameter('projectId', i);
+						body.task_id = this.getNodeParameter('taskId', i);
+						body.spent_date = this.getNodeParameter('spentDate', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -295,9 +295,9 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'time_entries';
 
-						body.project_id = this.getNodeParameter('projectId', i) as string;
-						body.task_id = this.getNodeParameter('taskId', i) as string;
-						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.project_id = this.getNodeParameter('projectId', i);
+						body.task_id = this.getNodeParameter('taskId', i);
+						body.spent_date = this.getNodeParameter('spentDate', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -468,7 +468,7 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'projects';
 
-						body.client_id = this.getNodeParameter('clientId', i) as string;
+						body.client_id = this.getNodeParameter('clientId', i);
 						body.name = this.getNodeParameter('name', i);
 						body.is_billable = this.getNodeParameter('isBillable', i) as string;
 						body.bill_by = this.getNodeParameter('billBy', i) as string;
@@ -551,8 +551,8 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'users';
 
-						body.first_name = this.getNodeParameter('firstName', i) as string;
-						body.last_name = this.getNodeParameter('lastName', i) as string;
+						body.first_name = this.getNodeParameter('firstName', i);
+						body.last_name = this.getNodeParameter('lastName', i);
 						body.email = this.getNodeParameter('email', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -620,8 +620,8 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'contacts';
 
-						body.client_id = this.getNodeParameter('clientId', i) as string;
-						body.first_name = this.getNodeParameter('firstName', i) as string;
+						body.client_id = this.getNodeParameter('clientId', i);
+						body.first_name = this.getNodeParameter('firstName', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -770,7 +770,7 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'invoices';
 
-						body.client_id = this.getNodeParameter('clientId', i) as string;
+						body.client_id = this.getNodeParameter('clientId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -837,9 +837,9 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'expenses';
 
-						body.project_id = this.getNodeParameter('projectId', i) as string;
-						body.expense_category_id = this.getNodeParameter('expenseCategoryId', i) as string;
-						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.project_id = this.getNodeParameter('projectId', i);
+						body.expense_category_id = this.getNodeParameter('expenseCategoryId', i);
+						body.spent_date = this.getNodeParameter('spentDate', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -906,7 +906,7 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'estimates';
 
-						body.client_id = this.getNodeParameter('clientId', i) as string;
+						body.client_id = this.getNodeParameter('clientId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);

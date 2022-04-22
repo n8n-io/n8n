@@ -227,7 +227,7 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'cards';
 
-						qs.idList = this.getNodeParameter('listId', i) as string;
+						qs.idList = this.getNodeParameter('listId', i);
 
 						qs.name = this.getNodeParameter('name', i);
 						qs.desc = this.getNodeParameter('description', i);
@@ -285,7 +285,7 @@ export class Trello implements INodeType {
 						//         create
 						// ----------------------------------
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 
 						qs.text = this.getNodeParameter('text', i);
 
@@ -301,9 +301,9 @@ export class Trello implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 
-						const commentId = this.getNodeParameter('commentId', i) as string;
+						const commentId = this.getNodeParameter('commentId', i);
 
 						endpoint = `/cards/${cardId}/actions/${commentId}/comments`;
 
@@ -314,9 +314,9 @@ export class Trello implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 
-						const commentId = this.getNodeParameter('commentId', i) as string;
+						const commentId = this.getNodeParameter('commentId', i);
 
 						qs.text = this.getNodeParameter('text', i);
 
@@ -436,7 +436,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'POST';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const url = this.getNodeParameter('url', i);
 
 						Object.assign(qs, {
@@ -455,7 +455,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `cards/${cardId}/attachments/${id}`;
@@ -467,7 +467,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `cards/${cardId}/attachments/${id}`;
@@ -482,7 +482,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 
 						endpoint = `cards/${cardId}/attachments`;
 
@@ -501,7 +501,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'POST';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const name = this.getNodeParameter('name', i);
 
 						Object.assign(qs, { name });
@@ -518,7 +518,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `cards/${cardId}/checklists/${id}`;
@@ -544,7 +544,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 
 						endpoint = `cards/${cardId}/checklists`;
 
@@ -558,8 +558,8 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
-						const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
+						const checkItemId = this.getNodeParameter('checkItemId', i);
 
 						endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
 
@@ -573,7 +573,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'POST';
 
-						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i);
 
 						endpoint = `checklists/${checklistId}/checkItems`;
 
@@ -588,8 +588,8 @@ export class Trello implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
-						const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
+						const checkItemId = this.getNodeParameter('checkItemId', i);
 
 						endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
 
@@ -600,8 +600,8 @@ export class Trello implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
-						const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
+						const checkItemId = this.getNodeParameter('checkItemId', i);
 
 						endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
 
@@ -615,7 +615,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 
 						endpoint = `cards/${cardId}/checkItemStates`;
 
@@ -634,9 +634,9 @@ export class Trello implements INodeType {
 
 						requestMethod = 'POST';
 
-						const idBoard = this.getNodeParameter('boardId', i) as string;
+						const idBoard = this.getNodeParameter('boardId', i);
 						const name = this.getNodeParameter('name', i);
-						const color = this.getNodeParameter('color', i) as string;
+						const color = this.getNodeParameter('color', i);
 
 						Object.assign(qs, {
 							idBoard,
@@ -678,7 +678,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						const idBoard = this.getNodeParameter('boardId', i) as string;
+						const idBoard = this.getNodeParameter('boardId', i);
 
 						endpoint = `board/${idBoard}/labels`;
 
@@ -706,7 +706,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'POST';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const id = this.getNodeParameter('id', i) as string;
 
 						qs.value = id;
@@ -720,7 +720,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i);
 						const id = this.getNodeParameter('id', i) as string;
 
 						endpoint = `/cards/${cardId}/idLabels/${id}`;

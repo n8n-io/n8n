@@ -491,7 +491,7 @@ export class Rocketchat implements INodeType {
 								body.attachments = attachments;
 							}
 						} else {
-							body.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
+							body.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i));
 						}
 
 						responseData = await rocketchatApiRequest.call(this, '/chat', 'POST', 'postMessage', body);

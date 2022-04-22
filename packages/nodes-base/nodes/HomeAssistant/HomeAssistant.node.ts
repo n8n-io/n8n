@@ -255,10 +255,10 @@ export class HomeAssistant implements INodeType {
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'get') {
-						const entityId = this.getNodeParameter('entityId', i) as string;
+						const entityId = this.getNodeParameter('entityId', i);
 						responseData = await homeAssistantApiRequest.call(this, 'GET', `/states/${entityId}`);
 					} else if (operation === 'upsert') {
-						const entityId = this.getNodeParameter('entityId', i) as string;
+						const entityId = this.getNodeParameter('entityId', i);
 						const state = this.getNodeParameter('state', i) as string;
 						const stateAttributes = this.getNodeParameter('stateAttributes', i) as {
 							attributes: IDataObject[],
@@ -291,7 +291,7 @@ export class HomeAssistant implements INodeType {
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'create') {
-						const eventType = this.getNodeParameter('eventType', i) as string;
+						const eventType = this.getNodeParameter('eventType', i);
 						const eventAttributes = this.getNodeParameter('eventAttributes', i) as {
 							attributes: IDataObject[],
 						};
@@ -381,7 +381,7 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'cameraProxy') {
 					if (operation === 'getScreenshot') {
-						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
+						const cameraEntityId = this.getNodeParameter('cameraEntityId', i);
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						const endpoint = `/camera_proxy/${cameraEntityId}`;
 
