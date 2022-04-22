@@ -5,10 +5,10 @@ import {
 
 import {
 	IDataObject,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	INodeExecutionData,
 	NodeOperationError
 } from 'n8n-workflow';
 
@@ -57,7 +57,6 @@ export class WikiPageSavedTrigger implements INodeType {
 		description: 'Handle events when a wiki page is changed via webhooks',
 		defaults: {
 			name: 'WikiPageSaved Trigger',
-			color: '#6ad7b9',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -91,7 +90,7 @@ export class WikiPageSavedTrigger implements INodeType {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				isFullPath: true,
-				path: 'wikiPageSaved'
+				path: 'wikiPageSaved',
 			},
 		],
 		properties: [
@@ -254,7 +253,7 @@ export class WikiPageSavedTrigger implements INodeType {
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
 							}
-							if (multiFile === true) {
+							if (multiFile) {
 								binaryPropertyName += fileCount++;
 							}
 
@@ -288,7 +287,7 @@ export class WikiPageSavedTrigger implements INodeType {
 			workflowData: [
 				[
 					response,
-				]
+				],
 			],
 		};
 	}
