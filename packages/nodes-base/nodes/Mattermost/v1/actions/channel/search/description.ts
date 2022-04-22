@@ -23,7 +23,7 @@ export const channelSearchDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team',
+		description: 'The Mattermost Team.',
 	},
 	{
 		displayName: 'Search Term',

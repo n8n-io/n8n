@@ -109,16 +109,16 @@ export const payoutFields: INodeProperties[] = [
 							{
 								name: 'Email',
 								value: 'email',
-								description: 'The unencrypted email',
+								description: 'The unencrypted email.',
 							},
 							{
 								name: 'PayPal ID',
 								value: 'paypalId',
-								description: 'The encrypted PayPal account number',
+								description: 'The encrypted PayPal account number.',
 							},
 						],
 						default: 'email',
-						description: 'The ID type that identifies the recipient of the payment',
+						description: 'The ID type that identifies the recipient of the payment.',
 					},
 					{
 						displayName: 'Receiver Value',
@@ -217,7 +217,7 @@ export const payoutFields: INodeProperties[] = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'An array of individual payout items',
+		description: 'An array of individual payout items.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -293,7 +293,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the payout for which to show details',
+		description: 'The ID of the payout for which to show details.',
 	},
 	{
 		displayName: 'Return All',
@@ -310,7 +310,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -334,7 +334,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 
 ];
@@ -390,7 +390,7 @@ export const payoutItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the payout item for which to show details',
+		description: 'The ID of the payout item for which to show details.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -413,6 +413,6 @@ export const payoutItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the payout item to cancel',
+		description: 'The ID of the payout item to cancel.',
 	},
 ];

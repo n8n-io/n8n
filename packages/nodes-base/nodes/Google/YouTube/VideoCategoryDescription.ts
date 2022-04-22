@@ -66,7 +66,7 @@ export const videoCategoryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -90,6 +90,6 @@ export const videoCategoryFields: INodeProperties[] = [
 			maxValue: 50,
 		},
 		default: 25,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 ];

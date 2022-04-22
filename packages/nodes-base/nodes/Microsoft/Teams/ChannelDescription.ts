@@ -87,7 +87,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Channel name as it will appear to the user in Microsoft Teams',
+		description: 'Channel name as it will appear to the user in Microsoft Teams.',
 	},
 	{
 		displayName: 'Options',
@@ -266,7 +266,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -290,7 +290,7 @@ export const channelFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -360,7 +360,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams',
+				description: 'Channel name as it will appear to the user in Microsoft Teams.',
 			},
 			{
 				displayName: 'Description',

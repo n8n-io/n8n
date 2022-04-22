@@ -62,7 +62,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'A succinct description of the nature, symptoms, cause, or effect of the incident',
+		description: 'A succinct description of the nature, symptoms, cause, or effect of the incident.',
 	},
 	{
 		displayName: 'Service ID',
@@ -83,7 +83,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The incident will be created on this service',
+		description: 'The incident will be created on this service.',
 	},
 	{
 		displayName: 'Email',
@@ -101,7 +101,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request',
+		description: `The email address of a valid user associated with the account making the request.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -142,7 +142,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
-				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key',
+				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key.',
 			},
 			{
 				displayName: 'Priority ID',
@@ -152,7 +152,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'The incident will be created on this service',
+				description: 'The incident will be created on this service.',
 			},
 			{
 				displayName: 'Urgency',
@@ -202,7 +202,7 @@ export const incidentFields: INodeProperties[] = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input',
+						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.`,
 					},
 					{
 						displayName: 'Conference URL',
@@ -234,7 +234,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident',
+		description: 'Unique identifier for the incident.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 incident:getAll                            */
@@ -254,7 +254,7 @@ export const incidentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -278,7 +278,7 @@ export const incidentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -308,7 +308,7 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'When set to all, the since and until parameters and defaults are ignored',
+				description: 'When set to all, the since and until parameters and defaults are ignored.',
 			},
 			{
 				displayName: 'Incident Key',
@@ -360,7 +360,7 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Additional details to include',
+				description: 'Additional details to include.',
 			},
 			{
 				displayName: 'Service IDs',
@@ -370,7 +370,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getServices',
 				},
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s)',
+				description: 'Returns only the incidents associated with the passed service(s).',
 			},
 			{
 				displayName: 'Since',
@@ -406,7 +406,7 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s)',
+				description: 'Returns only the incidents associated with the passed service(s).',
 			},
 			{
 				displayName: 'Team IDs',
@@ -477,7 +477,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident',
+		description: 'Unique identifier for the incident.',
 	},
 	{
 		displayName: 'Email',
@@ -495,7 +495,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request',
+		description: `The email address of a valid user associated with the account making the request.`,
 	},
 	{
 		displayName: 'Update Fields',
@@ -522,7 +522,7 @@ export const incidentFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Escalate the incident to this level in the escalation policy',
+				description: 'Escalate the incident to this level in the escalation policy.',
 			},
 			{
 				displayName: 'Escalation Policy ID',
@@ -542,7 +542,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'The incident will be created on this service',
+				description: 'The incident will be created on this service.',
 			},
 			{
 				displayName: 'Resolution',
@@ -552,7 +552,7 @@ export const incidentFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The resolution for this incident if status is set to resolved',
+				description: 'The resolution for this incident if status is set to resolved.',
 			},
 			{
 				displayName: 'Status',
@@ -569,14 +569,14 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The new status of the incident',
+				description: 'The new status of the incident.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'A succinct description of the nature, symptoms, cause, or effect of the incident',
+				description: 'A succinct description of the nature, symptoms, cause, or effect of the incident.',
 			},
 			{
 				displayName: 'Urgency',
@@ -626,7 +626,7 @@ export const incidentFields: INodeProperties[] = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input',
+						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.`,
 					},
 					{
 						displayName: 'Conference URL',

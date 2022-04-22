@@ -124,14 +124,14 @@ export const identifyFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address',
+						description: 'Current user’s IP address.',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US',
+						description: 'Locale string for the current user, for example en-US.',
 					},
 					{
 						displayName: 'Page',

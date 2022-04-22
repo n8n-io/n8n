@@ -281,7 +281,7 @@ export const chargeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the charge to retrieve',
+		description: 'ID of the charge to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [

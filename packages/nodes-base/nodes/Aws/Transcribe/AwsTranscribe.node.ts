@@ -94,7 +94,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the job',
+				description: 'The name of the job.',
 			},
 			{
 				displayName: 'Media File URI',
@@ -128,7 +128,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Set this field to true to enable automatic language identification',
+				description: 'Set this field to true to enable automatic language identification.',
 			},
 			{
 				displayName: 'Language',
@@ -178,7 +178,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: 'en-US',
-				description: 'Language used in the input media file',
+				description: 'Language used in the input media file.',
 			},
 			// ----------------------------------
 			//     Transcription Job Settings
@@ -213,7 +213,7 @@ export class AwsTranscribe implements INodeType {
 							minValue: 2,
 							maxValue: 10,
 						},
-						description: 'The number of alternative transcriptions that the service should return',
+						description: 'The number of alternative transcriptions that the service should return.',
 					},
 					{
 						displayName: 'Max Speaker Labels',
@@ -231,7 +231,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'vocabularyName',
 						type: 'string',
 						default: '',
-						description: 'Name of vocabulary to use when processing the transcription job',
+						description: 'Name of vocabulary to use when processing the transcription job.',
 					},
 					{
 						displayName: 'Vocabulary Filter Name',
@@ -299,7 +299,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 			{
 				displayName: 'Return All',
@@ -316,7 +316,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'If all results should be returned or only up to a given limit.',
 			},
 			{
 				displayName: 'Limit',
@@ -362,7 +362,7 @@ export class AwsTranscribe implements INodeType {
 						displayName: 'Job Name Contains',
 						name: 'jobNameContains',
 						type: 'string',
-						description: 'Return only transcription jobs whose name contains the specified string',
+						description: 'Return only transcription jobs whose name contains the specified string.',
 						default: '',
 					},
 					{
@@ -387,7 +387,7 @@ export class AwsTranscribe implements INodeType {
 								value: 'QUEUED',
 							},
 						],
-						description: 'Return only transcription jobs with the specified status',
+						description: 'Return only transcription jobs with the specified status.',
 						default: 'COMPLETED',
 					},
 				],

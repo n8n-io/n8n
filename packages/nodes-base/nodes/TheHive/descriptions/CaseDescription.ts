@@ -45,7 +45,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -69,7 +69,7 @@ export const caseFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 	// Required fields
 	{

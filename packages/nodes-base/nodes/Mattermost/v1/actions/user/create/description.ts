@@ -123,7 +123,7 @@ export const userCreateDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: 'The password used for email authentication',
+		description: 'The password used for email authentication.',
 	},
 	{
 		displayName: 'Additional Fields',

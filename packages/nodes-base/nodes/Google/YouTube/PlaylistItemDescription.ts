@@ -104,7 +104,7 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'endAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The time, measured in seconds from the start of the video, when the video should stop playing',
+				description: `The time, measured in seconds from the start of the video, when the video should stop playing.`,
 			},
 			{
 				displayName: 'Note',
@@ -135,7 +135,7 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'startAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The time, measured in seconds from the start of the video, when the video should start playing',
+				description: `The time, measured in seconds from the start of the video, when the video should start playing.`,
 			},
 		],
 	},
@@ -196,7 +196,7 @@ export const playlistItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include',
+		description: 'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include.',
 		default: ['*'],
 	},
 	{
@@ -331,7 +331,7 @@ export const playlistItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include',
+		description: 'The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include.',
 		default: ['*'],
 	},
 	{
@@ -349,7 +349,7 @@ export const playlistItemFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -373,7 +373,7 @@ export const playlistItemFields: INodeProperties[] = [
 			maxValue: 50,
 		},
 		default: 25,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',

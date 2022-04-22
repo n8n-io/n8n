@@ -125,7 +125,7 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The content of the item',
+		description: 'The content of the item.',
 	},
 	{
 		displayName: 'Options',
@@ -149,7 +149,7 @@ export const channelMessageFields: INodeProperties[] = [
 				name: 'makeReply',
 				type: 'string',
 				default: '',
-				description: 'An optional ID of the message you want to reply to',
+				description: 'An optional ID of the message you want to reply to.',
 			},
 		],
 	},
@@ -213,7 +213,7 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -237,6 +237,6 @@ export const channelMessageFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 ];

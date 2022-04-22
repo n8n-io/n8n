@@ -94,7 +94,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'John Doe',
-				description: 'Search query, it can be anything related to customer data like name etc',
+				description: 'Search query, it can be anything related to customer data like name etc.',
 			},
 			{
 				displayName: 'Sort',
@@ -102,7 +102,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'firstname ASC',
-				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc',
+				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc.',
 			},
 		],
 	},

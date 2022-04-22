@@ -70,7 +70,7 @@ export class FacebookGraphApi implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP Method to be used for the request',
+				description: 'The HTTP Method to be used for the request.',
 				required: true,
 			},
 			{
@@ -140,7 +140,7 @@ export class FacebookGraphApi implements INodeType {
 					},
 				],
 				default: '',
-				description: 'The version of the Graph API to be used in the request',
+				description: 'The version of the Graph API to be used in the request.',
 				required: true,
 			},
 			{
@@ -182,7 +182,7 @@ export class FacebookGraphApi implements INodeType {
 				},
 				default: false,
 				required: true,
-				description: 'If binary data should be send as body',
+				description: 'If binary data should be send as body.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -228,7 +228,7 @@ export class FacebookGraphApi implements INodeType {
 								],
 							},
 						},
-						description: 'The list of fields to request in the GET request',
+						description: 'The list of fields to request in the GET request.',
 						default: {},
 						options: [
 							{
@@ -240,7 +240,7 @@ export class FacebookGraphApi implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the field',
+										description: 'Name of the field.',
 									},
 								],
 							},
@@ -266,14 +266,14 @@ export class FacebookGraphApi implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the parameter',
+										description: 'Name of the parameter.',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the parameter',
+										description: 'Value of the parameter.',
 									},
 								],
 							},

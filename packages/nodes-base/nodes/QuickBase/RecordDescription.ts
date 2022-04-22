@@ -85,7 +85,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'Select Fields...',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -102,7 +102,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -139,7 +139,7 @@ export const recordFields: INodeProperties[] = [
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Use Field IDs instead of Field Names in Columns',
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 		],
 	},
@@ -218,7 +218,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts',
+		description: 'Returns a list of your user contacts.',
 	},
 	{
 		displayName: 'Limit',
@@ -242,7 +242,7 @@ export const recordFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -293,7 +293,7 @@ export const recordFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTableFields',
 								},
 								default: '',
-								description: 'The unique identifier of a field in a table',
+								description: 'The unique identifier of a field in a table.',
 							},
 							{
 								displayName: 'Order',
@@ -321,7 +321,7 @@ export const recordFields: INodeProperties[] = [
 				name: 'where',
 				type: 'string',
 				default: '',
-				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return',
+				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return.',
 			},
 		],
 	},
@@ -363,7 +363,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Update Key',
@@ -380,7 +380,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'update can use the key field on the table, or any other supported unique field',
+		description: 'update can use the key field on the table, or any other supported unique field.',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -397,7 +397,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -434,7 +434,7 @@ export const recordFields: INodeProperties[] = [
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Use Field IDs instead of Field Names in Columns',
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 			// {
 			// 	displayName: 'Merge Field ID',
@@ -488,7 +488,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Update Key',
@@ -505,7 +505,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'update can use the key field on the table, or any other supported unique field',
+		description: 'update can use the key field on the table, or any other supported unique field.',
 	},
 	{
 		displayName: 'Merge Field ID',
@@ -542,7 +542,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -579,7 +579,7 @@ export const recordFields: INodeProperties[] = [
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Use Field IDs instead of Field Names in Columns',
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 		],
 	},

@@ -124,14 +124,14 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data.',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data',
+								description: 'The end user specified value of the user defined data.',
 								default: '',
 							},
 						],
@@ -205,7 +205,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Id of contact to delete',
+		description: 'Id of contact to delete.',
 	},
 	{
 		displayName: 'Options',
@@ -307,7 +307,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -573,14 +573,14 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data.',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data',
+								description: 'The end user specified value of the user defined data.',
 								default: '',
 							},
 						],

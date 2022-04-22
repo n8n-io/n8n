@@ -362,7 +362,7 @@ export class Vonage implements INodeType {
 						name: 'client-ref',
 						type: 'string',
 						default: '',
-						description: 'You can optionally include your own reference of up to 40 characters',
+						description: 'You can optionally include your own reference of up to 40 characters.',
 					},
 					{
 						displayName: 'Message Class',
@@ -401,7 +401,7 @@ export class Vonage implements INodeType {
 						name: 'status-report-req',
 						type: 'boolean',
 						default: false,
-						description: 'Boolean indicating if you like to receive a Delivery Receipt',
+						description: 'Boolean indicating if you like to receive a Delivery Receipt.',
 					},
 					{
 						displayName: 'TTL (in minutes)',

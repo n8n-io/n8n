@@ -270,7 +270,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -294,7 +294,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                list:customFields                           */
@@ -760,7 +760,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
