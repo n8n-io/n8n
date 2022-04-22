@@ -94,7 +94,7 @@ export const userGroupFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'A comma separated string of encoded channel IDs for which the User Group uses as a default.',
+				description: 'A comma-separated string of encoded channel IDs for which the User Group uses as a default.',
 			},
 			{
 				displayName: 'Description',
@@ -343,7 +343,7 @@ export const userGroupFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'A comma separated string of encoded channel IDs for which the User Group uses as a default.',
+				description: 'A comma-separated string of encoded channel IDs for which the User Group uses as a default.',
 			},
 			{
 				displayName: 'Description',

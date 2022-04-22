@@ -180,7 +180,7 @@ export const companyFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Severity In',
-				description: 'Filter issues by comma separated severity list',
+				description: 'Filter issues by comma-separated severity list',
 				name: 'severity_in',
 				type: 'string',
 				default: '',
