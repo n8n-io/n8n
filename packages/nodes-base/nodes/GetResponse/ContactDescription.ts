@@ -182,7 +182,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -637,7 +637,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},

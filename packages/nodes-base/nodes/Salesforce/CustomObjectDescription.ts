@@ -507,7 +507,7 @@ export const customObjectFields: INodeProperties[] = [
 						'customObject',
 					],
 				},
-				default: '',
+				default: [],
 				description: 'Fields to include separated by ,',
 			},
 		],

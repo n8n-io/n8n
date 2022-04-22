@@ -370,7 +370,7 @@ export const incidentFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getServices',
 				},
-				default: '',
+				default: [],
 				description: 'Returns only the incidents associated with the passed service(s).',
 			},
 			{
@@ -406,7 +406,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'triggered',
 					},
 				],
-				default: '',
+				default: [],
 				description: 'Returns only the incidents associated with the passed service(s).',
 			},
 			{
@@ -447,7 +447,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'low',
 					},
 				],
-				default: '',
+				default: [],
 				description: 'urgencies of the incidents to be returned. Defaults to all urgencies. Account must have the urgencies ability to do this',
 			},
 			{
