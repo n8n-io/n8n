@@ -735,7 +735,7 @@ export default mixins(
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
-					if (lastSelectedNode !== null) {
+					if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
 				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
