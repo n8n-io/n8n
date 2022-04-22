@@ -21,6 +21,7 @@
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "lintfix:old": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes --fix",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
@@ -686,6 +687,7 @@
     ]
   },
   "devDependencies": {
+    "eslint-plugin-n8n-nodes-base": "^1.0.28",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
     "@types/cheerio": "^0.22.15",
