@@ -149,14 +149,12 @@ export const customerFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
-				description: 'Organization',
 			},
 			{
 				displayName: 'Photo Url',
@@ -207,14 +205,12 @@ export const customerFields: INodeProperties[] = [
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'City',
 					},
 					{
 						displayName: 'State',
 						name: 'state',
 						type: 'string',
 						default: '',
-						description: 'State',
 					},
 					{
 						displayName: 'Country',
@@ -224,14 +220,12 @@ export const customerFields: INodeProperties[] = [
 							loadOptionsMethod: 'getCountriesCodes',
 						},
 						default: '',
-						description: 'Country',
 					},
 					{
 						displayName: 'Postal Code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
-						description: 'Postal code',
 					},
 				],
 			},
@@ -724,7 +718,6 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Customer ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                customer:update                             */
@@ -744,7 +737,6 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Customer ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -830,14 +822,12 @@ export const customerFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
-				description: 'Organization',
 			},
 			{
 				displayName: 'Photo Url',

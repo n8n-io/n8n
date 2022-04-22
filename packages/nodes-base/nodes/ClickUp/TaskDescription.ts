@@ -372,7 +372,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -466,7 +465,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status',
 			},
 			{
 				displayName: 'Start Date',
@@ -510,7 +508,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -943,7 +940,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -965,7 +961,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Return All',

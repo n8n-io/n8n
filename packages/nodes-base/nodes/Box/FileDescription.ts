@@ -77,7 +77,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Parent ID',
@@ -176,7 +175,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Binary Property',

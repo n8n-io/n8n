@@ -279,7 +279,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees',
 			},
 			{
 				displayName: 'Owner',
@@ -594,7 +593,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees',
 			},
 			{
 				displayName: 'Parent ID',

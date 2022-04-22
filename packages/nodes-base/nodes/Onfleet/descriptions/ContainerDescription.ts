@@ -54,7 +54,6 @@ const containerTypeField = {
 		},
 	],
 	default: '',
-	description: 'Container type',
 } as INodeProperties;
 
 const containerIdField = {

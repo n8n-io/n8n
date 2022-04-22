@@ -207,7 +207,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'requesterId',
-				description: 'Requester Identification',
 			},
 			{
 				displayName: 'Value',
@@ -261,7 +260,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'pending',
-				description: 'Status',
 			},
 			{
 				displayName: 'Priority',
@@ -297,7 +295,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'low',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Source',
@@ -605,7 +602,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			{
 				displayName: 'Update Fields',
@@ -724,7 +720,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'low',
-						description: 'Priority',
 					},
 					{
 						displayName: 'Requester Identification',
@@ -763,7 +758,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'requesterId',
-						description: 'Requester Identification',
 					},
 					{
 						displayName: 'Requester Value',
@@ -796,7 +790,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'pending',
-						description: 'Status',
 					},
 					{
 						displayName: 'Source',
@@ -891,7 +884,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			{
 				displayName: 'Return All',
@@ -1055,7 +1047,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			// CONTACTS
 			...contactOperations,

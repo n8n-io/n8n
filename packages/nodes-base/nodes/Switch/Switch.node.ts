@@ -144,7 +144,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -229,7 +228,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -314,7 +312,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -415,7 +412,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{

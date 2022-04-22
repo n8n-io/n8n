@@ -47,7 +47,6 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Event ID',
 	},
 	{
 		displayName: 'Session ID',

@@ -121,14 +121,12 @@ export const contactFields: INodeProperties[] = [
 								name: 'city',
 								type: 'string',
 								default: '',
-								description: 'City',
 							},
 							{
 								displayName: 'Region',
 								name: 'region',
 								type: 'string',
 								default: '',
-								description: 'Region',
 							},
 							{
 								displayName: 'Country Code',
@@ -141,7 +139,6 @@ export const contactFields: INodeProperties[] = [
 								name: 'postalCode',
 								type: 'string',
 								default: '',
-								description: 'Postal code',
 							},
 							{
 								displayName: 'Type',
@@ -1189,14 +1186,12 @@ export const contactFields: INodeProperties[] = [
 								name: 'city',
 								type: 'string',
 								default: '',
-								description: 'City',
 							},
 							{
 								displayName: 'Region',
 								name: 'region',
 								type: 'string',
 								default: '',
-								description: 'Region',
 							},
 							{
 								displayName: 'Country Code',
@@ -1209,7 +1204,6 @@ export const contactFields: INodeProperties[] = [
 								name: 'postalCode',
 								type: 'string',
 								default: '',
-								description: 'Postal code',
 							},
 							{
 								displayName: 'Type',

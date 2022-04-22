@@ -111,7 +111,6 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currency',
@@ -178,7 +177,6 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currencies',
@@ -669,7 +667,6 @@ export const coinFields: INodeProperties[] = [
 				name: 'include_exchange_logo',
 				type: 'boolean',
 				default: false,
-				description: 'Include exchange logo.',
 			},
 			{
 				displayName: 'Order',

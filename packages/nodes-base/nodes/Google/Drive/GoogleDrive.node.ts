@@ -632,7 +632,6 @@ export class GoogleDrive implements INodeType {
 										],
 									},
 								},
-								description: 'Custom Mime Type',
 							},
 						],
 					},

@@ -120,7 +120,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'First Name',
 	},
 	{
 		displayName: 'Last Name',
@@ -140,7 +139,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Last Name',
 	},
 	{
 		displayName: 'Primary Company',
@@ -163,7 +161,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Primary company',
 	},
 	{
 		displayName: 'Position',
@@ -183,7 +180,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Position',
 	},
 	{
 		displayName: 'Title',
@@ -203,7 +199,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title',
 	},
 	{
 		displayName: 'Body',
@@ -520,7 +515,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -741,7 +735,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'First Name',
 			},
 			{
 				displayName: 'Has Purchased',
@@ -850,7 +843,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Position',
 			},
 			{
 				displayName: 'Primary Company',
@@ -867,7 +859,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Primary company',
 			},
 			{
 				displayName: 'Prospect or Customer',
@@ -949,7 +940,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Title',
 			},
 			{
 				displayName: 'Social Media',
@@ -1060,7 +1050,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Action',
@@ -1179,7 +1168,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Action',
@@ -1241,7 +1229,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1307,7 +1294,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
