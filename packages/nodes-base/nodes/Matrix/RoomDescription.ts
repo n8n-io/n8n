@@ -138,7 +138,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID or alias',
 		required: true,
 	},
 
@@ -163,7 +162,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 
@@ -188,7 +186,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 
@@ -234,7 +231,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 	{

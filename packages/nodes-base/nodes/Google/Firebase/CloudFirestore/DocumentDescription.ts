@@ -229,7 +229,6 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Document ID',
 		required: true,
 	},
 	{
@@ -445,7 +444,6 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Document ID',
 		required: true,
 	},
 	// 	/* ---------------------------------------------------------------------- */

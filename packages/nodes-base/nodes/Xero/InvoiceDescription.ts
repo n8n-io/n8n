@@ -112,7 +112,6 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Line Items',
@@ -211,7 +210,6 @@ export const invoiceFields: INodeProperties[] = [
 						],
 						default: '',
 						required: true,
-						description: 'Tax Type',
 					},
 					{
 						displayName: 'Tax Amount',
@@ -470,7 +468,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Invoice ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -506,7 +503,6 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'Contact ID',
 			},
 			{
 				displayName: 'Currency',
@@ -671,7 +667,6 @@ export const invoiceFields: INodeProperties[] = [
 								],
 								default: '',
 								required: true,
-								description: 'Tax Type',
 							},
 							{
 								displayName: 'Tax Amount',
@@ -832,7 +827,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Invoice ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   invoice:getAll                           */
@@ -945,7 +939,6 @@ export const invoiceFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Statuses',

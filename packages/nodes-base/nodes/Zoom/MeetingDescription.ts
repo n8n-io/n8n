@@ -178,21 +178,18 @@ export const meetingFields: INodeProperties[] = [
 							},
 						],
 						default: 'none',
-						description: 'Auto recording',
 					},
 					{
 						displayName: 'Host Meeting in China',
 						name: 'cnMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in China',
 					},
 					{
 						displayName: 'Host Meeting in India',
 						name: 'inMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in India',
 					},
 					{
 						displayName: 'Host Video',
@@ -622,21 +619,18 @@ export const meetingFields: INodeProperties[] = [
 							},
 						],
 						default: 'none',
-						description: 'Auto recording',
 					},
 					{
 						displayName: 'Host Meeting in China',
 						name: 'cnMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in China',
 					},
 					{
 						displayName: 'Host Meeting in India',
 						name: 'inMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in India',
 					},
 					{
 						displayName: 'Host Video',

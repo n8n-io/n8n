@@ -389,6 +389,7 @@ module.exports = {
 				"n8n-nodes-base/node-param-description-empty-string": "error",
 				"n8n-nodes-base/node-param-description-comma-separated-hyphen": "error",
 				"n8n-nodes-base/node-param-default-wrong-for-simplify": "error",
+				"n8n-nodes-base/node-param-description-identical-to-display-name": "error",
 			 }
 		},
 	],

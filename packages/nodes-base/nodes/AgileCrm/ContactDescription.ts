@@ -538,7 +538,6 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Email',
 							},
 						],
 					},
@@ -768,7 +767,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1001,7 +999,6 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Email',
 							},
 						],
 					},
@@ -1231,7 +1228,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},

@@ -143,7 +143,6 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The message id',
 			},
 			{
 				displayName: 'Return All',

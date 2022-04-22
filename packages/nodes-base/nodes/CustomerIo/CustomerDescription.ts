@@ -138,7 +138,6 @@ export const customerFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},

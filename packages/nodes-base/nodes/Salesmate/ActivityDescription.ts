@@ -204,7 +204,6 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -325,7 +324,6 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -450,7 +448,6 @@ export const activityFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},

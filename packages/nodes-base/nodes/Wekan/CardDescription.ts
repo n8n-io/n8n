@@ -160,7 +160,6 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The author ID',
 	},
 	{
 		displayName: 'Additional Fields',

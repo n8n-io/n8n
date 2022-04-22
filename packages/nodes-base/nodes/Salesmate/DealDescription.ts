@@ -357,7 +357,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -589,7 +588,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -714,7 +712,6 @@ export const dealFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},

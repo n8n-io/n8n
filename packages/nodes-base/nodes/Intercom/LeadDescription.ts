@@ -76,7 +76,6 @@ export const leadFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'Delete by',
 	},
 	{
 		displayName: 'Value',

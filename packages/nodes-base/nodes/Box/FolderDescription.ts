@@ -155,7 +155,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -176,7 +175,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 	{
 		displayName: 'Recursive',
@@ -703,7 +701,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 	{
 		displayName: 'Update Fields',

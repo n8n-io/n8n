@@ -61,7 +61,6 @@ export const chatMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Chat ID',
 	},
 	{
 		displayName: 'Message Type',
@@ -155,7 +154,6 @@ export const chatMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Chat ID',
 	},
 	{
 		displayName: 'Return All',

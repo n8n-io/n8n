@@ -76,7 +76,6 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'List by',
 	},
 	{
 		displayName: 'Value',

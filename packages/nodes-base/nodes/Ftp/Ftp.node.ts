@@ -238,7 +238,6 @@ export class Ftp implements INodeType {
 				name: 'oldPath',
 				type: 'string',
 				default: '',
-				description: 'The old path',
 				required: true,
 			},
 			{
@@ -253,7 +252,6 @@ export class Ftp implements INodeType {
 				name: 'newPath',
 				type: 'string',
 				default: '',
-				description: 'The new path',
 				required: true,
 			},
 			{

@@ -70,7 +70,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Name',
@@ -159,7 +158,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -182,7 +180,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'channel ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -207,7 +204,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -230,7 +226,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'channel ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -255,7 +250,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Return All',
@@ -321,7 +315,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -344,7 +337,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Update Fields',

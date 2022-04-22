@@ -77,7 +77,6 @@ export const orderFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Billing address',
 				options: [
 					{
 						name: 'billingAddressValues',
@@ -306,7 +305,6 @@ export const orderFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Shipping Address',
 				options: [
 					{
 						name: 'shippingAddressValues',
@@ -863,7 +861,6 @@ export const orderFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Shipping Address',
 				options: [
 					{
 						name: 'shippingAddressValues',

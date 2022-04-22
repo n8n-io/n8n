@@ -292,7 +292,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -561,7 +560,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'Suspended Ticket ID',
@@ -720,7 +718,6 @@ export const ticketFields: INodeProperties[] = [
 					},
 				],
 				default: 'asc',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Status',
@@ -787,7 +784,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'Suspended Ticket ID',

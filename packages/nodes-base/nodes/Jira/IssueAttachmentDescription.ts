@@ -62,7 +62,6 @@ export const issueAttachmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Binary Property',
@@ -161,7 +160,6 @@ export const issueAttachmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Return All',

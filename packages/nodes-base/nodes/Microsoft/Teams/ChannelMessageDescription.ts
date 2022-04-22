@@ -55,7 +55,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -78,7 +77,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Message Type',
@@ -177,7 +175,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -200,7 +197,6 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Return All',

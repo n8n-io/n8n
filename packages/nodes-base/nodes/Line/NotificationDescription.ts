@@ -157,7 +157,6 @@ export const notificationFields: INodeProperties[] = [
 								name: 'stickerId',
 								type: 'number',
 								default: '',
-								description: 'Sticker ID',
 							},
 							{
 								displayName: 'Sticker Package ID',
