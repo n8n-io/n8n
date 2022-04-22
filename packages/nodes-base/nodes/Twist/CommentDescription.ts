@@ -136,7 +136,7 @@ export const commentFields: INodeProperties[] = [
 										value: 'send_reply',
 									},
 								],
-								default: '',
+								default: 'open_url',
 							},
 							{
 								displayName: 'Button Text',
@@ -171,7 +171,7 @@ export const commentFields: INodeProperties[] = [
 										value: 'action',
 									},
 								],
-								default: '',
+								default: 'action',
 							},
 							{
 								displayName: 'URL',
@@ -476,7 +476,7 @@ export const commentFields: INodeProperties[] = [
 										value: 'send_reply',
 									},
 								],
-								default: '',
+								default: 'open_url',
 							},
 							{
 								displayName: 'Button Text',
@@ -511,7 +511,7 @@ export const commentFields: INodeProperties[] = [
 										value: 'action',
 									},
 								],
-								default: '',
+								default: 'action',
 							},
 							{
 								displayName: 'URL',

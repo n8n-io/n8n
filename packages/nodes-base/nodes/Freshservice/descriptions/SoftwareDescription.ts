@@ -130,7 +130,7 @@ export const softwareFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: 'managed',
+				default: 'disabled',
 				options: [
 					{
 						name: 'Disabled',
@@ -322,7 +322,7 @@ export const softwareFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: 'managed',
+				default: 'disabled',
 				options: [
 					{
 						name: 'Disabled',

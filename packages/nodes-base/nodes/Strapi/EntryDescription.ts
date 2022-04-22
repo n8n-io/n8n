@@ -261,7 +261,7 @@ export const entryFields: INodeProperties[] = [
 						value: 'preview',
 					},
 				],
-				default: '',
+				default: 'live',
 				description: 'Only select entries matching the publication state provided',
 			},
 			{

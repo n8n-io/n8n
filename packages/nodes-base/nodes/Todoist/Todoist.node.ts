@@ -304,6 +304,7 @@ export class Todoist implements INodeType {
 								'project',
 							],
 						},
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 						default: {},
 						description: 'The section you want to operate on.',
 					},
@@ -388,7 +389,7 @@ export class Todoist implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getLabels',
 						},
-						default: {},
+						default: '',
 						description: 'Filter tasks by label.',
 					},
 					{

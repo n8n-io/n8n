@@ -55,6 +55,7 @@ export const billFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description: 'The ID of the vendor who the bill is for.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -111,7 +112,7 @@ export const billFields: INodeProperties[] = [
 				displayName: 'Item',
 				name: 'itemId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
 				},

@@ -531,6 +531,7 @@ export const appointmentFields: INodeProperties[] = [
 				displayName: 'Creator ID',
 				name: 'creater_id',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',

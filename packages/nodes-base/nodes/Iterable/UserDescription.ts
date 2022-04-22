@@ -66,7 +66,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'email',
 		description: 'Identifier to be used',
 	},
 	{

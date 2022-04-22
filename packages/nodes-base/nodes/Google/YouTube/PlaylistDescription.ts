@@ -110,7 +110,7 @@ export const playlistFields: INodeProperties[] = [
 						value: 'unlisted',
 					},
 				],
-				default: '',
+				default: 'private',
 				description: `The playlist's privacy status.`,
 			},
 			{
@@ -549,7 +549,7 @@ export const playlistFields: INodeProperties[] = [
 						value: 'unlisted',
 					},
 				],
-				default: '',
+				default: 'private',
 				description: `The playlist's privacy status.`,
 			},
 			{

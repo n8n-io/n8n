@@ -48,7 +48,7 @@ export class GumroadTrigger implements INodeType {
 				name: 'resource',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'sale',
 				options: [
 					{
 						name: 'Sale',

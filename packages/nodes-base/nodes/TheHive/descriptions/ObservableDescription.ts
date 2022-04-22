@@ -12,6 +12,7 @@ export const observableOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: 'getAll',
 		displayOptions: {
 			show: {
@@ -220,7 +221,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'tlp',
 		type: 'options',
 		required: true,
-		default: 2,
+		default: undefined,
 		displayOptions: {
 			show: {
 				resource: [
@@ -292,7 +293,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'status',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 'Ok',
 		options: [
 			{
 				name: 'Ok',
@@ -441,7 +442,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: undefined,
 				options: [
 					{
 						name: 'White',
@@ -480,7 +481,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: '',
+				default: 'Ok',
 				options: [
 					{
 						name: 'Ok',
@@ -627,7 +628,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'Status',
 				displayName: 'Status',
 				type: 'options',
-				default: '',
+				default: 'Ok',
 				options: [
 					{
 						name: 'Ok',
@@ -644,7 +645,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: undefined,
 				options: [
 					{
 						name: 'White',

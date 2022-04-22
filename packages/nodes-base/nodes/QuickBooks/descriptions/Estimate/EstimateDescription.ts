@@ -59,6 +59,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description: 'The ID of the customer who the estimate is for.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -111,7 +112,7 @@ export const estimateFields: INodeProperties[] = [
 				displayName: 'Item',
 				name: 'itemId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
 				},

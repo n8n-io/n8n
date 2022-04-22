@@ -632,7 +632,7 @@ export const userFields: INodeProperties[] = [
 						value: 'givenName',
 					},
 				],
-				default: '',
+				default: 'email',
 				description: 'Property to use for sorting results.',
 			},
 			{
@@ -663,7 +663,7 @@ export const userFields: INodeProperties[] = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 				description: 'Whether to return results in ascending or descending order',
 			},
 			{

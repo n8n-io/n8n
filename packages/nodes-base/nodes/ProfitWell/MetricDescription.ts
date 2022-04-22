@@ -48,7 +48,7 @@ export const metricFields: INodeProperties[] = [
 				description: 'Retrieve all monthly financial metric for your company',
 			},
 		],
-		default: '',
+		default: 'daily',
 		required: true,
 		displayOptions: {
 			show: {

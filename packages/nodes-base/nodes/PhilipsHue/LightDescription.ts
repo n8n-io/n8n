@@ -209,7 +209,7 @@ export const lightFields: INodeProperties[] = [
 						description: 'The light is performing breathe cycles for 15 seconds or until an "alert": "none" command is received',
 					},
 				],
-				default: '',
+				default: 'none',
 				description: 'The alert effect, is a temporary change to the bulb’s state',
 			},
 			{
@@ -282,7 +282,7 @@ export const lightFields: INodeProperties[] = [
 						value: 'colorloop',
 					},
 				],
-				default: '',
+				default: 'none',
 				description: 'The dynamic effect of the light.',
 			},
 			{

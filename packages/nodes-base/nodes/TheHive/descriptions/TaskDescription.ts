@@ -6,6 +6,7 @@ export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: 'getAll',
 		type: 'options',
 		required: true,

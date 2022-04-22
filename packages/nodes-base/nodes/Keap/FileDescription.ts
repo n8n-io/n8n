@@ -107,7 +107,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'company',
 	},
 	{
 		displayName: 'Contact ID',
@@ -375,7 +375,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'logoThumnail',
 					},
 				],
-				default: '',
+				default: 'application',
 				description: 'Filter based on the type of file.',
 			},
 			{

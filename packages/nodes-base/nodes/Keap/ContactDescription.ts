@@ -209,7 +209,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'UNKNOWN',
 					},
 				],
-				default: '',
+				default: 'API',
 			},
 			{
 				displayName: 'Spouse Name',
@@ -276,7 +276,7 @@ export const contactFields: INodeProperties[] = [
 								value: 'OTHER',
 							},
 						],
-						default: '',
+						default: 'BILLING',
 					},
 					{
 						displayName: 'Country Code',
@@ -375,7 +375,7 @@ export const contactFields: INodeProperties[] = [
 								value: 'EMAIL3',
 							},
 						],
-						default: '',
+						default: 'EMAIL1',
 					},
 					{
 						displayName: 'Email',
@@ -425,7 +425,7 @@ export const contactFields: INodeProperties[] = [
 								value: 'FAX2',
 							},
 						],
-						default: '',
+						default: 'FAX1',
 					},
 					{
 						displayName: 'Number',
@@ -487,7 +487,7 @@ export const contactFields: INodeProperties[] = [
 								value: 'PHONE5',
 							},
 						],
-						default: '',
+						default: 'PHONE1',
 					},
 					{
 						displayName: 'Number',
@@ -541,7 +541,7 @@ export const contactFields: INodeProperties[] = [
 								value: 'LinkedIn',
 							},
 						],
-						default: '',
+						default: 'Facebook',
 					},
 					{
 						displayName: 'Name',
@@ -720,7 +720,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'name',
 					},
 				],
-				default: '',
+				default: 'date',
 				description: 'Attribute to order items by',
 			},
 			{
@@ -737,7 +737,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'descending',
 					},
 				],
-				default: '',
+				default: 'ascending',
 			},
 			{
 				displayName: 'Since',

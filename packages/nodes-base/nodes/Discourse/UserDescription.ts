@@ -261,7 +261,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'active',
 		description: `User flags to search for.`,
 	},
 	{

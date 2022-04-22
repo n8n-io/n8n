@@ -49,6 +49,7 @@ export const registrantFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		description: 'Key of the webinar of the registrant to create.',
 		displayOptions: {
@@ -332,7 +333,7 @@ export const registrantFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'The key of the webinar to retrieve registrants from.',
 		displayOptions: {
 			show: {
@@ -398,7 +399,7 @@ export const registrantFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar of the registrant to delete.',
 		displayOptions: {
 			show: {
@@ -441,7 +442,7 @@ export const registrantFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar of the registrant to retrieve.',
 		displayOptions: {
 			show: {

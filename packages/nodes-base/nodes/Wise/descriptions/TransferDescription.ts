@@ -50,6 +50,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
@@ -92,7 +93,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
@@ -165,7 +166,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
@@ -291,7 +292,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},

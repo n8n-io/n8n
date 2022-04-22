@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-param-default-wrong-for-options */
 import { INodeProperties } from 'n8n-workflow';
 
 export const productOperations: INodeProperties[] = [
@@ -1382,7 +1383,7 @@ export const productFields: INodeProperties[] = [
 						value: 'zero-rate.',
 					},
 				],
-				default: '',
+				default: 'standard',
 				description: 'Limit result set to products with a specific tax class',
 			},
 			{

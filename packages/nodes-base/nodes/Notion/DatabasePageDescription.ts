@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	getConditions,
 	getSearchFilters,
 } from './GenericFunctions';
@@ -480,6 +480,7 @@ export const databasePageFields = [
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 						default: 'default',
 						description: 'Time zone to use. By default n8n timezone is used',
 					},
@@ -891,7 +892,7 @@ export const databasePageFields = [
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
-						default: 'default',
+						default: '',
 						description: 'Time zone to use. By default n8n timezone is used',
 					},
 					{
@@ -1223,7 +1224,7 @@ export const databasePageFields = [
 										],
 									},
 								},
-								default: '',
+								default: 'created_time',
 								description: 'The name of the property to filter by',
 							},
 							{
@@ -1253,7 +1254,7 @@ export const databasePageFields = [
 										value: 'descending',
 									},
 								],
-								default: '',
+								default: 'ascending',
 								description: 'The direction to sort',
 							},
 						],

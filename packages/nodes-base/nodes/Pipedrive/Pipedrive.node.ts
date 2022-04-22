@@ -2337,6 +2337,7 @@ export class Pipedrive implements INodeType {
 										displayName: 'Currency',
 										name: 'currency',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 										default: 'USD',
 										options: currencies.sort((a, b) => a.name.localeCompare(b.name)),
 									},
@@ -2487,7 +2488,7 @@ export class Pipedrive implements INodeType {
 										displayName: 'Currency',
 										name: 'currency',
 										type: 'options',
-										default: 'USD',
+										default: '',
 										options: currencies.sort((a, b) => a.name.localeCompare(b.name)),
 									},
 								],

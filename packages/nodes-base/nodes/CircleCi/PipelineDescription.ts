@@ -67,7 +67,7 @@ export const pipelineFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'bitbucket',
 		description: 'Version control system',
 	},
 	{

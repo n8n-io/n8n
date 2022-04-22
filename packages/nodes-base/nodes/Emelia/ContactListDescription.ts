@@ -41,6 +41,7 @@ export const contactListFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getContactLists',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		required: true,
 		description: 'The ID of the contact list to add the contact to',

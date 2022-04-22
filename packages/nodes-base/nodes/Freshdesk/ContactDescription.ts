@@ -391,7 +391,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
-				default: '',
+				default: 'blocked',
 				options: [
 					{
 						name: 'Blocked',

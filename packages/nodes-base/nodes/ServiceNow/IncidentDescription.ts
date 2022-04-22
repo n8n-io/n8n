@@ -175,7 +175,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'walk-in',
 					},
 				],
-				default: '',
+				default: 'email',
 				description: 'The contact type',
 			},
 			{
@@ -591,7 +591,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'walk-in',
 					},
 				],
-				default: '',
+				default: 'email',
 				description: 'The contact type',
 			},
 			{

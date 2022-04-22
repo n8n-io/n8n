@@ -149,7 +149,7 @@ const routeEndField = {
 			value: 'anywhere',
 		},
 	],
-	default: '',
+	default: 'team_hub',
 	description: 'Where the route will end',
 } as INodeProperties;
 

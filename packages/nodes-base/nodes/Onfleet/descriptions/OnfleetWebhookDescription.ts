@@ -21,6 +21,7 @@ export const eventDisplay: INodeProperties = {
 		return { name, value };
 	}).sort(sort),
 	required: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 	default: [],
 };
 

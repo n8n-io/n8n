@@ -358,7 +358,7 @@ export const pageFields = [
 										value: 'page',
 									},
 								],
-								default: '',
+								default: 'database',
 								description: 'The value of the property to filter by',
 							},
 						],

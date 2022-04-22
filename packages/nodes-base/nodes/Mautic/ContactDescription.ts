@@ -311,7 +311,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'B2C',
 					},
 				],
-				default: '',
+				default: 'B2B',
 			},
 			{
 				displayName: 'CRM ID',
@@ -414,7 +414,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'Customer',
 					},
 				],
-				default: '',
+				default: 'Prospect',
 			},
 			{
 				displayName: 'Sandbox',
@@ -653,7 +653,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'B2C',
 					},
 				],
-				default: '',
+				default: 'B2B',
 			},
 			{
 				displayName: 'CRM ID',
@@ -892,7 +892,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'Customer',
 					},
 				],
-				default: '',
+				default: 'Prospect',
 			},
 			{
 				displayName: 'Sandbox',
@@ -1384,7 +1384,7 @@ export const contactFields: INodeProperties[] = [
 						],
 					},
 				},
-				default: '',
+				default: 'asc',
 				options: [
 					{
 						name: 'ASC',

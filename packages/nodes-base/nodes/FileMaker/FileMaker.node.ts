@@ -187,6 +187,7 @@ export class FileMaker implements INodeType {
 					loadOptionsMethod: 'getPortals',
 				},
 				options: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 				displayOptions: {
 					show: {

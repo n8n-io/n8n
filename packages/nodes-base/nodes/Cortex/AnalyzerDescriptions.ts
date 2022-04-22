@@ -171,6 +171,7 @@ export const analyzerFields: INodeProperties[] = [
 				value: TLP.red,
 			},
 		],
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: 2,
 		description: 'The TLP of the analyzed observable',
 	},

@@ -284,7 +284,7 @@ export const formFields: INodeProperties[] = [
 								value: 'LEAD',
 							},
 						],
-						default: '',
+						default: 'CUSTOMER',
 						description: 'The privacy text displayed to the visitor.',
 					},
 					{

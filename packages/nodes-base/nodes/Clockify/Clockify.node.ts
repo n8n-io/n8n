@@ -109,6 +109,7 @@ export class Clockify implements INodeType {
 					loadOptionsMethod: 'listWorkspaces',
 				},
 				required: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 			},
 			...projectFields,

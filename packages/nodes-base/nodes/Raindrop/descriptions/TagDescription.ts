@@ -7,7 +7,7 @@ export const tagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'get',
+		default: 'delete',
 		description: 'Operation to perform',
 		options: [
 			{

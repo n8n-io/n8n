@@ -63,6 +63,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description: 'The ID of the customer who the payment is for.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',

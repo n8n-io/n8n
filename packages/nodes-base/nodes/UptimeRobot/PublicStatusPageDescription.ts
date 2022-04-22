@@ -124,7 +124,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 				displayName: 'Sort',
 				name: 'sort',
 				type: 'options',
-				default: '',
+				default: 1,
 				options: [
 					{
 						name: 'Friendly Name (A-Z)',
@@ -312,7 +312,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 				displayName: 'Sort',
 				name: 'sort',
 				type: 'options',
-				default: '',
+				default: 1,
 				options: [
 					{
 						name: 'Friendly Name (A-Z)',

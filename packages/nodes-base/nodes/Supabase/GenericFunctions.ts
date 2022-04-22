@@ -198,7 +198,7 @@ export function getFilters(
 									value: 'fullText',
 								},
 							],
-							default: '',
+							default: 'eq',
 						},
 						{
 							displayName: 'Search Function',
@@ -229,7 +229,7 @@ export function getFilters(
 									value: 'wfts',
 								},
 							],
-							default: '',
+							default: 'fts',
 						},
 						{
 							displayName: 'Field Value',

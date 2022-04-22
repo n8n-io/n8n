@@ -46,6 +46,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
@@ -163,7 +164,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
@@ -226,7 +227,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},

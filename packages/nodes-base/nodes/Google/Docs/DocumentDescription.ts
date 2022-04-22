@@ -44,6 +44,7 @@ export const documentFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getDrives',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: 'myDrive',
 		required: true,
 		displayOptions: {
@@ -283,7 +284,7 @@ export const documentFields: INodeProperties[] = [
 							},
 						},
 						description: 'The update action.',
-						default: '',
+						default: 'replaceAll',
 					},
 					{
 						displayName: 'Action',
@@ -310,7 +311,7 @@ export const documentFields: INodeProperties[] = [
 							},
 						},
 						description: 'The update action.',
-						default: '',
+						default: 'create',
 					},
 					{
 						displayName: 'Action',
@@ -335,7 +336,7 @@ export const documentFields: INodeProperties[] = [
 							},
 						},
 						description: 'The update action.',
-						default: '',
+						default: 'delete',
 					},
 					{
 						displayName: 'Action',
@@ -356,7 +357,7 @@ export const documentFields: INodeProperties[] = [
 							},
 						},
 						description: 'The update action.',
-						default: '',
+						default: 'insert',
 					},
 					{
 						displayName: 'Action',
@@ -376,7 +377,7 @@ export const documentFields: INodeProperties[] = [
 							},
 						},
 						description: 'The update action.',
-						default: '',
+						default: 'delete',
 					},
 					// Shared Segment inputs for Create action (moved up for display purposes)
 					{

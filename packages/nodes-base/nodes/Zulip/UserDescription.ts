@@ -294,7 +294,7 @@ export const userFields: INodeProperties[] = [
 						value: 600,
 					},
 				],
-				default: '',
+				default: 100,
 				description: 'Role for the user',
 			},
 		],

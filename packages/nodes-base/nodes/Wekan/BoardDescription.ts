@@ -150,7 +150,7 @@ export const boardFields: INodeProperties[] = [
 						value: 'midnight',
 					},
 				],
-				default: '',
+				default: 'belize',
 				description: 'The color of the board.',
 			},
 			{

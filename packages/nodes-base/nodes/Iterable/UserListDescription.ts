@@ -82,7 +82,7 @@ export const userListFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'email',
 		description: 'Identifier to be used',
 	},
 	{
@@ -152,7 +152,7 @@ export const userListFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'email',
 		description: 'Identifier to be used',
 	},
 	{

@@ -7,7 +7,7 @@ export const panelistOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'get',
+		default: 'create',
 		description: 'Operation to perform',
 		options: [
 			{
@@ -85,7 +85,7 @@ export const panelistFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar that the panelist will present at.',
 		displayOptions: {
 			show: {
@@ -110,7 +110,7 @@ export const panelistFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to retrieve all panelists from.',
 		displayOptions: {
 			show: {
@@ -176,7 +176,7 @@ export const panelistFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to delete the panelist from.',
 		displayOptions: {
 			show: {
@@ -219,7 +219,7 @@ export const panelistFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to reinvite the panelist to.',
 		displayOptions: {
 			show: {

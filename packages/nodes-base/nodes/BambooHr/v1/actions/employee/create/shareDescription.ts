@@ -100,7 +100,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'non-exempt',
 				},
 			],
-			default: '',
+			default: 'exempt',
 		},
 		{
 			displayName: 'Gender',
@@ -116,7 +116,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'male',
 				},
 			],
-			default: '',
+			default: 'female',
 		},
 		{
 			displayName: 'Hire Date',
@@ -151,7 +151,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'domesticPartnership',
 				},
 			],
-			default: '',
+			default: 'single',
 		},
 		{
 			displayName: 'Mobile Phone',
@@ -189,7 +189,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'year',
 				},
 			],
-			default: '',
+			default: 'hour',
 		},
 		{
 			displayName: 'Pay Rate',
@@ -269,7 +269,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'proRata',
 				},
 			],
-			default: '',
+			default: 'hourly',
 		},
 		{
 			displayName: 'Preferred Name',

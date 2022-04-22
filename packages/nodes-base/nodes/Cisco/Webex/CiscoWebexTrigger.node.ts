@@ -389,7 +389,7 @@ export class CiscoWebexTrigger implements INodeType {
 								],
 							},
 						},
-						default: '',
+						default: 'direct',
 						description: `Limit to a particular room type`,
 					},
 					{
@@ -417,7 +417,7 @@ export class CiscoWebexTrigger implements INodeType {
 								],
 							},
 						},
-						default: '',
+						default: 'direct',
 						description: `Limit to a particular room type`,
 					},
 					// {

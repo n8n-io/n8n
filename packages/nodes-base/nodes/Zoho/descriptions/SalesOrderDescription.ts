@@ -69,6 +69,7 @@ export const salesOrderFields: INodeProperties[] = [
 		name: 'accountId',
 		required: true,
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getAccounts',
@@ -196,7 +197,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Contact ID',
 				name: 'contactId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
@@ -214,7 +215,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Deal ID',
 				name: 'dealId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
 				},
@@ -283,7 +284,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'Status',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
@@ -410,7 +411,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
@@ -438,7 +439,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Contact ID',
 				name: 'contactId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
@@ -456,7 +457,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Deal ID',
 				name: 'dealId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
 				},
@@ -524,7 +525,7 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'Status',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},

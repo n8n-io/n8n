@@ -1020,7 +1020,7 @@ export class Freshdesk implements INodeType {
 								value: 'updatedAt',
 							},
 						],
-						default: '',
+						default: 'createdAt',
 						description: 'Sort collection by object attribute.',
 					},
 					{

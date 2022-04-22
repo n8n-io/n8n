@@ -38,6 +38,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',

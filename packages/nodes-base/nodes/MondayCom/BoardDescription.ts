@@ -117,7 +117,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'share',
 		description: `The board's kind (public / private / share)`,
 	},
 	{

@@ -70,6 +70,7 @@ export class Contentful implements INodeType {
 					LocaleDescription.resource,
 					SpaceDescription.resource,
 				],
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: 'entry',
 				description: 'The resource to operate on.',
 			},

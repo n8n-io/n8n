@@ -144,6 +144,7 @@ export const accountFields: INodeProperties[] = [
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 			},
 			{
@@ -335,7 +336,7 @@ export const accountFields: INodeProperties[] = [
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Annual Revenue',

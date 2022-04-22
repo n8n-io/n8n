@@ -228,7 +228,7 @@ export const groupFields: INodeProperties[] = [
 						value: 'email',
 					},
 				],
-				default: '',
+				default: 'email',
 				description: 'Property to use for sorting results.',
 			},
 			{
@@ -252,7 +252,7 @@ export const groupFields: INodeProperties[] = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 				description: 'Whether to return results in ascending or descending order',
 			},
 			{

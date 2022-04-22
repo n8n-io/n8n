@@ -192,7 +192,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Automatically generated identifier for the Lead',
 			},
 		],
-		default: '',
+		default: 'id',
 		description: 'The property to select the user by.',
 	},
 	{
@@ -300,7 +300,7 @@ export const userFields: INodeProperties[] = [
 				description: `The user's email address. It is required on creation if a user_id is not supplied.`,
 			},
 		],
-		default: '',
+		default: 'userId',
 		description: 'Unique string identifier',
 	},
 	{

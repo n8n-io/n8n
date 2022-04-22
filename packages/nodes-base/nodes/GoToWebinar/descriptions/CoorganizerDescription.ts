@@ -7,7 +7,7 @@ export const coorganizerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'get',
+		default: 'create',
 		description: 'Operation to perform',
 		options: [
 			{
@@ -49,7 +49,7 @@ export const coorganizerFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar that the co-organizer is hosting.',
 		displayOptions: {
 			show: {
@@ -152,7 +152,7 @@ export const coorganizerFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to delete.',
 		displayOptions: {
 			show: {
@@ -212,7 +212,7 @@ export const coorganizerFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to retrieve all co-organizers from.',
 		displayOptions: {
 			show: {

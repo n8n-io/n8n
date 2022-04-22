@@ -399,7 +399,7 @@ export const cardFields: INodeProperties[] = [
 				value: 'swimlane',
 			},
 		],
-		default: '',
+		default: 'list',
 		description: '',
 	},
 	{
@@ -713,7 +713,7 @@ export const cardFields: INodeProperties[] = [
 						name: 'Indigo',
 					},
 				],
-				default: '',
+				default: 'white',
 				description: 'The new color of the card.',
 			},
 			{

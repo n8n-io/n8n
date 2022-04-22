@@ -52,7 +52,7 @@ export class AutopilotTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'contactAdded',
 				options: [
 					{
 						name: 'Contact Added',

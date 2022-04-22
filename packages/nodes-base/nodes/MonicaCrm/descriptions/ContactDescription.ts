@@ -278,7 +278,7 @@ export const contactFields: INodeProperties[] = [
 						value: '-updated_at',
 					},
 				],
-				default: '',
+				default: 'created_at',
 			},
 		],
 		displayOptions: {

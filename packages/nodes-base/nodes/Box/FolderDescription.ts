@@ -124,7 +124,7 @@ export const folderFields: INodeProperties[] = [
 						description: 'It will accept emails from any email addres',
 					},
 				],
-				default: '',
+				default: 'collaborators',
 				description: 'ID of the folder you want to create the new folder in',
 			},
 			{
@@ -325,7 +325,7 @@ export const folderFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: '',
+				default: 'ASC',
 				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
@@ -364,7 +364,7 @@ export const folderFields: INodeProperties[] = [
 						value: 'enterprise_content',
 					},
 				],
-				default: '',
+				default: 'user_content',
 				description: 'Limits search results to a user scope.',
 			},
 			{

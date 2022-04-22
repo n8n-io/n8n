@@ -259,6 +259,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		displayName: 'Product ID',
 		name: 'id',
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',
@@ -414,7 +415,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					typeOptions: {
 						loadOptionsMethod,
 					},
-					default: [],
+					default: '',
 					description: 'Field to sort records by.',
 				},
 				{

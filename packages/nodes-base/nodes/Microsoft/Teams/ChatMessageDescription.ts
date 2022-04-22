@@ -88,7 +88,7 @@ export const chatMessageFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'text',
 		description: 'The type of the content',
 	},
 	{

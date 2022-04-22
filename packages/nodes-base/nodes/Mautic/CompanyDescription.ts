@@ -608,7 +608,7 @@ export const companyFields: INodeProperties[] = [
 						value: 'desc',
 					},
 				],
-				default: '',
+				default: 'asc',
 				description: 'Sort direction: asc or desc.',
 			},
 			{

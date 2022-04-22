@@ -191,6 +191,7 @@ export const bookmarkFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCollections',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		required: true,
 		description: 'The ID of the collection from which to retrieve all bookmarks.',

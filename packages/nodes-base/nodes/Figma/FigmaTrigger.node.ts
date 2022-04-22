@@ -90,7 +90,7 @@ export class FigmaTrigger implements INodeType {
 						description: 'Triggers whenever a library file is published',
 					},
 				],
-				default: '',
+				default: 'fileComment',
 				required: true,
 			},
 		],

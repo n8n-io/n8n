@@ -76,7 +76,7 @@ export const boardColumnFields: INodeProperties[] = [
 		displayName: 'Column Type',
 		name: 'columnType',
 		type: 'options',
-		default: '',
+		default: 'country',
 		options: [
 			{
 				name: 'Country',

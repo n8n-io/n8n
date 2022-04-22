@@ -717,7 +717,7 @@ export class GoogleDrive implements INodeType {
 										value: 'reader',
 									},
 								],
-								default: '',
+								default: 'owner',
 							},
 							{
 								displayName: 'Type',
@@ -741,7 +741,7 @@ export class GoogleDrive implements INodeType {
 										value: 'anyone',
 									},
 								],
-								default: '',
+								default: 'user',
 								description: 'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles">here</a>.',
 							},
 							{
@@ -1465,7 +1465,7 @@ export class GoogleDrive implements INodeType {
 							},
 						],
 						required: true,
-						default: '',
+						default: 'user',
 						description: 'The corpora to operate on.',
 					},
 					{

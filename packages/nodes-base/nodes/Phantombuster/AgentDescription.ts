@@ -232,7 +232,7 @@ export const agentFields: INodeProperties[] = [
 						value: 'never launched',
 					},
 				],
-				default: '',
+				default: 'starting',
 				description: 'If set, allows to define which status was previously retrieved on user-side.',
 			},
 			{

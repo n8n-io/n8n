@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-param-default-wrong-for-options */
 
 import {
 	IExecuteFunctions,
@@ -207,7 +208,7 @@ export class DateTime implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
-						default: 'UTC',
+						default: '',
 						description: 'The timezone to convert to.',
 					},
 				],

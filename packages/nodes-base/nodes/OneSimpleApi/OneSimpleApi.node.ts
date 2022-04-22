@@ -299,7 +299,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'Tabloid',
 							},
 						],
-						default: '',
+						default: 'A0',
 						description: 'The page size',
 					},
 					{
@@ -528,7 +528,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'tablet-landscape',
 							},
 						],
-						default: '',
+						default: 'phone',
 						description: 'The screen size',
 					},
 					{

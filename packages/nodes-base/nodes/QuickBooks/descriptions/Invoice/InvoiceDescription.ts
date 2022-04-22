@@ -63,6 +63,7 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description: 'The ID of the customer who the invoice is for.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -115,7 +116,7 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Item',
 				name: 'itemId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
 				},

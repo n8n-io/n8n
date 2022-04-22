@@ -205,6 +205,7 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Quote Stage',
 				name: 'Quote_Stage',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
@@ -399,7 +400,7 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Quote Stage',
 				name: 'Quote_Stage',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},

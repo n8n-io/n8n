@@ -110,7 +110,7 @@ export const submissionFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'validation_status_approved',
 		options: [
 			{
 				name: 'Approved',

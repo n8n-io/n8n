@@ -606,7 +606,7 @@ export class Spotify implements INodeType {
 						description: `Search tracks by keyword.`,
 					},
 				],
-				default: 'track',
+				default: 'get',
 				description: 'The operation to perform.',
 			},
 			{
@@ -834,7 +834,7 @@ export class Spotify implements INodeType {
 						displayName: 'Country',
 						name: 'country',
 						type: 'options',
-						default: 'US',
+						default: '',
 						options: isoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
 						description: 'Country to filter new releases by.',
 					},

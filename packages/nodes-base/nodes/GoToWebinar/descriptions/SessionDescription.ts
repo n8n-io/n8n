@@ -132,6 +132,7 @@ export const sessionFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getWebinars',
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: {},
 				description: 'Webinar by which to filter the sessions to retrieve.',
 			},
@@ -149,7 +150,7 @@ export const sessionFields: INodeProperties[] = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to which the session belongs.',
 		displayOptions: {
 			show: {

@@ -116,7 +116,7 @@ export const reportFields: INodeProperties[] = [
 						value: 'left-early',
 					},
 				],
-				default: '',
+				default: 'attended',
 				description: 'Filter results by participation status',
 			},
 		],

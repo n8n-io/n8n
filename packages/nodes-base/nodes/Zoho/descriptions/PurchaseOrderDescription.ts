@@ -112,6 +112,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		displayName: 'Vendor ID',
 		name: 'vendorId',
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -312,7 +313,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'Status',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
@@ -539,7 +540,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'Status',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},

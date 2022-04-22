@@ -61,6 +61,7 @@ export const campaignFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		required: true,
 		description: 'The ID of the campaign to add the contact to',

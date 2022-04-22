@@ -42,7 +42,7 @@ export const personTagFields: INodeProperties[] = [
 			loadOptionsMethod: 'getTags',
 		},
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -84,7 +84,7 @@ export const personTagFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
-		default: [],
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -109,7 +109,7 @@ export const personTagFields: INodeProperties[] = [
 			loadOptionsMethod: 'getTaggings',
 		},
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [

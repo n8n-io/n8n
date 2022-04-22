@@ -167,7 +167,7 @@ export const tagFields: INodeProperties[] = [
 						value: 'NAME',
 					},
 				],
-				default: '',
+				default: 'NAME',
 			},
 			{
 				displayName: 'Sort Order',
@@ -183,7 +183,7 @@ export const tagFields: INodeProperties[] = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 			},
 		],
 	},

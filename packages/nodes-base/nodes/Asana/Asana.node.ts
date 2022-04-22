@@ -1608,7 +1608,7 @@ export class Asana implements INodeType {
 						name: 'color',
 						type: 'options',
 						options: getColorOptions(),
-						default: 'none',
+						default: '',
 						description: 'Color of the project.',
 					},
 					{
@@ -1840,7 +1840,7 @@ export class Asana implements INodeType {
 						name: 'color',
 						type: 'options',
 						options: getColorOptions(),
-						default: 'none',
+						default: '',
 						description: 'Color of the project.',
 					},
 					{

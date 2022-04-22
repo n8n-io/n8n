@@ -1094,6 +1094,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: 'createdate',
 			},
 		],

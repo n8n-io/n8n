@@ -108,6 +108,7 @@ export const dealFields: INodeProperties[] = [
 		name: 'stage',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getDealStage',
@@ -378,7 +379,7 @@ export const dealFields: INodeProperties[] = [
 					typeOptions: {
 						loadOptionsMethod: 'getDealStage',
 					},
-				default: [],
+				default: '',
 			},
 		],
 	},

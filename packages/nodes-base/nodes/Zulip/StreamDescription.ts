@@ -214,7 +214,7 @@ export const streamFields: INodeProperties[] = [
 				displayName: 'Stream Post Policy',
 				name: 'streamPostPolicy',
 				type: 'options',
-				default: '',
+				default: 1,
 				description: 'Policy for which users can post messages to the stream.',
 				options: [
 					{
@@ -449,7 +449,7 @@ export const streamFields: INodeProperties[] = [
 				displayName: 'Stream Post Policy',
 				name: 'streamPostPolicy',
 				type: 'options',
-				default: '',
+				default: 1,
 				description: 'Policy for which users can post messages to the stream.',
 				options: [
 					{

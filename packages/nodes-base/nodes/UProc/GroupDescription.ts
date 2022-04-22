@@ -11,6 +11,7 @@ const finalGroups = {
 	displayName: 'Resource',
 	name: 'group',
 	type: 'options',
+	// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 	default: 'communication',
 	description: 'The Resource to consume.',
 	options: [],

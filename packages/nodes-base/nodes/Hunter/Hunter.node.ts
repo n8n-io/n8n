@@ -139,7 +139,7 @@ export class Hunter implements INodeType {
 						displayName: 'Type',
 						name: 'type',
 						type: 'options',
-						default: '',
+						default: 'personal',
 						options: [
 							{
 								name: 'Personal',

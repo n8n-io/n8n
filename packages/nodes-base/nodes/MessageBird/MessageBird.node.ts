@@ -196,7 +196,7 @@ export class MessageBird implements INodeType {
 								value: 'unicode',
 							},
 						],
-						default: '',
+						default: 'auto',
 						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160.',
 					},
 					{
@@ -271,7 +271,7 @@ export class MessageBird implements INodeType {
 								value: 'sms',
 							},
 						],
-						default: '',
+						default: 'binary',
 						description: 'The type of message. Values can be: sms, binary, or flash.',
 					},
 					{

@@ -56,7 +56,7 @@ export class NotionTrigger implements INodeType {
 					},
 				],
 				required: true,
-				default: '',
+				default: 'pageAddedToDatabase',
 			},
 			{
 				displayName: 'Database',

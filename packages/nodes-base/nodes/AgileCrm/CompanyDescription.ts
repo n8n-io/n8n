@@ -475,7 +475,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Star Value',
 				name: 'starValue',
 				type: 'options',
-				default: '',
+				default: 0,
 				description: 'Rating of company (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -534,7 +534,7 @@ export const companyFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'facebook',
 								description: 'Type of website.',
 								options: [
 									{
@@ -759,7 +759,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Star Value',
 				name: 'starValue',
 				type: 'options',
-				default: '',
+				default: 0,
 				description: 'Rating of company (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -832,7 +832,7 @@ export const companyFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'facebook',
 								description: 'Type of website.',
 								options: [
 									{

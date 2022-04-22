@@ -399,7 +399,7 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: '1',
 		description: 'Return data for this many days in the past from now.',
 	},
 	{
@@ -545,7 +545,7 @@ export const coinFields: INodeProperties[] = [
 						value: 'id_desc',
 					},
 				],
-				default: '',
+				default: 'market_cap_desc',
 				description: 'Sort results by field.',
 			},
 			{

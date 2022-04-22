@@ -45,6 +45,7 @@ export const accountFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
@@ -69,7 +70,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Profile ID',
 		name: 'profileId',
 		type: 'options',
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
@@ -89,7 +90,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Borderless Account ID',
 		name: 'borderlessAccountId',
 		type: 'options',
-		default: [],
+		default: '',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getBorderlessAccounts',

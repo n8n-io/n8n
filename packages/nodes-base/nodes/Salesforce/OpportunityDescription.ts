@@ -321,7 +321,7 @@ export const opportunityFields: INodeProperties[] = [
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
-				default: '',
+				default: 'Business',
 				options: [
 					{
 						name: 'Business',
@@ -534,7 +534,7 @@ export const opportunityFields: INodeProperties[] = [
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
-				default: '',
+				default: 'Business',
 				options: [
 					{
 						name: 'Business',

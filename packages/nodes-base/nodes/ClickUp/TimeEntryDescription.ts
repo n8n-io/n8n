@@ -440,6 +440,7 @@ export const timeEntryFields: INodeProperties[] = [
 						'list',
 					],
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 			},
 			{
@@ -810,7 +811,7 @@ export const timeEntryFields: INodeProperties[] = [
 						'list',
 					],
 				},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Billable',

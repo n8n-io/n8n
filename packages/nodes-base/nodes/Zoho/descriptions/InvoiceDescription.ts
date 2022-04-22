@@ -153,6 +153,7 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
@@ -343,7 +344,7 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},

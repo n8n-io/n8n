@@ -22,6 +22,7 @@ export const alertOperations: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: 'create',
 	},
 ];
@@ -220,7 +221,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'tlp',
 		type: 'options',
 		required: true,
-		default: 2,
+		default: undefined,
 		options: [
 			{
 				name: 'White',
@@ -540,7 +541,7 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -710,7 +711,7 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -825,7 +826,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'tlp',
 				type: 'options',
 				required: false,
-				default: 2,
+				default: undefined,
 				options: [
 					{
 						name: 'White',
@@ -914,7 +915,7 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -979,7 +980,7 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: undefined,
 				options: [
 					{
 						name: 'White',

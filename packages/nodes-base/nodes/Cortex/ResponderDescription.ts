@@ -173,6 +173,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'TLP',
 						name: 'tlp',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 						default: 2,
 						options: [
 							{
@@ -297,7 +298,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'TLP',
 						name: 'tlp',
 						type: 'options',
-						default: 2,
+						default: undefined,
 						options: [
 							{
 								name: 'White',
@@ -389,7 +390,7 @@ export const responderFields: INodeProperties[] = [
 										displayName: 'Data Type',
 										name: 'dataType',
 										type: 'options',
-										default: '',
+										default: 'domain',
 										options: [
 											{
 												name: 'Domain',
@@ -546,7 +547,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'DataType',
 						name: 'dataType',
 						type: 'options',
-						default: '',
+						default: 'domain',
 						options: [
 							{
 								name: 'Domain',
@@ -650,7 +651,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'TLP',
 						name: 'tlp',
 						type: 'options',
-						default: 2,
+						default: undefined,
 						options: [
 							{
 								name: 'White',
@@ -681,7 +682,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						default: '',
+						default: 'Ok',
 						options: [
 							{
 								name: 'Ok',
@@ -842,7 +843,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'status',
 						type: 'options',
 						required: true,
-						default: '',
+						default: 'Ok',
 						options: [
 							{
 								name: 'Ok',

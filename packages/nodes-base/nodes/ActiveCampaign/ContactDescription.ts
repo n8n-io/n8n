@@ -426,7 +426,7 @@ export const contactFields: INodeProperties[] = [
 						value: 3,
 					},
 				],
-				default: '',
+				default: -1,
 			},
 			{
 				displayName: 'Tag ID',
@@ -506,7 +506,7 @@ export const contactFields: INodeProperties[] = [
 						description: 'Order contacts by score',
 					},
 				],
-				default: '',
+				default: 'orders[cdate]',
 			},
 		],
 	},

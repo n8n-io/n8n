@@ -117,7 +117,7 @@ export const dealFields: INodeProperties[] = [
 				value: 'Sales',
 			},
 		],
-		default: '',
+		default: 'Sales',
 		displayOptions: {
 			show: {
 				resource: [
@@ -165,7 +165,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Stage',
 		name: 'stage',
 		type: 'options',
-		default: '',
+		default: 'New (Untouched)',
 		options: [
 			{
 				name: 'New (Untouched)',
@@ -427,7 +427,7 @@ export const dealFields: INodeProperties[] = [
 						value: 'Sales',
 					},
 				],
-				default: '',
+				default: 'Sales',
 			},
 			{
 				displayName: 'Status',
@@ -453,7 +453,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Stage',
 				name: 'stage',
 				type: 'options',
-				default: '',
+				default: 'New (Untouched)',
 				options: [
 					{
 						name: 'New (Untouched)',

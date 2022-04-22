@@ -365,7 +365,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'By',
 		name: 'by',
 		type: 'options',
-		default: '',
+		default: 'id',
 		required: true,
 		options: [
 			{

@@ -75,7 +75,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The company_id you have given to the company',
 			},
 		],
-		default: '',
+		default: 'id',
 		description: 'List by',
 	},
 	{
@@ -250,7 +250,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The name of the company',
 			},
 		],
-		default: '',
+		default: 'companyId',
 		description: 'What property to use to query the company.',
 	},
 	{

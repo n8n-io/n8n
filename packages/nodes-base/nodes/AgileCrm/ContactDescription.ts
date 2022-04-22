@@ -465,7 +465,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'home',
 								description: 'Type of address.',
 								options: [
 									{
@@ -520,7 +520,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'work',
 								description: 'Type of Email',
 								options: [
 									{
@@ -573,7 +573,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Star Value',
 				name: 'starValue',
 				type: 'options',
-				default: '',
+				default: 0,
 				description: 'Rating of contact (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -621,7 +621,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'home',
 								description: 'Type of phone number.',
 								options: [
 									{
@@ -703,7 +703,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'facebook',
 								description: 'Type of website.',
 								options: [
 									{
@@ -929,7 +929,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'home',
 								description: 'Type of address.',
 								options: [
 									{
@@ -984,7 +984,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'work',
 								description: 'Type of Email',
 								options: [
 									{
@@ -1037,7 +1037,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Star Value',
 				name: 'starValue',
 				type: 'options',
-				default: '',
+				default: 0,
 				description: 'Rating of contact (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -1085,7 +1085,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'home',
 								description: 'Type of phone number.',
 								options: [
 									{
@@ -1167,7 +1167,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'subtype',
 								type: 'options',
 								required: true,
-								default: '',
+								default: 'facebook',
 								description: 'Type of website.',
 								options: [
 									{

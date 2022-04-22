@@ -885,6 +885,7 @@ export class EditImage implements INodeType {
 					if ((a as INodePropertyOptions).name.toLowerCase() > (b as INodePropertyOptions).name.toLowerCase()) { return 1; }
 					return 0;
 				}) as INodePropertyOptions[],
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: 'border',
 				description: 'The operation to perform.',
 			},
@@ -946,7 +947,7 @@ export class EditImage implements INodeType {
 								typeOptions: {
 									loadOptionsMethod: 'getFonts',
 								},
-								default: 'default',
+								default: '',
 								description: 'The font to use.',
 							},
 						],
@@ -990,7 +991,7 @@ export class EditImage implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getFonts',
 						},
-						default: 'default',
+						default: '',
 						description: 'The font to use.',
 					},
 					{

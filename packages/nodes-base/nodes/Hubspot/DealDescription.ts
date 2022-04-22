@@ -793,6 +793,7 @@ export const dealFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 				default: 'createdate',
 			},
 		],

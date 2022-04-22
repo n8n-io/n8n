@@ -80,6 +80,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		description: 'The name of the space for which to retrieve members, in the form "spaces/*"',
 	},

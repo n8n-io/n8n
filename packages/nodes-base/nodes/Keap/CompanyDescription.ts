@@ -342,7 +342,7 @@ export const companyFields: INodeProperties[] = [
 						value: 'name',
 					},
 				],
-				default: '',
+				default: 'datecreated',
 				description: 'Attribute to order items by',
 			},
 			{
@@ -359,7 +359,7 @@ export const companyFields: INodeProperties[] = [
 						value: 'descending',
 					},
 				],
-				default: '',
+				default: 'ascending',
 			},
 			{
 				displayName: 'Fields',

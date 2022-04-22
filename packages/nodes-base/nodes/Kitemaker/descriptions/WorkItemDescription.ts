@@ -66,6 +66,7 @@ export const workItemFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: [],
 		required: true,
 		description: 'ID of the space to retrieve the work items from.',
@@ -88,7 +89,7 @@ export const workItemFields: INodeProperties[] = [
 			loadOptionsDependsOn: ['spaceId'],
 			loadOptionsMethod: 'getStatuses',
 		},
-		default: [],
+		default: '',
 		required: true,
 		description: 'ID of the status to set on the item to create.',
 		displayOptions: {
@@ -226,7 +227,7 @@ export const workItemFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 		},
-		default: [],
+		default: '',
 		required: true,
 		description: 'ID of the space to retrieve the work items from.',
 		displayOptions: {
@@ -379,7 +380,7 @@ export const workItemFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 				},
-				default: [],
+				default: '',
 				description: 'ID of the status to set on the item to update.',
 			},
 			{

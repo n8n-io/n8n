@@ -105,7 +105,7 @@ export const channelMessageFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'text',
 		description: 'The type of the content',
 	},
 	{

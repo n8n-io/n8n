@@ -10,6 +10,7 @@ export const caseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-options
 		default: 'getAll',
 		type: 'options',
 		required: true,
@@ -218,7 +219,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'tlp',
 		type: 'options',
 		required: true,
-		default: 2,
+		default: undefined,
 		options: [
 			{
 				name: 'White',
@@ -359,7 +360,7 @@ export const caseFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -463,7 +464,7 @@ export const caseFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -515,7 +516,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				default: '',
+				default: 'NoImpact',
 				options: [
 					{
 						name: 'No Impact',
@@ -556,7 +557,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				default: '',
+				default: 'Indeterminate',
 				options: [
 					{
 						value: 'Indeterminate',
@@ -653,7 +654,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: undefined,
 				options: [
 					{
 						name: 'White',
@@ -745,7 +746,7 @@ export const caseFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -783,7 +784,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				default: '',
+				default: 'NoImpact',
 				options: [
 					{
 						name: 'No Impact',
@@ -809,7 +810,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				default: '',
+				default: 'Indeterminate',
 				options: [
 					{
 						value: 'Indeterminate',
@@ -906,7 +907,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'tlp',
 				type: 'options',
 				required: false,
-				default: 2,
+				default: undefined,
 				options: [
 					{
 						name: 'White',
