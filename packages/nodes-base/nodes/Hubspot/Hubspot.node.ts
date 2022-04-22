@@ -940,12 +940,12 @@ export class Hubspot implements INodeType {
 			try {
 				//https://legacydocs.hubspot.com/docs/methods/lists/add_contact_to_list
 				if (operation === 'add') {
-					const listId = this.getNodeParameter('listId', 0) as string;
+					const listId = this.getNodeParameter('listId', 0);
 					const by = this.getNodeParameter('by', 0) as string;
 					const body: { [key: string]: [] } = { emails: [], vids: [] };
 					for (let i = 0; i < length; i++) {
 						if (by === 'id') {
-							const id = this.getNodeParameter('id', i) as string;
+							const id = this.getNodeParameter('id', i);
 							body.vids.push(parseInt(id, 10) as never);
 						} else {
 							const email = this.getNodeParameter('email', i);
@@ -957,10 +957,10 @@ export class Hubspot implements INodeType {
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
-					const listId = this.getNodeParameter('listId', 0) as string;
+					const listId = this.getNodeParameter('listId', 0);
 					const body: { [key: string]: [] } = { vids: [] };
 					for (let i = 0; i < length; i++) {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						body.vids.push(parseInt(id, 10) as never);
 					}
 					responseData = await hubspotApiRequest.call(this, 'POST', `/contacts/v1/lists/${listId}/remove`, body);

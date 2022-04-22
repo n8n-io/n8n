@@ -323,9 +323,9 @@ export class Coda implements INodeType {
 			}
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
-				const docId = this.getNodeParameter('docId', 0) as string;
+				const docId = this.getNodeParameter('docId', 0);
 				const returnAll = this.getNodeParameter('returnAll', 0);
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const tableId = this.getNodeParameter('tableId', 0);
 				const options = this.getNodeParameter('options', 0);
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 				if (options.useColumnNames === false) {
@@ -601,9 +601,9 @@ export class Coda implements INodeType {
 				return [this.helpers.returnJsonArray(returnData)];
 			}
 			if (operation === 'getAllViewRows') {
-				const docId = this.getNodeParameter('docId', 0) as string;
+				const docId = this.getNodeParameter('docId', 0);
 				const returnAll = this.getNodeParameter('returnAll', 0);
-				const viewId = this.getNodeParameter('viewId', 0) as string;
+				const viewId = this.getNodeParameter('viewId', 0);
 				const options = this.getNodeParameter('options', 0);
 				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
 				if (options.useColumnNames === false) {

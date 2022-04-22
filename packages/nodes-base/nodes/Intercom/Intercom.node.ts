@@ -418,7 +418,7 @@ export class Intercom implements INodeType {
 						}
 					}
 					if (operation === 'delete') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						try {
 							responseData = await intercomApiRequest.call(this, `/users/${id}`, 'DELETE');
 						} catch (error) {

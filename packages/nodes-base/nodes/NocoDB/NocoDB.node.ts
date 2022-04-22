@@ -108,7 +108,7 @@ export class NocoDB implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		const projectId = this.getNodeParameter('projectId', 0) as string;
+		const projectId = this.getNodeParameter('projectId', 0);
 		const table = this.getNodeParameter('table', 0) as string;
 
 		let returnAll = false;
@@ -207,7 +207,7 @@ export class NocoDB implements INodeType {
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
-					const id = this.getNodeParameter('id', i) as string;
+					const id = this.getNodeParameter('id', i);
 					body.push({ id });
 				}
 				try {
@@ -272,7 +272,7 @@ export class NocoDB implements INodeType {
 
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
 						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
 						const newItem: INodeExecutionData = { json: responseData };
@@ -305,7 +305,7 @@ export class NocoDB implements INodeType {
 
 				for (let i = 0; i < items.length; i++) {
 
-					const id = this.getNodeParameter('id', i) as string;
+					const id = this.getNodeParameter('id', i);
 					const newItem: IDataObject = { id };
 					const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMapInputData';
 

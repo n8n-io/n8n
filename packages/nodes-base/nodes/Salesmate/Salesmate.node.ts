@@ -221,7 +221,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'update') {
-					const companyId = this.getNodeParameter('id', i) as string;
+					const companyId = this.getNodeParameter('id', i);
 					const updateFields = this.getNodeParameter('updateFields', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					const body: ICompany = {};
@@ -286,7 +286,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'get') {
-					const companyId = this.getNodeParameter('id', i) as string;
+					const companyId = this.getNodeParameter('id', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					responseData = await salesmateApiRequest.call(this, 'GET', `/v1/companies/${companyId}`);
 					responseData = responseData.Data;
@@ -372,7 +372,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'delete') {
-					const companyId = parseInt(this.getNodeParameter('id', i) as string, 10);
+					const companyId = parseInt(this.getNodeParameter('id', i), 10);
 					responseData = await salesmateApiRequest.call(this, 'DELETE', `/v1/companies/${companyId}`);
 				}
 			}
@@ -413,7 +413,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'update') {
-					const activityId = this.getNodeParameter('id', i) as string;
+					const activityId = this.getNodeParameter('id', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IActivity = {};
@@ -451,7 +451,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'get') {
-					const activityId = this.getNodeParameter('id', i) as string;
+					const activityId = this.getNodeParameter('id', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					responseData = await salesmateApiRequest.call(this, 'GET', `/v1/activities/${activityId}`);
 					responseData = responseData.Data;
@@ -538,7 +538,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'delete') {
-					const activityId = this.getNodeParameter('id', i) as string;
+					const activityId = this.getNodeParameter('id', i);
 					responseData = await salesmateApiRequest.call(this, 'DELETE', `/v1/activities/${activityId}`);
 				}
 			}
@@ -590,7 +590,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'update') {
-					const dealId = this.getNodeParameter('id', i) as string;
+					const dealId = this.getNodeParameter('id', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDeal = {};
@@ -643,7 +643,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'get') {
-					const dealId = this.getNodeParameter('id', i) as string;
+					const dealId = this.getNodeParameter('id', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					responseData = await salesmateApiRequest.call(this, 'GET', `/v1/deals/${dealId}`);
 					responseData = responseData.Data;
@@ -728,7 +728,7 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'delete') {
-					const dealId = this.getNodeParameter('id', i) as string;
+					const dealId = this.getNodeParameter('id', i);
 					responseData = await salesmateApiRequest.call(this, 'DELETE', `/v1/deals/${dealId}`);
 				}
 			}

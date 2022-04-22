@@ -499,7 +499,7 @@ export class Twist implements INodeType {
 					}
 					//https://developer.twist.com/v3/#get-message
 					if (operation === 'get') {
-						qs.id = this.getNodeParameter('id', i) as string;
+						qs.id = this.getNodeParameter('id', i);
 
 						responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/getone', {}, qs);
 					}
@@ -514,13 +514,13 @@ export class Twist implements INodeType {
 					}
 					//https://developer.twist.com/v3/#remove-message-from-conversation
 					if (operation === 'delete') {
-						qs.id = this.getNodeParameter('id', i) as string;
+						qs.id = this.getNodeParameter('id', i);
 
 						responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/remove', {}, qs);
 					}
 					//https://developer.twist.com/v3/#update-message-in-conversation
 					if (operation === 'update') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id,

@@ -104,7 +104,7 @@ export class CloudFirestore implements INodeType {
 
 		if (resource === 'document') {
 			if (operation === 'get') {
-				const projectId = this.getNodeParameter('projectId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
 				const database = this.getNodeParameter('database', 0) as string;
 				const simple = this.getNodeParameter('simple', 0);
 				const documentList = items.map((item: IDataObject, i: number) => {
@@ -135,7 +135,7 @@ export class CloudFirestore implements INodeType {
 					}).filter((el: IDataObject) => !!el));
 				}
 			} else if (operation === 'create') {
-				const projectId = this.getNodeParameter('projectId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
 				const database = this.getNodeParameter('database', 0) as string;
 				const simple = this.getNodeParameter('simple', 0);
 
@@ -164,7 +164,7 @@ export class CloudFirestore implements INodeType {
 					}
 				}));
 			} else if (operation === 'getAll') {
-				const projectId = this.getNodeParameter('projectId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
 				const database = this.getNodeParameter('database', 0) as string;
 				const collection = this.getNodeParameter('collection', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0);
@@ -219,7 +219,7 @@ export class CloudFirestore implements INodeType {
 				returnData.push.apply(returnData, responseData);
 
 			} else if (operation === 'upsert') {
-				const projectId = this.getNodeParameter('projectId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
 				const database = this.getNodeParameter('database', 0) as string;
 
 				const updates = items.map((item: IDataObject, i: number) => {
@@ -265,7 +265,7 @@ export class CloudFirestore implements INodeType {
 				returnData.push.apply(returnData, responseData);
 
 				// } else if (operation === 'update') {
-				// 	const projectId = this.getNodeParameter('projectId', 0) as string;
+				// 	const projectId = this.getNodeParameter('projectId', 0);
 				// 	const database = this.getNodeParameter('database', 0) as string;
 				// 	const simple = this.getNodeParameter('simple', 0);
 
@@ -296,7 +296,7 @@ export class CloudFirestore implements INodeType {
 				// 	}));
 
 			} else if (operation === 'query') {
-				const projectId = this.getNodeParameter('projectId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
 				const database = this.getNodeParameter('database', 0) as string;
 				const simple = this.getNodeParameter('simple', 0);
 
@@ -329,7 +329,7 @@ export class CloudFirestore implements INodeType {
 			}
 		} else if (resource === 'collection') {
 			if (operation === 'getAll') {
-				const projectId = this.getNodeParameter('projectId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
 				const database = this.getNodeParameter('database', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0);
 

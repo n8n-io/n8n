@@ -227,7 +227,7 @@ export class QuickBase implements INodeType {
 
 		if (resource === 'record') {
 			if (operation === 'create') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const tableId = this.getNodeParameter('tableId', 0);
 
 				const simple = this.getNodeParameter('simple', 0);
 
@@ -365,7 +365,7 @@ export class QuickBase implements INodeType {
 			}
 
 			if (operation === 'update') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const tableId = this.getNodeParameter('tableId', 0);
 
 				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
 
@@ -440,13 +440,13 @@ export class QuickBase implements INodeType {
 			}
 
 			if (operation === 'upsert') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const tableId = this.getNodeParameter('tableId', 0);
 
 				const simple = this.getNodeParameter('simple', 0);
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
-				const mergeFieldId = this.getNodeParameter('mergeFieldId', 0) as string;
+				const mergeFieldId = this.getNodeParameter('mergeFieldId', 0);
 
 				const data: IDataObject[] = [];
 

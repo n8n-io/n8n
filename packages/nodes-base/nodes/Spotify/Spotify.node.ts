@@ -969,7 +969,7 @@ export class Spotify implements INodeType {
 
 						endpoint = `/me/player/play`;
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						body.context_uri = id;
 
@@ -982,7 +982,7 @@ export class Spotify implements INodeType {
 
 						endpoint = `/me/player/queue`;
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						qs = {
 							uri: id,
@@ -1022,7 +1022,7 @@ export class Spotify implements INodeType {
 					// -----------------------------
 
 					if (operation === 'get') {
-						const uri = this.getNodeParameter('id', i) as string;
+						const uri = this.getNodeParameter('id', i);
 
 						const id = uri.replace('spotify:album:', '');
 
@@ -1053,7 +1053,7 @@ export class Spotify implements INodeType {
 						}
 
 					} else if (operation === 'getTracks') {
-						const uri = this.getNodeParameter('id', i) as string;
+						const uri = this.getNodeParameter('id', i);
 
 						const id = uri.replace('spotify:album:', '');
 
@@ -1194,7 +1194,7 @@ export class Spotify implements INodeType {
 					// -----------------------------
 
 					if (['delete', 'get', 'getTracks', 'add'].includes(operation)) {
-						const uri = this.getNodeParameter('id', i) as string;
+						const uri = this.getNodeParameter('id', i);
 
 						const id = uri.replace('spotify:playlist:', '');
 

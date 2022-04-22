@@ -505,7 +505,7 @@ export class CoinGecko implements INodeType {
 					//https://www.coingecko.com/api/documentations/v3#/simple/get_simple_token_price__id_
 					if (operation === 'tokenPrice') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const contractAddresses = this.getNodeParameter('contractAddresses', i) as string;
 						const currencies = this.getNodeParameter('currencies', i) as string[];
 						const options = this.getNodeParameter('options', i);

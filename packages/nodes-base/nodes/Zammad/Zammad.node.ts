@@ -406,7 +406,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/user.html#delete
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						await zammadApiRequest.call(this, 'DELETE', `/users/${id}`);
 
@@ -420,7 +420,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/user.html#show
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await zammadApiRequest.call(this, 'GET', `/users/${id}`);
 
@@ -534,7 +534,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/organization.html#delete
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						await zammadApiRequest.call(this, 'DELETE', `/organizations/${id}`);
 
@@ -548,7 +548,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/organization.html#show
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await zammadApiRequest.call(this, 'GET', `/organizations/${id}`);
 
@@ -610,7 +610,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#update
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						const body: IDataObject = {};
 
@@ -638,7 +638,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#delete
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						await zammadApiRequest.call(this, 'DELETE', `/groups/${id}`);
 
@@ -652,7 +652,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#show
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await zammadApiRequest.call(this, 'GET', `/groups/${id}`);
 
@@ -724,7 +724,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#delete
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						await zammadApiRequest.call(this, 'DELETE', `/tickets/${id}`);
 
@@ -738,7 +738,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#show
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await zammadApiRequest.call(this, 'GET', `/tickets/${id}`);
 						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`);

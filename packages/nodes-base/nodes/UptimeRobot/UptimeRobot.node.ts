@@ -166,14 +166,14 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'delete') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 						};
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMonitor', body);
 						responseData = responseData.monitor;
 					}
 					if (operation === 'get') {
-						const monitors = this.getNodeParameter('id', i) as string;
+						const monitors = this.getNodeParameter('id', i);
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMonitors', { monitors });
 						responseData = responseData.monitors;
 					}
@@ -218,7 +218,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'reset') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 						};
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/resetMonitor', body);
@@ -228,7 +228,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'update') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 							...this.getNodeParameter('updateFields', i),
 						};
 
@@ -252,14 +252,14 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'delete') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 						};
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteAlertContact', body);
 						responseData = responseData.alert_contact;
 					}
 					if (operation === 'get') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAlertContacts', { alert_contacts: id });
 						responseData = responseData.alert_contacts;
@@ -281,7 +281,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'update') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 							...this.getNodeParameter('updateFields', i),
 						};
 
@@ -319,7 +319,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'delete') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 						};
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMWindow', body);
@@ -327,7 +327,7 @@ export class UptimeRobot implements INodeType {
 
 					}
 					if (operation === 'get') {
-						const mwindows = this.getNodeParameter('id', i) as string;
+						const mwindows = this.getNodeParameter('id', i);
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', { mwindows });
 						responseData = responseData.mwindows;
@@ -351,7 +351,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'update') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 							duration: this.getNodeParameter('duration', i) as string,
 							...this.getNodeParameter('updateFields', i),
 						};
@@ -391,7 +391,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'delete') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 						};
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deletePSP', body);
@@ -399,7 +399,7 @@ export class UptimeRobot implements INodeType {
 
 					}
 					if (operation === 'get') {
-						const psps = this.getNodeParameter('id', i) as string;
+						const psps = this.getNodeParameter('id', i);
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', { psps });
 						responseData = responseData.psps;
@@ -423,7 +423,7 @@ export class UptimeRobot implements INodeType {
 					if (operation === 'update') {
 
 						body = {
-							id: this.getNodeParameter('id', i) as string,
+							id: this.getNodeParameter('id', i),
 							...this.getNodeParameter('updateFields', i),
 						};
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editPSP', body);

@@ -123,7 +123,7 @@ export class Baserow implements INodeType {
 			async getTableIds(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-				const databaseId = this.getNodeParameter('databaseId', 0) as string;
+				const databaseId = this.getNodeParameter('databaseId', 0);
 				const endpoint = `/api/database/tables/database/${databaseId}`;
 				const tables = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
 				return toOptions(tables);
@@ -132,7 +132,7 @@ export class Baserow implements INodeType {
 			async getTableFields(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const tableId = this.getNodeParameter('tableId', 0);
 				const endpoint = `/api/database/fields/table/${tableId}/`;
 				const fields = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
 				return toOptions(fields);
@@ -146,7 +146,7 @@ export class Baserow implements INodeType {
 		const returnData: IDataObject[] = [];
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		const tableId = this.getNodeParameter('tableId', 0) as string;
+		const tableId = this.getNodeParameter('tableId', 0);
 		const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 		const jwtToken = await getJwtToken.call(this, credentials);
 		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);

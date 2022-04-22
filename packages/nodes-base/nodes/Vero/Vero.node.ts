@@ -82,7 +82,7 @@ export class Vero implements INodeType {
 				if (resource === 'user') {
 					//https://developers.getvero.com/?bash#users-identify
 					if (operation === 'create') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body = {
@@ -118,7 +118,7 @@ export class Vero implements INodeType {
 					}
 					//https://developers.getvero.com/?bash#users-alias
 					if (operation === 'alias') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const newId = this.getNodeParameter('newId', i);
 						const body = {
 							id,
@@ -136,7 +136,7 @@ export class Vero implements INodeType {
 					if (operation === 'unsubscribe' ||
 						operation === 'resubscribe' ||
 						operation === 'delete')  {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const body = {
 							id,
 						};
@@ -150,7 +150,7 @@ export class Vero implements INodeType {
 					//https://developers.getvero.com/?bash#tags-remove
 					if (operation === 'addTags' ||
 						operation === 'removeTags') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const tags = (this.getNodeParameter('tags', i) as string).split(',') as string[];
 						const body = {
 							id,
@@ -174,7 +174,7 @@ export class Vero implements INodeType {
 				if (resource === 'event') {
 					//https://developers.getvero.com/?bash#events-track
 					if (operation === 'track') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const email = this.getNodeParameter('email', i);
 						const eventName = this.getNodeParameter('eventName', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);

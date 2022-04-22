@@ -334,7 +334,7 @@ export class NotionV2 implements INodeType {
 		if (resource === 'databasePage') {
 
 			if (operation === 'create') {
-				const databaseId = this.getNodeParameter('databaseId', 0) as string;
+				const databaseId = this.getNodeParameter('databaseId', 0);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				let titleKey = '';
 				for (const key of Object.keys(properties)) {

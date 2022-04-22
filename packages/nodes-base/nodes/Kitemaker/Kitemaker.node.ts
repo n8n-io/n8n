@@ -138,7 +138,7 @@ export class Kitemaker implements INodeType {
 			},
 
 			async getWorkItems(this: ILoadOptionsFunctions) {
-				const spaceId = this.getNodeParameter('spaceId', 0) as string;
+				const spaceId = this.getNodeParameter('spaceId', 0);
 
 				const responseData = await kitemakerRequest.call(this, {
 					query: getWorkItems,

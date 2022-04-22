@@ -175,7 +175,7 @@ export class Bitly implements INodeType {
 						responseData = await bitlyApiRequest.call(this, 'POST', '/bitlinks', body);
 					}
 					if (operation === 'update') {
-						const linkId = this.getNodeParameter('id', i) as string;
+						const linkId = this.getNodeParameter('id', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.longUrl) {
@@ -208,7 +208,7 @@ export class Bitly implements INodeType {
 						responseData = await bitlyApiRequest.call(this, 'PATCH', `/bitlinks/${linkId}`, body);
 					}
 					if (operation === 'get') {
-						const linkId = this.getNodeParameter('id', i) as string;
+						const linkId = this.getNodeParameter('id', i);
 						responseData = await bitlyApiRequest.call(this, 'GET', `/bitlinks/${linkId}`);
 					}
 				}

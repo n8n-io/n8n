@@ -198,7 +198,7 @@ export class Stackby implements INodeType {
 				try {
 					const stackId = this.getNodeParameter('stackId', i);
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
-					const rowIds = this.getNodeParameter('id', i) as string;
+					const rowIds = this.getNodeParameter('id', i);
 					qs.rowIds = [rowIds];
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					// tslint:disable-next-line: no-any
@@ -217,7 +217,7 @@ export class Stackby implements INodeType {
 				try {
 					const stackId = this.getNodeParameter('stackId', i);
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
-					const rowIds = this.getNodeParameter('id', i) as string;
+					const rowIds = this.getNodeParameter('id', i);
 					qs.rowIds = [rowIds];
 
 					responseData = await apiRequest.call(this, 'DELETE', `/rowdelete/${stackId}/${table}`, {}, qs);

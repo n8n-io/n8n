@@ -661,7 +661,7 @@ export class Disqus implements INodeType {
 
 						endpoint = 'forums/details.json';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						qs.forum = id;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -684,7 +684,7 @@ export class Disqus implements INodeType {
 
 						endpoint = 'forums/listPosts.json';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(qs, additionalFields);
 
@@ -716,7 +716,7 @@ export class Disqus implements INodeType {
 
 						endpoint = 'forums/listCategories.json';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(qs, additionalFields);
@@ -748,7 +748,7 @@ export class Disqus implements INodeType {
 
 						endpoint = 'forums/listThreads.json';
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						qs.forum = id;

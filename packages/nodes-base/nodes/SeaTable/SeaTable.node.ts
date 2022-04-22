@@ -197,7 +197,7 @@ export class SeaTable implements INodeType {
 			} else if (operation === 'get') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const tableId = this.getNodeParameter('tableId', 0) as string;
+						const tableId = this.getNodeParameter('tableId', 0);
 						const rowId = this.getNodeParameter('rowId', i);
 						const response = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${rowId}`, {}, { table_id: tableId, convert: true }) as IDataObject;
 						returnData.push(response);

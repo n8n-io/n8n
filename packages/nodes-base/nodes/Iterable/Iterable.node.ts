@@ -267,7 +267,7 @@ export class Iterable implements INodeType {
 		if (resource === 'userList') {
 			if (operation === 'add') {
 				//https://api.iterable.com/api/docs#lists_subscribe
-				const listId = this.getNodeParameter('listId', 0) as string;
+				const listId = this.getNodeParameter('listId', 0);
 
 				const identifier = this.getNodeParameter('identifier', 0) as string;
 
@@ -298,7 +298,7 @@ export class Iterable implements INodeType {
 
 			if (operation === 'remove') {
 				//https://api.iterable.com/api/docs#lists_unsubscribe
-				const listId = this.getNodeParameter('listId', 0) as string;
+				const listId = this.getNodeParameter('listId', 0);
 
 				const identifier = this.getNodeParameter('identifier', 0) as string;
 

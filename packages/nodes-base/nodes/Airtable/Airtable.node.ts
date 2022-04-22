@@ -547,7 +547,7 @@ export class Airtable implements INodeType {
 				try {
 					let id: string;
 
-					id = this.getNodeParameter('id', i) as string;
+					id = this.getNodeParameter('id', i);
 
 					rows.push(id);
 
@@ -631,7 +631,7 @@ export class Airtable implements INodeType {
 			let id: string;
 			for (let i = 0; i < items.length; i++) {
 
-				id = this.getNodeParameter('id', i) as string;
+				id = this.getNodeParameter('id', i);
 
 				endpoint = `${application}/${table}/${id}`;
 
@@ -702,7 +702,7 @@ export class Airtable implements INodeType {
 						}
 					}
 
-					row.id = this.getNodeParameter('id', i) as string;
+					row.id = this.getNodeParameter('id', i);
 
 					rows.push(row);
 

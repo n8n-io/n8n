@@ -195,13 +195,13 @@ export class ConvertKit implements INodeType {
 					}
 					if (operation === 'delete') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await convertKitApiRequest.call(this, 'DELETE', `/custom_fields/${id}`);
 					}
 					if (operation === 'get') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields/${id}`);
 					}
@@ -222,7 +222,7 @@ export class ConvertKit implements INodeType {
 					}
 					if (operation === 'update') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						const label = this.getNodeParameter('label', i) as string;
 
@@ -237,7 +237,7 @@ export class ConvertKit implements INodeType {
 
 						const email = this.getNodeParameter('email', i);
 
-						const formId = this.getNodeParameter('id', i) as string;
+						const formId = this.getNodeParameter('id', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -285,7 +285,7 @@ export class ConvertKit implements INodeType {
 					}
 					if (operation === 'getSubscriptions') {
 
-						const formId = this.getNodeParameter('id', i) as string;
+						const formId = this.getNodeParameter('id', i);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -313,7 +313,7 @@ export class ConvertKit implements INodeType {
 
 						const email = this.getNodeParameter('email', i);
 
-						const sequenceId = this.getNodeParameter('id', i) as string;
+						const sequenceId = this.getNodeParameter('id', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -361,7 +361,7 @@ export class ConvertKit implements INodeType {
 					}
 					if (operation === 'getSubscriptions') {
 
-						const sequenceId = this.getNodeParameter('id', i) as string;
+						const sequenceId = this.getNodeParameter('id', i);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 

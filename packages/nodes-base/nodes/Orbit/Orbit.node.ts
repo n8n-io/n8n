@@ -307,7 +307,7 @@ export class Orbit implements INodeType {
 							qs.source = this.getNodeParameter('source', i);
 							const searchBy = this.getNodeParameter('searchBy', i) as string;
 							if (searchBy === 'id') {
-								qs.uid = this.getNodeParameter('id', i) as string;
+								qs.uid = this.getNodeParameter('id', i);
 							} else {
 								qs.username = this.getNodeParameter('username', i);
 							}

@@ -164,7 +164,7 @@ export class CustomerIo implements INodeType {
 				if (resource === 'customer') {
 
 					if (operation === 'upsert') {
-						const id = this.getNodeParameter('id', i) as number;
+						const id = this.getNodeParameter('id', i) as unknown as number;
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
@@ -210,7 +210,7 @@ export class CustomerIo implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const id = this.getNodeParameter('id', i) as number;
+						const id = this.getNodeParameter('id', i) as unknown as number;
 
 						body.id = id;
 

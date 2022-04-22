@@ -335,7 +335,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
 					if (operation === 'update') {
-						const ticketId = this.getNodeParameter('id', i) as string;
+						const ticketId = this.getNodeParameter('id', i);
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const body: ITicket = {};
 
@@ -408,7 +408,7 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#show-suspended-ticket
 					if (operation === 'get') {
 						const ticketType = this.getNodeParameter('ticketType', i);
-						const ticketId = this.getNodeParameter('id', i) as string;
+						const ticketId = this.getNodeParameter('id', i);
 						const endpoint = (ticketType === 'regular') ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
 						responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {});
 						responseData = responseData.ticket || responseData.suspended_ticket;
@@ -451,14 +451,14 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#delete-suspended-ticket
 					if (operation === 'delete') {
 						const ticketType = this.getNodeParameter('ticketType', i);
-						const ticketId = this.getNodeParameter('id', i) as string;
+						const ticketId = this.getNodeParameter('id', i);
 						const endpoint = (ticketType === 'regular') ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
 						responseData = await zendeskApiRequest.call(this, 'DELETE', endpoint, {});
 						responseData = { success: true };
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#recover-suspended-ticket
 					if (operation === 'recover') {
-						const ticketId = this.getNodeParameter('id', i) as string;
+						const ticketId = this.getNodeParameter('id', i);
 						try {
 							responseData = await zendeskApiRequest.call(this, 'PUT', `/suspended_tickets/${ticketId}/recover`, {});
 							responseData = responseData.ticket;
@@ -517,7 +517,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#update-user
 					if (operation === 'update') {
-						const userId = this.getNodeParameter('id', i) as string;
+						const userId = this.getNodeParameter('id', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
@@ -541,7 +541,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user
 					if (operation === 'get') {
-						const userId = this.getNodeParameter('id', i) as string;
+						const userId = this.getNodeParameter('id', i);
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}`, {});
 						responseData = responseData.user;
 					}
@@ -563,7 +563,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#list-organizations
 					if (operation === 'getOrganizations') {
-						const userId = this.getNodeParameter('id', i) as string;
+						const userId = this.getNodeParameter('id', i);
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}/organizations`, {});
 						responseData = responseData.organizations;
 					}
@@ -585,13 +585,13 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#delete-user
 					if (operation === 'delete') {
-						const userId = this.getNodeParameter('id', i) as string;
+						const userId = this.getNodeParameter('id', i);
 						responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
 						responseData = responseData.user;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user-related-information
 					if (operation === 'getRelatedData') {
-						const userId = this.getNodeParameter('id', i) as string;
+						const userId = this.getNodeParameter('id', i);
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}/related`, {});
 						responseData = responseData.user_related;
 					}
@@ -625,7 +625,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#delete-organization
 					if (operation === 'delete') {
-						const organizationId = this.getNodeParameter('id', i) as string;
+						const organizationId = this.getNodeParameter('id', i);
 						await zendeskApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {});
 						responseData = { success: true };
 					}
@@ -636,7 +636,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organization
 					if (operation === 'get') {
-						const organizationId = this.getNodeParameter('id', i) as string;
+						const organizationId = this.getNodeParameter('id', i);
 						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/${organizationId}`, {});
 						responseData = responseData.organization;
 					}
@@ -655,13 +655,13 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organizations-related-information
 					if (operation === 'getRelatedData') {
-						const organizationId = this.getNodeParameter('id', i) as string;
+						const organizationId = this.getNodeParameter('id', i);
 						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/${organizationId}/related`, {});
 						responseData = responseData.organization_related;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#update-organization
 					if (operation === 'update') {
-						const organizationId = this.getNodeParameter('id', i) as string;
+						const organizationId = this.getNodeParameter('id', i);
 
 						const body: IDataObject & { organization_fields?: { [key: string]: object | string } } = {};
 

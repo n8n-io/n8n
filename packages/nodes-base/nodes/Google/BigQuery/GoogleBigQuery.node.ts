@@ -182,9 +182,9 @@ export class GoogleBigQuery implements INodeType {
 
 				// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
 
-				const projectId = this.getNodeParameter('projectId', 0) as string;
-				const datasetId = this.getNodeParameter('datasetId', 0) as string;
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
+				const datasetId = this.getNodeParameter('datasetId', 0);
+				const tableId = this.getNodeParameter('tableId', 0);
 				const rows: IDataObject[] = [];
 				const body: IDataObject = {};
 
@@ -233,9 +233,9 @@ export class GoogleBigQuery implements INodeType {
 				// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/get
 
 				const returnAll = this.getNodeParameter('returnAll', 0);
-				const projectId = this.getNodeParameter('projectId', 0) as string;
-				const datasetId = this.getNodeParameter('datasetId', 0) as string;
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const projectId = this.getNodeParameter('projectId', 0);
+				const datasetId = this.getNodeParameter('datasetId', 0);
+				const tableId = this.getNodeParameter('tableId', 0);
 				const simple = this.getNodeParameter('simple', 0);
 				let fields;
 

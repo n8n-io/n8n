@@ -492,6 +492,7 @@ type StringReturnTypeParam =
 	| 'from'
 	| 'message'
 	| 'name'
+	| 'id'
 	| 'password'
 	| 'operation'
 	| 'path'

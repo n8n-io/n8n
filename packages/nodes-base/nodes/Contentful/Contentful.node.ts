@@ -114,9 +114,9 @@ export class Contentful implements INodeType {
 
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const env = this.getNodeParameter('environmentId', 0) as string;
+						const env = this.getNodeParameter('environmentId', 0);
 
-						const id = this.getNodeParameter('contentTypeId', 0) as string;
+						const id = this.getNodeParameter('contentTypeId', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -133,9 +133,9 @@ export class Contentful implements INodeType {
 
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const env = this.getNodeParameter('environmentId', 0) as string;
+						const env = this.getNodeParameter('environmentId', 0);
 
-						const id = this.getNodeParameter('entryId', 0) as string;
+						const id = this.getNodeParameter('entryId', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -215,9 +215,9 @@ export class Contentful implements INodeType {
 
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const env = this.getNodeParameter('environmentId', 0) as string;
+						const env = this.getNodeParameter('environmentId', 0);
 
-						const id = this.getNodeParameter('assetId', 0) as string;
+						const id = this.getNodeParameter('assetId', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

@@ -557,13 +557,13 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'delete') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/incident/${id}`);
 						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						qs = this.getNodeParameter('options', i);
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -593,7 +593,7 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'update') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const body = this.getNodeParameter('updateFields', i);
 
 						const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/incident/${id}`, body);
@@ -631,14 +631,14 @@ export class ServiceNow implements INodeType {
 					} else if (operation === 'delete') {
 
 						const tableName = this.getNodeParameter('tableName', i);
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/${tableName}/${id}`);
 						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
 						const tableName = this.getNodeParameter('tableName', i);
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						qs = this.getNodeParameter('options', i);
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -671,7 +671,7 @@ export class ServiceNow implements INodeType {
 					} else if (operation === 'update') {
 
 						const tableName = this.getNodeParameter('tableName', i);
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};
 
@@ -707,7 +707,7 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'delete') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/sys_user/${id}`);
 						responseData = { success: true };
 
@@ -721,7 +721,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (getOption === 'id') {
-							const id = this.getNodeParameter('id', i) as string;
+							const id = this.getNodeParameter('id', i);
 							const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/sys_user/${id}`, {}, qs);
 							responseData = response.result;
 						} else {
@@ -752,7 +752,7 @@ export class ServiceNow implements INodeType {
 
 					} else if (operation === 'update') {
 
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const body = this.getNodeParameter('updateFields', i);
 
 						const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/sys_user/${id}`, body);

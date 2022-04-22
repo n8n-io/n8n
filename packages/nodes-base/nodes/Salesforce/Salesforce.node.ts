@@ -1118,7 +1118,7 @@ export class Salesforce implements INodeType {
 						let method = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
-							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalId = this.getNodeParameter('externalId', 0);
 							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
 							endpoint = `/sobjects/lead/${externalId}/${externalIdValue}`;
 							if (body[externalId] !== undefined) {
@@ -1405,7 +1405,7 @@ export class Salesforce implements INodeType {
 						let method = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
-							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalId = this.getNodeParameter('externalId', 0);
 							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
 							endpoint = `/sobjects/contact/${externalId}/${externalIdValue}`;
 							if (body[externalId] !== undefined) {
@@ -1622,7 +1622,7 @@ export class Salesforce implements INodeType {
 						let method = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
-							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalId = this.getNodeParameter('externalId', 0);
 							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
 							endpoint = `/sobjects/${customObject}/${externalId}/${externalIdValue}`;
 							if (body[externalId] !== undefined) {
@@ -1786,7 +1786,7 @@ export class Salesforce implements INodeType {
 						let method = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
-							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalId = this.getNodeParameter('externalId', 0);
 							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
 							endpoint = `/sobjects/opportunity/${externalId}/${externalIdValue}`;
 							if (body[externalId] !== undefined) {
@@ -2008,7 +2008,7 @@ export class Salesforce implements INodeType {
 						let method = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
-							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalId = this.getNodeParameter('externalId', 0);
 							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
 							endpoint = `/sobjects/account/${externalId}/${externalIdValue}`;
 							if (body[externalId] !== undefined) {

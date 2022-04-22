@@ -522,7 +522,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const alertId = this.getNodeParameter('id', i) as string;
+						const alertId = this.getNodeParameter('id', i);
 
 						responseData = await theHiveApiRequest.call(
 							this,
@@ -630,7 +630,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'markAsRead') {
-						const alertId = this.getNodeParameter('id', i) as string;
+						const alertId = this.getNodeParameter('id', i);
 
 						responseData = await theHiveApiRequest.call(
 							this,
@@ -640,7 +640,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'markAsUnread') {
-						const alertId = this.getNodeParameter('id', i) as string;
+						const alertId = this.getNodeParameter('id', i);
 
 						responseData = await theHiveApiRequest.call(
 							this,
@@ -650,7 +650,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'merge') {
-						const alertId = this.getNodeParameter('id', i) as string;
+						const alertId = this.getNodeParameter('id', i);
 
 						const caseId = this.getNodeParameter('caseId', i);
 
@@ -663,7 +663,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'promote') {
-						const alertId = this.getNodeParameter('id', i) as string;
+						const alertId = this.getNodeParameter('id', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -680,7 +680,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const alertId = this.getNodeParameter('id', i) as string;
+						const alertId = this.getNodeParameter('id', i);
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -961,7 +961,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const observableId = this.getNodeParameter('id', i) as string;
+						const observableId = this.getNodeParameter('id', i);
 
 						const credentials = await this.getCredentials('theHiveApi');
 
@@ -1181,7 +1181,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						const body: IDataObject = {
 							...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
@@ -1343,7 +1343,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const caseId = this.getNodeParameter('id', i) as string;
+						const caseId = this.getNodeParameter('id', i);
 
 						const credentials = await this.getCredentials('theHiveApi');
 
@@ -1488,7 +1488,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const updateFields = this.getNodeParameter('updateFields', i, {}) as INodeParameters;
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
@@ -1632,7 +1632,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const taskId = this.getNodeParameter('id', i) as string;
+						const taskId = this.getNodeParameter('id', i);
 
 						const credentials = await this.getCredentials('theHiveApi');
 
@@ -1841,7 +1841,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 
 						const body: IDataObject = {
 							...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
@@ -1974,7 +1974,7 @@ export class TheHive implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const logId = this.getNodeParameter('id', i) as string;
+						const logId = this.getNodeParameter('id', i);
 
 						const credentials = await this.getCredentials('theHiveApi');
 

@@ -1050,7 +1050,7 @@ export class GoogleSheets implements INodeType {
 
 		if (resource === 'sheet') {
 
-			const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
+			const spreadsheetId = this.getNodeParameter('sheetId', 0);
 
 			const sheet = new GoogleSheet(spreadsheetId, this);
 
@@ -1271,7 +1271,7 @@ export class GoogleSheets implements INodeType {
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
-						const sheetId = this.getNodeParameter('id', i) as string;
+						const sheetId = this.getNodeParameter('id', i);
 						const spreadsheetId = this.getNodeParameter('sheetId', i);
 
 						const requests = [{

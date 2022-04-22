@@ -137,7 +137,7 @@ export class Cockpit implements INodeType {
 
 						responseData = await getAllCollectionEntries.call(this, collectionName, options);
 					} else if (operation === 'update') {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i);
 						const data = createDataFromParameters.call(this, i);
 
 						responseData = await createCollectionEntry.call(this, collectionName, data, id);

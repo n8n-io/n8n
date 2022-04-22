@@ -2190,7 +2190,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2203,7 +2203,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2261,7 +2261,7 @@ export class Asana implements INodeType {
 
 						endpoint = `/sections/${sectionId}/addTask`;
 
-						body.task = this.getNodeParameter('id', i) as string;
+						body.task = this.getNodeParameter('id', i);
 
 						Object.assign(body);
 
@@ -2275,7 +2275,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i);
 
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
@@ -2308,7 +2308,7 @@ export class Asana implements INodeType {
 						//         taskComment:add
 						// ----------------------------------
 
-						const taskId = this.getNodeParameter('id', i) as string;
+						const taskId = this.getNodeParameter('id', i);
 
 						const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
 
@@ -2336,7 +2336,7 @@ export class Asana implements INodeType {
 						//         taskComment:remove
 						// ----------------------------------
 
-						const commentId = this.getNodeParameter('id', i) as string;
+						const commentId = this.getNodeParameter('id', i);
 
 						requestMethod = 'DELETE';
 
@@ -2354,7 +2354,7 @@ export class Asana implements INodeType {
 						//         taskTag:add
 						// ----------------------------------
 
-						const taskId = this.getNodeParameter('id', i) as string;
+						const taskId = this.getNodeParameter('id', i);
 
 						requestMethod = 'POST';
 
@@ -2373,7 +2373,7 @@ export class Asana implements INodeType {
 						//         taskTag:remove
 						// ----------------------------------
 
-						const taskId = this.getNodeParameter('id', i) as string;
+						const taskId = this.getNodeParameter('id', i);
 
 						requestMethod = 'POST';
 
@@ -2392,7 +2392,7 @@ export class Asana implements INodeType {
 						//         taskProject:add
 						// ----------------------------------
 
-						const taskId = this.getNodeParameter('id', i) as string;
+						const taskId = this.getNodeParameter('id', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -2415,7 +2415,7 @@ export class Asana implements INodeType {
 						//         taskProject:remove
 						// ----------------------------------
 
-						const taskId = this.getNodeParameter('id', i) as string;
+						const taskId = this.getNodeParameter('id', i);
 
 						requestMethod = 'POST';
 
@@ -2490,7 +2490,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						//         project:delete
 						// ----------------------------------
-						const projectId = this.getNodeParameter('id', i) as string;
+						const projectId = this.getNodeParameter('id', i);
 
 						requestMethod = 'DELETE';
 
@@ -2505,7 +2505,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						//         project:get
 						// ----------------------------------
-						const projectId = this.getNodeParameter('id', i) as string;
+						const projectId = this.getNodeParameter('id', i);
 
 						requestMethod = 'GET';
 
@@ -2556,7 +2556,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						//        project:update
 						// ----------------------------------
-						const projectId = this.getNodeParameter('id', i) as string;
+						const projectId = this.getNodeParameter('id', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						// request parameters
