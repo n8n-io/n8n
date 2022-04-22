@@ -167,7 +167,7 @@ export class Signl4 implements INodeType {
 						displayName: 'Filtering',
 						name: 'filtering',
 						type: 'boolean',
-						default: 'false',
+						default: false,
 						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)`,
 					},
 					{
