@@ -320,7 +320,6 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Options',
@@ -389,7 +388,6 @@ export const companyFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -687,7 +685,6 @@ export const companyFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [

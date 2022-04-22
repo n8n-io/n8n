@@ -320,7 +320,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Options',
@@ -390,7 +389,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -856,7 +854,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [

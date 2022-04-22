@@ -216,7 +216,6 @@ export class Mandrill implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						operation: [
@@ -683,14 +682,12 @@ export class Mandrill implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 						],
 					},

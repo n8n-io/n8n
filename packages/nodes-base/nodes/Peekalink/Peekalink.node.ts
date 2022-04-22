@@ -58,7 +58,6 @@ export class Peekalink implements INodeType {
 				name: 'url',
 				type: 'string',
 				default: '',
-				description: '',
 				required: true,
 			},
 		],

@@ -432,7 +432,6 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				description: '',
 			},
 			{
 				displayName: 'File Content',

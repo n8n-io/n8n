@@ -703,7 +703,6 @@ export class OneSimpleApi implements INodeType {
 						name: 'headers',
 						type: 'boolean',
 						default: false,
-						description: '',
 					},
 				],
 			},

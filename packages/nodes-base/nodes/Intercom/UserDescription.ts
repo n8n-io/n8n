@@ -326,7 +326,6 @@ export const userFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
