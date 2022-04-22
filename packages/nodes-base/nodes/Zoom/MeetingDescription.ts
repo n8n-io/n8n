@@ -241,7 +241,7 @@ export const meetingFields: INodeProperties[] = [
 							},
 						],
 						default: 1,
-						description: 'Registration type. Used for recurring meetings with fixed time only',
+						description: 'Registration type. Used for recurring meetings with fixed time only.',
 					},
 					{
 						displayName: 'Watermark',
@@ -685,7 +685,7 @@ export const meetingFields: INodeProperties[] = [
 							},
 						],
 						default: 1,
-						description: 'Registration type. Used for recurring meetings with fixed time only',
+						description: 'Registration type. Used for recurring meetings with fixed time only.',
 					},
 					{
 						displayName: 'Watermark',

@@ -134,7 +134,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'Page title. Appears at the top of the page and can be found via Quick Find',
+		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -259,7 +259,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Phone number. No structure is enforced`,
+						description: 'Phone number. No structure is enforced.',
 					},
 					{
 						displayName: 'Options',
@@ -339,7 +339,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma',
+						description: 'List of users. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -356,7 +356,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of databases that belong to another database. Multiples can be defined separated by comma',
+						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checked',
@@ -481,7 +481,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 					{
 						displayName: 'File URLs',
@@ -674,7 +674,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Phone number. No structure is enforced`,
+						description: 'Phone number. No structure is enforced.',
 					},
 					{
 						displayName: 'Options',
@@ -750,7 +750,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma',
+						description: 'List of users. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -767,7 +767,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of databases that belong to another database. Multiples can be defined separated by comma',
+						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checked',
@@ -892,7 +892,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 					{
 						displayName: 'File URLs',

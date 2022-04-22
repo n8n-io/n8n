@@ -544,7 +544,7 @@ export class OneSimpleApi implements INodeType {
 						name: 'fullpage',
 						type: 'boolean',
 						default: false,
-						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option',
+						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option.',
 					},
 				],
 			},

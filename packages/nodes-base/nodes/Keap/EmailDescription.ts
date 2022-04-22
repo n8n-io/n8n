@@ -341,7 +341,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact Ids to receive the email. Multiple can be added seperated by comma',
+		description: 'Contact Ids to receive the email. Multiple can be added seperated by comma.',
 	},
 	{
 		displayName: 'Subject',

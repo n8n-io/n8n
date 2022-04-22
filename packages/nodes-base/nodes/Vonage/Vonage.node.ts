@@ -348,7 +348,7 @@ export class Vonage implements INodeType {
 						name: 'account-ref',
 						type: 'string',
 						default: '',
-						description: 'An optional string used to identify separate accounts using the SMS endpoint for billing purposes. To use this feature, please email support@nexmo.com',
+						description: 'An optional string used to identify separate accounts using the SMS endpoint for billing purposes. To use this feature, please email support@nexmo.com.',
 					},
 					{
 						displayName: 'Callback',

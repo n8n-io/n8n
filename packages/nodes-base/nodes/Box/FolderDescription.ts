@@ -89,7 +89,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the folder you want to create the new folder in. if not defined it will be created on the root folder',
+		description: 'ID of the folder you want to create the new folder in. if not defined it will be created on the root folder.',
 	},
 	{
 		displayName: 'Options',

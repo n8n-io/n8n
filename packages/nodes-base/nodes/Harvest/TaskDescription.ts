@@ -226,7 +226,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true',
+				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Default',
@@ -292,7 +292,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true',
+				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Default',

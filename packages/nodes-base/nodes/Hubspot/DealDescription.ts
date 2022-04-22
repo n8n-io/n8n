@@ -728,7 +728,7 @@ export const dealFields: INodeProperties[] = [
 								],
 							},
 						],
-						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 					},
 				],
 			},

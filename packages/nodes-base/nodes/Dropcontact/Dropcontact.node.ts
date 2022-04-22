@@ -236,14 +236,14 @@ export class Dropcontact implements INodeType {
 							},
 						},
 						default: 45,
-						description: 'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step',
+						description: 'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step.',
 					},
 					{
 						displayName: 'French Company Enrich',
 						name: 'siren',
 						type: 'boolean',
 						default: false,
-						description: `Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies`,
+						description: 'Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies.',
 					},
 					{
 						displayName: 'Language',
