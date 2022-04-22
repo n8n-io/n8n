@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="{[$style.sticky]: true, [$style.editMode]: false}"
+    :class="{[$style.sticky]: true, [$style.clickable]: !isResizing}"
     :style="styles"
 		@keydown.prevent
   >
@@ -184,6 +184,9 @@ export default mixins(Locale).extend({
   background-color: var(--color-sticky-default-background);
   border: 1px solid var(--color-sticky-default-border);
   border-radius: var(--border-radius-base);
+}
+
+.clickable {
   cursor: pointer;
 }
 

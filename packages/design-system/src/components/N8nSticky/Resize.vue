@@ -1,18 +1,29 @@
 <template>
 	<div :class="$style.resize">
-		<div @mousedown="resizerMove" class="resizer right" :class="!isResizingEnabled ? 'no-cursor' : ''" />
-		<div @mousedown="resizerMove" class="resizer left" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
-		<div @mousedown="resizerMove" class="resizer top" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
-		<div @mousedown="resizerMove" class="resizer bottom" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
-		<div @mousedown="resizerMove" class="resizer top-left" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
-		<div @mousedown="resizerMove" class="resizer top-right" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
-		<div @mousedown="resizerMove" class="resizer bottom-left" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
-		<div @mousedown="resizerMove" class="resizer bottom-right" :class="!isResizingEnabled ? 'no-cursor' : ''"/>
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer right"  />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer left" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer top" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer bottom" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer top-left" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer top-right" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer bottom-left" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer bottom-right" />
 		<slot></slot>
 	</div>
 </template>
 
 <script lang="ts">
+const cursorMap = {
+	right: 'ew-resize',
+	top: 'ns-resize',
+	bottom: 'ns-resize',
+	left: 'ew-resize',
+	'top-left': 'nw-resize',
+	'top-right' : 'ne-resize',
+	'bottom-left': 'sw-resize',
+	'bottom-right': 'se-resize',
+};
+
 export default {
 	name: 'n8n-resize',
 	props: {
@@ -23,7 +34,7 @@ export default {
 	},
 	data() {
 		return {
-			currentResizer: null,
+			dir: '',
 			height: 0,
 			width: 0,
 			x: 0,
@@ -34,18 +45,19 @@ export default {
 		resizerMove(e) {
 			e.preventDefault();
 			e.stopPropagation();
-			this.currentResizer = e.target;
+
+			const targetResizer = e.target;
+			this.dir = [...targetResizer.classList].find((c) => typeof c === 'string' && cursorMap[c]);
+			document.body.style.cursor = cursorMap[this.dir];
 
 			this.x = e.pageX;
 			this.y = e.pageY;
 			this.width = 0;
 			this.height = 0;
 
-			if (this.isResizingEnabled) {
-				window.addEventListener('mousemove', this.mouseMove);
-				window.addEventListener('mouseup', this.mouseUp);
-				this.$emit('resizestart');
-			}
+			window.addEventListener('mousemove', this.mouseMove);
+			window.addEventListener('mouseup', this.mouseUp);
+			this.$emit('resizestart');
 		},
 		mouseMove(e) {
 			e.preventDefault();
@@ -55,22 +67,18 @@ export default {
 			let top = false;
 			let left = false;
 
-			const hasDir = (dir) => {
-				return [...this.currentResizer.classList].find((v) => typeof v === 'string' && v.includes(dir));
-			};
-
-			if (hasDir('right')) {
+			if (this.dir.includes('right')) {
 				width = e.pageX - this.x;
 			}
-			if (hasDir('left')) {
+			if (this.dir.includes('left')) {
 				width = this.x - e.pageX;
 				left = true;
 			}
-			if (hasDir('top')) {
+			if (this.dir.includes('top')) {
 				height = this.y - e.pageY;
 				top = true;
 			}
-			if (hasDir('bottom')) {
+			if (this.dir.includes('bottom')) {
 				height = e.pageY - this.y;
 			}
 
@@ -84,10 +92,9 @@ export default {
 			this.$emit('resizeend', true);
 			window.removeEventListener('mousemove', this.mouseMove);
 			window.removeEventListener('mouseup', this.mouseUp);
+			document.body.style.cursor = 'unset';
+			this.dir = '';
 		},
-	},
-	mounted() {
-		this.currentResizer = null;
 	},
 };
 </script>
@@ -173,9 +180,5 @@ export default {
 	right: -3px;
 	cursor: se-resize;
 	z-index: 3;
-}
-
-.no-cursor {
-	cursor: default!important;
 }
 </style>
