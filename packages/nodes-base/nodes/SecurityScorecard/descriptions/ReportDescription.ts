@@ -176,7 +176,6 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Portfolio ID',
 	},
 	{
 		displayName: 'Branding',

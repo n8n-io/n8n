@@ -88,7 +88,6 @@ export const issueFields: INodeProperties[] = [
 				'jiraVersion',
 			],
 		},
-		description: 'Project',
 	},
 	{
 		displayName: 'Issue Type',
@@ -130,7 +129,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Summary',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -157,14 +155,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Assignee',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description',
 			},
 			{
 				displayName: 'Components',
@@ -224,7 +220,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -238,7 +233,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -255,7 +249,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
@@ -265,7 +258,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Reporter',
@@ -275,7 +267,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Reporter',
 			},
 			{
 				displayName: 'Update History',
@@ -307,7 +298,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Update Fields',
@@ -334,14 +324,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Assignee',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -396,7 +384,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -410,7 +397,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				description: 'Labels',
 				displayOptions: {
 					show: {
 						'/jiraVersion': [
@@ -427,7 +413,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
@@ -437,7 +422,6 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Reporter',
@@ -447,14 +431,12 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Reporter',
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Summary',
 			},
 			{
 				displayName: 'Status ID',
@@ -488,7 +470,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Delete Subtasks',
@@ -506,7 +487,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Delete Subtasks',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -528,7 +508,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -770,7 +749,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Return All',
@@ -832,7 +810,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -1098,7 +1075,6 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Additional Fields',

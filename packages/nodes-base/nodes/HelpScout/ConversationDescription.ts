@@ -385,7 +385,6 @@ export const conversationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                conversation:delete                         */
@@ -406,7 +405,6 @@ export const conversationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                conversation:getAll                         */

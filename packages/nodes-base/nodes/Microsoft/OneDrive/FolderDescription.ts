@@ -115,7 +115,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:search                              */

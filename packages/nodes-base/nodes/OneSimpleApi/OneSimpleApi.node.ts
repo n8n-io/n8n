@@ -300,7 +300,6 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The page size',
 					},
 					{
 						displayName: 'Force Refresh',
@@ -529,7 +528,6 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The screen size',
 					},
 					{
 						displayName: 'Force Refresh',
@@ -622,7 +620,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'From Currency',
 			},
 			{
 				displayName: 'To Currency',
@@ -641,7 +638,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'To Currency',
 			},
 			// information: imageMetadata
 			{
@@ -723,7 +719,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email Address',
 			},
 			// utility: expandURL
 			{

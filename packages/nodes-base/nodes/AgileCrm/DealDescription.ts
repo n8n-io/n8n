@@ -301,7 +301,6 @@ export const dealFields: INodeProperties[] = [
 				name: 'customData',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -480,7 +479,6 @@ export const dealFields: INodeProperties[] = [
 				name: 'customData',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
 				},
