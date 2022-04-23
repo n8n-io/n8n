@@ -153,7 +153,7 @@ export class EmailReadImap implements INodeType {
 						name: 'customEmailConfig',
 						type: 'string',
 						default: '["UNSEEN"]',
-						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details',
+						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
 					},
 					{
 						displayName: 'Ignore SSL Issues',
@@ -178,10 +178,6 @@ export class EmailReadImap implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('imap');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;

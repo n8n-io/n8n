@@ -70,7 +70,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group ID',
 	},
 	{
 		displayName: 'Plan ID',
@@ -221,7 +220,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -243,7 +241,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -268,7 +265,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group ID',
 	},
 	{
 		displayName: 'Member ID',
@@ -292,7 +288,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Return All',
@@ -406,7 +401,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'groupId',
 				type: 'string',
 				default: '',
-				description: 'Group ID',
 			},
 			{
 				displayName: 'Labels',

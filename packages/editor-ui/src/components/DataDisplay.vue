@@ -1,40 +1,24 @@
 <template>
 	<el-dialog
-		:visible="!!node"
+		:visible="!!node || renaming"
 		:before-close="close"
-		:custom-class="`classic data-display-wrapper`"
+		:show-close="false"
+		custom-class="data-display-wrapper"
 		width="85%"
 		append-to-body
-		@opened="showDocumentHelp = true"
 	>
-		<div class="data-display" >
-			<NodeSettings @valueChanged="valueChanged" />
-			<RunData />
-
-		</div>
-		<transition name="fade">
-			<div v-if="nodeType && showDocumentHelp" class="doc-help-wrapper">
-						<svg id="help-logo" :href="documentationUrl" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-							<title>{{ $locale.baseText('dataDisplay.nodeDocumentation') }}</title>
-							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-								<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
-									<g transform="translate(1117.000000, 825.000000)">
-										<g transform="translate(10.000000, 11.000000)">
-											<g transform="translate(2.250000, 2.250000)" fill="#FF6150">
-												<path d="M6,11.25 L7.5,11.25 L7.5,9.75 L6,9.75 L6,11.25 M6.75,2.25 C5.09314575,2.25 3.75,3.59314575 3.75,5.25 L5.25,5.25 C5.25,4.42157288 5.92157288,3.75 6.75,3.75 C7.57842712,3.75 8.25,4.42157288 8.25,5.25 C8.25,6.75 6,6.5625 6,9 L7.5,9 C7.5,7.3125 9.75,7.125 9.75,5.25 C9.75,3.59314575 8.40685425,2.25 6.75,2.25 M1.5,0 L12,0 C12.8284271,0 13.5,0.671572875 13.5,1.5 L13.5,12 C13.5,12.8284271 12.8284271,13.5 12,13.5 L1.5,13.5 C0.671572875,13.5 0,12.8284271 0,12 L0,1.5 C0,0.671572875 0.671572875,0 1.5,0 Z"></path>
-											</g>
-											<rect x="0" y="0" width="18" height="18"></rect>
-										</g>
-									</g>
-								</g>
-							</g>
-						</svg>
-
-					<div class="text">
-						{{ $locale.baseText('dataDisplay.needHelp') }} <n8n-link size="small" :to="documentationUrl" :bold="true" @click="onDocumentationUrlClick">{{ $locale.baseText('dataDisplay.openDocumentationFor', { interpolate: { nodeTypeDisplayName: nodeType.displayName } }) }}</n8n-link>
-					</div>
+		<n8n-tooltip placement="bottom-start" :value="showTriggerWaitingWarning" :disabled="!showTriggerWaitingWarning" :manual="true">
+			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}</div>
+			<div :class="$style.backToCanvas" @click="close">
+				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
+				<n8n-text color="text-xlight" size="medium" :bold="true">{{ $locale.baseText('ndv.backToCanvas') }}</n8n-text>
 			</div>
-		</transition>
+		</n8n-tooltip>
+
+		<div class="data-display" v-if="node" >
+			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
+			<RunData @openSettings="openSettings" />
+		</div>
 	</el-dialog>
 </template>
 
@@ -55,6 +39,8 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
+import Vue from 'vue';
+import { mapGetters } from 'vuex';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -62,23 +48,24 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		NodeSettings,
 		RunData,
 	},
+	props: {
+		renaming: {
+			type: Boolean,
+		},
+	},
 	data () {
 		return {
-			basePath: this.$store.getters.getBaseUrl,
-			showDocumentHelp: false,
+			settingsEventBus: new Vue(),
+			triggerWaitingWarningEnabled: false,
 		};
 	},
 	computed: {
-		documentationUrl (): string {
-			if (!this.nodeType) {
-				return '';
-			}
-
-			if (this.nodeType.documentationUrl && this.nodeType.documentationUrl.startsWith('http')) {
-				return this.nodeType.documentationUrl;
-			}
-
-			return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
+		...mapGetters(['executionWaitingForWebhook']),
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		showTriggerWaitingWarning(): boolean {
+			return this.triggerWaitingWarningEnabled && !!this.nodeType && !this.nodeType.group.includes('trigger') && this.workflowRunning && this.executionWaitingForWebhook;
 		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
@@ -93,6 +80,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	watch: {
 		node (node, oldNode) {
 			if(node && !oldNode) {
+				this.triggerWaitingWarningEnabled = false;
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
@@ -102,6 +90,17 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onNodeExecute() {
+			setTimeout(() => {
+				if (!this.node || !this.workflowRunning) {
+					return;
+				}
+				this.triggerWaitingWarningEnabled = true;
+			}, 1000);
+		},
+		openSettings() {
+			this.settingsEventBus.$emit('openSettings');
+		},
 		valueChanged (parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
@@ -110,11 +109,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		close () {
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-			this.showDocumentHelp = false;
+			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
-		},
-		onDocumentationUrlClick () {
-			this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
 		},
 	},
 });
@@ -124,6 +120,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 <style lang="scss">
 .data-display-wrapper {
 	height: 85%;
+	margin-top: 48px !important;
 
 	.el-dialog__header {
 		padding: 0 !important;
@@ -145,41 +142,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	height: 100%;
 }
 
-.doc-help-wrapper {
-	position: absolute;
-	right: 0;
-	transition-delay: 2s;
-	background-color: #fff;
-	margin-top: 1%;
-	box-sizing: border-box;
-	border: 1px solid #DCDFE6;
-	border-radius: 4px;
-	background-color: #FFFFFF;
-	box-shadow: 0 2px 7px 0 rgba(0,0,0,0.15);
-	min-width: 319px;
-	height: 40px;
-	float: right;
-	padding: 5px;
-	display: flex;
-	flex-direction: row;
-	padding-top: 10px;
-	padding-right: 12px;
-
-	#help-logo {
-		flex: 1;
-	}
-
-	.text {
-		margin-left: 5px;
-		flex: 9;
-		font-family: "Open Sans";
-		font-size: 12px;
-		font-weight: 600;
-		line-height: 17px;
-		white-space: nowrap;
-	}
-}
-
 .fade-enter-active, .fade-enter-to, .fade-leave-active {
 	transition: all .75s ease;
 	opacity: 1;
@@ -187,5 +149,32 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
 	opacity: 0;
+}
+</style>
+
+<style lang="scss" module>
+.triggerWarning {
+	max-width: 180px;
+}
+
+.backToCanvas {
+	position: absolute;
+	top: -40px;
+
+	&:hover {
+		cursor: pointer;
+	}
+
+	> * {
+		margin-right: var(--spacing-3xs);
+	}
+}
+
+@media (min-width: $--breakpoint-lg) {
+	.backToCanvas {
+		position: fixed;
+		top: 10px;
+		left: 20px;
+	}
 }
 </style>

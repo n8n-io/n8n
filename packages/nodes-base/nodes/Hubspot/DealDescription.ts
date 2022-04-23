@@ -440,8 +440,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
-				description: `Include the IDs of the associated contacts and companies in the results.
-				This will also automatically include the num_associated_contacts property.`,
+				description: 'Include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
 				displayName: 'Properties',
@@ -618,7 +617,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Filter Groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Filter Group',
 		typeOptions: {
 			multipleValues: true,
@@ -643,7 +642,7 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Filters',
 						name: 'filtersUi',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						placeholder: 'Add Filter',
 						typeOptions: {
 							multipleValues: true,
@@ -728,7 +727,7 @@ export const dealFields: INodeProperties[] = [
 								],
 							},
 						],
-						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 					},
 				],
 			},

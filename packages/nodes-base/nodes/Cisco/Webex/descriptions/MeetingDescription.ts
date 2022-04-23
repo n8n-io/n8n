@@ -61,7 +61,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting title. The title can be a maximum of 128 characters long',
+		description: 'Meeting title. The title can be a maximum of 128 characters long.',
 	},
 	{
 		displayName: 'Start',
@@ -79,7 +79,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+		description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 	},
 	{
 		displayName: 'End',
@@ -97,7 +97,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+		description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -121,7 +121,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: 'Meeting agenda. The agenda can be a maximum of 1300 characters long',
+				description: 'Meeting agenda. The agenda can be a maximum of 1300 characters long.',
 			},
 			{
 				displayName: 'Allow Any User To Be Co-Host',
@@ -184,14 +184,14 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: `Email address for the meeting host. Can only be set if you're an admin`,
+				description: 'Email address for the meeting host. Can only be set if you\'re an admin.',
 			},
 			{
 				displayName: 'Integration Tags',
 				name: 'integrationTags',
 				type: 'string',
 				default: '',
-				description: `External keys created by an integration application in its own domain. They could be Zendesk ticket IDs, Jira IDs, Salesforce Opportunity IDs, etc`,
+				description: 'External keys created by an integration application in its own domain. They could be Zendesk ticket IDs, Jira IDs, Salesforce Opportunity IDs, etc.',
 			},
 			{
 				displayName: 'Invitees',
@@ -200,7 +200,7 @@ export const meetingFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Invitee',
 				options: [
 					{
@@ -270,7 +270,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'recurrence',
 				type: 'string',
 				default: '',
-				description: `Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>`,
+				description: 'Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Required Registration Info',
@@ -355,7 +355,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: `URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user's preferred site`,
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
 			},
 		],
 	},
@@ -403,7 +403,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes',
+				description: 'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes.',
 			},
 			{
 				displayName: 'Send Email',
@@ -458,21 +458,21 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes',
+				description: 'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes.',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: `Meeting password. It's required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting`,
+				description: 'Meeting password. It\'s required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting.',
 			},
 			{
 				displayName: 'Send Email',
 				name: 'sendEmail',
 				type: 'boolean',
 				default: true,
-				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true',
+				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 		],
 	},
@@ -542,7 +542,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+				description: 'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Host Email',
@@ -658,7 +658,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'End date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+				description: 'End date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Weblink',
@@ -713,7 +713,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: `The meeting's agenda. Cannot be longer that 1300 characters`,
+				description: 'The meeting\'s agenda. Cannot be longer that 1300 characters.',
 			},
 			{
 				displayName: 'Allow Any User To Be Co-Host',
@@ -762,7 +762,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+				description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Exclude Password',
@@ -776,7 +776,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: `Email address for the meeting host. This attribute should only be set if the user or application calling the API has the admin-level scopes`,
+				description: 'Email address for the meeting host. This attribute should only be set if the user or application calling the API has the admin-level scopes.',
 			},
 			{
 				displayName: 'Invitees',
@@ -785,7 +785,7 @@ export const meetingFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Invitee',
 				options: [
 					{
@@ -937,7 +937,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'sendEmail',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to send emails to host and invitees. It is an optional field and default value is true`,
+				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 			{
 				displayName: 'Site URL',
@@ -947,14 +947,14 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: `URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user's preferred site`,
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
 			},
 			{
 				displayName: 'Start',
 				name: 'start',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+				description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Title',

@@ -61,6 +61,7 @@ import {
 	faPause,
 	faPauseCircle,
 	faPen,
+	faPencilAlt,
 	faPlay,
 	faPlayCircle,
 	faPlus,
@@ -158,6 +159,7 @@ addIcon(faNetworkWired);
 addIcon(faPause);
 addIcon(faPauseCircle);
 addIcon(faPen);
+addIcon(faPencilAlt);
 addIcon(faPlay);
 addIcon(faPlayCircle);
 addIcon(faPlus);

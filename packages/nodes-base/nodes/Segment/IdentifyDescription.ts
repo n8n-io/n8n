@@ -77,14 +77,12 @@ export const identifyFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -118,7 +116,7 @@ export const identifyFields: INodeProperties[] = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{

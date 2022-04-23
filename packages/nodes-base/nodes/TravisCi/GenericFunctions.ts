@@ -21,9 +21,6 @@ import querystring from 'querystring';
 
 export async function travisciApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('travisCiApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	let options: OptionsWithUri = {
 		headers: {
 			'Travis-API-Version': '3',

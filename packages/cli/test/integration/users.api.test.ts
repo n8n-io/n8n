@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Db } from '../../src';
 import config from '../../config';
-import { SUCCESS_RESPONSE_BODY } from './shared/constants';
+import { SMTP_TEST_TIMEOUT, SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomEmail,
 	randomValidPassword,
@@ -47,8 +47,6 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
-
-	jest.setTimeout(30000); // fake SMTP service might be slow
 });
 
 beforeEach(async () => {
@@ -481,26 +479,40 @@ test('POST /users should fail if user management is disabled', async () => {
 	expect(response.statusCode).toBe(500);
 });
 
-test('POST /users should email invites and create user shells', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+test(
+	'POST /users should email invites and create user shells but ignore existing',
+	async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	await utils.configureSmtp();
+		await utils.configureSmtp();
 
-	const testEmails = [randomEmail(), randomEmail(), randomEmail()];
+		const testEmails = [
+			randomEmail(),
+			randomEmail().toUpperCase(),
+			memberShell.email,
+			member.email,
+		];
 
-	const payload = testEmails.map((e) => ({ email: e }));
+		const payload = testEmails.map((e) => ({ email: e }));
 
-	const response = await authOwnerAgent.post('/users').send(payload);
+		const response = await authOwnerAgent.post('/users').send(payload);
 
-	expect(response.statusCode).toBe(200);
+		expect(response.statusCode).toBe(200);
 
-	await Promise.all(
-		response.body.data.map(async ({ user, error }: { user: User; error: Error }) => {
-			const { id, email: receivedEmail } = user;
-
+		for (const {
+			user: { id, email: receivedEmail },
+			error,
+		} of response.body.data) {
 			expect(validator.isUUID(id)).toBe(true);
-			expect(testEmails.some((e) => e === receivedEmail)).toBe(true);
+			expect(id).not.toBe(member.id);
+
+			const lowerCasedEmail = receivedEmail.toLowerCase();
+			expect(receivedEmail).toBe(lowerCasedEmail);
+			expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
+
 			if (error) {
 				expect(error).toBe('Email could not be sent');
 			}
@@ -514,52 +526,61 @@ test('POST /users should email invites and create user shells', async () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeNull();
 			expect(resetPasswordToken).toBeNull();
-		}),
-	);
-});
+		}
+	},
+	SMTP_TEST_TIMEOUT,
+);
 
-test('POST /users should fail with invalid inputs', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+test(
+	'POST /users should fail with invalid inputs',
+	async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	await utils.configureSmtp();
+		await utils.configureSmtp();
 
-	const invalidPayloads = [
-		randomEmail(),
-		[randomEmail()],
-		{},
-		[{ name: randomName() }],
-		[{ email: randomName() }],
-	];
+		const invalidPayloads = [
+			randomEmail(),
+			[randomEmail()],
+			{},
+			[{ name: randomName() }],
+			[{ email: randomName() }],
+		];
 
-	await Promise.all(
-		invalidPayloads.map(async (invalidPayload) => {
-			const response = await authOwnerAgent.post('/users').send(invalidPayload);
-			expect(response.statusCode).toBe(400);
+		await Promise.all(
+			invalidPayloads.map(async (invalidPayload) => {
+				const response = await authOwnerAgent.post('/users').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 
-			const users = await Db.collections.User!.find();
-			expect(users.length).toBe(1); // DB unaffected
-		}),
-	);
-});
+				const users = await Db.collections.User!.find();
+				expect(users.length).toBe(1); // DB unaffected
+			}),
+		);
+	},
+	SMTP_TEST_TIMEOUT,
+);
 
-test('POST /users should ignore an empty payload', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+test(
+	'POST /users should ignore an empty payload',
+	async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	await utils.configureSmtp();
+		await utils.configureSmtp();
 
-	const response = await authOwnerAgent.post('/users').send([]);
+		const response = await authOwnerAgent.post('/users').send([]);
 
-	const { data } = response.body;
+		const { data } = response.body;
 
-	expect(response.statusCode).toBe(200);
-	expect(Array.isArray(data)).toBe(true);
-	expect(data.length).toBe(0);
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(data)).toBe(true);
+		expect(data.length).toBe(0);
 
-	const users = await Db.collections.User!.find();
-	expect(users.length).toBe(1);
-});
+		const users = await Db.collections.User!.find();
+		expect(users.length).toBe(1);
+	},
+	SMTP_TEST_TIMEOUT,
+);
 
 // TODO: /users/:id/reinvite route tests missing
 
