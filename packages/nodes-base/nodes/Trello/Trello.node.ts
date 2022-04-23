@@ -262,10 +262,9 @@ export class Trello implements INodeType {
 
 						endpoint = `boards/${id}/members`;
 
-						const email = this.getNodeParameter('email', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						qs.email = email;
+						qs.email = this.getNodeParameter('email', i) as string;
 						qs.type = additionalFields.type as string;
 						body.fullName = additionalFields.fullName as string;
 					} else {
