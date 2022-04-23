@@ -239,7 +239,7 @@ export class Trello implements INodeType {
 						qs.type = this.getNodeParameter('type', i) as string;
 						qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
 
-					} else if (operation === 'removeMemmber') {
+					} else if (operation === 'removeMember') {
 						// ----------------------------------
 						//         removeMember
 						// ----------------------------------
