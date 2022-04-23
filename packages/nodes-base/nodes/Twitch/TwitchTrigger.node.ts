@@ -4,7 +4,10 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -22,7 +25,7 @@ export class TwitchTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
-		description: 'Handle Twitch events via webhooks.',
+		description: 'Handle Twitch events via webhooks',
 		defaults: {
 			name: 'Twitch Trigger',
 			color: '#5A3E85',
@@ -33,6 +36,7 @@ export class TwitchTrigger implements INodeType {
 			{
 				name: 'twitchApi',
 				required: true,
+				testedBy: 'testTwitchAuth',
 			},
 		],
 		webhooks: [
@@ -81,6 +85,48 @@ export class TwitchTrigger implements INodeType {
 		}],
 	};
 
+	methods = {
+		credentialTest: {
+			async testTwitchAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const optionsForAppToken = {
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					method: 'POST',
+					qs: {
+						client_id: credentials!.clientId,
+						client_secret: credentials!.clientSecret,
+						grant_type: 'client_credentials',
+					},
+					uri: 'https://id.twitch.tv/oauth2/token',
+					json: true,
+				};
+
+				try {
+					const response = await this.helpers.request(optionsForAppToken);
+					if (!response.access_token) {
+						return {
+							status: 'Error',
+							message: 'AccessToken not received',
+						};
+					}
+				} catch(err) {
+					return {
+						status: 'Error',
+						message: `Error getting access token; ${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -100,19 +146,19 @@ export class TwitchTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const channel = this.getNodeParameter('channel_name') as string;
 				const userData = await twitchApiRequest.call(this, 'GET', '/users', {}, { login: channel});
-				const body: IDataObject = {
-					type: event,
-					version: '1',
-					condition: {
-						broadcaster_user_id: userData.data[0].id ?? '',
+				const body = {
+					'type': event,
+					'version': '1',
+					'condition': {
+						'broadcaster_user_id': userData.data[0].id ?? '',
 					},
-					transport: {
-						method: 'webhook',
-						callback: webhookUrl,
-						secret: 'codelysecret',
+					'transport': {
+						'method': 'webhook',
+						'callback': webhookUrl,
+						'secret': 'n8ncreatedSecret',
 					},
 				};
 				const webhook = await twitchApiRequest.call(this, 'POST', '/eventsub/subscriptions', body);
