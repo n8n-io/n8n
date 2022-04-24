@@ -519,6 +519,14 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
+		const createExpressionError = (message: string) => {
+			return new ExpressionError(message, {
+				runIndex: that.runIndex,
+				itemIndex: that.itemIndex,
+				failExecution: true,
+			});
+		};
+
 		const getPairedItem = (
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
@@ -534,17 +542,21 @@ export class WorkflowDataProxy {
 						sourceData?.previousNodeRun || 0
 					];
 
+				const previousNodeOutput = sourceData.previousNodeOutput || 0;
+				if (previousNodeOutput >= taskData.data!.main.length) {
+					throw createExpressionError('Could not resolve as the defined node-output is not valid.');
+				}
+
+				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+					throw createExpressionError('Could not resolve as the defined item index is not valid.');
+				}
+
 				const itemPreviousNode: INodeExecutionData =
-					taskData.data!.main[sourceData.previousNodeOutput || 0]![pairedItem.item];
+					taskData.data!.main[previousNodeOutput]![pairedItem.item];
 
 				if (itemPreviousNode.pairedItem === undefined) {
-					throw new ExpressionError(
-						`Could not resolve, as pairedItem data is missing on node "${sourceData.previousNode}"`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						},
+					throw createExpressionError(
+						`Could not resolve, as pairedItem data is missing on node '${sourceData.previousNode}'.`,
 					);
 				}
 
@@ -554,7 +566,14 @@ export class WorkflowDataProxy {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						.map((item) => {
 							try {
-								return getPairedItem(destinationNodeName, taskData.source[item.input || 0], item);
+								const itemInput = item.input || 0;
+								if (itemInput >= taskData.source.length) {
+									throw createExpressionError(
+										'Could not resolve as the defined node input is not valid.',
+									);
+								}
+
+								return getPairedItem(destinationNodeName, taskData.source[itemInput], item);
 							} catch (error) {
 								// Means pairedItem could not be found
 								return null;
@@ -563,11 +582,9 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
-						throw new ExpressionError('Could not resolve, as no definitive match could be found', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						});
+						throw createExpressionError(
+							'Could not resolve, as no definitive match could be found.',
+						);
 					}
 
 					return results[0];
@@ -582,15 +599,16 @@ export class WorkflowDataProxy {
 					pairedItem = itemPreviousNode.pairedItem;
 				}
 
+				const itemInput = pairedItem.input || 0;
+				if (itemInput >= taskData.source.length) {
+					throw createExpressionError('Could not resolve as the defined node input is not valid.');
+				}
+
 				sourceData = taskData.source[pairedItem.input || 0] || null;
 			}
 
 			if (sourceData === null) {
-				throw new ExpressionError('Could not resolve, proably no pairedItem exists', {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
-					failExecution: true,
-				});
+				throw createExpressionError('Could not resolve, proably no pairedItem exists');
 			}
 
 			taskData =
@@ -598,7 +616,16 @@ export class WorkflowDataProxy {
 					sourceData?.previousNodeRun || 0
 				];
 
-			return taskData.data!.main[sourceData.previousNodeOutput || 0]![pairedItem.item];
+			const previousNodeOutput = sourceData.previousNodeOutput || 0;
+			if (previousNodeOutput >= taskData.data!.main.length) {
+				throw createExpressionError('Could not resolve as the defined node-output is not valid.');
+			}
+
+			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+				throw createExpressionError('Could not resolve as the defined item index is not valid.');
+			}
+
+			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
 		};
 
 		const base = {
