@@ -595,7 +595,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to get members from.',
+		description: 'The ID of the board to remove member from.',
 	},
 	{
 		displayName: 'Member ID',
