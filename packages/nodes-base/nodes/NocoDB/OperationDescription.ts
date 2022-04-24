@@ -22,9 +22,9 @@ export const operationFields: INodeProperties[] = [
 		description: 'The ID of the project',
 	},
 	{
-		displayName: 'Project Name',
-		name: 'projectName',
-		type: 'string',
+		displayName: 'Project',
+		name: 'project',
+		type: 'options',
 		default: '',
 		displayOptions: {
 			show: {
@@ -34,13 +34,44 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The NAME of the project',
+		description: 'The project to operate on',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+	},
+	{
+		displayName: 'Table',
+		name: 'table',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					'2',
+				]
+			},
+		},
+		required: true,
+		description: 'The table to operate on',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'project',
+			],
+			loadOptionsMethod: 'getTables',
+		},
 	},
 	{
 		displayName: 'Table',
 		name: 'table',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					'1',
+				]
+			},
+		},
 		required: true,
 		description: 'The name of the table',
 	},
