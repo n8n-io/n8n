@@ -98,6 +98,8 @@ import {
 
 import {
 	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -142,10 +144,14 @@ export default mixins(
 				return `Could not find parameter "${path}"`;
 			}
 		},
-		parameterName(parameters: INodeProperties[], pathParts: string[]): INodeProperties[] {
+		parameterName(parameters: Array<(INodePropertyOptions | INodeProperties | INodePropertyCollection)>, pathParts: string[]): Array<(INodeProperties | INodePropertyCollection)> {
 			let currentParameterName = pathParts.shift();
 
 			if (currentParameterName === undefined) {
+				return [];
+			}
+
+			if (parameters.length && (!parameters[0].hasOwnProperty('options') && !parameters[0].hasOwnProperty('values'))) {
 				return [];
 			}
 
@@ -153,7 +159,7 @@ export default mixins(
 			if (arrayMatch !== null && arrayMatch.length > 0) {
 				currentParameterName = arrayMatch[1];
 			}
-			const currentParameter = parameters.find(parameter => parameter.name === currentParameterName);
+			const currentParameter = parameters.find(parameter => parameter.name === currentParameterName) as unknown as INodeProperties | INodePropertyCollection;
 
 			if (currentParameter === undefined) {
 				throw new Error(`Could not find parameter "${currentParameterName}"`);
@@ -163,12 +169,12 @@ export default mixins(
 				return [currentParameter];
 			}
 
-			if (currentParameter.options) {
-				return [currentParameter, ...this.parameterName(currentParameter.options as INodeProperties[], pathParts)];
+			if (currentParameter.hasOwnProperty('options')) {
+				return [currentParameter, ...this.parameterName((currentParameter as INodeProperties).options!, pathParts)];
 			}
 
-			if (currentParameter.values) {
-				return [currentParameter, ...this.parameterName(currentParameter.values as INodeProperties[], pathParts)];
+			if (currentParameter.hasOwnProperty('values')) {
+				return [currentParameter, ...this.parameterName((currentParameter as INodePropertyCollection).values, pathParts)];
 			}
 
 			// We can not resolve any deeper so lets stop here and at least return hopefully something useful
