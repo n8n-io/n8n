@@ -142,7 +142,7 @@ export class Expression {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
 				// to fail the execution
-				if (error.failExecution) {
+				if (error.context.failExecution) {
 					throw error;
 				}
 			}

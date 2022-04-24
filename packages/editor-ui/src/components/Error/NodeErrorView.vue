@@ -3,17 +3,16 @@
 		<div class="error-header">
 			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + error.message }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
-
-			<div v-if="error.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
+			<div v-if="error.context && error.context.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
 				<span class="error-details__summary">Item Index:</span>
-				{{error.itemIndex}}
-				<span v-if="error.runIndex">
+				{{error.context.itemIndex}}
+				<span v-if="error.context.runIndex">
 					| <span class="error-details__summary">Run Index:</span>
-					{{error.runIndex}}
+					{{error.context.runIndex}}
 				</span>
-				<span v-if="error.parameter">
-					| <span class="error-details__summary">Requested Parameter:</span>
-					"{{error.parameter}}"
+				<span v-if="error.context.parameter">
+					| <span class="error-details__summary">In or underneath Parameter: </span>
+					{{ parameterDisplayName(error.context.parameter) }}
 				</span>
 			</div>
 
@@ -93,6 +92,14 @@ import mixins from 'vue-typed-mixins';
 import {
 	MAX_DISPLAY_DATA_SIZE,
 } from '@/constants';
+import {
+	INodeUi,
+} from '@/Interface';
+
+import {
+	INodeProperties,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export default mixins(
 	copyPaste,
@@ -109,8 +116,64 @@ export default mixins(
 		displayCause(): boolean {
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
+		parameters (): INodeProperties[] {
+			const node = this.$store.getters.activeNode;
+			if (!node) {
+				return [];
+			}
+			const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+
+			if (nodeType === null) {
+				return [];
+			}
+
+			return nodeType.properties;
+		},
 	},
 	methods: {
+		parameterDisplayName(path: string) {
+			try {
+				const parameters = this.parameterName(this.parameters, path.split('.'));
+				if (!parameters.length) {
+					throw new Error();
+				}
+				return parameters.map(parameter => parameter.displayName).join(' => ');
+			} catch (error) {
+				return `Could not find parameter "${path}"`;
+			}
+		},
+		parameterName(parameters: INodeProperties[], pathParts: string[]): INodeProperties[] {
+			let currentParameterName = pathParts.shift();
+
+			if (currentParameterName === undefined) {
+				return [];
+			}
+
+			const arrayMatch = currentParameterName.match(/(.*)\[([\d])\]$/);
+			if (arrayMatch !== null && arrayMatch.length > 0) {
+				currentParameterName = arrayMatch[1];
+			}
+			const currentParameter = parameters.find(parameter => parameter.name === currentParameterName);
+
+			if (currentParameter === undefined) {
+				throw new Error(`Could not find parameter "${currentParameterName}"`);
+			}
+
+			if (pathParts.length === 0) {
+				return [currentParameter];
+			}
+
+			if (currentParameter.options) {
+				return [currentParameter, ...this.parameterName(currentParameter.options as INodeProperties[], pathParts)];
+			}
+
+			if (currentParameter.values) {
+				return [currentParameter, ...this.parameterName(currentParameter.values as INodeProperties[], pathParts)];
+			}
+
+			// We can not resolve any deeper so lets stop here and at least return hopefully something useful
+			return [currentParameter];
+		},
 		copyCause() {
 			this.copyToClipboard(JSON.stringify(this.error.cause));
 			this.copySuccess();

@@ -29,7 +29,9 @@ import {
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	NodeApiError,
 	NodeHelpers,
+	NodeOperationError,
 	NodeParameterValue,
 	Workflow,
 	WorkflowExecuteMode,
@@ -204,7 +206,7 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw error;
+				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
 			}
 		}
 
@@ -260,9 +262,10 @@ export class RoutingNode {
 					});
 				});
 			} catch (e) {
-				throw new Error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				throw new NodeOperationError(
+					this.node,
 					`The rootProperty "${action.properties.property}" could not be found on item.`,
+					{ runIndex, itemIndex },
 				);
 			}
 		}
@@ -521,8 +524,10 @@ export class RoutingNode {
 								| IDataObject[]
 								| undefined;
 							if (tempResponseValue === undefined) {
-								throw new Error(
+								throw new NodeOperationError(
+									this.node,
 									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
+									{ runIndex, itemIndex },
 								);
 							}
 

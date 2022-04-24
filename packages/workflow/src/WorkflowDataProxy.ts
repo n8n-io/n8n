@@ -243,26 +243,26 @@ export class WorkflowDataProxy {
 			// Long syntax got used to return data from node in path
 
 			if (that.runExecutionData === null) {
-				throw new ExpressionError(
-					`Workflow did not run so do not have any execution-data.`,
-					that.runIndex,
-					that.itemIndex,
-				);
+				throw new ExpressionError(`Workflow did not run so do not have any execution-data.`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
 					throw new ExpressionError(
 						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
-						that.runIndex,
-						that.itemIndex,
+						{
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						},
 					);
 				}
-				throw new ExpressionError(
-					`No node called "${nodeName}" in this workflow`,
-					that.runIndex,
-					that.itemIndex,
-				);
+				throw new ExpressionError(`No node called "${nodeName}" in this workflow`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
@@ -270,22 +270,20 @@ export class WorkflowDataProxy {
 				runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
 			if (that.runExecutionData.resultData.runData[nodeName].length <= runIndex) {
-				throw new ExpressionError(
-					`Run ${runIndex} of node "${nodeName}" not found`,
-					that.runIndex,
-					that.itemIndex,
-				);
+				throw new ExpressionError(`Run ${runIndex} of node "${nodeName}" not found`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
 			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
 				// throw new Error(`No data found for item-index: "${itemIndex}"`);
-				throw new ExpressionError(
-					`No data found from "main" input.`,
-					that.runIndex,
-					that.itemIndex,
-				);
+				throw new ExpressionError(`No data found from "main" input.`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			// Check from which output to read the data.
@@ -301,8 +299,10 @@ export class WorkflowDataProxy {
 				if (nodeConnection === undefined) {
 					throw new ExpressionError(
 						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
-						that.runIndex,
-						that.itemIndex,
+						{
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						},
 					);
 				}
 				outputIndex = nodeConnection.sourceIndex;
@@ -313,11 +313,10 @@ export class WorkflowDataProxy {
 			}
 
 			if (taskData.main.length <= outputIndex) {
-				throw new ExpressionError(
-					`Node "${nodeName}" has no branch with index ${outputIndex}.`,
-					that.runIndex,
-					that.itemIndex,
-				);
+				throw new ExpressionError(`Node "${nodeName}" has no branch with index ${outputIndex}.`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
@@ -361,11 +360,10 @@ export class WorkflowDataProxy {
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 						if (executionData.length <= that.itemIndex) {
-							throw new ExpressionError(
-								`No data found for item-index: "${that.itemIndex}"`,
-								that.runIndex,
-								that.itemIndex,
-							);
+							throw new ExpressionError(`No data found for item-index: "${that.itemIndex}"`, {
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+							});
 						}
 
 						if (['data', 'json'].includes(name)) {
@@ -542,9 +540,11 @@ export class WorkflowDataProxy {
 				if (itemPreviousNode.pairedItem === undefined) {
 					throw new ExpressionError(
 						`Could not resolve, as pairedItem data is missing on node "${sourceData.previousNode}"`,
-						that.runIndex,
-						that.itemIndex,
-						true,
+						{
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						},
 					);
 				}
 
@@ -563,12 +563,11 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
-						throw new ExpressionError(
-							'Could not resolve, as no definitive match could be found',
-							that.runIndex,
-							that.itemIndex,
-							true,
-						);
+						throw new ExpressionError('Could not resolve, as no definitive match could be found', {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
 					}
 
 					return results[0];
@@ -587,12 +586,11 @@ export class WorkflowDataProxy {
 			}
 
 			if (sourceData === null) {
-				throw new ExpressionError(
-					'Could not resolve, proably no pairedItem exists',
-					that.runIndex,
-					that.itemIndex,
-					true,
-				);
+				throw new ExpressionError('Could not resolve, proably no pairedItem exists', {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+					failExecution: true,
+				});
 			}
 
 			taskData =
@@ -606,12 +604,11 @@ export class WorkflowDataProxy {
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
-					throw new ExpressionError(
-						'When calling $(), please specify a node',
-						that.runIndex,
-						that.itemIndex,
-						true,
-					);
+					throw new ExpressionError('When calling $(), please specify a node', {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+						failExecution: true,
+					});
 				}
 
 				return new Proxy(
@@ -633,22 +630,20 @@ export class WorkflowDataProxy {
 
 									if (pairedItem === undefined) {
 										// If no data could be found, try to resolve automatically
-										throw new ExpressionError(
-											'Could not resolve, as pairedItem data is missing',
-											that.runIndex,
-											that.itemIndex,
-											true,
-										);
+										throw new ExpressionError('Could not resolve, as pairedItem data is missing', {
+											runIndex: that.runIndex,
+											itemIndex: that.itemIndex,
+											failExecution: true,
+										});
 									}
 
 									if (!that.executeData?.source) {
 										// If no data could be found, try to resolve automatically
-										throw new ExpressionError(
-											'Could not resolve, as source data is missing',
-											that.runIndex,
-											that.itemIndex,
-											true,
-										);
+										throw new ExpressionError('Could not resolve, as source data is missing', {
+											runIndex: that.runIndex,
+											itemIndex: that.itemIndex,
+											failExecution: true,
+										});
 									}
 
 									const sourceData: ISourceData = that.executeData?.source.main![

@@ -1440,7 +1440,7 @@ export function getNodeParameter(
 			executeData,
 		);
 	} catch (e) {
-		e.parameter = parameterName;
+		if (e.context) e.context.parameter = parameterName;
 		throw e;
 	}
 
