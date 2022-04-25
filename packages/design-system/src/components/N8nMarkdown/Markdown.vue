@@ -292,6 +292,6 @@ export default {
 }
 
 .spacer {
- margin: var(--spacing-2xl);
+	margin: var(--spacing-2xl);
 }
 </style>
