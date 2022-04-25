@@ -27,7 +27,7 @@ export async function todoistApiRequest(
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
 	const endpoint = 'api.todoist.com/rest/v1';
 
@@ -43,20 +43,15 @@ export async function todoistApiRequest(
 		options.body = body;
 	}
 
-	try {
-		if (authentication === 'apiKey') {
-			const credentials = await this.getCredentials('todoistApi');
+	console.log(authentication);
 
-			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-			return this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
-		}
+try {
+		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
+		console.log(credentialType);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), (error));
 	}
 }
 
@@ -65,7 +60,7 @@ export async function todoistSyncRequest(
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
 	const options: OptionsWithUri = {
 		headers: {},
@@ -80,18 +75,11 @@ export async function todoistSyncRequest(
 	}
 
 	try {
-		if (authentication === 'apiKey') {
-			const credentials = await this.getCredentials('todoistApi') as IDataObject;
-
-			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-			return this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
-		}
+		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
+		console.log(credentialType);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), (error));
 	}
 }
