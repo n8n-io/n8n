@@ -67,29 +67,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	components: {
 		NodeIcon,
 	},
-	watch: {
-		isSelected: {
-			handler(isSelected) {
-				if (!isSelected) {
-					if (this.node) {
-						const nodeParameters = {
-							content: this.node.parameters.content,
-							height: this.height,
-							isEditable: false,
-							width: this.width,
-						};
-
-						const updateInformation = {
-							name: this.node.name,
-							value: nodeParameters,
-						};
-
-						this.$store.commit('setNodeParameters', updateInformation);
-					}
-				}
-			},
-		},
-	},
 	props: {
 		nodeViewScale: {
 			type: Number,

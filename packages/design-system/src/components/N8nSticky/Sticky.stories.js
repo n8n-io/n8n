@@ -61,7 +61,6 @@ Sticky.args = {
 	width: 150,
 	content: `## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/workflow-notes/)`,
 	defaultText: `## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/workflow-notes/)`,
-	isEditable: false,
 	minHeight: 80,
 	minWidth: 150,
 	readOnly: false,
