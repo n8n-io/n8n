@@ -1,17 +1,17 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -19,12 +19,9 @@ import {
 } from 'change-case';
 
 export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('shopifyApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('shopifyApi');
 	const headerWithAuthentication = Object.assign({},
-		{ Authorization: ` Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -32,39 +29,27 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
-		json: true
+		json: true,
 	};
+
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
-	if (Object.keys(body).length ===  0) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-	if (Object.keys(query).length ===  0) {
+	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response.body && error.response.body.errors) {
-			let message = '';
-			if (typeof error.response.body.errors === 'object') {
-				for (const key of Object.keys(error.response.body.errors)) {
-					message+= error.response.body.errors[key];
-				}
-			} else {
-				message = `${error.response.body.errors} |`;
-			}
-			const errorMessage = `Shopify error response [${error.statusCode}]: ${message}`;
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
 
-export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -75,7 +60,7 @@ export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 	do {
 		responseData = await shopifyApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName]);
 	} while (
@@ -85,7 +70,7 @@ export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 	return returnData;
 }
 
-export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataObject[] {
+export function keysToSnakeCase(elements: IDataObject[] | IDataObject): IDataObject[] {
 	if (elements === undefined) {
 		return [];
 	}

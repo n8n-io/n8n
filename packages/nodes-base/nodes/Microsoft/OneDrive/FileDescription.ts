@@ -1,6 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const fileOperations = [
+export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,6 +41,11 @@ export const fileOperations = [
 				description: 'Search a file',
 			},
 			{
+				name: 'Share',
+				value: 'share',
+				description: 'Share a file',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file up to 4MB in size',
@@ -47,9 +54,9 @@ export const fileOperations = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fileFields = [
+export const fileFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 file:copy                                  */
@@ -69,7 +76,6 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -211,7 +217,6 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Binary Property',
@@ -222,14 +227,14 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'download'
+					'download',
 				],
 				resource: [
 					'file',
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:get                                   */
@@ -269,8 +274,84 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: `The query text used to search for items. Values may be matched
-		across several fields including filename, metadata, and file content.`,
+		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 file:share                                 */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		options: [
+			{
+				name: 'View',
+				value: 'view',
+			},
+			{
+				name: 'Edit',
+				value: 'edit',
+			},
+			{
+				name: 'Embed',
+				value: 'embed',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The type of sharing link to create',
+	},
+	{
+		displayName: 'Scope',
+		name: 'scope',
+		type: 'options',
+		options: [
+			{
+				name: 'Anonymous',
+				value: 'anonymous',
+			},
+			{
+				name: 'Organization',
+				value: 'organization',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The type of sharing link to create',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:upload                                */
@@ -372,6 +453,6 @@ export const fileFields = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file.',
+		description: 'Name of the binary property which contains the data for the file.',
 	},
-] as INodeProperties[];
+];

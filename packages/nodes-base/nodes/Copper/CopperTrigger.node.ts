@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -19,13 +19,12 @@ export class CopperTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Copper Trigger',
 		name: 'copperTrigger',
-		icon: 'file:copper.png',
+		icon: 'file:copper.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Copper events via webhooks',
 		defaults: {
 			name: 'Copper Trigger',
-			color: '#ff2564',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -33,7 +32,7 @@ export class CopperTrigger implements INodeType {
 			{
 				name: 'copperApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -116,7 +115,7 @@ export class CopperTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await copperApiRequest.call(this, 'GET', endpoint);
-				} catch (err) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -133,9 +132,9 @@ export class CopperTrigger implements INodeType {
 					event,
 				};
 
-				const credentials = this.getCredentials('copperApi');
+				const credentials = await this.getCredentials('copperApi');
 				body.secret = {
-					secret: getAutomaticSecret(credentials!),
+					secret: getAutomaticSecret(credentials),
 				};
 
 				const { id } = await copperApiRequest.call(this, 'POST', endpoint, body);
@@ -147,7 +146,7 @@ export class CopperTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await copperApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -157,11 +156,11 @@ export class CopperTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const credentials = this.getCredentials('copperApi');
+		const credentials = await this.getCredentials('copperApi');
 		const req = this.getRequestObject();
 
 		// Check if the supplied secret matches. If not ignore request.
-		if (req.body.secret !== getAutomaticSecret(credentials!)) {
+		if (req.body.secret !== getAutomaticSecret(credentials)) {
 			return {};
 		}
 

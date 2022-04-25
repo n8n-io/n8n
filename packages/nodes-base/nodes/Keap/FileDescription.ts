@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const fileOperations = [
+export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const fileOperations = [
 		default: 'delete',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fileFields = [
+export const fileFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 file:upload                                */
 /* -------------------------------------------------------------------------- */
@@ -48,7 +48,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -66,7 +66,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -76,7 +76,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded.',
 	},
 	{
 		displayName: 'File Association',
@@ -182,7 +182,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -276,7 +276,7 @@ export const fileFields = [
 				name: 'contactId',
 				type: 'number',
 				typeOptions: {
-					minValue: 0
+					minValue: 0,
 				},
 				default: 0,
 				description: 'Filter based on Contact Id, if user has permission to see Contact files.',
@@ -401,4 +401,4 @@ export const fileFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

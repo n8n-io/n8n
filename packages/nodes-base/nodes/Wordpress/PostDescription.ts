@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const postOperations = [
+export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const postOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const postFields = [
+export const postFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                post:create                                 */
@@ -62,7 +62,7 @@ export const postFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The title for the post',
@@ -84,6 +84,16 @@ export const postFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Author ID',
+				name: 'authorId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				default: '',
+				description: 'The ID for the author of the object.',
+			},
 			{
 				displayName: 'Content',
 				name: 'content',
@@ -247,7 +257,7 @@ export const postFields = [
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 post:update                                */
@@ -265,7 +275,7 @@ export const postFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the object.',
@@ -287,6 +297,16 @@ export const postFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Author ID',
+				name: 'authorId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				default: '',
+				description: 'The ID for the author of the object.',
+			},
 			{
 				displayName: 'Title',
 				name: 'title',
@@ -457,7 +477,7 @@ export const postFields = [
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  post:get                                  */
@@ -475,7 +495,7 @@ export const postFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the object.',
@@ -525,7 +545,7 @@ export const postFields = [
 				default: 'view',
 				description: 'Scope under which the request is made; determines fields present in response.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   post:getAll                              */
@@ -589,6 +609,40 @@ export const postFields = [
 		},
 		options: [
 			{
+				displayName: 'After',
+				name: 'after',
+				type: 'dateTime',
+				default: '',
+				description: 'Limit response to posts published after a given ISO8601 compliant date.',
+			},
+			{
+				displayName: 'Author',
+				name: 'author',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				description: 'Limit result set to posts assigned to specific authors.',
+			},
+			{
+				displayName: 'Before',
+				name: 'before',
+				type: 'dateTime',
+				default: '',
+				description: 'Limit response to posts published before a given ISO8601 compliant date.',
+			},
+			{
+				displayName: 'Categories',
+				name: 'categories',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCategories',
+				},
+				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy.',
+			},
+			{
 				displayName: 'Context',
 				name: 'context',
 				type: 'options',
@@ -608,6 +662,43 @@ export const postFields = [
 				],
 				default: 'view',
 				description: 'Scope under which the request is made; determines fields present in response.',
+			},
+			{
+				displayName: 'Exclude Categories',
+				name: 'excludedCategories',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCategories',
+				},
+				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy.',
+			},
+			{
+				displayName: 'Exclude Tags',
+				name: 'excludedTags',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy.',
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'asc',
+					},
+					{
+						name: 'DESC',
+						value: 'desc',
+					},
+				],
+				default: 'desc',
+				description: 'Order sort attribute ascending or descending.',
 			},
 			{
 				displayName: 'Order By',
@@ -659,23 +750,6 @@ export const postFields = [
 				description: 'Sort collection by object attribute.',
 			},
 			{
-				displayName: 'Order',
-				name: 'order',
-				type: 'options',
-				options: [
-					{
-						name: 'ASC',
-						value: 'asc',
-					},
-					{
-						name: 'DESC',
-						value: 'desc',
-					},
-				],
-				default: 'desc',
-				description: 'Order sort attribute ascending or descending.',
-			},
-			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
@@ -683,48 +757,40 @@ export const postFields = [
 				description: 'Limit results to those matching a string.',
 			},
 			{
-				displayName: 'After',
-				name: 'after',
-				type: 'dateTime',
-				default: '',
-				description: 'Limit response to posts published after a given ISO8601 compliant date.',
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Future',
+						value: 'future',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
+					},
+				],
+				default: 'publish',
+				description: 'The status of the post.',
 			},
 			{
-				displayName: 'Before',
-				name: 'before',
-				type: 'dateTime',
-				default: '',
-				description: 'Limit response to posts published before a given ISO8601 compliant date.',
-			},
-			{
-				displayName: 'Author',
-				name: 'author',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getAuthors',
-				},
-				description: 'Limit result set to posts assigned to specific authors.',
-			},
-			{
-				displayName: 'Categories',
-				name: 'categories',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy.',
-			},
-			{
-				displayName: 'Exclude Categories',
-				name: 'excludedCategories',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy.',
+				displayName: 'Sticky',
+				name: 'sticky',
+				type: 'boolean',
+				default: false,
+				description: 'Limit result set to items that are sticky.',
 			},
 			{
 				displayName: 'Tags',
@@ -736,25 +802,7 @@ export const postFields = [
 				},
 				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy.',
 			},
-			{
-				displayName: 'Exclude Tags',
-				name: 'excludedTags',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy.',
-			},
-			{
-				displayName: 'Sticky',
-				name: 'sticky',
-				type: 'boolean',
-				default: false,
-				description: 'Limit result set to items that are sticky.',
-			},
-
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 post:delete                                */
@@ -772,7 +820,7 @@ export const postFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the object.',
@@ -801,6 +849,6 @@ export const postFields = [
 				default: false,
 				description: 'Whether to bypass trash and force deletion.',
 			},
-		]
+		],
 	},
-] as INodeProperties[];
+];

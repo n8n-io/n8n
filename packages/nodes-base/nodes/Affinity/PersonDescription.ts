@@ -1,6 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const personOperations = [
+export const personOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,13 +44,13 @@ export const personOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const personFields = [
+export const personFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                person:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                person:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Fist Name',
 		name: 'firstName',
@@ -62,7 +64,7 @@ export const personFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The first name of the person.',
@@ -80,7 +82,7 @@ export const personFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The last name of the person.',
@@ -130,15 +132,15 @@ export const personFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'info@example.com',
 		default: [],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:update                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:update                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Person ID',
 		name: 'personId',
@@ -152,7 +154,7 @@ export const personFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the person.',
@@ -198,7 +200,7 @@ export const personFields = [
 				default: [],
 				description: 'Organizations that the person is associated with.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Emails',
@@ -216,15 +218,15 @@ export const personFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		placeholder: 'info@example.com',
 		default: [],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Person ID',
 		name: 'personId',
@@ -238,7 +240,7 @@ export const personFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the person.',
@@ -267,11 +269,11 @@ export const personFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -344,11 +346,11 @@ export const personFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:delete                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:delete                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Person ID',
 		name: 'personId',
@@ -362,9 +364,9 @@ export const personFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the person.',
 	},
-] as INodeProperties[];
+];

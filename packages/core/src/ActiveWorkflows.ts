@@ -1,3 +1,6 @@
+/* eslint-disable no-continue */
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-restricted-syntax */
 import { CronJob } from 'cron';
 
 import {
@@ -7,19 +10,19 @@ import {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy as Logger,
 	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import {
-	ITriggerTime,
-	IWorkflowData,
-} from './';
+// eslint-disable-next-line import/no-cycle
+import { ITriggerTime, IWorkflowData } from '.';
 
 export class ActiveWorkflows {
 	private workflowData: {
 		[key: string]: IWorkflowData;
 	} = {};
-
 
 	/**
 	 * Returns if the workflow is active
@@ -29,9 +32,9 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	isActive(id: string): boolean {
+		// eslint-disable-next-line no-prototype-builtins
 		return this.workflowData.hasOwnProperty(id);
 	}
-
 
 	/**
 	 * Returns the ids of the currently active workflows
@@ -42,7 +45,6 @@ export class ActiveWorkflows {
 	allActiveWorkflows(): string[] {
 		return Object.keys(this.workflowData);
 	}
-
 
 	/**
 	 * Returns the Workflow data for the workflow with
@@ -56,7 +58,6 @@ export class ActiveWorkflows {
 		return this.workflowData[id];
 	}
 
-
 	/**
 	 * Makes a workflow active
 	 *
@@ -66,18 +67,31 @@ export class ActiveWorkflows {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflows
 	 */
-	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
-		console.log('ADD ID (active): ' + id);
-
+	async add(
+		id: string,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	): Promise<void> {
 		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
 		let triggerResponse: ITriggerResponse | undefined;
 		this.workflowData[id].triggerResponses = [];
 		for (const triggerNode of triggerNodes) {
-			triggerResponse = await workflow.runTrigger(triggerNode, getTriggerFunctions, additionalData, 'trigger');
+			triggerResponse = await workflow.runTrigger(
+				triggerNode,
+				getTriggerFunctions,
+				additionalData,
+				mode,
+				activation,
+			);
 			if (triggerResponse !== undefined) {
 				// If a response was given save it
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.workflowData[id].triggerResponses!.push(triggerResponse);
 			}
 		}
@@ -86,11 +100,20 @@ export class ActiveWorkflows {
 		if (pollNodes.length) {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
-				this.workflowData[id].pollResponses!.push(await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions));
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				this.workflowData[id].pollResponses!.push(
+					await this.activatePolling(
+						pollNode,
+						workflow,
+						additionalData,
+						getPollFunctions,
+						mode,
+						activation,
+					),
+				);
 			}
 		}
 	}
-
 
 	/**
 	 * Activates polling for the given node
@@ -102,10 +125,15 @@ export class ActiveWorkflows {
 	 * @returns {Promise<IPollResponse>}
 	 * @memberof ActiveWorkflows
 	 */
-	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions): Promise<IPollResponse> {
-		const mode = 'trigger';
-
-		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode);
+	async activatePolling(
+		node: INode,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		getPollFunctions: IGetExecutePollFunctions,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): Promise<IPollResponse> {
+		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode, activation);
 
 		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {
 			item: ITriggerTime[];
@@ -113,12 +141,12 @@ export class ActiveWorkflows {
 
 		// Define the order the cron-time-parameter appear
 		const parameterOrder = [
-			'second',     // 0 - 59
-			'minute',     // 0 - 59
-			'hour',       // 0 - 23
+			'second', // 0 - 59
+			'minute', // 0 - 59
+			'hour', // 0 - 23
 			'dayOfMonth', // 1 - 31
-			'month',      // 0 - 11(Jan - Dec)
-			'weekday',    // 0 - 6(Sun - Sat)
+			'month', // 0 - 11(Jan - Dec)
+			'weekday', // 0 - 6(Sun - Sat)
 		];
 
 		// Get all the trigger times
@@ -129,7 +157,7 @@ export class ActiveWorkflows {
 			for (const item of pollTimes.item) {
 				cronTime = [];
 				if (item.mode === 'custom') {
-					cronTimes.push(item.cronExpression as string);
+					cronTimes.push((item.cronExpression as string).trim());
 					continue;
 				}
 				if (item.mode === 'everyMinute') {
@@ -165,9 +193,15 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
+				workflowName: workflow.name,
+				workflowId: workflow.id,
+			});
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {
+				// eslint-disable-next-line no-underscore-dangle
 				pollFunctions.__emit(pollResponse);
 			}
 		};
@@ -179,7 +213,13 @@ export class ActiveWorkflows {
 
 		// Start the cron-jobs
 		const cronJobs: CronJob[] = [];
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		for (const cronTime of cronTimes) {
+			const cronTimeParts = cronTime.split(' ');
+			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
+				throw new Error('The polling interval is too short. It has to be at least a minute!');
+			}
+
 			cronJobs.push(new CronJob(cronTime, executeTrigger, undefined, true, timezone));
 		}
 
@@ -195,7 +235,6 @@ export class ActiveWorkflows {
 		};
 	}
 
-
 	/**
 	 * Makes a workflow inactive
 	 *
@@ -204,11 +243,11 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	async remove(id: string): Promise<void> {
-		console.log('REMOVE ID (active): ' + id);
-
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
-			throw new Error(`The workflow with the id "${id}" is currently not active and can so not be removed`);
+			throw new Error(
+				`The workflow with the id "${id}" is currently not active and can so not be removed`,
+			);
 		}
 
 		const workflowData = this.workflowData[id];
@@ -216,7 +255,17 @@ export class ActiveWorkflows {
 		if (workflowData.triggerResponses) {
 			for (const triggerResponse of workflowData.triggerResponses) {
 				if (triggerResponse.closeFunction) {
-					await triggerResponse.closeFunction();
+					try {
+						await triggerResponse.closeFunction();
+					} catch (error) {
+						Logger.error(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,
+							{
+								workflowId: id,
+							},
+						);
+					}
 				}
 			}
 		}
@@ -224,12 +273,21 @@ export class ActiveWorkflows {
 		if (workflowData.pollResponses) {
 			for (const pollResponse of workflowData.pollResponses) {
 				if (pollResponse.closeFunction) {
-					await pollResponse.closeFunction();
+					try {
+						await pollResponse.closeFunction();
+					} catch (error) {
+						Logger.error(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+							`There was a problem deactivating polling trigger of workflow "${id}": "${error.message}"`,
+							{
+								workflowId: id,
+							},
+						);
+					}
 				}
 			}
 		}
 
 		delete this.workflowData[id];
 	}
-
 }

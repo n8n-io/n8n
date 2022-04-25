@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -15,6 +15,7 @@ import {
 } from './GenericFunctions';
 
 export class GumroadTrigger implements INodeType {
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'Gumroad Trigger',
 		name: 'gumroadTrigger',
@@ -24,7 +25,6 @@ export class GumroadTrigger implements INodeType {
 		description: 'Handle Gumroad events via webhooks',
 		defaults: {
 			name: 'Gumroad Trigger',
-			color: '#60c2cd',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -32,7 +32,7 @@ export class GumroadTrigger implements INodeType {
 			{
 				name: 'gumroadApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

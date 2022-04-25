@@ -16,19 +16,20 @@ import {
 	clickupApiRequest,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import {
+	createHmac,
+} from 'crypto';
 
 export class ClickUpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ClickUp Trigger',
 		name: 'clickUpTrigger',
-		icon: 'file:clickup.png',
+		icon: 'file:clickup.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle ClickUp events via webhooks (Beta)',
 		defaults: {
 			name: 'ClickUp Trigger',
-			color: '#7B68EE',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -36,7 +37,25 @@ export class ClickUpTrigger implements INodeType {
 			{
 				name: 'clickUpApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'clickUpOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -47,6 +66,22 @@ export class ClickUpTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+			},
 			{
 				displayName: 'Team',
 				name: 'team',
@@ -268,16 +303,16 @@ export class ClickUpTrigger implements INodeType {
 					body.events = '*';
 				}
 				if (filters.listId) {
-					body.list_id = (filters.listId as string).replace('#','');
+					body.list_id = (filters.listId as string).replace('#', '');
 				}
 				if (filters.taskId) {
-					body.task_id = (filters.taskId as string).replace('#','');
+					body.task_id = (filters.taskId as string).replace('#', '');
 				}
 				if (filters.spaceId) {
-					body.space_id = (filters.spaceId as string).replace('#','');
+					body.space_id = (filters.spaceId as string).replace('#', '');
 				}
 				if (filters.folderId) {
-					body.folder_id = (filters.folderId as string).replace('#','');
+					body.folder_id = (filters.folderId as string).replace('#', '');
 				}
 				const { webhook } = await clickupApiRequest.call(this, 'POST', endpoint, body);
 				webhookData.webhookId = webhook.id;
@@ -289,7 +324,7 @@ export class ClickUpTrigger implements INodeType {
 				const endpoint = `/webhook/${webhookData.webhookId}`;
 				try {
 					await clickupApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;

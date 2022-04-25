@@ -1,23 +1,24 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class GitlabApi implements ICredentialType {
 	name = 'gitlabApi';
 	displayName = 'Gitlab API';
-	properties = [
+	documentationUrl = 'gitlab';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Gitlab Server',
 			name: 'server',
-			type: 'string' as NodePropertyTypes,
-			default: 'https://gitlab.com'
+			type: 'string',
+			default: 'https://gitlab.com',
 		},
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

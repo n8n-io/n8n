@@ -1,13 +1,17 @@
+import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
-	ICredentialDataDecryptedObject
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
+	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
-	IMongoCredentials
 } from './mongo.node.types';
+
+import { get, set } from 'lodash';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -15,7 +19,7 @@ import {
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
 function buildParameterizedConnString(
-	credentials: IMongoParametricCredentials
+	credentials: IMongoParametricCredentials,
 ): string {
 	if (credentials.port) {
 		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
@@ -28,10 +32,12 @@ function buildParameterizedConnString(
  * Build mongoDb connection string and resolve database name.
  * If a connection string override value is provided, that will be used in place of individual args
  *
+ * @param {IExecuteFunctions} self
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
-function buildMongoConnectionParams(
-	credentials: IMongoCredentialsType
+export function buildMongoConnectionParams(
+	self: IExecuteFunctions,
+	credentials: IMongoCredentialsType,
 ): IMongoCredentials {
 	const sanitizedDbName =
 		credentials.database && credentials.database.trim().length > 0
@@ -44,17 +50,15 @@ function buildMongoConnectionParams(
 		) {
 			return {
 				connectionString: credentials.connectionString.trim(),
-				database: sanitizedDbName
+				database: sanitizedDbName,
 			};
 		} else {
-			throw new Error(
-				'Cannot override credentials: valid MongoDB connection string not provided '
-			);
+			throw new NodeOperationError(self.getNode(), 'Cannot override credentials: valid MongoDB connection string not provided ');
 		}
 	} else {
 		return {
 			connectionString: buildParameterizedConnString(credentials),
-			database: sanitizedDbName
+			database: sanitizedDbName,
 		};
 	}
 }
@@ -62,15 +66,18 @@ function buildMongoConnectionParams(
 /**
  * Verify credentials. If ok, build mongoDb connection string and resolve database name.
  *
+ * @param {IExecuteFunctions} self
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function validateAndResolveMongoCredentials(
-	credentials?: ICredentialDataDecryptedObject
+	self: IExecuteFunctions,
+	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(self.getNode(), 'No credentials got returned!');
 	} else {
 		return buildMongoConnectionParams(
+			self,
 			credentials as unknown as IMongoCredentialsType,
 		);
 	}
@@ -86,7 +93,7 @@ export function validateAndResolveMongoCredentials(
  */
 export function getItemCopy(
 	items: INodeExecutionData[],
-	properties: string[]
+	properties: string[],
 ): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
@@ -101,4 +108,30 @@ export function getItemCopy(
 		}
 		return newItem;
 	});
+}
+
+export function handleDateFields(insertItems: IDataObject[], fields: string) {
+	const dateFields = (fields as string).split(',');
+	for (let i = 0; i < insertItems.length; i++) {
+		for (const key of Object.keys(insertItems[i])) {
+			if (dateFields.includes(key)) {
+				insertItems[i][key] = new Date(insertItems[i][key] as string);
+			}
+		}
+	}
+}
+
+export function handleDateFieldsWithDotNotation(insertItems: IDataObject[], fields: string) {
+	const dateFields = fields.split(',').map(field => field.trim());
+
+	for (let i = 0; i < insertItems.length; i++) {
+		for (const field of dateFields) {
+			const fieldValue = get(insertItems[i], field) as string;
+			const date = new Date(fieldValue);
+
+			if (fieldValue && !isNaN(date.valueOf())) {
+				set(insertItems[i], field, date);
+			}
+		}
+	}
 }

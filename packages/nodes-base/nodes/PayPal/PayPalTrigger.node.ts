@@ -1,63 +1,64 @@
 import {
 	IHookFunctions,
 	IWebhookFunctions,
-  } from 'n8n-core';
+} from 'n8n-core';
 
-  import {
+import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-  } from 'n8n-workflow';
-  import {
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
+import {
 	payPalApiRequest,
 	upperFist
- } from './GenericFunctions';
+} from './GenericFunctions';
 
-  export class PayPalTrigger implements INodeType {
+export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
-	  displayName: 'PayPal Trigger',
-	  name: 'payPalTrigger',
-	  icon: 'file:paypal.png',
-	  group: ['trigger'],
-	  version: 1,
-	  description: 'Handle PayPal events via webhooks',
-	  defaults: {
-		name: 'PayPal Trigger',
-		color: '#32325d',
-	  },
-	  inputs: [],
-	  outputs: ['main'],
-	  credentials: [
-			  {
-				  name: 'payPalApi',
-				  required: true,
-			  }
-		  ],
-	  webhooks: [
-		{
-		  name: 'default',
-		  httpMethod: 'POST',
-		  reponseMode: 'onReceived',
-		  path: 'webhook',
+		displayName: 'PayPal Trigger',
+		name: 'payPalTrigger',
+		icon: 'file:paypal.svg',
+		group: ['trigger'],
+		version: 1,
+		description: 'Handle PayPal events via webhooks',
+		defaults: {
+			name: 'PayPal Trigger',
 		},
-	  ],
-	  properties: [
-		{
-			displayName: 'Events',
-			name: 'events',
-			type: 'multiOptions',
-			required: true,
-			default: [],
-			description: 'The event to listen to.',
-			typeOptions: {
-				loadOptionsMethod: 'getEvents'
+		inputs: [],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'payPalApi',
+				required: true,
 			},
-			options: [],
-		},
-	  ],
+		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				reponseMode: 'onReceived',
+				path: 'webhook',
+			},
+		],
+		properties: [
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				description: 'The event to listen to.',
+				typeOptions: {
+					loadOptionsMethod: 'getEvents',
+				},
+				options: [],
+			},
+		],
 	};
 
 	methods = {
@@ -70,14 +71,14 @@ import {
 						name: '*',
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
-					}
+					},
 				];
 				let events;
 				try {
 					const endpoint = '/notifications/webhooks-event-types';
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					throw new Error(`PayPal Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const event of events.event_types) {
 					const eventName = upperFist(event.name);
@@ -107,13 +108,13 @@ import {
 				const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 				try {
 					await payPalApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					if (err.response && err.response.name === 'INVALID_RESOURCE_ID') {
+				} catch (error) {
+					if (error.response && error.response.name === 'INVALID_RESOURCE_ID') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						return false;
 					}
-					throw new Error(`PayPal Error: ${err}`);
+					throw new NodeApiError(this.getNode(), error);
 				}
 				return true;
 			},
@@ -126,13 +127,13 @@ import {
 					url: webhookUrl,
 					event_types: events.map(event => {
 						return { name: event };
-					 }),
+					}),
 				};
 				const endpoint = '/notifications/webhooks';
 				try {
 					webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 
 				if (webhook.id === undefined) {
@@ -149,7 +150,7 @@ import {
 					const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 					try {
 						await payPalApiRequest.call(this, endpoint, 'DELETE', {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;
@@ -157,7 +158,7 @@ import {
 				return true;
 			},
 		},
-	  };
+	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		let webhook;
@@ -168,10 +169,10 @@ import {
 		const endpoint = '/notifications/verify-webhook-signature';
 
 		if (headerData['PAYPAL-AUTH-ALGO'] !== undefined
-		&& headerData['PAYPAL-CERT-URL'] !== undefined
-		&& headerData['PAYPAL-TRANSMISSION-ID'] !== undefined
-		&& headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined
-		&& headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined) {
+			&& headerData['PAYPAL-CERT-URL'] !== undefined
+			&& headerData['PAYPAL-TRANSMISSION-ID'] !== undefined
+			&& headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined
+			&& headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined) {
 			const body = {
 				auth_algo: headerData['PAYPAL-AUTH-ALGO'],
 				cert_url: headerData['PAYPAL-CERT-URL'],
@@ -183,8 +184,8 @@ import {
 			};
 			try {
 				webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
-			} catch (e) {
-				throw e;
+			} catch (error) {
+				throw error;
 			}
 			if (webhook.verification_status !== 'SUCCESS') {
 				return {};
@@ -194,8 +195,8 @@ import {
 		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}
-  }
+}

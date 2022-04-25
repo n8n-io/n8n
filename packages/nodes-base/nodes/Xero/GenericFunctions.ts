@@ -10,6 +10,8 @@ import {
 
 import {
 	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -21,7 +23,7 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		body,
 		qs,
 		uri: uri || `https://api.xero.com/api.xro/2.0${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (body.organizationId) {
@@ -37,23 +39,7 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'xeroOAuth2Api', options);
 	} catch (error) {
-		let errorMessage;
-
-		if (error.response && error.response.body && error.response.body.Message) {
-
-			errorMessage = error.response.body.Message;
-
-			if (error.response.body.Elements) {
-				const elementErrors = [];
-				for (const element of error.response.body.Elements) {
-					elementErrors.push(element.ValidationErrors.map((error: IDataObject) =>  error.Message).join('|'));
-				}
-				errorMessage = elementErrors.join('-');
-			}
-			// Try to return the error prettier
-			throw new Error(`Xero error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

@@ -4,14 +4,14 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
-	apiRequest,
+	customerIoApiRequest,
 	eventExists,
 } from './GenericFunctions';
 
@@ -29,12 +29,11 @@ export class CustomerIoTrigger implements INodeType {
 		displayName: 'Customer.io Trigger',
 		name: 'customerIoTrigger',
 		group: ['trigger'],
-		icon: 'file:customerio.png',
+		icon: 'file:customerio.svg',
 		version: 1,
-		description: 'Starts the workflow on a Customer.io update. (Beta)',
+		description: 'Starts the workflow on a Customer.io update (Beta)',
 		defaults: {
 			name: 'Customer.io Trigger',
-			color: '#7131ff',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -237,7 +236,7 @@ export class CustomerIoTrigger implements INodeType {
 
 				const endpoint = '/reporting_webhooks';
 
-				let { reporting_webhooks: webhooks } = await apiRequest.call(this, 'GET', endpoint, {});
+				let { reporting_webhooks: webhooks } = await customerIoApiRequest.call(this, 'GET', endpoint, {}, 'beta');
 
 				if (webhooks === null) {
 					webhooks = [];
@@ -295,7 +294,7 @@ export class CustomerIoTrigger implements INodeType {
 					events: data,
 				};
 
-				webhook = await apiRequest.call(this, 'POST', endpoint, body);
+				webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'beta');
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhook.id as string;
@@ -307,22 +306,22 @@ export class CustomerIoTrigger implements INodeType {
 				if (webhookData.webhookId !== undefined) {
 					const endpoint = `/reporting_webhooks/${webhookData.webhookId}`;
 					try {
-						await apiRequest.call(this, 'DELETE', endpoint, {});
-					} catch (e) {
+						await customerIoApiRequest.call(this, 'DELETE', endpoint, {}, 'beta');
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;
 				}
 				return true;
 			},
-		}
+		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

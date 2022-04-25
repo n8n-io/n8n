@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class PagerDutyOAuth2Api implements ICredentialType {
@@ -9,37 +9,37 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'PagerDuty OAuth2 API';
-	properties = [
+	documentationUrl = 'pagerDuty';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://app.pagerduty.com/oauth/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://app.pagerduty.com/oauth/token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
-			default: '',
+			type: 'hidden',
+			default: 'write',
 		},
 		{
-            displayName: 'Authentication',
-            name: 'authentication',
-            type: 'hidden' as NodePropertyTypes,
-            default: 'header',
-            description: 'Method of authentication.',
-        },
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'header',
+		},
 	];
 }

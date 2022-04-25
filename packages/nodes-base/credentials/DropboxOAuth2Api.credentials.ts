@@ -1,8 +1,14 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
+const scopes = [
+	'files.content.write',
+	'files.content.read',
+	'sharing.read',
+	'account_info.read',
+];
 
 export class DropboxOAuth2Api implements ICredentialType {
 	name = 'dropboxOAuth2Api';
@@ -10,38 +16,55 @@ export class DropboxOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Dropbox OAuth2 API';
-	properties = [
+	documentationUrl = 'dropbox';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://www.dropbox.com/oauth2/authorize',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://api.dropboxapi.com/oauth2/token',
 			required: true,
-        },
-        {
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
-			default: '',
+			type: 'hidden',
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
-			default: '',
+			type: 'hidden',
+			default: 'token_access_type=offline&force_reapprove=true',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'header',
+		},
+		{
+			displayName: 'APP Access Type',
+			name: 'accessType',
+			type: 'options',
+			options: [
+				{
+					name: 'App Folder',
+					value: 'folder',
+				},
+				{
+					name: 'Full Dropbox',
+					value: 'full',
+				},
+			],
+			default: 'full',
 		},
 	];
 }

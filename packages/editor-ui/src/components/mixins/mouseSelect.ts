@@ -1,20 +1,20 @@
-import { INodeUi } from '@/Interface';
+import { INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
+import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
+import { getMousePosition, getRelativePosition } from '@/views/canvasHelpers';
 
-export const mouseSelect = mixins(nodeIndex).extend({
+export const mouseSelect = mixins(
+	deviceSupportHelpers,
+	nodeIndex,
+).extend({
 	data () {
 		return {
 			selectActive: false,
 			selectBox: document.createElement('span'),
 		};
-	},
-	computed: {
-		isMacOs (): boolean {
-			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
-		},
 	},
 	mounted () {
 		this.createSelectBox();
@@ -24,29 +24,38 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			this.selectBox.id = 'select-box';
 			this.selectBox.style.margin = '0px auto';
 			this.selectBox.style.border = '2px dotted #FF0000';
-			this.selectBox.style.position = 'fixed';
+			// Positioned absolutely within #node-view. This is consistent with how nodes are positioned.
+			this.selectBox.style.position = 'absolute';
 			this.selectBox.style.zIndex = '100';
 			this.selectBox.style.visibility = 'hidden';
 
 			this.selectBox.addEventListener('mouseup', this.mouseUpMouseSelect);
 
-			// document.body.appendChild(this.selectBox);
-			this.$el.appendChild(this.selectBox);
+			const nodeViewEl = this.$el.querySelector('#node-view') as HTMLDivElement;
+			nodeViewEl.appendChild(this.selectBox);
 		},
 		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
+			if (this.isTouchDevice === true) {
+				return true;
+			}
 			if (this.isMacOs) {
 				return e.metaKey;
 			}
 			return e.ctrlKey;
 		},
+		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
+			const [x, y] = getMousePosition(event);
+			// @ts-ignore
+			return getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+		},
 		showSelectBox (event: MouseEvent) {
-			// @ts-ignore
-			this.selectBox.x = event.pageX;
-			// @ts-ignore
-			this.selectBox.y = event.pageY;
+			const [x, y] = this.getMousePositionWithinNodeView(event);
+			this.selectBox = Object.assign(this.selectBox, {x, y});
 
-			this.selectBox.style.left = event.pageX + 'px';
-			this.selectBox.style.top = event.pageY + 'px';
+			// @ts-ignore
+			this.selectBox.style.left = this.selectBox.x + 'px';
+			// @ts-ignore
+			this.selectBox.style.top = this.selectBox.y + 'px';
 			this.selectBox.style.visibility = 'visible';
 
 			this.selectActive = true;
@@ -73,25 +82,21 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			this.selectActive = false;
 		},
 		getSelectionBox (event: MouseEvent) {
+			const [x, y] = this.getMousePositionWithinNodeView(event);
 			return {
 				// @ts-ignore
-				x: Math.min(event.pageX, this.selectBox.x),
+				x: Math.min(x, this.selectBox.x),
 				// @ts-ignore
-				y: Math.min(event.pageY, this.selectBox.y),
+				y: Math.min(y, this.selectBox.y),
 				// @ts-ignore
-				width: Math.abs(event.pageX - this.selectBox.x),
+				width: Math.abs(x - this.selectBox.x),
 				// @ts-ignore
-				height: Math.abs(event.pageY - this.selectBox.y),
+				height: Math.abs(y - this.selectBox.y),
 			};
 		},
 		getNodesInSelection (event: MouseEvent): INodeUi[] {
 			const returnNodes: INodeUi[] = [];
 			const selectionBox = this.getSelectionBox(event);
-			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-
-			// Consider the offset of the workflow when it got moved
-			selectionBox.x -= offsetPosition[0];
-			selectionBox.y -= offsetPosition[1];
 
 			// Go through all nodes and check if they are selected
 			this.$store.getters.allNodes.forEach((node: INodeUi) => {
@@ -125,6 +130,13 @@ export const mouseSelect = mixins(nodeIndex).extend({
 		},
 		mouseUpMouseSelect (e: MouseEvent) {
 			if (this.selectActive === false) {
+				if (this.isTouchDevice === true) {
+					// @ts-ignore
+					if (e.target && e.target.id.includes('node-view')) {
+						// Deselect all nodes
+						this.deselectAllNodes();
+					}
+				}
 				// If it is not active return direcly.
 				// Else normal node dragging will not work.
 				return;
@@ -141,6 +153,10 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			selectedNodes.forEach((node) => {
 				this.nodeSelected(node);
 			});
+
+			if (selectedNodes.length === 1) {
+				this.$store.commit('setLastSelectedNode', selectedNodes[0].name);
+			}
 
 			this.hideSelectBox();
 		},
@@ -175,6 +191,10 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			this.$store.commit('setLastSelectedNode', null);
 			this.$store.commit('setLastSelectedNodeOutputIndex', null);
 			this.$store.commit('setActiveNode', null);
+			// @ts-ignore
+			this.lastSelectedConnection = null;
+			// @ts-ignore
+			this.newNodeInsertPosition = null;
 		},
 	},
 });

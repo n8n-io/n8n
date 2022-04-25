@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const formulaOperations = [
+export const formulaOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const formulaOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const formulaFields = [
+export const formulaFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                   formula:get                              */
@@ -50,7 +50,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -68,7 +68,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'The formula to get the row from.',
@@ -92,7 +92,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -108,7 +108,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		default: false,
@@ -138,4 +138,4 @@ export const formulaFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

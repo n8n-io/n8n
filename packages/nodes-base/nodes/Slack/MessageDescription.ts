@@ -1,6 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -14,26 +16,84 @@ export const messageOperations = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Deletes a message',
+			},
+			{
+				name: 'Get Permalink',
+				value: 'getPermalink',
+				description: 'Get Permanent Link of a message',
+			},
+			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
 			},
 			{
+				name: 'Post (Ephemeral)',
+				value: 'postEphemeral',
+				description: 'Post an ephemeral message to a user in channel',
+			},
+			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message.',
+				description: 'Updates a message',
 			},
 		],
 		default: 'post',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                message:post                                */
-/* -------------------------------------------------------------------------- */
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getPermalink
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: 'Channel containing the message.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: `Timestamp of the message to get permanent link.`,
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                          message:post/postEphemeral                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channel',
@@ -44,6 +104,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -52,6 +113,25 @@ export const messageFields = [
 		},
 		required: true,
 		description: 'The channel to send the message to.',
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'string',
+		default: '',
+		placeholder: 'User ID',
+		displayOptions: {
+			show: {
+				operation: [
+					'postEphemeral',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		required: true,
+		description: 'The user ID to send the message to.',
 	},
 	{
 		displayName: 'Text',
@@ -65,6 +145,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -74,46 +155,6 @@ export const messageFields = [
 		description: 'The text to send.',
 	},
 	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'post'
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Post the message as authenticated user instead of bot. Works only with user token.',
-	},
-	{
-		displayName: 'User Name',
-		name: 'username',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				as_user: [
-					false,
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
-	},
-	{
 		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
@@ -121,13 +162,105 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'post',
+					'postEphemeral',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Icon Emoji',
+				name: 'icon_emoji',
+				type: 'string',
+				default: '',
+				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
+			},
+			{
+				displayName: 'Icon URL',
+				name: 'icon_url',
+				type: 'string',
+				default: '',
+				description: 'URL to an image to use as the icon for this message.',
+			},
+			{
+				displayName: 'Link Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Find and link channel names and usernames.',
+			},
+			{
+				displayName: 'Make Reply',
+				name: 'thread_ts',
+				type: 'string',
+				default: '',
+				description: 'Provide another message\'s ts value to make this message a reply.',
+			},
+			{
+				displayName: 'Markdown',
+				name: 'mrkdwn',
+				type: 'boolean',
+				default: true,
+				description: 'Use Slack Markdown parsing.',
+			},
+			{
+				displayName: 'Reply Broadcast',
+				name: 'reply_broadcast',
+				type: 'boolean',
+				default: false,
+				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
+			},
+			{
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
+				type: 'boolean',
+				default: false,
+				description: 'Pass true to enable unfurling of primarily text-based content.',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Pass false to disable unfurling of media content.',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/authentication': [
+							'accessToken',
+						],
+					},
+				},
+				default: '',
+				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
+			},
+		],
 	},
 	{
 		displayName: 'Attachments',
@@ -141,6 +274,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -318,117 +452,16 @@ export const messageFields = [
 								default: true,
 								description: 'If items can be displayed next to each other.',
 							},
-						]
-					},
-				],
-			}
-		],
-	},
-	{
-		displayName: 'Other Options',
-		name: 'otherOptions',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: [
-					'post'
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		default: {},
-		description: 'Other options to set',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Icon Emoji',
-				name: 'icon_emoji',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false
-						],
-						'/operation': [
-							'post'
-						],
-						'/resource': [
-							'message',
 						],
 					},
-				},
-				default: '',
-				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
-			},
-			{
-				displayName: 'Icon URL',
-				name: 'icon_url',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false
-						],
-						'/operation': [
-							'post'
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
-				default: '',
-				description: 'URL to an image to use as the icon for this message.',
-			},
-			{
-				displayName: 'Make Reply',
-				name: 'thread_ts',
-				type: 'string',
-				default: '',
-				description: 'Provide another message\'s ts value to make this message a reply.',
-			},
-			{
-				displayName: 'Unfurl Links',
-				name: 'unfurl_links',
-				type: 'boolean',
-				default: false,
-				description: 'Pass true to enable unfurling of primarily text-based content.',
-			},
-			{
-				displayName: 'Unfurl Media',
-				name: 'unfurl_media',
-				type: 'boolean',
-				default: true,
-				description: 'Pass false to disable unfurling of media content.',
-			},
-			{
-				displayName: 'Markdown',
-				name: 'mrkdwn',
-				type: 'boolean',
-				default: true,
-				description: 'Use Slack Markdown parsing.',
-			},
-			{
-				displayName: 'Reply Broadcast',
-				name: 'reply_broadcast',
-				type: 'boolean',
-				default: false,
-				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
-			},
-			{
-				displayName: 'Link Names',
-				name: 'link_names',
-				type: 'boolean',
-				default: false,
-				description: 'Find and link channel names and usernames.',
+				],
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 message:update                          */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:update                          */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -445,7 +478,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Channel containing the message to be updated.',
@@ -454,7 +487,7 @@ export const messageFields = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		required: true,
+		required: false,
 		default: '',
 		displayOptions: {
 			show: {
@@ -463,7 +496,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: `New text for the message, using the default formatting rules. It's not required when presenting attachments.`,
@@ -481,30 +514,26 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
 	},
 	{
-		displayName: 'As User',
-		name: 'as_user',
+		displayName: 'JSON parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
 			show: {
-				authentication: [
-					'accessToken',
-				],
 				operation: [
-					'update'
+					'update',
 				],
 				resource: [
 					'message',
 				],
 			},
 		},
-		description: 'Pass true to update the message as the authed user. Works only with user token.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -554,6 +583,54 @@ export const messageFields = [
 		],
 	},
 	{
+		displayName: 'Attachments',
+		name: 'attachmentsJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The attachments to add',
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The blocks to add',
+	},
+	{
 		displayName: 'Blocks',
 		name: 'blocksUi',
 		type: 'fixedCollection',
@@ -564,7 +641,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -610,10 +687,7 @@ export const messageFields = [
 							},
 						},
 						default: '',
-						description: `A string acting as a unique identifier for a block.</br>
-								You can use this block_id when you receive an interaction payload to</br>
-								identify the source of the action. If not specified, a block_id will be generated.</br>
-								Maximum length for this field is 255 characters.`,
+						description: `A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.`,
 					},
 					{
 						displayName: 'Elements',
@@ -689,9 +763,7 @@ export const messageFields = [
 											},
 										},
 										default: '',
-										description: `An identifier for this action. You can use this when you receive an interaction</br>
-												payload to identify the source of the action. Should be unique among all other action_ids used</br>
-												elsewhere by your app. `,
+										description: `An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.`,
 									},
 									{
 										displayName: 'URL',
@@ -705,9 +777,7 @@ export const messageFields = [
 											},
 										},
 										default: '',
-										description: `A URL to load in the user's browser when the button is clicked.</br>
-												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
-												receive an interaction payload and will need to send an acknowledgement response.`,
+										description: `A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using url, you'll still receive an interaction payload and will need to send an acknowledgement response.`,
 									},
 									{
 										displayName: 'Value',
@@ -939,10 +1009,7 @@ export const messageFields = [
 							},
 						},
 						default: '',
-						description: `A string acting as a unique identifier for a block.</br>
-								You can use this block_id when you receive an interaction payload to</br>
-								identify the source of the action. If not specified, a block_id will be generated.</br>
-								Maximum length for this field is 255 characters.`,
+						description: `A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.`,
 					},
 					{
 						displayName: 'Text',
@@ -971,7 +1038,7 @@ export const messageFields = [
 										type: 'options',
 										options: [
 											{
-												name: 'Markdowm',
+												name: 'Markdown',
 												value: 'mrkwdn',
 											},
 											{
@@ -1049,7 +1116,7 @@ export const messageFields = [
 										type: 'options',
 										options: [
 											{
-												name: 'Markdowm',
+												name: 'Markdown',
 												value: 'mrkwdn',
 											},
 											{
@@ -1098,9 +1165,7 @@ export const messageFields = [
 								],
 							},
 						],
-						description: `An array of text objects. Any text objects included with</br>
-								fields will be rendered in a compact format that allows for 2 columns of</br>
-								side-by-side text. Maximum number of items is 10.`,
+						description: `An array of text objects. Any text objects included with fields will be rendered in a compact format that allows for 2 columns of side-by-side text. Maximum number of items is 10.`,
 					},
 					{
 						displayName: 'Accessory',
@@ -1176,9 +1241,7 @@ export const messageFields = [
 										},
 										type: 'string',
 										default: '',
-										description: `An identifier for this action. You can use this when you receive an interaction</br>
-												payload to identify the source of the action. Should be unique among all other action_ids used</br>
-												elsewhere by your app. `,
+										description: `An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.`,
 									},
 									{
 										displayName: 'URL',
@@ -1192,9 +1255,7 @@ export const messageFields = [
 										},
 										type: 'string',
 										default: '',
-										description: `A URL to load in the user's browser when the button is clicked.</br>
-												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
-												receive an interaction payload and will need to send an acknowledgement response.`,
+										description: `A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using url, you'll still receive an interaction payload and will need to send an acknowledgement response.`,
 									},
 									{
 										displayName: 'Value',
@@ -1487,7 +1548,7 @@ export const messageFields = [
 					false,
 				],
 				operation: [
-					'update'
+					'update',
 				],
 				resource: [
 					'message',
@@ -1665,10 +1726,53 @@ export const messageFields = [
 								default: true,
 								description: 'If items can be displayed next to each other.',
 							},
-						]
+						],
 					},
 				],
-			}
+			},
 		],
 	},
-] as INodeProperties[];
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:delete
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Channel containing the message to be deleted.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: `Timestamp of the message to be deleted.`,
+	},
+];

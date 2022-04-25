@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MailjetSmsApi implements ICredentialType {
 	name = 'mailjetSmsApi';
 	displayName = 'Mailjet SMS API';
-	properties = [
+	documentationUrl = 'mailjet';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Token',
 			name: 'token',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

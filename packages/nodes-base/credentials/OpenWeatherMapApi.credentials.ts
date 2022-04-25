@@ -1,17 +1,18 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class OpenWeatherMapApi implements ICredentialType {
 	name = 'openWeatherMapApi';
 	displayName = 'OpenWeatherMap API';
-	properties = [
+	documentationUrl = 'openWeatherMap';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

@@ -1,7 +1,10 @@
-const GoogleFontsPlugin = require('@beyonk/google-fonts-webpack-plugin');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = {
-	chainWebpack: config => config.resolve.symlinks(false),
+	chainWebpack: config => {
+		config.resolve.symlinks(false);
+		// config.plugins.delete("prefetch"); // enable when language package grows
+	},
 	// transpileDependencies: [
 	//   // 'node_modules/quill'
 	//   /\/node_modules\/quill\//
@@ -10,14 +13,19 @@ module.exports = {
 		webpackBundleAnalyzer: {
 			openAnalyzer: false,
 		},
+		i18n: {
+			locale: "en",
+			fallbackLocale: "en",
+			localeDir: "./src/i18n/locales",
+			enableInSFC: false,
+		},
 	},
 	configureWebpack: {
+		devServer: {
+			disableHostCheck: true,
+		},
 		plugins: [
-			new GoogleFontsPlugin({
-				fonts: [
-					{ family: 'Open Sans', variants: ['300', '400', '600', '700'] },
-				],
-			}),
+			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
 		],
 	},
 	css: {

@@ -1,33 +1,21 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
-
-interface OMauticErrorResponse {
-	errors: Array<{
-		conde: number;
-		message: string;
-	}>;
-}
-
-export function getErrors(error: OMauticErrorResponse): string {
-	const returnErrors: string[] = [];
-
-	for (const errorItem of error.errors) {
-		returnErrors.push(errorItem.message);
-	}
-
-	return returnErrors.join(', ');
-}
-
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
@@ -38,7 +26,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		qs: query,
 		uri: uri || `/api${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -46,34 +34,34 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		let returnData;
 
 		if (authenticationMethod === 'credentials') {
-			const credentials = this.getCredentials('mauticApi') as IDataObject;
+			const credentials = await this.getCredentials('mauticApi');
+			const baseUrl = credentials.url as string;
 
-			const base64Key =  Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
 			options.headers!.Authorization = `Basic ${base64Key}`;
 
-			options.uri = `${credentials.url}${options.uri}`;
+			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
+
 			//@ts-ignore
 			returnData = await this.helpers.request(options);
 		} else {
-			const credentials = this.getCredentials('mauticOAuth2Api') as IDataObject;
+			const credentials = await this.getCredentials('mauticOAuth2Api');
+			const baseUrl = credentials.url as string;
 
-			options.uri = `${credentials.url}${options.uri}`;
+			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
 			//@ts-ignore
-			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options);
+			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}
 
 		if (returnData.errors) {
 			// They seem to to sometimes return 200 status but still error.
-			throw new Error(getErrors(returnData));
+			throw new NodeApiError(this.getNode(), returnData);
 		}
 
 		return returnData;
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			throw new Error('Mautic Error: ' + getErrors(error.response.body));
-		}
-		throw new Error(`Mautic Error: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -93,16 +81,14 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	do {
 		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
 		const values = Object.values(responseData[propertyName]);
-		for (const value of values) {
-			data.push(value as IDataObject);
-		}
-		returnData.push.apply(returnData, data);
-		query.start++;
+		//@ts-ignore
+		returnData.push.apply(returnData, values);
+		query.start += query.limit;
 		data = [];
 	} while (
 		responseData.total !== undefined &&
-		((query.limit * query.start) - parseInt(responseData.total, 10)) < 0
-		);
+		(returnData.length - parseInt(responseData.total, 10)) < 0
+	);
 
 	return returnData;
 }
@@ -115,4 +101,31 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = undefined;
 	}
 	return result;
+}
+
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		url,
+		username,
+		password,
+	} = credentials as {
+		url: string,
+		username: string,
+		password: string,
+	};
+
+	const base64Key = Buffer.from(`${username}:${password}`).toString('base64');
+
+	const options: OptionsWithUri = {
+		method: 'GET',
+		headers: {
+			Authorization: `Basic ${base64Key}`,
+		},
+		uri: url.endsWith('/') ? `${url}api/users/self` : `${url}/api/users/self`,
+		json: true,
+	};
+
+	return await this.helpers.request(options);
 }

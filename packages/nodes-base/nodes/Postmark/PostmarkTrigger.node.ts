@@ -4,8 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -22,10 +22,9 @@ export class PostmarkTrigger implements INodeType {
 		icon: 'file:postmark.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Postmark events occur.',
+		description: 'Starts the workflow when Postmark events occur',
 		defaults: {
 			name: 'Postmark Trigger',
-			color: '#fedd00',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -124,11 +123,17 @@ export class PostmarkTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string[];
-				if (this.getNodeParameter('includeContent') as boolean) {
-					events.push('includeContent');
+
+				if (events.includes('bounce') || events.includes('spamComplaint')) {
+					if (this.getNodeParameter('includeContent') as boolean) {
+						events.push('includeContent');
+					}
 				}
-				if (this.getNodeParameter('firstOpen') as boolean) {
-					events.push('firstOpen');
+
+				if (events.includes('open')) {
+					if (this.getNodeParameter('firstOpen') as boolean) {
+						events.push('firstOpen');
+					}
 				}
 
 				// Get all webhooks
@@ -163,26 +168,26 @@ export class PostmarkTrigger implements INodeType {
 					Triggers: {
 						Open:{
 							Enabled: false,
-							PostFirstOpenOnly: false
+							PostFirstOpenOnly: false,
 						},
 						Click:{
-							Enabled: false
+							Enabled: false,
 						},
 						Delivery:{
-							Enabled: false
+							Enabled: false,
 						},
 						Bounce:{
 							Enabled: false,
-							IncludeContent: false
+							IncludeContent: false,
 						},
 						SpamComplaint:{
 							Enabled: false,
-							IncludeContent: false
+							IncludeContent: false,
 						},
 						SubscriptionChange: {
-							Enabled: false
-						}
-					}
+							Enabled: false,
+						},
+					},
 				};
 
 				const events = this.getNodeParameter('events') as string[];
@@ -230,7 +235,7 @@ export class PostmarkTrigger implements INodeType {
 
 					try {
 						await postmarkApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
@@ -249,7 +254,7 @@ export class PostmarkTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const logEntryOperations = [
+export const logEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const logEntryOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const logEntryFields = [
+export const logEntryFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 logEntry:get                               */
 /* -------------------------------------------------------------------------- */
@@ -48,7 +48,7 @@ export const logEntryFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the log entry.',
@@ -151,7 +151,7 @@ export const logEntryFields = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months)',
+				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
 				displayName: 'Timezone',
@@ -161,15 +161,15 @@ export const logEntryFields = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC',
+				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC.',
 			},
 			{
 				displayName: 'Until',
 				name: 'until',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the date range over which you want to search. (the limit on date ranges is 6 months)',
+				description: 'The end of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const orderOperations = [
+export const orderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const orderOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const orderFields = [
+export const orderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                order:create                                */
@@ -78,7 +78,7 @@ export const orderFields = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -102,21 +102,19 @@ export const orderFields = [
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Set Paid',
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items',
+				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -173,7 +171,7 @@ export const orderFields = [
 		name: 'billingUi',
 		placeholder: 'Add Billing',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -184,7 +182,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Billing address',
@@ -232,7 +230,7 @@ export const orderFields = [
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -263,7 +261,7 @@ export const orderFields = [
 		name: 'couponLinesUi',
 		placeholder: 'Add Coupon Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -274,7 +272,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -295,7 +293,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -332,7 +330,7 @@ export const orderFields = [
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -343,7 +341,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Fee line data',
@@ -395,7 +393,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -432,7 +430,7 @@ export const orderFields = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -443,7 +441,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Line item data',
@@ -464,7 +462,6 @@ export const orderFields = [
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
@@ -506,7 +503,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -543,7 +540,7 @@ export const orderFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -554,7 +551,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -586,7 +583,7 @@ export const orderFields = [
 		name: 'shippingUi',
 		placeholder: 'Add Shipping',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -597,7 +594,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Shipping address',
@@ -645,7 +642,7 @@ export const orderFields = [
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -664,7 +661,7 @@ export const orderFields = [
 		name: 'shippingLinesUi',
 		placeholder: 'Add Shipping Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -675,7 +672,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -710,7 +707,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -760,7 +757,6 @@ export const orderFields = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -791,7 +787,7 @@ export const orderFields = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -815,14 +811,12 @@ export const orderFields = [
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Status',
@@ -879,7 +873,7 @@ export const orderFields = [
 		name: 'billingUi',
 		placeholder: 'Add Billing',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -890,7 +884,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Billing address',
@@ -969,7 +963,7 @@ export const orderFields = [
 		name: 'couponLinesUi',
 		placeholder: 'Add Coupon Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -980,7 +974,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -1001,7 +995,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1038,7 +1032,7 @@ export const orderFields = [
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1049,7 +1043,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Fee line data',
@@ -1101,7 +1095,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1138,7 +1132,7 @@ export const orderFields = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1149,7 +1143,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Line item data',
@@ -1170,7 +1164,6 @@ export const orderFields = [
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
@@ -1212,7 +1205,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1249,7 +1242,7 @@ export const orderFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1260,7 +1253,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -1292,7 +1285,7 @@ export const orderFields = [
 		name: 'shippingUi',
 		placeholder: 'Add Shipping',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -1303,7 +1296,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Shipping address',
@@ -1370,7 +1363,7 @@ export const orderFields = [
 		name: 'shippingLinesUi',
 		placeholder: 'Add Shipping Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1381,7 +1374,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -1416,7 +1409,7 @@ export const orderFields = [
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1466,7 +1459,6 @@ export const orderFields = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:getAll                           */
@@ -1666,7 +1658,7 @@ export const orderFields = [
 				default: 'any',
 				description: 'Limit result set to orders assigned a specific status.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:delete                           */
@@ -1686,6 +1678,5 @@ export const orderFields = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
-] as INodeProperties[];
+];

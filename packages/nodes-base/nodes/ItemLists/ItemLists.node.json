@@ -1,0 +1,44 @@
+{
+	"node": "n8n-nodes-base.itemLists",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "",
+	"categories": [
+		"Core Nodes"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.itemLists/"
+			}
+		],
+		"generic": []
+	},
+	"alias": [
+		"Aggregate",
+		"Dedupe",
+		"Deduplicate",
+		"Duplicates",
+		"Limit",
+		"Remove",
+		"Slice",
+		"Sort",
+		"Split",
+		"Unique",
+		"JSON",
+		"Transform",
+		"Array",
+		"List",
+		"Object",
+		"Item",
+		"Map",
+		"Format",
+		"Nested",
+		"Iterate"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
+	}
+}

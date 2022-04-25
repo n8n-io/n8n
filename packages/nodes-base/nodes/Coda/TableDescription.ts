@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const tableOperations = [
+export const tableOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const tableOperations = [
 		default: 'createRow',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tableFields = [
+export const tableFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                table:createRow                             */
@@ -75,7 +75,7 @@ export const tableFields = [
 				],
 				operation: [
 					'createRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -99,7 +99,7 @@ export const tableFields = [
 				],
 				operation: [
 					'createRow',
-				]
+				],
 			},
 		},
 		description: 'The table to create the row in.',
@@ -133,10 +133,9 @@ export const tableFields = [
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: `Optional column IDs, URLs, or names (fragile and discouraged)<br />,
-				specifying columns to be used as upsert keys. If more than one separate by ,`,
+				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,)',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:get                                */
@@ -157,7 +156,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -181,7 +180,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getRow',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -199,14 +198,10 @@ export const tableFields = [
 				],
 				operation: [
 					'getRow',
-				]
+				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because<br />
-		they're easily prone to being changed by users. If you're<br />
-		using a name, be sure to URI-encode it. If there are<br />
-		multiple rows with the same value in the identifying column,<br />
-		an arbitrary one will be selected`,
+		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
 	},
 	{
 		displayName: 'Options',
@@ -237,9 +232,7 @@ export const tableFields = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns are renamed,</br>
-				code using original names may throw errors.`,
+				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
 			},
 			{
 				displayName: 'ValueFormat',
@@ -262,7 +255,7 @@ export const tableFields = [
 				],
 				description: `The format that cell values are returned as.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:getAll                             */
@@ -283,7 +276,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllRows',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -307,7 +300,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllRows',
-				]
+				],
 			},
 		},
 		description: 'The table to get the rows from.',
@@ -323,7 +316,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllRows',
-				]
+				],
 			},
 		},
 		default: false,
@@ -378,9 +371,7 @@ export const tableFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Query used to filter returned rows, specified as <column_id_or_name>:<value>. <br/>
-				If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123).<br/>
-				Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
+				description: `Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
 			},
 			{
 				displayName: 'RAW Data',
@@ -404,17 +395,14 @@ export const tableFields = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned.<br />
-				If left unspecified, rows are returned by creation time ascending.`,
+				description: `Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.`,
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns<br />
-				are renamed, code using original names may throw errors.`,
+				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
 			},
 			{
 				displayName: 'ValueFormat',
@@ -444,7 +432,7 @@ export const tableFields = [
 				default: false,
 				description: `If true, returns only visible rows and columns for the table.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 row:delete                                 */
@@ -465,7 +453,7 @@ export const tableFields = [
 				],
 				operation: [
 					'deleteRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -489,7 +477,7 @@ export const tableFields = [
 				],
 				operation: [
 					'deleteRow',
-				]
+				],
 			},
 		},
 		description: 'The table to delete the row in.',
@@ -507,7 +495,7 @@ export const tableFields = [
 				],
 				operation: [
 					'deleteRow',
-				]
+				],
 			},
 		},
 		description: 'Row IDs to delete.',
@@ -531,7 +519,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -555,7 +543,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -573,14 +561,10 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because<br />
-		they're easily prone to being changed by users. If you're<br />
-		using a name, be sure to URI-encode it. If there are multiple<br />
-		rows with the same value in the identifying column, an arbitrary<br />
-		one will be selected`,
+		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
 	},
 	{
 		displayName: 'Column',
@@ -602,7 +586,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 	},
@@ -625,7 +609,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getColumn',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -649,7 +633,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getColumn',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -667,7 +651,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getColumn',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -691,7 +675,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllColumns',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -715,7 +699,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllColumns',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -731,7 +715,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllColumns',
-				]
+				],
 			},
 		},
 		default: false,
@@ -761,4 +745,4 @@ export const tableFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

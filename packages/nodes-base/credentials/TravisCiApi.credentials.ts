@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class TravisCiApi implements ICredentialType {
 	name = 'travisCiApi';
 	displayName = 'Travis API';
-	properties = [
+	documentationUrl = 'travisCi';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

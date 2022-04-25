@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const companyOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                company:create                              */
@@ -243,7 +243,6 @@ export const companyFields = [
 				],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -418,7 +417,6 @@ export const companyFields = [
 				],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -486,7 +484,6 @@ export const companyFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -520,7 +517,7 @@ export const companyFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
@@ -544,8 +541,7 @@ export const companyFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -693,12 +689,12 @@ export const companyFields = [
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -723,4 +719,4 @@ export const companyFields = [
 		},
 		description: 'If more than one company add them separated by ,',
 	},
-] as INodeProperties[];
+];

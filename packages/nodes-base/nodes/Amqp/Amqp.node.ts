@@ -1,11 +1,17 @@
-import { ContainerOptions, Delivery } from 'rhea';
+import {
+	ContainerOptions,
+	create_container,
+	Dictionary,
+	EventContext,
+} from 'rhea';
 
-import { IExecuteSingleFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export class Amqp implements INodeType {
@@ -18,7 +24,6 @@ export class Amqp implements INodeType {
 		description: 'Sends a raw-message via AMQP 1.0, executed once per item',
 		defaults: {
 			name: 'AMQP Sender',
-			color: '#00FF00',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -51,75 +56,129 @@ export class Amqp implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Container ID',
+						name: 'containerId',
+						type: 'string',
+						default: '',
+						description: 'Will be used to pass to the RHEA Backend as container_id',
+					},
+					{
 						displayName: 'Data as Object',
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
 						description: 'Send the data as an object.',
 					},
+					{
+						displayName: 'Reconnect',
+						name: 'reconnect',
+						type: 'boolean',
+						default: true,
+						description: 'Automatically reconnect if disconnected',
+					},
+					{
+						displayName: 'Reconnect Limit',
+						name: 'reconnectLimit',
+						type: 'number',
+						default: 50,
+						description: 'Maximum number of reconnect attempts',
+					},
+					{
+						displayName: 'Send property',
+						name: 'sendOnlyProperty',
+						type: 'string',
+						default: '',
+						description: 'The only property to send. If empty the whole item will be sent.',
+					},
 				],
 			},
-		]
+		],
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const item = this.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		try {
+			const credentials = await this.getCredentials('amqp');
 
-		const credentials = this.getCredentials('amqp');
-		if (!credentials) {
-			throw new Error('Credentials are mandatory!');
-		}
+			const sink = this.getNodeParameter('sink', 0, '') as string;
+			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const containerId = options.containerId as string;
+			const containerReconnect = options.reconnect as boolean || true;
+			const containerReconnectLimit = options.reconnectLimit as number || 50;
 
-		const sink = this.getNodeParameter('sink', '') as string;
-		const applicationProperties = this.getNodeParameter('headerParametersJson', {}) as string | object;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
+			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
+			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
+				headerProperties = JSON.parse(applicationProperties);
+			} else {
+				headerProperties = applicationProperties as object;
+			}
 
-		let headerProperties = applicationProperties;
-		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
-			headerProperties = JSON.parse(applicationProperties);
-		}
+			if (sink === '') {
+				throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
+			}
 
-		if (sink === '') {
-			throw new Error('Queue or Topic required!');
-		}
+			const container = create_container();
 
-		const container = require('rhea');
+			/*
+				Values are documentet here: https://github.com/amqp/rhea#container
+			*/
+			const connectOptions: ContainerOptions = {
+				host: credentials.hostname,
+				hostname: credentials.hostname,
+				port: credentials.port,
+				reconnect: containerReconnect,
+				reconnect_limit: containerReconnectLimit,
+				username: credentials.username ? credentials.username : undefined,
+				password: credentials.password ? credentials.password : undefined,
+				transport: credentials.transportType ? credentials.transportType : undefined,
+				container_id: containerId ? containerId : undefined,
+				id: containerId ? containerId : undefined,
+			};
+			const conn = container.connect(connectOptions);
 
-		const connectOptions: ContainerOptions = {
-			host: credentials.hostname,
-			port: credentials.port,
-			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
-		};
-		if (credentials.username || credentials.password) {
-			container.options.username = credentials.username;
-			container.options.password = credentials.password;
-		}
+			const sender = conn.open_sender(sink);
 
-		const allSent = new Promise(( resolve ) => {
-			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
+			const responseData: IDataObject[] = await new Promise((resolve) => {
+				container.once('sendable', (context: EventContext) => {
+					const returnData = [];
 
-				let body: IDataObject | string = item.json;
+					const items = this.getInputData();
+					for (let i = 0; i < items.length; i++) {
+						const item = items[i];
 
-				if (options.dataAsObject !== true) {
-					body = JSON.stringify(body);
-				}
+						let body: IDataObject | string = item.json;
+						const sendOnlyProperty = options.sendOnlyProperty as string;
 
-				const message = {
-					application_properties: headerProperties,
-					body
-				};
+						if (sendOnlyProperty) {
+							body = body[sendOnlyProperty] as string;
+						}
 
-				const sendResult = context.sender.send(message);
+						if (options.dataAsObject !== true) {
+							body = JSON.stringify(body);
+						}
 
-				resolve(sendResult);
+						const result = context.sender?.send({
+							application_properties: headerProperties,
+							body,
+						});
+
+						returnData.push({ id: result?.id });
+					}
+
+					resolve(returnData);
+				});
 			});
-		});
 
-		container.connect(connectOptions).open_sender(sink);
+			sender.close();
+			conn.close();
 
-		const sendResult: Delivery = await allSent as Delivery;	// sendResult has a a property that causes circular reference if returned
-
-		return { json: { id: sendResult.id } } as INodeExecutionData;
+			return [this.helpers.returnJsonArray(responseData)];
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return [this.helpers.returnJsonArray({ error: error.message })];
+			}else{
+				throw error;
+			}
+		}
 	}
 }

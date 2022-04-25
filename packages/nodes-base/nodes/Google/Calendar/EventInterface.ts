@@ -1,10 +1,19 @@
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export interface IReminder {
 	useDefault?: boolean;
 	overrides?: IDataObject[];
+}
+
+export interface IConferenceData {
+	createRequest?: {
+		requestId: string,
+		conferenceSolution: {
+			type: string,
+		}
+	};
 }
 
 export interface IEvent {
@@ -25,4 +34,5 @@ export interface IEvent {
 	summary?: string;
 	transparency?: string;
 	visibility?: string;
+	conferenceData?: IConferenceData;
 }

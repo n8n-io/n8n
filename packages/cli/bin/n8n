@@ -10,7 +10,7 @@ process.env.NODE_CONFIG_DIR = process.env.NODE_CONFIG_DIR || path.join(__dirname
 var versionFlags = [ // tslint:disable-line:no-var-keyword
 	'-v',
 	'-V',
-	'--version'
+	'--version',
 ];
 if (versionFlags.includes(process.argv.slice(-1)[0])) {
 	console.log(require('../package').version);
@@ -22,24 +22,11 @@ if (process.argv.length === 2) {
 	process.argv.push('start');
 }
 
-var command = process.argv[2]; // tslint:disable-line:no-var-keyword
+var nodeVersion = process.versions.node.split('.');
 
-// Check if the command the user did enter is supported else stop
-var supportedCommands = [ // tslint:disable-line:no-var-keyword
-	'execute',
-	'help',
-	'start',
-];
-
-if (!supportedCommands.includes(command)) {
-	console.log('\nThe command "' + command + '" is not known!\n');
-	process.argv.pop();
-	process.argv.push('--help');
-}
-
-if (parseInt(process.versions.node.split('.')[0], 10) < 10) {
-	console.log('\nThe Node.js version is too old to run n8n. Please use version 10 or later!\n');
-	process.exit(0);
+if (parseInt(nodeVersion[0], 10) < 14) {
+	console.log(`\nYour Node.js version (${process.versions.node}) is too old to run n8n.\nPlease update at least to Node.js v14 or to the recommended Node.js v16!\n`);
+	process.exit(1);
 }
 
 require('@oclif/command').run()

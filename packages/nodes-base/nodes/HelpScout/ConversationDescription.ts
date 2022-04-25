@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const conversationOperations = [
+export const conversationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const conversationOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const conversationFields = [
+export const conversationFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                conversation:create                         */
 /* -------------------------------------------------------------------------- */
@@ -164,7 +164,7 @@ export const conversationFields = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource<br />. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -195,8 +195,7 @@ export const conversationFields = [
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: `When autoReply is set to true, an auto reply will be sent</br>
-				as long as there is at least one customer thread in the conversation.`,
+				description: 'When autoReply is set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation.',
 			},
 			{
 				displayName: 'Closed At',
@@ -248,7 +247,7 @@ export const conversationFields = [
 				default: 0,
 				description: 'ID of the user who is adding the conversation and threads.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Threads',
@@ -281,23 +280,23 @@ export const conversationFields = [
 						options: [
 							{
 								name: 'Chat',
-								value: 'chat'
+								value: 'chat',
 							},
 							{
 								name: 'Customer',
-								value: 'customer'
+								value: 'customer',
 							},
 							{
 								name: 'Note',
-								value: 'note'
+								value: 'note',
 							},
 							{
 								name: 'Phone',
-								value: 'phone'
+								value: 'phone',
 							},
 							{
 								name: 'Reply',
-								value: 'reply'
+								value: 'reply',
 							},
 						],
 						default: '',
@@ -307,10 +306,10 @@ export const conversationFields = [
 						name: 'text',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true
+							alwaysOpenEditWindow: true,
 						},
 						default: '',
-						description: 'The message text.'
+						description: 'The message text.',
 					},
 					{
 						displayName: 'Bcc',
@@ -318,7 +317,7 @@ export const conversationFields = [
 						displayOptions: {
 							show: {
 								type: [
-									'customer'
+									'customer',
 								],
 							},
 						},
@@ -328,7 +327,7 @@ export const conversationFields = [
 							multipleValueButtonText: 'Add Email',
 						},
 						default: [],
-						description: 'Email addresses.'
+						description: 'Email addresses.',
 					},
 					{
 						displayName: 'Cc',
@@ -336,7 +335,7 @@ export const conversationFields = [
 						displayOptions: {
 							show: {
 								type: [
-									'customer'
+									'customer',
 								],
 							},
 						},
@@ -346,7 +345,7 @@ export const conversationFields = [
 							multipleValueButtonText: 'Add Email',
 						},
 						default: [],
-						description: 'Email addresses.'
+						description: 'Email addresses.',
 					},
 					{
 						displayName: 'Draft',
@@ -354,7 +353,7 @@ export const conversationFields = [
 						displayOptions: {
 							show: {
 								type: [
-									'reply'
+									'reply',
 								],
 							},
 						},
@@ -385,7 +384,6 @@ export const conversationFields = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                conversation:delete                         */
@@ -406,7 +404,6 @@ export const conversationFields = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                conversation:getAll                         */
@@ -527,7 +524,7 @@ export const conversationFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>'
+				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>',
 			},
 			{
 				displayName: 'Sort Field',
@@ -635,4 +632,4 @@ export const conversationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

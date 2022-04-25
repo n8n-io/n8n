@@ -1,20 +1,20 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import {
+	IDataObject, NodeApiError, NodeOperationError,
+} from 'n8n-workflow';
 
 export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('freshdeskApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('freshdeskApi');
 
 	const apiKey = `${credentials.apiKey}:X`;
 
@@ -29,7 +29,7 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 		body,
 		qs: query,
 		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -41,15 +41,7 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response) {
-			let errorMessage = error.response.body.message || error.response.body.description || error.message;
-			if (error.response.body && error.response.body.errors) {
-				errorMessage = error.response.body.errors.map((err: IDataObject) => `"${err.field}" => ${err.message}`).join(', ');
-			}
-			throw new Error(`Freshdesk error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const webinarOperations = [
+export const webinarOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,14 +39,14 @@ export const webinarOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a webinar',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
-] as INodeProperties[];
+	},
+];
 
-export const webinarFields = [
+export const webinarFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 webinar:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -83,7 +83,7 @@ export const webinarFields = [
 				resource: [
 					'webinar',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -119,7 +119,6 @@ export const webinarFields = [
 					},
 				],
 				default: 2,
-				description: 'Approval type.',
 			},
 			{
 				displayName: 'Audio',
@@ -162,14 +161,12 @@ export const webinarFields = [
 					},
 				],
 				default: 'none',
-				description: 'Auto recording.',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'string',
 				default: '',
-				description: 'Duration.',
 			},
 			{
 				displayName: 'Host Video',
@@ -218,7 +215,7 @@ export const webinarFields = [
 					},
 				],
 				default: 1,
-				description: 'Registration type. Used for recurring webinar with fixed time only',
+				description: 'Registration type. Used for recurring webinar with fixed time only.',
 			},
 			{
 				displayName: 'Start Time',
@@ -242,7 +239,6 @@ export const webinarFields = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Webinar topic.`,
 			},
 			{
 				displayName: 'Webinar Type',
@@ -263,7 +259,6 @@ export const webinarFields = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.',
 			},
 
 		],
@@ -287,7 +282,6 @@ export const webinarFields = [
 				],
 			},
 		},
-		description: 'Webinar ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -318,7 +312,7 @@ export const webinarFields = [
 				displayName: 'Show Previous Occurrences',
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'To view webinar details of all previous occurrences of the recurring webinar.',
 			},
 		],
@@ -404,7 +398,6 @@ export const webinarFields = [
 				],
 			},
 		},
-		description: 'Webinar ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -506,7 +499,6 @@ export const webinarFields = [
 					},
 				],
 				default: 2,
-				description: 'Approval type.',
 			},
 			{
 				displayName: 'Auto Recording',
@@ -527,7 +519,6 @@ export const webinarFields = [
 					},
 				],
 				default: 'none',
-				description: 'Auto recording.',
 			},
 			{
 				displayName: 'Audio',
@@ -556,7 +547,6 @@ export const webinarFields = [
 				name: 'duration',
 				type: 'string',
 				default: '',
-				description: 'Duration.',
 			},
 			{
 				displayName: 'Host Video',
@@ -636,7 +626,6 @@ export const webinarFields = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Webinar topic.`,
 			},
 			{
 				displayName: 'Webinar Type',
@@ -657,9 +646,8 @@ export const webinarFields = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.'
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const customerOperations = [
+export const customerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const customerOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const customerFields = [
+export const customerFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                customer:create                             */
 /* -------------------------------------------------------------------------- */
@@ -63,7 +63,7 @@ export const customerFields = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource<br />. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -149,14 +149,12 @@ export const customerFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
-				description: 'Organization',
 			},
 			{
 				displayName: 'Photo Url',
@@ -165,7 +163,7 @@ export const customerFields = [
 				default: '',
 				description: 'URL of the customer’s photo',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Address',
@@ -207,14 +205,12 @@ export const customerFields = [
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'City',
 					},
 					{
 						displayName: 'State',
 						name: 'state',
 						type: 'string',
 						default: '',
-						description: 'State',
 					},
 					{
 						displayName: 'Country',
@@ -224,14 +220,12 @@ export const customerFields = [
 							loadOptionsMethod: 'getCountriesCodes',
 						},
 						default: '',
-						description: 'Country',
 					},
 					{
 						displayName: 'Postal Code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
-						description: 'Postal code',
 					},
 				],
 			},
@@ -701,7 +695,7 @@ export const customerFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>'
+				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>',
 			},
 		],
 	},
@@ -724,7 +718,6 @@ export const customerFields = [
 				],
 			},
 		},
-		description: 'Customer ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                customer:update                             */
@@ -744,7 +737,6 @@ export const customerFields = [
 				],
 			},
 		},
-		description: 'Customer ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -830,14 +822,12 @@ export const customerFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
-				description: 'Organization',
 			},
 			{
 				displayName: 'Photo Url',
@@ -848,4 +838,4 @@ export const customerFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

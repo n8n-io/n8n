@@ -1,6 +1,12 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const ecomCustomerOperations = [
+import {
+	activeCampaignDefaultGetAllProperties,
+} from './GenericFunctions';
+
+export const ecomCustomerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +48,9 @@ export const ecomCustomerOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ecomCustomerFields = [
+export const ecomCustomerFields: INodeProperties[] = [
 	// ----------------------------------
 	//         ecommerceCustomer:create
 	// ----------------------------------
@@ -246,45 +252,5 @@ export const ecomCustomerFields = [
 	// ----------------------------------
 	//         ecommerceCustomer:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
-] as INodeProperties[];
+	...activeCampaignDefaultGetAllProperties('ecommerceCustomer', 'getAll'),
+];

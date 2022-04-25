@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const folderOperations = [
+export const folderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const folderOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const folderFields = [
+export const folderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                folder:create                               */
@@ -97,7 +97,7 @@ export const folderFields = [
 				name: 'parentFolderKey',
 				type: 'string',
 				default: '',
-				description: 'Parent folder you want to create the folder in'
+				description: 'Parent folder you want to create the folder in',
 			},
 			{
 				displayName: 'Requester Pays',
@@ -141,7 +141,7 @@ export const folderFields = [
 					},
 				],
 				default: 'standard',
-				description: 'Amazon S3 storage classes.'
+				description: 'Amazon S3 storage classes.',
 			},
 		],
 	},
@@ -275,4 +275,4 @@ export const folderFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

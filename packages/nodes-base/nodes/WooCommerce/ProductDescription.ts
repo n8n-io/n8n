@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const productOperations = [
+export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const productOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const productFields = [
+export const productFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                product:create                              */
@@ -62,7 +62,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Product name.',
@@ -135,7 +135,6 @@ export const productFields = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
 				displayName: 'Categories',
@@ -152,7 +151,7 @@ export const productFields = [
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
@@ -313,7 +312,6 @@ export const productFields = [
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -351,7 +349,6 @@ export const productFields = [
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -372,7 +369,6 @@ export const productFields = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -404,7 +400,7 @@ export const productFields = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
@@ -420,14 +416,14 @@ export const productFields = [
 				default: '',
 				description: 'Product weight.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Dimensions',
 		name: 'dimensionsUi',
 		placeholder: 'Add Dimension',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -438,7 +434,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Product dimensions',
@@ -477,7 +473,7 @@ export const productFields = [
 		name: 'imagesUi',
 		placeholder: 'Add Image',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -488,7 +484,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Product Image',
@@ -527,7 +523,7 @@ export const productFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -538,7 +534,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -583,7 +579,6 @@ export const productFields = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -653,7 +648,6 @@ export const productFields = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
 				displayName: 'Categories',
@@ -670,7 +664,7 @@ export const productFields = [
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
@@ -838,7 +832,6 @@ export const productFields = [
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -876,7 +869,6 @@ export const productFields = [
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -897,7 +889,6 @@ export const productFields = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -929,7 +920,7 @@ export const productFields = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
@@ -945,14 +936,14 @@ export const productFields = [
 				default: '',
 				description: 'Product weight.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Dimensions',
 		name: 'dimensionsUi',
 		placeholder: 'Add Dimension',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -963,7 +954,7 @@ export const productFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Product dimensions',
@@ -1002,7 +993,7 @@ export const productFields = [
 		name: 'imagesUi',
 		placeholder: 'Add Image',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1013,7 +1004,7 @@ export const productFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Product Image',
@@ -1052,7 +1043,7 @@ export const productFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1063,7 +1054,7 @@ export const productFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -1108,7 +1099,6 @@ export const productFields = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   product:getAll                           */
@@ -1410,7 +1400,7 @@ export const productFields = [
 				default: 'simple',
 				description: 'Product type',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   product:delete                           */
@@ -1430,6 +1420,5 @@ export const productFields = [
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
-] as INodeProperties[];
+];

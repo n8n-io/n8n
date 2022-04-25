@@ -1,0 +1,32 @@
+{
+	"node": "n8n-nodes-base.lingvaNex",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Miscellaneous"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/lingvaNex"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.lingvaNex/"
+			}
+		],
+		"generic": [
+			{
+				"label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n",
+				"icon": "🎯",
+				"url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/"
+			},
+			{
+				"label": "Celebrating World Poetry Day with a daily poem in Telegram",
+				"icon": "📜",
+				"url": "https://n8n.io/blog/world-poetry-day-workflow/"
+			}
+		]
+	}
+}

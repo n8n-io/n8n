@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const collectionOperations = [
+export const collectionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const collectionOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const collectionFields = [
+export const collectionFields: INodeProperties[] = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
@@ -51,7 +51,7 @@ export const collectionFields = [
 			},
 		},
 		required: true,
-		description: 'Name of the collection to operate on.'
+		description: 'Name of the collection to operate on.',
 	},
 
 	// Collection:entry:getAll
@@ -109,7 +109,7 @@ export const collectionFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		options: [
@@ -122,7 +122,7 @@ export const collectionFields = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '_id,name',
-				description: 'Comma separated list of fields to get.',
+				description: 'Comma-separated list of fields to get.',
 			},
 			{
 				displayName: 'Filter Query',
@@ -133,7 +133,7 @@ export const collectionFields = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '{"name": "Jim"}',
-				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
+				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
 			},
 			{
 				displayName: 'Language',
@@ -170,7 +170,7 @@ export const collectionFields = [
 				type: 'json',
 				default: '',
 				placeholder: '{"price": -1}',
-				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
+				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
 			},
 		],
 	},
@@ -189,10 +189,9 @@ export const collectionFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'The entry ID.',
 	},
 
 	// Collection:entry:create
@@ -210,7 +209,7 @@ export const collectionFields = [
 				operation: [
 					'create',
 					'update',
-				]
+				],
 			},
 		},
 		description: 'If new entry fields should be set via the value-key pair UI or JSON.',
@@ -234,7 +233,7 @@ export const collectionFields = [
 				operation: [
 					'create',
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Entry data to send as JSON.',
@@ -258,7 +257,7 @@ export const collectionFields = [
 				operation: [
 					'create',
 					'update',
-				]
+				],
 			},
 		},
 		options: [
@@ -285,4 +284,4 @@ export const collectionFields = [
 		],
 		description: 'Entry data to send.',
 	},
-] as INodeProperties[];
+];

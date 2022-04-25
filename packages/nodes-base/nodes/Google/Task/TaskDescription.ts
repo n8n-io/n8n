@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,14 +39,14 @@ export const taskOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
-] as INodeProperties[];
+	},
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -76,6 +76,16 @@ export const taskFields = [
 		type: 'string',
 		default: '',
 		description: 'Title of the task.',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'task',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -91,7 +101,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -148,7 +158,7 @@ export const taskFields = [
 					{
 						name: 'Completed',
 						value: 'completed',
-					}
+					},
 				],
 				default: '',
 				description: 'Current status of the task.',
@@ -215,7 +225,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -295,7 +305,7 @@ export const taskFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100
+			maxValue: 100,
 		},
 		default: 20,
 		description: 'How many results to return.',
@@ -350,21 +360,21 @@ export const taskFields = [
 				name: 'showCompleted',
 				type: 'boolean',
 				default: true,
-				description: 'Flag indicating whether completed tasks are returned in the result',
+				description: 'Flag indicating whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google\'s mobile apps.',
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether deleted tasks are returned in the result',
+				description: 'Flag indicating whether deleted tasks are returned in the result.',
 			},
 			{
 				displayName: 'Show Hidden',
 				name: 'showHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether hidden tasks are returned in the result',
+				description: 'Flag indicating whether hidden tasks are returned in the result.',
 			},
 			{
 				displayName: 'Updated Min',
@@ -373,7 +383,7 @@ export const taskFields = [
 				default: '',
 				description: 'Lower bound for a task last modification time (as a RFC 3339 timestamp) to filter by.',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:update                                */
@@ -429,7 +439,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -446,6 +456,13 @@ export const taskFields = [
 				type: 'boolean',
 				default: false,
 				description: 'Flag indicating whether the task has been deleted.',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Due date of the task.',
 			},
 			{
 				displayName: 'Notes',
@@ -476,7 +493,7 @@ export const taskFields = [
 					{
 						name: 'Completed',
 						value: 'completed',
-					}
+					},
 				],
 				default: '',
 				description: 'Current status of the task.',
@@ -490,4 +507,4 @@ export const taskFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

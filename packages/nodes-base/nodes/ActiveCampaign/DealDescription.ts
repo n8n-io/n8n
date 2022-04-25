@@ -1,8 +1,16 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-import { allCurrencies } from './currencies';
+import {
+	allCurrencies,
+} from './currencies';
 
-export const dealOperations = [
+import {
+	activeCampaignDefaultGetAllProperties,
+} from './GenericFunctions';
+
+export const dealOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -55,9 +63,9 @@ export const dealOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const dealFields = [
+export const dealFields: INodeProperties[] = [
 	// ----------------------------------
 	//         deal:create
 	// ----------------------------------
@@ -224,7 +232,7 @@ export const dealFields = [
 				default: 0,
 				description: 'The status of the deal',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -337,7 +345,7 @@ export const dealFields = [
 				default: 0,
 				description: 'The status of the deal',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -387,47 +395,7 @@ export const dealFields = [
 	// ----------------------------------
 	//         deal:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deal',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deal',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
+	...activeCampaignDefaultGetAllProperties('deal', 'getAll'),
 
 	// ----------------------------------
 	//         dealNote:create
@@ -526,4 +494,4 @@ export const dealFields = [
 		description: 'The content of the deal note',
 	},
 
-] as INodeProperties[];
+];

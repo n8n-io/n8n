@@ -9,8 +9,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -34,7 +34,6 @@ export class JotFormTrigger implements INodeType {
 		description: 'Handle JotForm events via webhooks',
 		defaults: {
 			name: 'JotForm Trigger',
-			color: '#fa8900',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -42,7 +41,7 @@ export class JotFormTrigger implements INodeType {
 			{
 				name: 'jotFormApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -59,7 +58,7 @@ export class JotFormTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getForms'
+					loadOptionsMethod: 'getForms',
 				},
 				default: '',
 				description: '',
@@ -69,7 +68,7 @@ export class JotFormTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data use internal keys instead of the names.<br />If this option gets activated it will resolve the keys automatically to the actual names.',
+				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
 				displayName: 'Only Answers',
@@ -123,7 +122,7 @@ export class JotFormTrigger implements INodeType {
 
 					const webhookIds = Object.keys(responseData.content);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -167,7 +166,7 @@ export class JotFormTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm();
+		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
 

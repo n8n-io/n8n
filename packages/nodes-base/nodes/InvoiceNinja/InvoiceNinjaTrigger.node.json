@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.invoiceNinjaTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Finance & Accounting"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/invoiceNinja"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.invoiceNinjaTrigger/"
+			}
+		]
+	}
+}
