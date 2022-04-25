@@ -108,7 +108,6 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	getCredentialForUser,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
