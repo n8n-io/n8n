@@ -806,6 +806,9 @@ export default mixins(
 					const lastSelectedNode = this.lastSelectedNode;
 
 					if (lastSelectedNode !== null) {
+						if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnly) {
+							return;
+						}
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
