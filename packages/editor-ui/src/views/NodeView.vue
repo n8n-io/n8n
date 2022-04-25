@@ -2908,12 +2908,14 @@ export default mixins(
   display: flex;
 
 	.add-sticky-button {
-		visibility: hidden;
+		opacity: 0;
+		transition: .1s;
+		transition-timing-function: linear;
 	}
 
 	&:hover {
 		.add-sticky-button {
-			visibility: visible;
+			opacity: 1;
 		}
 	}
 }
