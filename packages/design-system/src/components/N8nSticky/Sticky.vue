@@ -1,54 +1,54 @@
 <template>
-  <div
-    :class="{[$style.sticky]: true, [$style.clickable]: !isResizing}"
-    :style="styles"
+	<div
+		:class="{[$style.sticky]: true, [$style.clickable]: !isResizing}"
+		:style="styles"
 		@keydown.prevent
-  >
-    <resize
-      :isResizingEnabled="!readOnly"
+	>
+		<resize
+			:isResizingEnabled="!readOnly"
 			:height="height"
 			:width="width"
 			:minHeight="minHeight"
 			:minWidth="minWidth"
 			:scale="scale"
 			:gridSize="gridSize"
-      @resizeend="onResizeEnd"
-      @resize="onResize"
-      @resizestart="onResizeStart"
-    >
-      <template>
-        <div
-          v-show="!editMode"
-          :class="$style.wrapper"
-          @dblclick.stop="onDoubleClick"
-        >
-          <n8n-markdown
-            theme="sticky"
+			@resizeend="onResizeEnd"
+			@resize="onResize"
+			@resizestart="onResizeStart"
+		>
+			<template>
+				<div
+					v-show="!editMode"
+					:class="$style.wrapper"
+					@dblclick.stop="onDoubleClick"
+				>
+					<n8n-markdown
+						theme="sticky"
 						:content="content"
 						:withMultiBreaks="true"
-          />
-        </div>
-        <div
-          v-show="editMode"
+					/>
+				</div>
+				<div
+					v-show="editMode"
 					@click.stop
 					@mousedown.stop
 					@mouseup.stop
 					@keydown.esc="onInputBlur"
 					@keydown.stop
 					@wheel.stop
-          class="sticky-textarea"
-          :class="{'full-height': !shouldShowFooter}"
-        >
-          <n8n-input
-            :value="content"
-            type="textarea"
-            :rows="5"
-            @blur="onInputBlur"
-            @input="onInput"
+					class="sticky-textarea"
+					:class="{'full-height': !shouldShowFooter}"
+				>
+					<n8n-input
+						:value="content"
+						type="textarea"
+						:rows="5"
+						@blur="onInputBlur"
+						@input="onInput"
 						ref="input"
-          />
+					/>
 
-        </div>
+				</div>
 				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
 					<n8n-text
 						size="xsmall"
@@ -57,9 +57,9 @@
 						<span v-html="t('sticky.markdownHint')"></span>
 					</n8n-text>
 				</div>
-      </template>
-    </resize>
-  </div>
+			</template>
+		</resize>
+	</div>
 </template>
 
 <script lang="ts">
@@ -194,59 +194,59 @@ export default mixins(Locale).extend({
 
 <style lang="scss" module>
 .sticky {
-  position: absolute;
-  background-color: var(--color-sticky-default-background);
-  border: 1px solid var(--color-sticky-default-border);
-  border-radius: var(--border-radius-base);
+	position: absolute;
+	background-color: var(--color-sticky-default-background);
+	border: 1px solid var(--color-sticky-default-border);
+	border-radius: var(--border-radius-base);
 }
 
 .clickable {
-  cursor: pointer;
+	cursor: pointer;
 }
 
 .wrapper {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  padding: var(--spacing-2xs) var(--spacing-xs) 0;
-  overflow: hidden;
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	padding: var(--spacing-2xs) var(--spacing-xs) 0;
+	overflow: hidden;
 
-  &::after {
-    content: '';
-    width: 100%;
-    height: 24px;
-    left: 0;
-    bottom: 0;
-    position: absolute;
-    background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
-    border-radius: var(--border-radius-base);
-  }
+	&::after {
+		content: '';
+		width: 100%;
+		height: 24px;
+		left: 0;
+		bottom: 0;
+		position: absolute;
+		background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .footer {
-  padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
-  display: flex;
-  justify-content: flex-end;
+	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	display: flex;
+	justify-content: flex-end;
 }
 </style>
 
 <style lang="scss">
 .sticky-textarea {
-  height: calc(100% - var(--spacing-l));
-  padding: var(--spacing-2xs) var(--spacing-2xs) 0 var(--spacing-2xs);
-  cursor: default;
+	height: calc(100% - var(--spacing-l));
+	padding: var(--spacing-2xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	cursor: default;
 
-  .el-textarea {
-    height: 100%;
+	.el-textarea {
+		height: 100%;
 
-    .el-textarea__inner {
-      height: 100%;
-      resize: unset;
-    }
-  }
+		.el-textarea__inner {
+			height: 100%;
+			resize: unset;
+		}
+	}
 }
 
 .full-height {
-  height: calc(100% - var(--spacing-2xs));
+	height: calc(100% - var(--spacing-2xs));
 }
 </style>

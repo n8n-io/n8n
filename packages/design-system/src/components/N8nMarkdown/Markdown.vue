@@ -1,10 +1,10 @@
 <template>
-  <div>
-    <div
-      v-if="!loading"
-      ref="editor"
-      :class="$style[theme]" v-html="htmlContent"
-    />
+	<div>
+		<div
+			v-if="!loading"
+			ref="editor"
+			:class="$style[theme]" v-html="htmlContent"
+		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
 				:key="index">
@@ -231,54 +231,54 @@ export default {
 }
 
 .sticky {
-  color: var(--color-text-dark);
+	color: var(--color-text-dark);
 
-  h1, h2, h3, h4 {
-    margin-bottom: var(--spacing-2xs);
-    font-weight: var(--font-weight-bold);
-    line-height: var(--font-line-height-loose);
-  }
+	h1, h2, h3, h4 {
+		margin-bottom: var(--spacing-2xs);
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-height-loose);
+	}
 
-  h1 {
-    font-size: 36px;
-  }
+	h1 {
+		font-size: 36px;
+	}
 
-  h2 {
-    font-size: 24px;
-  }
+	h2 {
+		font-size: 24px;
+	}
 
-  h3, h4, h5, h6 {
-    font-size: var(--font-size-m);
-  }
+	h3, h4, h5, h6 {
+		font-size: var(--font-size-m);
+	}
 
-  p {
-    margin-bottom: var(--spacing-2xs);
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-regular);
-    line-height: var(--font-line-height-loose);
-  }
+	p {
+		margin-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-line-height-loose);
+	}
 
-  ul, ol {
-    margin-bottom: var(--spacing-2xs);
-    padding-left: var(--spacing-m);
+	ul, ol {
+		margin-bottom: var(--spacing-2xs);
+		padding-left: var(--spacing-m);
 
-    li {
-      margin-top: 0.25em;
-      font-size: var(--font-size-s);
-      font-weight: var(--font-weight-regular);
-      line-height: var(--font-line-height-regular);
-    }
-  }
+		li {
+			margin-top: 0.25em;
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-regular);
+			line-height: var(--font-line-height-regular);
+		}
+	}
 
-  code {
+	code {
 		background-color: var(--color-background-base);
-    padding: 0 var(--spacing-4xs);
-    color: #5C4EC2;
-  }
+		padding: 0 var(--spacing-4xs);
+		color: #5C4EC2;
+	}
 
-  pre > code,li > code, p > code {
-    color: #5C4EC2;
-  }
+	pre > code,li > code, p > code {
+		color: #5C4EC2;
+	}
 
 	a {
 		&:hover {
