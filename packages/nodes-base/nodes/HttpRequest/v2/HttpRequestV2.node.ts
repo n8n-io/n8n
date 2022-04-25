@@ -96,34 +96,22 @@ export class HttpRequestV2 implements INodeType {
 		if (authenticateWith === 'genericAuth') {
 			try {
 				httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (_) {}
 			try {
 				httpDigestAuth = await this.getCredentials('httpDigestAuth');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (_) {}
 			try {
 				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (_) {}
 			try {
 				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (_) {}
 			try {
 				oAuth1Api = await this.getCredentials('oAuth1Api');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (_) {}
 			try {
 				oAuth2Api = await this.getCredentials('oAuth2Api');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (_) {}
 		} else if (authenticateWith === 'nodeCredential') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
