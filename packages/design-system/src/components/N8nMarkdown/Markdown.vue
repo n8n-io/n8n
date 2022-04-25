@@ -273,11 +273,11 @@ export default {
 	code {
 		background-color: var(--color-background-base);
 		padding: 0 var(--spacing-4xs);
-		color: #5C4EC2;
+		color: var(--color-secondary);
 	}
 
 	pre > code,li > code, p > code {
-		color: #5C4EC2;
+		color: var(--color-secondary);
 	}
 
 	a {
