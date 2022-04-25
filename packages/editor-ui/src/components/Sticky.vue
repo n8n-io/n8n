@@ -167,7 +167,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
  	},
 	data () {
 		return {
-			dragging: false,
 			isResizing: false,
 			isTouchActive: false,
 		};
