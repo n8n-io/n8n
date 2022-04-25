@@ -715,6 +715,10 @@ export default mixins(
 					return;
 				}
 
+				// node modal is open
+				if (this.activeNode) {
+					return;
+				}
 
 				if (e.key === 'd') {
 					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
