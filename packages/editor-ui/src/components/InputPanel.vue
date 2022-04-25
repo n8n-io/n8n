@@ -9,9 +9,9 @@
 			<div :class="$style.titleSection">
 				<n8n-select size="small" v-model="selectedNode">
 					<template slot="prepend">
-						<span :class="$style.title">{{ $locale.baseText('node.input') }}</span>
+						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option :label="$locale.baseText('node.input.immediate')" :value="IMMEDIATE_KEY" :key="IMMEDIATE_KEY"></n8n-option>
+					<n8n-option :label="$locale.baseText('ndv.input.immediate')" :value="IMMEDIATE_KEY" :key="IMMEDIATE_KEY"></n8n-option>
 					<n8n-option v-for="node in workflowNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 			</div>
