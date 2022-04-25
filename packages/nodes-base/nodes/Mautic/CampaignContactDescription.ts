@@ -53,7 +53,6 @@ export const campaignContactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 
@@ -76,7 +75,6 @@ export const campaignContactFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCampaigns',
 		},
 		default: '',
-		description: 'Campaign ID',
 
 	},
 ];

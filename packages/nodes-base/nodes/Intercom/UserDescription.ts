@@ -326,7 +326,6 @@ export const userFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -446,7 +445,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Unsubscribed From Emails',
 				name: 'unsubscribedFromEmails',
 				type: 'boolean',
-				default: '',
+				default: false,
 				placeholder: '',
 				description: 'Whether the user is unsubscribed from emails',
 			},
@@ -524,7 +523,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Attribute',
 		typeOptions: {
 			multipleValues: true,

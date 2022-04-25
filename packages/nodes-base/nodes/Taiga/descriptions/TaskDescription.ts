@@ -123,7 +123,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the task is blocked. Requires "Is Blocked" toggle to be enabled',
+				description: 'Reason why the task is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -512,7 +512,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the task is blocked. Requires "Is Blocked" toggle to be enabled',
+				description: 'Reason why the task is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',

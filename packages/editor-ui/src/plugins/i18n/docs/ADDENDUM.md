@@ -34,14 +34,14 @@ When translating a string containing an interpolated variable, leave the variabl
 
 ### Reusable base text
 
-As a convenience, the base text file may contain the special key `reusableBaseText`, which defines strings that can be shared among other strings with the syntax `@:reusableBaseText.key`, as follows:
+As a convenience, the base text file may contain the special key `_reusableBaseText`, which defines strings that can be shared among other strings with the syntax `@:_reusableBaseText.key`, as follows:
 
 ```json
 {
-	"reusableBaseText.save": "🇩🇪 Save",
+	"_reusableBaseText.save": "🇩🇪 Save",
 	"duplicateWorkflowDialog.enterWorkflowName": "🇩🇪 Enter workflow name",
-	"duplicateWorkflowDialog.save": "@:reusableBaseText.save",
-	"saveButton.save": "@:reusableBaseText.save",
+	"duplicateWorkflowDialog.save": "@:_reusableBaseText.save",
+	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saving": "🇩🇪 Saving",
 	"saveButton.saved": "🇩🇪 Saved",
 }
@@ -92,8 +92,8 @@ Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported 
 
 ```json
 {
-	"reusableDynamicText.oauth2.clientId": "🇩🇪 Client ID",
-	"reusableDynamicText.oauth2.clientSecret": "🇩🇪 Client Secret",
+	"_reusableDynamicText.oauth2.clientId": "🇩🇪 Client ID",
+	"_reusableDynamicText.oauth2.clientSecret": "🇩🇪 Client Secret",
 }
 ```
 

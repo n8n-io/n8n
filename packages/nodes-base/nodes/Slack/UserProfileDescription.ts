@@ -126,7 +126,7 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'status_expiration',
 				type: 'dateTime',
 				default: '',
-				description: `is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire`,
+				description: 'is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
 			},
 			{
 				displayName: 'Status Text',

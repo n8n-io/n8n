@@ -56,7 +56,6 @@ export const accountContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Account ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -74,7 +73,6 @@ export const accountContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Additional Fields',

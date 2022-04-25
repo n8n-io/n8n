@@ -183,6 +183,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
 		description: 'Return a simplified version of the response instead of the raw data.',
 	},
@@ -206,7 +207,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Condition',
 		options: [
 			{
@@ -319,7 +320,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Options',
@@ -389,7 +389,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -539,7 +538,6 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Email',
 							},
 						],
 					},
@@ -769,7 +767,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -855,7 +852,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -1003,7 +999,6 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Email',
 							},
 						],
 					},
@@ -1233,7 +1228,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},
