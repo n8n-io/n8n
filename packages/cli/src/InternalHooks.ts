@@ -92,8 +92,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 			workflow_id: workflow.id,
 			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
-			notes_overlapping_count: overlappingCount,
-			notes_non_overlapping_count: notesCount - overlappingCount,
+			notes_count_overlapping: overlappingCount,
+			notes_count_non_overlapping: notesCount - overlappingCount,
 			version_cli: this.versionCli,
 			num_tags: workflow.tags?.length ?? 0,
 		});
