@@ -209,6 +209,7 @@ export default mixins(Locale).extend({
   height: 100%;
   position: absolute;
   padding: var(--spacing-2xs) var(--spacing-xs) 0;
+  overflow: hidden;
 
   &::after {
     content: '';

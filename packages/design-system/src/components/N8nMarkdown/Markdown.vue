@@ -1,9 +1,9 @@
 <template>
-  <div :class="theme === 'markdown' ? '' : $style.overflow">
+  <div>
     <div
       v-if="!loading"
       ref="editor"
-      :class="theme === 'markdown' ? $style.markdown : $style.sticky" v-html="htmlContent"
+      :class="$style[theme]" v-html="htmlContent"
     />
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
@@ -159,11 +159,6 @@ export default {
 </script>
 
 <style lang="scss" module>
-.overflow {
-  height: 100%;
-  overflow: hidden;
-}
-
 .markdown {
 	color: var(--color-text-base);
 
