@@ -2903,11 +2903,11 @@ export default mixins(
 
 .node-buttons-wrapper {
 	position: fixed;
-  width: 150px;
-  height: 200px;
+	width: 150px;
+	height: 200px;
 	top: 0;
-  right: 0;
-  display: flex;
+	right: 0;
+	display: flex;
 
 	.add-sticky-button {
 		opacity: 0;
