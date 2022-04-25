@@ -1,4 +1,4 @@
-import { INodeTypeDescription } from "n8n-workflow";
+import { INodeTypeDescription } from 'n8n-workflow';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'HTTP Request',

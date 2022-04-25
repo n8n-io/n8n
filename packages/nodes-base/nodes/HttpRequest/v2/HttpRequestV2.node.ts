@@ -52,12 +52,12 @@ export class HttpRequestV2 implements INodeType {
 
 					if (!isSupportedByHttpRequestNode(credType)) return acc;
 
-					const CredClass = require(path.resolve(nodesBaseRoot, credPath))[credType];
+					const credClass = require(path.resolve(nodesBaseRoot, credPath))[credType];
 
 					return [
 						...acc,
 						{
-							name: new CredClass().displayName,
+							name: new credClass().displayName,
 							value: credType,
 					 	},
 					];
