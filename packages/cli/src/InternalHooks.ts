@@ -85,7 +85,9 @@ export class InternalHooksClass implements IInternalHooksClass {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		const notesCount = Object.keys(nodeGraph.notes).length;
-		const overlappingCount = Object.values(nodeGraph.notes).filter((note) => note.type === 'overlapping').length;
+		const overlappingCount = Object.values(nodeGraph.notes).filter(
+			(note) => note.overlapping,
+		).length;
 
 		return this.telemetry.track('User saved workflow', {
 			user_id: userId,

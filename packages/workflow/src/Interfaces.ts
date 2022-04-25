@@ -1422,8 +1422,10 @@ export interface INotesGraphNode {
 }
 
 export interface INoteGraphItem {
-	type: 'overlapping' | 'non_overlapping';
+	overlapping: boolean;
 	position: [number, number];
+	height: number;
+	width: number;
 }
 
 export interface INodeGraphItem {

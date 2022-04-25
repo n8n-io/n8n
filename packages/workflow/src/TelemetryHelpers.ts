@@ -23,25 +23,41 @@ export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
 
-function areOverlapping(note: INode, stickyType: INodeType | undefined, node: INode): boolean {
-	const heightProperty = stickyType?.description.properties.find((property) => property.name === 'height');
-	const widthProperty = stickyType?.description.properties.find((property) => property.name === 'width');
+function getStickyDimensions(note: INode, stickyType: INodeType | undefined) {
+	const heightProperty = stickyType?.description.properties.find(
+		(property) => property.name === 'height',
+	);
+	const widthProperty = stickyType?.description.properties.find(
+		(property) => property.name === 'width',
+	);
 
-	const defaultHeight = heightProperty && isNumber(heightProperty?.default) ? heightProperty.default : 0;
-	const defaultWidth = widthProperty && isNumber(widthProperty?.default) ? widthProperty.default : 0;
+	const defaultHeight =
+		heightProperty && isNumber(heightProperty?.default) ? heightProperty.default : 0;
+	const defaultWidth =
+		widthProperty && isNumber(widthProperty?.default) ? widthProperty.default : 0;
 
-	const height: number = isNumber(note.parameters.height)? note.parameters.height : defaultHeight;
-	const width: number = isNumber(note.parameters.width)? note.parameters.width : defaultWidth;
+	const height: number = isNumber(note.parameters.height) ? note.parameters.height : defaultHeight;
+	const width: number = isNumber(note.parameters.width) ? note.parameters.width : defaultWidth;
 
-	const topLeft = note.position;
-	const bottomRight = [topLeft[0] + width, topLeft[1] + height];
+	return {
+		height,
+		width,
+	};
+}
 
-	const targetPos = node.position;
+type XYPosition = [number, number];
 
-	return targetPos[0] > topLeft[0] &&
+function areOverlapping(
+	topLeft: XYPosition,
+	bottomRight: XYPosition,
+	targetPos: XYPosition,
+): boolean {
+	return (
+		targetPos[0] > topLeft[0] &&
 		targetPos[1] > topLeft[1] &&
 		targetPos[0] < bottomRight[0] &&
-		targetPos[1] < bottomRight[1];
+		targetPos[1] < bottomRight[1]
+	);
 }
 
 export function generateNodesGraph(
@@ -60,12 +76,20 @@ export function generateNodesGraph(
 		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
 		const otherNodes = workflow.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 
-		notes.forEach((note: INode, index: number) => {
-			const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, note.typeVersion);
-			const overlapping = otherNodes.find((node) => areOverlapping(note, stickyType, node));
+		notes.forEach((stickyNote: INode, index: number) => {
+			const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, stickyNote.typeVersion);
+			const { height, width } = getStickyDimensions(stickyNote, stickyType);
+
+			const topLeft = stickyNote.position;
+			const bottomRight: [number, number] = [topLeft[0] + width, topLeft[1] + height];
+			const overlapping = Boolean(
+				otherNodes.find((node) => areOverlapping(topLeft, bottomRight, node.position)),
+			);
 			nodesGraph.notes[index] = {
-				type: overlapping ? 'overlapping' : 'non_overlapping',
-				position: note.position,
+				overlapping,
+				position: topLeft,
+				height,
+				width,
 			};
 		});
 
