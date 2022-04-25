@@ -342,6 +342,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal as INodeParameters,
 			true,
 			false,
+			null,
 		) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
@@ -562,7 +563,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			parameters: {},
 			name: 'Temp-Node',
 			type: nodeType.description.name,
-			typeVersion: nodeType.description.version,
+			// TODO: What it should really do is to get the version from UI
+			typeVersion: Array.isArray(nodeType.description.version)
+				? nodeType.description.version.slice(-1)[0]
+				: nodeType.description.version,
 			position: [0, 0],
 		};
 

@@ -15,7 +15,7 @@ export class Set implements INodeType {
 		name: 'set',
 		icon: 'fa:pen',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		description: 'Sets values on items and optionally remove other values',
 		defaults: {
 			name: 'Set',
@@ -24,6 +24,32 @@ export class Set implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Display V1',
+				name: 'versionTest',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+				default: 1,
+			},
+			{
+				displayName: 'Display V2',
+				name: 'versionTest',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
+				default: 2,
+			},
 			{
 				displayName: 'Keep Only Set',
 				name: 'keepOnlySet',
@@ -186,6 +212,8 @@ export class Set implements INodeType {
 					set(newItem.json, setItem.name as string, setItem.value);
 				}
 			});
+
+			newItem.json.versionTest = this.getNodeParameter('versionTest', itemIndex);
 
 			returnData.push(newItem);
 		}
