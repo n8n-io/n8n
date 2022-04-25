@@ -1,10 +1,10 @@
 <template>
 	<div class="sticky-wrapper" :style="stickyPosition">
-		<div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
 		<div
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
 		>
+			<div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
 			<div
 				class="sticky-box"
 				:data-name="data.name"
@@ -112,19 +112,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		width(): number {
 			return this.node && isNumber(this.node.parameters.width)? this.node.parameters.width : 0;
-		},
-		selectedStickyStyle (): object {
-			const returnStyles: {
-				[key: string]: string | number;
-			} = {
-				height: this.height + 16 + 'px',
-				width: this.width + 16 + 'px',
-				left: '-8px',
-				top: '-8px',
-				zIndex: 0,
-			};
-
-			return returnStyles;
 		},
 		stickySize(): object {
 			const returnStyles: {
@@ -308,5 +295,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
+	height: calc(100% + 16px);
+	width: calc(100% + 16px);
+	left: -8px;
+	top: -8px;
+	z-index: 0;
 }
 </style>
