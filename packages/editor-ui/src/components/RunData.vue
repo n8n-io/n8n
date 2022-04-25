@@ -781,14 +781,6 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode (newValue, oldValue) {
-				this.closeBinaryDataDisplay();
-				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
-				if(this.node) {
-					const nodeType = this.node ? this.node.type : '';
-					this.$telemetry.track('User changed node output view mode', { old_mode: oldValue, new_mode: newValue, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
-				}
-			},
 		},
 	});
 </script>
@@ -823,22 +815,6 @@ export default mixins(
 	display: flex;
 	justify-content: center;
 	margin-bottom: var(--spacing-s);
-}
-
-.title {
-	text-transform: uppercase;
-	color: var(--color-text-light);
-	letter-spacing: 3px;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
-}
-
-.titleSection {
-	display: flex;
-
-	> * {
-		margin-right: var(--spacing-2xs);
-	}
 }
 
 .container {
