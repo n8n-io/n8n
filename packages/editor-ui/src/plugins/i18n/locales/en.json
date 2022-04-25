@@ -297,6 +297,8 @@
 	"ndv.execute.executing": "Executing",
 	"ndv.execute.fetchEvent": "Fetch Event",
 	"ndv.execute.listenForEvent": "Listen For Event",
+	"ndv.input": "Input",
+	"ndv.input.immediate": "Immediate",
 	"ndv.output": "Output",
 	"ndv.output.all": "all",
 	"ndv.output.branch": "Branch",
