@@ -50,7 +50,7 @@ export class Flow implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-						description: `Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones`,
+						description: 'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
 					},
 				],
 				default: 'task',
@@ -66,7 +66,7 @@ export class Flow implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

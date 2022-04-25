@@ -85,7 +85,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'Select Fields...',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -363,7 +363,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Update Key',
@@ -488,7 +488,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Update Key',

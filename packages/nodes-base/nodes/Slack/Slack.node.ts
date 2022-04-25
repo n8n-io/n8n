@@ -294,7 +294,7 @@ export class Slack implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 		const authentication = this.getNodeParameter('authentication', 0) as string;

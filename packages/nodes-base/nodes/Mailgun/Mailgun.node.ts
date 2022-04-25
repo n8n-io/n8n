@@ -97,7 +97,7 @@ export class Mailgun implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma-separated.',
 			},
 		],
 	};
@@ -107,7 +107,7 @@ export class Mailgun implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {

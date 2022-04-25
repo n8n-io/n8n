@@ -366,7 +366,7 @@ export const channelFields: INodeProperties[] = [
 								displayName: 'Channel',
 								name: 'channel',
 								type: 'collection',
-								default: '',
+								default: {},
 								placeholder: 'Add Channel Settings',
 								typeOptions: {
 									multipleValues: false,
@@ -482,7 +482,7 @@ export const channelFields: INodeProperties[] = [
 								displayName: 'Image',
 								name: 'image',
 								type: 'collection',
-								default: '',
+								default: {},
 								placeholder: 'Add Channel Settings',
 								description: `The image object encapsulates information about images that display on the channel's channel page or video watch pages.`,
 								typeOptions: {
@@ -519,7 +519,7 @@ export const channelFields: INodeProperties[] = [
 								displayName: 'Status',
 								name: 'status',
 								type: 'collection',
-								default: '',
+								default: {},
 								placeholder: 'Add Status',
 								typeOptions: {
 									multipleValues: false,
