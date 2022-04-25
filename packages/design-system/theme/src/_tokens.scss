@@ -70,13 +70,6 @@
 		var(--color-secondary-l)
 	);
 
-	--color-secondary-tint-1-l: 92%;
-	--color-secondary-tint-1: hsl(
-		var(--color-secondary-h),
-		var(--color-secondary-s),
-		var(--color-secondary-tint-1-l)
-	);
-
 	--color-success-h: 150.4;
 	--color-success-s: 60%;
 	--color-success-l: 40.4%;
@@ -339,6 +332,24 @@
 	--color-json-brackets-hover: #1890ff;
 	--color-json-line: #bfcbd9;
 	--color-json-highlight: #E2E5EE;
+
+	--color-sticky-default-background-h: 46;
+	--color-sticky-default-background-s: 100%;
+	--color-sticky-default-background-l: 92%;
+	--color-sticky-default-background: hsl(
+		var(--color-sticky-default-background-h),
+		var(--color-sticky-default-background-s),
+		var(--color-sticky-default-background-l)
+	);
+
+	--color-sticky-default-border-h: 43;
+	--color-sticky-default-border-s: 75%;
+	--color-sticky-default-border-l: 80%;
+	--color-sticky-default-border: hsl(
+		var(--color-sticky-default-border-h),
+		var(--color-sticky-default-border-s),
+		var(--color-sticky-default-border-l)
+	);
 
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;

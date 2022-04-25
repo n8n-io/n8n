@@ -190,7 +190,6 @@ export const mouseSelect = mixins(
 			this.$store.commit('resetSelectedNodes');
 			this.$store.commit('setLastSelectedNode', null);
 			this.$store.commit('setLastSelectedNodeOutputIndex', null);
-			this.$store.commit('setActiveNode', null);
 			// @ts-ignore
 			this.lastSelectedConnection = null;
 			// @ts-ignore

@@ -76,7 +76,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -218,7 +217,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Binary Property',
@@ -276,8 +274,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The query text used to search for items. Values may be matched
-		across several fields including filename, metadata, and file content.`,
+		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:share                                 */
@@ -297,7 +294,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Type',

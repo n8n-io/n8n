@@ -169,7 +169,7 @@ const typeMention: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: `An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date`,
+		description: 'An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.',
 	},
 	{
 		displayName: 'User ID',
@@ -282,7 +282,7 @@ const typeMention: INodeProperties[] = [
 		},
 		type: 'dateTime',
 		default: '',
-		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
+		description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 	},
 ];
 
@@ -299,7 +299,6 @@ const typeEquation: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 ];
 
@@ -316,8 +315,7 @@ const typeText: INodeProperties[] = [
 		},
 		type: 'string',
 		default: '',
-		description: `Text content. This field contains the actual content
-		of your text and is probably the field you'll use most often`,
+		description: 'Text content. This field contains the actual content of your text and is probably the field you\'ll use most often',
 	},
 	{
 		displayName: 'Is Link',
@@ -357,7 +355,7 @@ export const text = (displayOptions: IDisplayOptions): INodeProperties[] => [
 		name: 'text',
 		placeholder: 'Add Text',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -386,7 +384,6 @@ export const text = (displayOptions: IDisplayOptions): INodeProperties[] => [
 							},
 						],
 						default: 'text',
-						description: '',
 					},
 					...typeText,
 					...typeMention,
@@ -526,7 +523,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 	typeOptions: {
 		multipleValues: true,
 	},
-	default: '',
+	default: {},
 	displayOptions: {
 		show: {
 			resource: [

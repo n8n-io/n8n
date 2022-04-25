@@ -174,7 +174,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
+				description: 'The id of the user\'s organization. If the user has more than one organization memberships, the id of the user\'s default organization.',
 			},
 			{
 				displayName: 'Phone',
@@ -223,14 +223,14 @@ export const userFields: INodeProperties[] = [
 				name: 'signature',
 				type: 'string',
 				default: '',
-				description: `The user's signature. Only agents and admins can have signatures`,
+				description: 'The user\'s signature. Only agents and admins can have signatures.',
 			},
 			{
 				displayName: 'Suspended',
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: `If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal`,
+				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tags',
@@ -338,7 +338,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -438,7 +437,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
+				description: 'The id of the user\'s organization. If the user has more than one organization memberships, the id of the user\'s default organization.',
 			},
 			{
 				displayName: 'Phone',
@@ -487,14 +486,14 @@ export const userFields: INodeProperties[] = [
 				name: 'signature',
 				type: 'string',
 				default: '',
-				description: `The user's signature. Only agents and admins can have signatures`,
+				description: 'The user\'s signature. Only agents and admins can have signatures.',
 			},
 			{
 				displayName: 'Suspended',
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: `If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal`,
+				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tags',
@@ -602,7 +601,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   user:getAll                              */
@@ -781,7 +779,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                             user:getRelatedData                            */

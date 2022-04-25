@@ -49,7 +49,6 @@ export const cameraProxyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The camera entity ID.',
 	},
 	{
 		displayName: 'Binary Property',

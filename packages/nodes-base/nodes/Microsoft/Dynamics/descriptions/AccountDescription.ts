@@ -178,7 +178,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Expand Fields',
@@ -187,7 +187,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getExpandableAccountFields',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -213,7 +213,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Query to filter the results. Check <a href="https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results" target="_blank">filters</a>',
+				description: 'Query to filter the results. Check <a href="https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results" target="_blank">filters</a>.',
 			},
 		],
 	},
@@ -266,7 +266,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
-				default: '',
+				default: [],
 				description: 'Fields the response will include',
 			},
 		],

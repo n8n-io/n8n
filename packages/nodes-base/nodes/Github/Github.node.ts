@@ -539,7 +539,6 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The commit message.',
 			},
 			{
 				displayName: 'Additional Parameters',
@@ -1144,7 +1143,6 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The release ID.',
 			},
 
 			// ----------------------------------
@@ -1631,7 +1629,6 @@ export class Github implements INodeType {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				placeholder: 'Add Field',
-				description: 'Additional fields.',
 				type: 'collection',
 				default: {},
 				displayOptions: {
