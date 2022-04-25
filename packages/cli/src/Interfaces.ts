@@ -72,16 +72,16 @@ export interface ICredentialsOverwrite {
 }
 
 export interface IDatabaseCollections {
-	Credentials: Repository<ICredentialsDb> | null;
-	Execution: Repository<IExecutionFlattedDb> | null;
-	Workflow: Repository<WorkflowEntity> | null;
-	Webhook: Repository<IWebhookDb> | null;
-	Tag: Repository<TagEntity> | null;
-	Role: Repository<Role> | null;
-	User: Repository<User> | null;
-	SharedCredentials: Repository<SharedCredentials> | null;
-	SharedWorkflow: Repository<SharedWorkflow> | null;
-	Settings: Repository<Settings> | null;
+	Credentials: Repository<ICredentialsDb>;
+	Execution: Repository<IExecutionFlattedDb>;
+	Workflow: Repository<WorkflowEntity>;
+	Webhook: Repository<IWebhookDb>;
+	Tag: Repository<TagEntity>;
+	Role: Repository<Role>;
+	User: Repository<User>;
+	SharedCredentials: Repository<SharedCredentials>;
+	SharedWorkflow: Repository<SharedWorkflow>;
+	Settings: Repository<Settings>;
 }
 
 export interface IWebhookDb {

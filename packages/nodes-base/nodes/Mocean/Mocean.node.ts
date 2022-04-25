@@ -206,7 +206,6 @@ export class Mocean implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'Delivery report URL',
 					},
 				],
 			},

@@ -165,8 +165,8 @@ export async function generateUniqueName(
 
 	const found: Array<WorkflowEntity | ICredentialsDb> =
 		entityType === 'workflow'
-			? await Db.collections.Workflow!.find(findConditions)
-			: await Db.collections.Credentials!.find(findConditions);
+			? await Db.collections.Workflow.find(findConditions)
+			: await Db.collections.Credentials.find(findConditions);
 
 	// name is unique
 	if (found.length === 0) {

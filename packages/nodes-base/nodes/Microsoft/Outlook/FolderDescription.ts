@@ -50,7 +50,6 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
-		description: 'Folder ID',
 		type: 'string',
 		required: true,
 		default: '',

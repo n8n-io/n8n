@@ -372,7 +372,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -396,7 +395,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -459,14 +458,13 @@ export const taskFields: INodeProperties[] = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status',
 			},
 			{
 				displayName: 'Start Date',
@@ -510,7 +508,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -943,7 +940,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -965,7 +961,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Return All',
@@ -1063,9 +1058,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed
-		if for example needed for labels which expects the value
-		to be an array.`,
+		description: 'The value is JSON and will be parsed as such. Is needed if for example needed for labels which expects the value to be an array.',
 	},
 	{
 		displayName: 'Value',

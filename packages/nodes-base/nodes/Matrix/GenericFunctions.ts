@@ -50,9 +50,6 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		let response: any; // tslint:disable-line:no-any
 
 		const credentials = await this.getCredentials('matrixApi');
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 		//@ts-ignore
 		options.uri = `${credentials.homeserverUrl}/_matrix/${option.overridePrefix || 'client'}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;

@@ -57,7 +57,6 @@ export class HubspotOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: 'Resource to consume.',
 		},
 	];
 }

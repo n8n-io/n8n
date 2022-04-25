@@ -14,7 +14,7 @@ import {
 
 export async function pushoverApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('pushoverApi') as IDataObject;
+	const credentials = await this.getCredentials('pushoverApi');
 
 	if (method === 'GET') {
 		qs.token = credentials.apiKey;

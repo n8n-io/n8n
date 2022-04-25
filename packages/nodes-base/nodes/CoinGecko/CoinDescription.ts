@@ -111,7 +111,6 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currency',
@@ -178,7 +177,6 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currencies',
@@ -275,7 +273,7 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The contract address of tokens, comma separated.',
+		description: 'The contract address of tokens, comma-separated.',
 	},
 	{
 		displayName: 'Base Currency',
@@ -488,7 +486,7 @@ export const coinFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'bitcoin',
 				default: '',
-				description: 'Filter results by comma separated list of coin ID.',
+				description: 'Filter results by comma-separated list of coin ID.',
 			},
 			{
 				displayName: 'Category',
@@ -669,7 +667,6 @@ export const coinFields: INodeProperties[] = [
 				name: 'include_exchange_logo',
 				type: 'boolean',
 				default: false,
-				description: 'Include exchange logo.',
 			},
 			{
 				displayName: 'Order',

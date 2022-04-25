@@ -95,7 +95,7 @@ export const salesOrderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX',
-				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs',
+				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.',
 			},
 			{
 				displayName: 'Customer Code',

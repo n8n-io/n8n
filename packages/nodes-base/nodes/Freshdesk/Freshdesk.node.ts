@@ -207,7 +207,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'requesterId',
-				description: 'Requester Identification',
 			},
 			{
 				displayName: 'Value',
@@ -261,7 +260,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'pending',
-				description: 'Status',
 			},
 			{
 				displayName: 'Priority',
@@ -297,7 +295,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'low',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Source',
@@ -407,7 +404,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 					},
 					{
 						displayName: 'Description',
@@ -432,8 +429,7 @@ export class Freshdesk implements INodeType {
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
-						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
-						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
+						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set',
 					},
 					{
 						displayName: 'FR Due By',
@@ -450,7 +446,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id.',
 					},
 					{
 						displayName: 'Name',
@@ -468,8 +464,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
-						description: `ID of the product to which the ticket is associated.
-						It will be ignored if the email_config_id attribute is set in the request.`,
+						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request.',
 					},
 					{
 						displayName: 'Subject',
@@ -607,7 +602,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			{
 				displayName: 'Update Fields',
@@ -651,7 +645,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 					},
 					{
 						displayName: 'Due By',
@@ -665,8 +659,7 @@ export class Freshdesk implements INodeType {
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
-						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
-						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
+						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set',
 					},
 					{
 						displayName: 'FR Due By',
@@ -683,7 +676,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id.',
 					},
 					{
 						displayName: 'Name',
@@ -701,8 +694,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
-						description: `ID of the product to which the ticket is associated.
-						It will be ignored if the email_config_id attribute is set in the request.`,
+						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request.',
 					},
 					{
 						displayName: 'Priority',
@@ -728,7 +720,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'low',
-						description: 'Priority',
 					},
 					{
 						displayName: 'Requester Identification',
@@ -767,7 +758,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'requesterId',
-						description: 'Requester Identification',
 					},
 					{
 						displayName: 'Requester Value',
@@ -800,7 +790,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'pending',
-						description: 'Status',
 					},
 					{
 						displayName: 'Source',
@@ -895,7 +884,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			{
 				displayName: 'Return All',
@@ -1059,7 +1047,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			// CONTACTS
 			...contactOperations,

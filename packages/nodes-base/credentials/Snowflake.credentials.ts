@@ -13,14 +13,14 @@ export class Snowflake implements ICredentialType {
 			name: 'account',
 			type: 'string',
 			default: '',
-			description: 'Enter the name of your Snowflake account.',
+			description: 'Enter the name of your Snowflake account',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
 			type: 'string',
 			default: '',
-			description: 'Specify the database you want to use after creating the connection.',
+			description: 'Specify the database you want to use after creating the connection',
 		},
 		{
 			displayName: 'Warehouse',
@@ -63,7 +63,7 @@ export class Snowflake implements ICredentialType {
 			name: 'clientSessionKeepAlive',
 			type: 'boolean',
 			default: false,
-			description: `By default, client connections typically time out approximately 3-4 hours after the most recent query was executed. If the parameter clientSessionKeepAlive is set to true, the client’s connection to the server will be kept alive indefinitely, even if no queries are executed.`,
+			description: 'Whether to keep alive the client session. By default, client connections typically time out approximately 3-4 hours after the most recent query was executed. If the parameter clientSessionKeepAlive is set to true, the client’s connection to the server will be kept alive indefinitely, even if no queries are executed.',
 		},
 	];
 }

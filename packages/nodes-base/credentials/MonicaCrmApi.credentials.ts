@@ -15,17 +15,17 @@ export class MonicaCrmApi implements ICredentialType {
 			default: 'cloudHosted',
 			options: [
 				{
-					name: 'Cloud-hosted',
+					name: 'Cloud-Hosted',
 					value: 'cloudHosted',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],
 		},
 		{
-			displayName: 'Self-hosted domain',
+			displayName: 'Self-Hosted Domain',
 			name: 'domain',
 			type: 'string',
 			default: '',

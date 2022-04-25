@@ -22,15 +22,11 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
-	let jiraCredentials: ICredentialDataDecryptedObject | undefined;
+	let jiraCredentials: ICredentialDataDecryptedObject;
 	if (jiraVersion === 'server') {
 		jiraCredentials = await this.getCredentials('jiraSoftwareServerApi');
 	} else {
 		jiraCredentials = await this.getCredentials('jiraSoftwareCloudApi');
-	}
-
-	if (jiraCredentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	if (jiraVersion === 'server') {
@@ -120,7 +116,7 @@ export function getId(url: string) {
 	return url.split('/').pop();
 }
 
-export function simplifyIssueOutput(responseData: { 
+export function simplifyIssueOutput(responseData: {
 	names: { [key: string]: string },
 	fields: IDataObject,
 	id: string,

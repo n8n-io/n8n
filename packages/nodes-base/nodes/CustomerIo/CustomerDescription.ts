@@ -79,7 +79,6 @@ export const customerFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -139,7 +138,6 @@ export const customerFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},

@@ -297,7 +297,7 @@ export class ExecuteBatch extends Command {
 
 		let allWorkflows;
 
-		const query = Db.collections.Workflow!.createQueryBuilder('workflows');
+		const query = Db.collections.Workflow.createQueryBuilder('workflows');
 
 		if (ids.length > 0) {
 			query.andWhere(`workflows.id in (:...ids)`, { ids });

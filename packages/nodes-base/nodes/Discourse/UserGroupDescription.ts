@@ -52,7 +52,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Usernames to add to group. Multiples can be defined separated by comma',
+		description: 'Usernames to add to group. Multiples can be defined separated by comma.',
 	},
 	{
 		displayName: 'Group ID',
