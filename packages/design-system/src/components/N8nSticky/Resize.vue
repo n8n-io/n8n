@@ -55,19 +55,15 @@ export default {
 		},
 		height: {
 			type: Number,
-			default: 180,
 		},
 		width: {
 			type: Number,
-			default: 240,
 		},
 		minHeight: {
 			type: Number,
-			default: 80,
 		},
 		minWidth: {
 			type: Number,
-			default: 150,
 		},
 		scale: {
 			type: Number,
@@ -75,7 +71,6 @@ export default {
 		},
 		gridSize: {
 			type: Number,
-			default: 20,
 		},
 	},
 	data() {
@@ -140,22 +135,17 @@ export default {
 			const height = getSize(deltaHeight, this.minHeight, this.vHeight, this.gridSize);
 			const width = getSize(deltaWidth, this.minWidth, this.vWidth, this.gridSize);
 
-			if (left || top) {
-				const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
-				const dY = top && height !== this.height ? -1 * (height - this.height): 0;
+			const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
+			const dY = top && height !== this.height ? -1 * (height - this.height): 0;
 
-				this.$emit('resize', { height, width, dX, dY });
-			}
-			else {
-				this.$emit('resize', { height, width });
-			}
+			this.$emit('resize', { height, width, dX, dY });
 			this.dHeight = dHeight;
 			this.dWidth = dWidth;
 		},
 		mouseUp(e) {
 			e.preventDefault();
 			e.stopPropagation();
-			this.$emit('resizeend', true);
+			this.$emit('resizeend');
 			window.removeEventListener('mousemove', this.mouseMove);
 			window.removeEventListener('mouseup', this.mouseUp);
 			document.body.style.cursor = 'unset';

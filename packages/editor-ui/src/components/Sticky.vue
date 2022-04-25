@@ -235,11 +235,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName); // todo
 		},
-		onResize({height, width, dX, dY}:  { width: number, height: number, dX?: number, dY?: number }) {
+		onResize({height, width, dX, dY}:  { width: number, height: number, dX: number, dY: number }) {
 			if (!this.node) {
 				return;
 			}
-			if (isNumber(dX) || isNumber(dY)) {
+			if (dX !== 0 || dY !== 0) {
 				this.setPosition([this.node.position[0] + (dX || 0), this.node.position[1] + (dY || 0)]);
 			}
 

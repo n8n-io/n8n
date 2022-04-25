@@ -98,6 +98,7 @@ export default mixins(Locale).extend({
 		},
 		gridSize: {
 			type: Number,
+			default: 20,
 		},
 		id: {
 			type: String,
