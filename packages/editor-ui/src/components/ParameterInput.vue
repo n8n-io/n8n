@@ -113,6 +113,7 @@
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
