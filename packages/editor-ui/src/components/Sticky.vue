@@ -4,7 +4,7 @@
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
 		>
-			<div class="select-sticky-background" v-show="isSelected" :style="selectedStickyStyle" />
+			<div class="select-sticky-background" v-show="isSelected" />
 			<div
 				class="sticky-box"
 				:data-name="data.name"
