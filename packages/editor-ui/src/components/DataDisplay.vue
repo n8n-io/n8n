@@ -59,8 +59,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	data () {
 		return {
-			basePath: this.$store.getters.getBaseUrl,
-			showDocumentHelp: false,
 			settingsEventBus: new Vue(),
 			runInputIndex: 0,
 			runOutputIndex: 0,
