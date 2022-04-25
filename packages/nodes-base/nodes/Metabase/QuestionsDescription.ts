@@ -37,36 +37,11 @@ export const questionsOperations: INodeProperties[] = [
 						): INodeExecutionData[] {
 							// @ts-ignore
 							return response.body.map((metabaseQuestion) => {
-								if(metabaseQuestion.result_metadata[0].fingerprint){
-									return {
-										json: {
-											name: metabaseQuestion.name,
-											id: metabaseQuestion.id,
-											description: metabaseQuestion.description,
-											average: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].avg,
-											min: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].min,
-											max: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].max,
-											creator_id: metabaseQuestion.creator_id,
-											database_id: metabaseQuestion.database_id,
-										},
-									};
-								}	else if(!this.getNode().parameters.simple){
 										return {
 											json: {
 												...metabaseQuestion,
 										},
 									};
-								} else{
-									return {
-										json: {
-											name: metabaseQuestion.name,
-											id: metabaseQuestion.id,
-											description: metabaseQuestion.description,
-											creator_id: metabaseQuestion.creator_id,
-											database_id: metabaseQuestion.database_id,
-										},
-									};
-								}
 							});
 						},
 						],
@@ -94,36 +69,11 @@ export const questionsOperations: INodeProperties[] = [
 							items.push(response.body);
 							// @ts-ignore
 							return items.map((metabaseQuestion) => {
-								if(metabaseQuestion.result_metadata[0].fingerprint && this.getNode().parameters.simple){
-									return {
-										json: {
-											name: metabaseQuestion.name,
-											id: metabaseQuestion.id,
-											description: metabaseQuestion.description,
-											average: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].avg,
-											min: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].min,
-											max: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].max,
-											creator_id: metabaseQuestion.creator_id,
-											database_id: metabaseQuestion.database_id,
-										},
-									};
-								} else if(!this.getNode().parameters.simple){
 										return {
 											json: {
 												...metabaseQuestion,
 										},
 									};
-								} else{
-									return {
-										json: {
-											name: metabaseQuestion.name,
-											id: metabaseQuestion.id,
-											description: metabaseQuestion.description,
-											creator_id: metabaseQuestion.creator_id,
-											database_id: metabaseQuestion.database_id,
-										},
-									};
-								}
 							});
 						},
 						],
@@ -131,9 +81,9 @@ export const questionsOperations: INodeProperties[] = [
 					},
 			},
 			{
-				name: 'Export',
-				value: 'export',
-				description: 'Export question to a specific file format',
+				name: 'Result Data',
+				value: 'resultData',
+				description: 'Return the result of the question to a specific file format',
 				routing: {
 					request: {
 						method: 'POST',
@@ -162,7 +112,7 @@ export const questionsFields: INodeProperties[] = [
 				],
 								operation: [
 										'get',
-										'export',
+										'resultData',
 								],
 			},
 		},
@@ -198,27 +148,10 @@ export const questionsFields: INodeProperties[] = [
 					'questions',
 				],
 								operation: [
-										'export',
+										'resultData',
 								],
 			},
 		},
-	},
-	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'questions',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
-			},
-		},
-		default: true,
 	},
 ];
 
