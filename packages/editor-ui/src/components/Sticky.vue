@@ -43,7 +43,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -64,9 +63,6 @@ export interface Sticky {
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
-	components: {
-		NodeIcon,
-	},
 	props: {
 		nodeViewScale: {
 			type: Number,
