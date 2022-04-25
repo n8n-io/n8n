@@ -1,13 +1,13 @@
 <template>
 	<div :class="$style.resize">
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer right"  />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer left" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer top" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer bottom" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer top-left" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer top-right" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer bottom-left" />
-		<div v-if="isResizingEnabled" @mousedown="resizerMove" class="resizer bottom-right" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="right" :class="[$style.resizer, $style.right]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="left" :class="[$style.resizer, $style.left]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="top" :class="[$style.resizer, $style.top]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="bottom" :class="[$style.resizer, $style.bottom]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="top-left" :class="[$style.resizer, $style.topLeft]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="top-right" :class="[$style.resizer, $style.topRight]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="bottom-left" :class="[$style.resizer, $style.bottomLeft]" />
+		<div v-if="isResizingEnabled" @mousedown="resizerMove" data-dir="bottom-right" :class="[$style.resizer, $style.bottomRight]" />
 		<slot></slot>
 	</div>
 </template>
@@ -95,15 +95,15 @@ export default {
 			e.stopPropagation();
 
 			const targetResizer = e.target;
-			this.dir = [...targetResizer.classList].find((c) => typeof c === 'string' && cursorMap[c]);
+			this.dir = targetResizer.dataset.dir;
 			document.body.style.cursor = cursorMap[this.dir];
 
 			this.x = e.pageX;
 			this.y = e.pageY;
 			this.dWidth = 0;
 			this.dHeight = 0;
-			this.vHeight = this.height;// - this.minHeight;
-			this.vWidth = this.width;// - this.minWidth;
+			this.vHeight = this.height;
+			this.vWidth = this.width;
 
 			window.addEventListener('mousemove', this.mouseMove);
 			window.addEventListener('mouseup', this.mouseUp);
@@ -172,9 +172,7 @@ export default {
 	height: 100%;
 	z-index: 2;
 }
-</style>
 
-<style lang="scss" scoped>
 .resizer {
 	position: absolute;
 	z-index: 2;
@@ -212,7 +210,7 @@ export default {
 	cursor: ew-resize;
 }
 
-.top-left {
+.topLeft {
 	width: 12px;
 	height: 12px;
 	top: -3px;
@@ -221,7 +219,7 @@ export default {
 	z-index: 3;
 }
 
-.top-right {
+.topRight {
 	width: 12px;
 	height: 12px;
 	top: -3px;
@@ -230,7 +228,7 @@ export default {
 	z-index: 3;
 }
 
-.bottom-left {
+.bottomLeft {
 	width: 12px;
 	height: 12px;
 	bottom: -3px;
@@ -239,7 +237,7 @@ export default {
 	z-index: 3;
 }
 
-.bottom-right {
+.bottomRight {
 	width: 12px;
 	height: 12px;
 	bottom: -3px;
