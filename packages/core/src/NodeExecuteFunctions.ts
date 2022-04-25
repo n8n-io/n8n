@@ -1298,6 +1298,7 @@ export async function getCredentials(
 			!NodeHelpers.displayParameter(
 				additionalData.currentNodeParameters || node.parameters,
 				nodeCredentialDescription,
+				node,
 				node.parameters,
 			)
 		) {
