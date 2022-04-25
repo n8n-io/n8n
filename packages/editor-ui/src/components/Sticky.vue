@@ -32,7 +32,7 @@
 				/>
 			</div>
 
-			<div v-show="showActions" :style="tootlipSize" class="sticky-options no-select-on-click">
+			<div v-show="showActions" class="sticky-options no-select-on-click">
 				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -143,17 +143,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
 				zIndex: this.isActive ? 9999999 : -1 * Math.floor((this.height * this.width) / 1000),
-			};
-
-			return returnStyles;
-		},
-		tootlipSize(): object { // todo
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				width: this.width + 16 + 'px',
-				left: '-8px',
-				top: '-25px',
 			};
 
 			return returnStyles;
@@ -280,6 +269,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			justify-content: flex-start;
 			position: absolute;
 			top: -25px;
+			left: -8px;
 			height: 26px;
 			font-size: 0.9em;
 			text-align: left;
