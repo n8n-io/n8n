@@ -11,6 +11,7 @@
 			:minHeight="minHeight"
 			:minWidth="minWidth"
 			:scale="scale"
+			:gridSize="gridSize"
       @resizeend="onResizeEnd"
       @resize="onResize"
       @resizestart="onResizeStart"
@@ -94,6 +95,9 @@ export default mixins(Locale).extend({
 		scale: {
 			type: Number,
 			default: 1,
+		},
+		gridSize: {
+			type: Number,
 		},
 		id: {
 			type: String,

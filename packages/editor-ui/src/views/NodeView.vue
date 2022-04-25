@@ -52,6 +52,7 @@
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
 						:nodeViewScale="nodeViewScale"
+						:gridSize="GRID_SIZE"
 						:hideActions="pullConnActive"
 					/>
 				</div>
@@ -370,6 +371,7 @@ export default mixins(
 		},
 		data () {
 			return {
+				GRID_SIZE: CanvasHelpers.GRID_SIZE,
 				STICKY_NODE_TYPE,
 				createNodeActive: false,
 				instance: jsPlumb.getInstance(),

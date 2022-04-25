@@ -23,6 +23,7 @@
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
+					:gridSize="gridSize"
 					@input="onInputChange"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
@@ -91,6 +92,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	props: {
 		nodeViewScale: {
+			type: Number,
+		},
+		gridSize: {
 			type: Number,
 		},
 	},
