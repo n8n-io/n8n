@@ -13,7 +13,7 @@ export class Note implements INodeType {
 		icon: 'fa:sticky-note',
 		group: ['input'],
 		version: 1,
-		description: 'Leave notes and organize your flow. Supports markdown.',
+		description: 'Make your workflow easier to understand',
 		defaults: {
 			name: 'Note',
 			color: '#FFD233',
