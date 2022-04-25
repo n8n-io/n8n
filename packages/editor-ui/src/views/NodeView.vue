@@ -2910,6 +2910,7 @@ export default mixins(
 	display: flex;
 
 	.add-sticky-button {
+		margin-top: var(--spacing-2xs);
 		opacity: 0;
 		transition: .1s;
 		transition-timing-function: linear;
@@ -2933,10 +2934,6 @@ export default mixins(
 
 .node-creator-button button {
 	position: relative;
-}
-
-.add-sticky-button {
-	margin-top: var(--spacing-2xs);
 }
 
 .node-view-root {
