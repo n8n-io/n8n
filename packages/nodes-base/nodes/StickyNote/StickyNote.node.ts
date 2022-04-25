@@ -26,7 +26,7 @@ export class StickyNote implements INodeType {
 				name: 'content',
 				type: 'string',
 				required: true,
-				default: "## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+				default: `## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)`,
 			},
 			{
 				displayName: 'height',
