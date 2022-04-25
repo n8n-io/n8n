@@ -61,15 +61,11 @@
 		<div
 			class="node-buttons-wrapper"
 			v-if="!createNodeActive && !isReadOnly"
-			@mouseover="isAddStickyButtonVisible = true"
-			@mouseleave="isAddStickyButtonVisible = false"
 		>
 			<div class="node-creator-button">
 				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
 				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
-					<transition name="sticky-button-transition">
-						<n8n-icon-button v-if="isAddStickyButtonVisible" size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
-					</transition>
+					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
 			</div>
 		</div>
@@ -389,7 +385,6 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
-				isAddStickyButtonVisible: false,
 			};
 		},
 		beforeDestroy () {
@@ -2911,6 +2906,16 @@ export default mixins(
 	top: 0;
   right: 0;
   display: flex;
+
+	.add-sticky-button {
+		visibility: hidden;
+	}
+
+	&:hover {
+		.add-sticky-button {
+			visibility: visible;
+		}
+	}
 }
 
 .node-creator-button {
@@ -3107,20 +3112,6 @@ export default mixins(
 			border-color: var(--color-primary);
 			color: var(--color-primary);
 		}
-	}
-}
-
-.sticky-button-transition {
-	&-enter-active,
-	&-leave-active {
-		transition-property: opacity;
-		transition-duration: 100ms;
-		transition-timing-function: linear;
-	}
-
-	&-enter,
-	&-leave-to {
-		opacity: 0;
 	}
 }
 
