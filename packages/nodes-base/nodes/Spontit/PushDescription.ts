@@ -45,8 +45,7 @@ export const pushFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `To provide text in a push, supply one of either "content" or "pushContent" (or both).
-		Limited to 2500 characters. (Required if a value for "pushContent" is not provided).`,
+		description: 'To provide text in a push, supply one of either "content" or "pushContent" (or both). Limited to 2500 characters. (Required if a value for "pushContent" is not provided).',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -113,21 +112,21 @@ export const pushFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				required: false,
-				description: `<p>Emails (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If 'pushToFollowers' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>`,
+				description: '<p>Emails (strings) to whom to send the notification. If all three attributes \'pushToFollowers\', \'pushToPhoneNumbers\' and \'pushToEmails\' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If \'pushToFollowers\' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>.',
 			},
 			{
 				displayName: 'Push To Followers',
 				name: 'pushToFollowers',
 				type: 'string',
 				default: '',
-				description: `<p>User IDs (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If 'pushToFollowers' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>`,
+				description: '<p>User IDs (strings) to whom to send the notification. If all three attributes \'pushToFollowers\', \'pushToPhoneNumbers\' and \'pushToEmails\' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If \'pushToFollowers\' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>.',
 			},
 			{
 				displayName: 'Push To Phone Numbers',
 				name: 'pushToPhoneNumbers',
 				type: 'string',
 				default: '',
-				description: `<p>Phone numbers (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If 'pushToFollowers' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>`,
+				description: '<p>Phone numbers (strings) to whom to send the notification. If all three attributes \'pushToFollowers\', \'pushToPhoneNumbers\' and \'pushToEmails\' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If \'pushToFollowers\' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>.',
 			},
 			{
 				displayName: 'Schedule',

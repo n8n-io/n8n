@@ -77,7 +77,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Parent ID',
@@ -94,7 +93,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of folder to copy the file to. If not defined will be copied to the root folder',
+		description: 'The ID of folder to copy the file to. If not defined will be copied to the root folder.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -176,7 +175,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Binary Property',
@@ -327,7 +325,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'contet_types',
 				type: 'string',
 				default: '',
-				description: `Limits search results to items with the given content types. Content types are defined as a comma separated lists of Box recognized content types.`,
+				description: 'Limits search results to items with the given content types. Content types are defined as a comma-separated lists of Box recognized content types.',
 			},
 			{
 				displayName: 'Created At Range',
@@ -396,7 +394,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'ancestor_folder_ids',
 				type: 'string',
 				default: '',
-				description: `Limits search results to items within the given list of folders. Folders are defined as a comma separated lists of folder IDs.`,
+				description: 'Limits search results to items within the given list of folders. Folders are defined as a comma-separated lists of folder IDs.',
 			},
 			{
 				displayName: 'Scope',
@@ -421,7 +419,7 @@ export const fileFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '1000000,5000000',
-				description: `Limits search results to items within a given file size range. File size ranges are defined as comma separated byte sizes.`,
+				description: 'Limits search results to items within a given file size range. File size ranges are defined as comma-separated byte sizes.',
 			},
 			{
 				displayName: 'Sort',
@@ -492,7 +490,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'owner_user_ids',
 				type: 'string',
 				default: '',
-				description: `Limits search results to items owned by the given list of owners. Owners are defined as a comma separated list of user IDs.`,
+				description: 'Limits search results to items owned by the given list of owners. Owners are defined as a comma-separated list of user IDs.',
 			},
 		],
 	},
@@ -830,6 +828,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the parent folder that will contain the file. If not it will be uploaded to the root folder',
+		description: 'ID of the parent folder that will contain the file. If not it will be uploaded to the root folder.',
 	},
 ];

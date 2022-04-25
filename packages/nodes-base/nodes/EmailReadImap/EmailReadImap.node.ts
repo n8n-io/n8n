@@ -153,7 +153,7 @@ export class EmailReadImap implements INodeType {
 						name: 'customEmailConfig',
 						type: 'string',
 						default: '["UNSEEN"]',
-						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details',
+						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
 					},
 					{
 						displayName: 'Ignore SSL Issues',

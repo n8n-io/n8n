@@ -75,7 +75,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -93,7 +92,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 
 
@@ -119,7 +117,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -137,7 +134,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Resolve Identities',
@@ -179,7 +175,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Return All',
@@ -304,7 +299,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Source',

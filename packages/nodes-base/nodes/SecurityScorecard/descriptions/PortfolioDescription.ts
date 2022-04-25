@@ -137,7 +137,6 @@ export const portfolioFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Description',
 	},
 	{
 		displayName: 'Privacy',

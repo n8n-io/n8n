@@ -209,7 +209,6 @@ export class Todoist implements INodeType {
 				},
 				default: [],
 				required: false,
-				description: 'Labels',
 			},
 			{
 				displayName: 'Content',
@@ -413,7 +412,7 @@ export class Todoist implements INodeType {
 						name: 'ids',
 						type: 'string',
 						default: '',
-						description: 'A list of the task IDs to retrieve, this should be a comma separated list.',
+						description: 'A list of the task IDs to retrieve, this should be a comma-separated list.',
 					},
 					{
 						displayName: 'Label ID',
@@ -505,7 +504,6 @@ export class Todoist implements INodeType {
 						},
 						default: [],
 						required: false,
-						description: 'Labels',
 					},
 					{
 						displayName: 'Priority',

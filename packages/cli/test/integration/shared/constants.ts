@@ -57,3 +57,8 @@ export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_post
  * for each suite test run.
  */
 export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
+
+/**
+ * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
+ */
+export const SMTP_TEST_TIMEOUT = 30_000;

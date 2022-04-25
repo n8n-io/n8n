@@ -11,6 +11,8 @@ import {
 	IMongoParametricCredentials,
 } from './mongo.node.types';
 
+import { get, set } from 'lodash';
+
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
  *
@@ -114,6 +116,21 @@ export function handleDateFields(insertItems: IDataObject[], fields: string) {
 		for (const key of Object.keys(insertItems[i])) {
 			if (dateFields.includes(key)) {
 				insertItems[i][key] = new Date(insertItems[i][key] as string);
+			}
+		}
+	}
+}
+
+export function handleDateFieldsWithDotNotation(insertItems: IDataObject[], fields: string) {
+	const dateFields = fields.split(',').map(field => field.trim());
+
+	for (let i = 0; i < insertItems.length; i++) {
+		for (const field of dateFields) {
+			const fieldValue = get(insertItems[i], field) as string;
+			const date = new Date(fieldValue);
+
+			if (fieldValue && !isNaN(date.valueOf())) {
+				set(insertItems[i], field, date);
 			}
 		}
 	}
