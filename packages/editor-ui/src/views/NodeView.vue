@@ -2928,8 +2928,6 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
-	display: flex;
-	flex-direction: column;
 }
 
 .node-creator-button button {
