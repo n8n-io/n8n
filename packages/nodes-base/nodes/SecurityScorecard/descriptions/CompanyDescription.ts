@@ -50,7 +50,7 @@ export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Scorecard Identifier',
 		name: 'scorecardIdentifier',
-		description: 'Primary identifier of a company or scorecard, i.e. domain',
+		description: 'Primary identifier of a company or scorecard, i.e. domain.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -180,7 +180,7 @@ export const companyFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Severity In',
-				description: 'Filter issues by comma separated severity list',
+				description: 'Filter issues by comma-separated severity list',
 				name: 'severity_in',
 				type: 'string',
 				default: '',

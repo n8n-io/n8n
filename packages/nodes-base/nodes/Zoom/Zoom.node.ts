@@ -31,7 +31,7 @@ import {
 // 	webinarFields,
 // } from './WebinarDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 interface Settings {
 	host_video?: boolean;

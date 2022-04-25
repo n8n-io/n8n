@@ -243,7 +243,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -418,7 +417,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -486,7 +484,6 @@ export const companyFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -520,7 +517,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
@@ -544,7 +541,6 @@ export const companyFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},

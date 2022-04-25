@@ -8,7 +8,7 @@ export class CreateTagEntity1617213344594 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		// create tags table + relationship with workflow entity
 
@@ -73,7 +73,7 @@ export class CreateTagEntity1617213344594 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		// `createdAt` and `updatedAt`
 

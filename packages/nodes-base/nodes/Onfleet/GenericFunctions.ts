@@ -14,7 +14,7 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -24,7 +24,7 @@ export async function onfleetApiRequest(
 	qs?: any, // tslint:disable-line:no-any
 	uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
+	const credentials = await this.getCredentials('onfleetApi');
 
 	const options: OptionsWithUri = {
 		headers: {

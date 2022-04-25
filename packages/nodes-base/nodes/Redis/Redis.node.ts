@@ -9,9 +9,9 @@ import {
 } from 'n8n-workflow';
 
 import { set } from 'lodash';
-import * as redis from 'redis';
+import redis from 'redis';
 
-import * as util from 'util';
+import util from 'util';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -524,10 +524,6 @@ export class Redis implements INodeType {
 			//       array, object via parameter directly (should maybe be possible?!?!)
 			//       Should maybe have a parameter which is JSON.
 			const credentials = await this.getCredentials('redis');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			const redisOptions: redis.ClientOpts = {
 				host: credentials.host as string,

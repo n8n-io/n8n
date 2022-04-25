@@ -30,7 +30,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import * as express from 'express';
+import express from 'express';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -48,7 +48,7 @@ import {
 	WorkflowRunner,
 	ExternalHooks,
 } from '.';
-import config = require('../config');
+import config from '../config';
 import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
@@ -69,12 +69,12 @@ export class ActiveWorkflowRunner {
 		// NOTE
 		// Here I guess we can have a flag on the workflow table like hasTrigger
 		// so intead of pulling all the active wehhooks just pull the actives that have a trigger
-		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow!.find({
+		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
 			where: { active: true },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
-		if (!config.get('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+		if (!config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -256,7 +256,7 @@ export class ActiveWorkflowRunner {
 			});
 		}
 
-		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId, {
+		const workflowData = await Db.collections.Workflow.findOne(webhook.workflowId, {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === undefined) {
@@ -332,7 +332,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = (await Db.collections.Webhook?.find({ webhookPath: path })) as IWebhookDb[];
+		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path });
 
 		// Gather all request methods in string array
 		const webhookMethods: string[] = webhooks.map((webhook) => webhook.method);
@@ -349,12 +349,12 @@ export class ActiveWorkflowRunner {
 		let activeWorkflows: WorkflowEntity[] = [];
 
 		if (!user || user.globalRole.name === 'owner') {
-			activeWorkflows = await Db.collections.Workflow!.find({
+			activeWorkflows = await Db.collections.Workflow.find({
 				select: ['id'],
 				where: { active: true },
 			});
 		} else {
-			const shared = await Db.collections.SharedWorkflow!.find({
+			const shared = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: whereClause({
 					user,
@@ -379,7 +379,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
-		const workflow = await Db.collections.Workflow!.findOne(id);
+		const workflow = await Db.collections.Workflow.findOne(id);
 		return !!workflow?.active;
 	}
 
@@ -466,7 +466,7 @@ export class ActiveWorkflowRunner {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
 					// When skipWebhoooksDeregistrationOnShutdown is enabled,
@@ -512,7 +512,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
-		const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+		const workflowData = await Db.collections.Workflow.findOne(workflowId, {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === undefined) {
@@ -682,6 +682,15 @@ export class ActiveWorkflowRunner {
 					(error) => console.error(error),
 				);
 			};
+			returnFunctions.emitError = async (error: Error): Promise<void> => {
+				await this.activeWorkflows?.remove(workflowData.id.toString());
+				this.activationErrors[workflowData.id.toString()] = {
+					time: new Date().getTime(),
+					error: {
+						message: error.message,
+					},
+				};
+			};
 			return returnFunctions;
 		};
 	}
@@ -706,7 +715,7 @@ export class ActiveWorkflowRunner {
 		let workflowInstance: Workflow;
 		try {
 			if (workflowData === undefined) {
-				workflowData = (await Db.collections.Workflow!.findOne(workflowId, {
+				workflowData = (await Db.collections.Workflow.findOne(workflowId, {
 					relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 				})) as IWorkflowDb;
 			}

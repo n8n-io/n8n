@@ -5,6 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,15 +15,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import * as fs from 'fs';
+import fs from 'fs';
 
-import * as formidable from 'formidable';
+import formidable from 'formidable';
 
-import * as isbot from 'isbot';
+import isbot from 'isbot';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -345,21 +346,21 @@ export class Wait implements INodeType {
 					{
 						name: 'All Entries',
 						value: 'allEntries',
-						description: 'Returns all the entries of the last node. Always returns an array',
+						description: 'Returns all the entries of the last node. Always returns an array.',
 					},
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object',
+						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file',
+						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all the items as array or only the first item as object',
+				description: 'What data should be returned. If it should return all the items as array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -384,8 +385,7 @@ export class Wait implements INodeType {
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
-				description: `If no webhook call is received, the workflow will automatically
-							 resume execution after the specified limit type`,
+				description: 'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
 				displayOptions: {
 					show: {
 						resume: [
@@ -548,9 +548,7 @@ export class Wait implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to which to write the data of
-									the received file. If the data gets received via "Form-Data Multipart"
-									it will be the prefix and a number starting with 0 will be attached to it.`,
+						description: 'Name of the binary property to which to write the data of the received file. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 					},
 					{
 						displayName: 'Ignore Bots',
@@ -686,7 +684,13 @@ export class Wait implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -706,7 +710,13 @@ export class Wait implements INodeType {
 			}
 		} else if (incomingAuthentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate

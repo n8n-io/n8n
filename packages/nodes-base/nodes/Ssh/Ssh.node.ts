@@ -293,7 +293,7 @@ export class Ssh implements INodeType {
 		try {
 			if (authentication === 'password') {
 
-				const credentials = await this.getCredentials('sshPassword') as IDataObject;
+				const credentials = await this.getCredentials('sshPassword');
 
 				await ssh.connect({
 					host: credentials.host as string,
@@ -304,7 +304,7 @@ export class Ssh implements INodeType {
 
 			} else if (authentication === 'privateKey') {
 
-				const credentials = await this.getCredentials('sshPrivateKey') as IDataObject;
+				const credentials = await this.getCredentials('sshPrivateKey');
 
 				const { path, } = await file({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);

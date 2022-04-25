@@ -37,7 +37,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	options = Object.assign({}, options, option);
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('mondayComApi') as IDataObject;
+			const credentials = await this.getCredentials('mondayComApi');
 
 			options.headers = { Authorization: `Bearer ${credentials.apiToken}` };
 

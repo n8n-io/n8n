@@ -136,7 +136,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/',
+				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -187,7 +187,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/',
+				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -209,10 +209,6 @@ export class OpenWeatherMap implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		const credentials = await this.getCredentials('openWeatherMapApi');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 

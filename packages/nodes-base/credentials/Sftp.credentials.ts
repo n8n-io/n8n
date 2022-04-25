@@ -46,7 +46,7 @@ export class Sftp implements ICredentialType {
 				alwaysOpenEditWindow: true,
 			},
 			default: '',
-			description: 'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format).',
+			description: 'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format)',
 		},
 		{
 			displayName: 'Passphrase',
@@ -56,7 +56,7 @@ export class Sftp implements ICredentialType {
 			},
 			type: 'string',
 			default: '',
-			description: 'For an encrypted private key, this is the passphrase used to decrypt it.',
+			description: 'For an encrypted private key, this is the passphrase used to decrypt it',
 		},
 	];
 }

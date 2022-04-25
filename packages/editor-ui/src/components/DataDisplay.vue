@@ -1,17 +1,24 @@
 <template>
 	<el-dialog
-		:visible="!!node"
+		:visible="(!!node || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
 		width="85%"
 		append-to-body
-		@opened="showDocumentHelp = true"
 	>
+		<n8n-tooltip placement="bottom-start" :value="showTriggerWaitingWarning" :disabled="!showTriggerWaitingWarning" :manual="true">
+			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}</div>
+			<div :class="$style.backToCanvas" @click="close">
+				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
+				<n8n-text color="text-xlight" size="medium" :bold="true">{{ $locale.baseText('ndv.backToCanvas') }}</n8n-text>
+			</div>
+		</n8n-tooltip>
+
 		<div class="data-display" v-if="node" >
 			<InputPanel :runIndex="runInputIndex" @runChange="onRunInputIndexChange" @openSettings="openSettings" />
-			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
-			<OuputPanel :runIndex="runOutputIndex" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
+			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
+			<RunData @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
@@ -35,6 +42,8 @@ import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import OuputPanel from './OuputPanel.vue';
 import InputPanel from './InputPanel.vue';
+import { mapGetters } from 'vuex';
+import { STICKY_NODE_TYPE } from '@/constants';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -43,6 +52,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		InputPanel,
 		OuputPanel,
 	},
+	props: {
+		renaming: {
+			type: Boolean,
+		},
+	},
 	data () {
 		return {
 			basePath: this.$store.getters.getBaseUrl,
@@ -50,9 +64,17 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			settingsEventBus: new Vue(),
 			runInputIndex: 0,
 			runOutputIndex: 0,
+			triggerWaitingWarningEnabled: false,
 		};
 	},
 	computed: {
+		...mapGetters(['executionWaitingForWebhook']),
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		showTriggerWaitingWarning(): boolean {
+			return this.triggerWaitingWarningEnabled && !!this.nodeType && !this.nodeType.group.includes('trigger') && this.workflowRunning && this.executionWaitingForWebhook;
+		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
 		},
@@ -62,19 +84,31 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 			return null;
 		},
+		isActiveStickyNode(): boolean {
+			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
+		},
 	},
 	watch: {
 		node (node, oldNode) {
-			if(node && !oldNode) {
+			if(node && !oldNode && !this.isActiveStickyNode) {
+				this.triggerWaitingWarningEnabled = false;
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
-			if (window.top) {
+			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
 			}
 		},
 	},
 	methods: {
+		onNodeExecute() {
+			setTimeout(() => {
+				if (!this.node || !this.workflowRunning) {
+					return;
+				}
+				this.triggerWaitingWarningEnabled = true;
+			}, 1000);
+		},
 		openSettings() {
 			this.settingsEventBus.$emit('openSettings');
 		},
@@ -86,7 +120,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		close () {
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-			this.showDocumentHelp = false;
+			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
 		},
 		onRunOutputIndexChange(run: number) {
@@ -103,6 +137,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 <style lang="scss">
 .data-display-wrapper {
 	height: 85%;
+	margin-top: 48px !important;
 
 	.el-dialog__header {
 		padding: 0 !important;
@@ -131,5 +166,32 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
 	opacity: 0;
+}
+</style>
+
+<style lang="scss" module>
+.triggerWarning {
+	max-width: 180px;
+}
+
+.backToCanvas {
+	position: absolute;
+	top: -40px;
+
+	&:hover {
+		cursor: pointer;
+	}
+
+	> * {
+		margin-right: var(--spacing-3xs);
+	}
+}
+
+@media (min-width: $--breakpoint-lg) {
+	.backToCanvas {
+		position: fixed;
+		top: 10px;
+		left: 20px;
+	}
 }
 </style>

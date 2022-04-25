@@ -15,7 +15,7 @@ import {
 import { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as PCancelable from 'p-cancelable';
+import PCancelable from 'p-cancelable';
 // eslint-disable-next-line import/no-cycle
 import {
 	Db,

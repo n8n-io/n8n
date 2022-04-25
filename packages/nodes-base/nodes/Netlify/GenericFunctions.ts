@@ -37,10 +37,6 @@ export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		const credentials = await this.getCredentials('netlifyApi');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 
 		return await this.helpers.request!(options);

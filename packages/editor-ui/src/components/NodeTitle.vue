@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<el-popover placement="right" width="200" :value="editName">
+		<el-popover placement="right" width="200" :value="editName" :disabled="readOnly">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
@@ -9,37 +9,37 @@
 				@keydown.esc="editName = false"
 			>
 				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div"
-					>{{ $locale.baseText('node.title.renameNode') }}</n8n-text>
+					>{{ $locale.baseText('ndv.title.renameNode') }}</n8n-text>
 				<n8n-input ref="input" size="small" v-model="newName" />
 				<div :class="$style.editButtons">
-					<n8n-button type="outline" size="small" @click="editName = false" :label="$locale.baseText('node.title.cancel')" />
-					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('node.title.rename')" />
+					<n8n-button type="outline" size="small" @click="editName = false" :label="$locale.baseText('ndv.title.cancel')" />
+					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('ndv.title.rename')" />
 				</div>
 			</div>
-			<span :class="$style.title" slot="reference">
-				<ShortenName :name="value" :limit="40">
-					<template v-slot="{ shortenedName }">
-						{{ shortenedName }}
-					</template>
-				</ShortenName>
-				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" />
-			</span>
+			<div slot="reference" :class="{[$style.title]: true, [$style.hoverable]: !readOnly}">
+				{{ value }}
+				<div :class="$style.editIconContainer">
+					<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
+				</div>
+			</div>
 		</el-popover>
 	</span>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
-import ShortenName from './ShortenName.vue';
 
 export default Vue.extend({
-	components: { ShortenName },
 	name: 'NodeTitle',
 	props: {
 		value: {
 			type: String,
 		},
 		nodeType: {},
+		readOnly: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -59,7 +59,10 @@ export default Vue.extend({
 			});
 		},
 		onRename() {
-			this.$emit('input', this.newName);
+			if (this.newName.trim() !== '') {
+				this.$emit('input', this.newName.trim());
+			}
+
 			this.editName = false;
 		},
 	},
@@ -73,14 +76,21 @@ export default Vue.extend({
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-compact);
 	overflow-wrap: anywhere;
-	height: 60px;
+	padding-right: var(--spacing-s);
 	overflow: hidden;
 }
 
 .title {
-	text-overflow: ellipsis;
+	max-height: 100px;
+	display: -webkit-box;
+	-webkit-line-clamp: 5;
+	-webkit-box-orient: vertical;
+	color: var(--color-text-dark);
+}
 
+.hoverable {
 	&:hover {
+		cursor: pointer;
 		.editIcon {
 			display: inline-block;
 		}
@@ -94,7 +104,16 @@ export default Vue.extend({
 
 .editIcon {
 	display: none;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
+	color: var(--color-text-base);
+	position: absolute;
+	bottom: 0;
+}
+
+.editIconContainer {
+	display: inline-block;
+	position: relative;
+	width: 0;
 }
 
 .editButtons {

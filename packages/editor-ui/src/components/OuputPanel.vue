@@ -2,7 +2,7 @@
 	<RunData :nodeUi="node" :runIndex="runIndex" @openSettings="openSettings" @runChange="onRunIndexChange">
 		<template name="header">
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('node.output') }}</span>
+				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
 				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
 					<div>
 						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
@@ -12,7 +12,7 @@
 
 				<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasNodeRun && staleData">
 					<template>
-						<span v-html="$locale.baseText('node.output.staleDataWarning')"></span>
+						<span v-html="$locale.baseText('ndv.output.staleDataWarning')"></span>
 					</template>
 				</n8n-info-tip>
 			</div>

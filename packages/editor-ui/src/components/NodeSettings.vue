@@ -2,11 +2,11 @@
 	<div class="node-settings" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged"></NodeTitle>
+				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
 				</div>
 			</div>
 			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
@@ -270,7 +270,9 @@ export default mixins(
 			},
 		},
 		methods: {
-			noOp () {},
+			onNodeExecute () {
+				this.$emit('execute');
+			},
 			setValue (name: string, value: NodeParameterValue) {
 				const nameParts = name.split('.');
 				let lastNamePart: string | undefined = nameParts.pop();
@@ -368,7 +370,6 @@ export default mixins(
 					};
 					this.$emit('valueChanged', sendData);
 
-					this.$store.commit('setActiveNode', newValue);
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
@@ -549,11 +550,12 @@ export default mixins(
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
 		font-size: var(--font-size-l);
 		display: flex;
 
 		.node-name {
+			padding-top: var(--spacing-5xs);
 			flex-grow: 1;
 		}
 	}
