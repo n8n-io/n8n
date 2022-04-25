@@ -13,7 +13,7 @@ import { INodeType } from './Interfaces';
 
 import { getInstance as getLoggerInstance } from './LoggerProxy';
 
-const STICKY_NODE_TYPE = 'n8n-nodes-base.note';
+const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);

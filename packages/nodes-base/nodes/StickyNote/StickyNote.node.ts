@@ -8,8 +8,8 @@ import {
 
 export class Note implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Note',
-		name: 'note',
+		displayName: 'Sticky Note',
+		name: 'stickyNote',
 		icon: 'fa:sticky-note',
 		group: ['input'],
 		version: 1,
@@ -27,7 +27,6 @@ export class Note implements INodeType {
 				type: 'string',
 				required: true,
 				default: "## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/workflow-notes/)",
-				description: 'Content',
 			},
 			{
 				displayName: 'height',
@@ -35,7 +34,6 @@ export class Note implements INodeType {
 				type: 'number',
 				required: true,
 				default: 160,
-				description: 'height',
 			},
 			{
 				displayName: 'width',
@@ -43,7 +41,6 @@ export class Note implements INodeType {
 				type: 'number',
 				required: true,
 				default: 240,
-				description: 'width',
 			},
 		],
 	};
