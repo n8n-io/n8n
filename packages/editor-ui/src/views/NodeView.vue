@@ -669,6 +669,7 @@ export default mixins(
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
+				//* Control + scroll zoom
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
 						this.zoomOut();
