@@ -18,7 +18,7 @@
 		<div class="data-display" v-if="node" >
 			<InputPanel :runIndex="runInputIndex" @runChange="onRunInputIndexChange" @openSettings="openSettings" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
-			<RunData @openSettings="openSettings" />
+			<OutputPanel :runIndex="runOutputIndex" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
@@ -40,7 +40,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
-import OuputPanel from './OuputPanel.vue';
+import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
 import { STICKY_NODE_TYPE } from '@/constants';
@@ -50,7 +50,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	components: {
 		NodeSettings,
 		InputPanel,
-		OuputPanel,
+		OutputPanel,
 	},
 	props: {
 		renaming: {

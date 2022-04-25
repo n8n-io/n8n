@@ -165,7 +165,6 @@ import DataDisplay from '@/components/DataDisplay.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
 import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
@@ -236,7 +235,6 @@ export default mixins(
 			Node,
 			NodeCreator,
 			NodeSettings,
-			RunData,
 			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
