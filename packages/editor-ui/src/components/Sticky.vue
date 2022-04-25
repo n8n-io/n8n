@@ -56,11 +56,6 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-export interface Sticky {
-	top: number;
-	left: number;
-}
-
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
 	props: {
@@ -124,8 +119,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			} = {
 				height: this.height + 16 + 'px',
 				width: this.width + 16 + 'px',
-				left: this.stickyProp.left - 8 + 'px',
-				top: this.stickyProp.top - 8 + 'px',
+				left: '-8px',
+				top: '-8px',
 				zIndex: 0,
 			};
 
@@ -157,8 +152,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				[key: string]: string;
 			} = {
 				width: this.width + 16 + 'px',
-				left: this.stickyProp.left - 8 + 'px',
-				top: this.stickyProp.top - 25 + 'px',
+				left: '-8px',
+				top: '-25px',
 			};
 
 			return returnStyles;
@@ -175,10 +170,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			dragging: false,
 			isResizing: false,
 			isTouchActive: false,
-			stickyProp: {
-				top: 0,
-				left: 0,
-			},
 		};
 	},
 	methods: {
