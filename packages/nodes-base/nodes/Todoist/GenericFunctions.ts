@@ -43,11 +43,8 @@ export async function todoistApiRequest(
 		options.body = body;
 	}
 
-	console.log(authentication);
-
 try {
 		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
-		console.log(credentialType);
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {
