@@ -9,7 +9,6 @@
 				class="sticky-box"
 				:data-name="data.name"
 				:ref="data.name"
-				:style="borderStyle"
 				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -67,21 +66,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	computed: {
-		borderStyle (): object {
-			let borderColor = getStyleTokenValue('--color-foreground-xdark');
-
-			if (this.data.disabled) {
-				borderColor = getStyleTokenValue('--color-foreground-base');
-			}
-
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				'border-color': borderColor,
-			};
-
-			return returnStyles;
-		},
 		defaultText (): string {
 			if (!this.nodeType) {
 				return '';
