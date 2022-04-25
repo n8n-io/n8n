@@ -113,7 +113,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			} = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
-				zIndex: this.isActive ? 9999999 : -1 * Math.floor((this.height * this.width) / 1000),
+				zIndex: this.isActive && !this.isReadOnly ? 9999999 : -1 * Math.floor((this.height * this.width) / 1000),
 			};
 
 			return returnStyles;
