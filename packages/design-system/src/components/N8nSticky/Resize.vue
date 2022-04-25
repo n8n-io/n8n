@@ -24,6 +24,28 @@ const cursorMap = {
 	'bottom-right': 'se-resize',
 };
 
+function closestNumber(value: number, divisor: number): number {
+	let q = parseInt(value / divisor);
+	let n1 = divisor * q;
+
+	let n2 = (value * divisor) > 0 ?
+		(divisor * (q + 1)) : (divisor * (q - 1));
+
+	if (Math.abs(value - n1) < Math.abs(value - n2))
+		return n1;
+
+	return n2;
+}
+
+function getSize(delta, min, virtual, gridSize): number {
+	const target = closestNumber(virtual, gridSize);
+	if (target >= min && virtual > 0) {
+		return target;
+	}
+
+	return min;
+};
+
 export default {
 	name: 'n8n-resize',
 	props: {
@@ -50,6 +72,10 @@ export default {
 		scale: {
 			type: Number,
 			default: 1,
+		},
+		gridSize: {
+			type: Number,
+			default: 20,
 		},
 	},
 	data() {
@@ -106,45 +132,13 @@ export default {
 				dHeight = e.pageY - this.y;
 			}
 
-			const gridSize = 20;
-
 			const deltaWidth = (dWidth - this.dWidth) / this.scale;
 			const deltaHeight = (dHeight - this.dHeight) / this.scale;
 
-			function closestNumber(n, m) {
-				// find the quotient
-				let q = parseInt(n / m);
-
-				// 1st possible closest number
-				let n1 = m * q;
-
-				// 2nd possible closest number
-				let n2 = (n * m) > 0 ?
-					(m * (q + 1)) : (m * (q - 1));
-
-				// if true, then n1 is the
-				// required closest number
-				if (Math.abs(n - n1) < Math.abs(n - n2))
-					return n1;
-
-				// else n2 is the required
-				// closest number
-				return n2;
-			}
-
-			const getSize = (curr, delta, min, virtual) => {
-				const target = closestNumber(virtual, gridSize);
-				if (target >= min && virtual > 0) {
-					return target;
-				}
-
-				return min;
-			};
-
 			this.vHeight = this.vHeight + deltaHeight;
 			this.vWidth = this.vWidth + deltaWidth;
-			const height = getSize(this.height, deltaHeight, this.minHeight, this.vHeight);
-			const width = getSize(this.width, deltaWidth, this.minWidth, this.vWidth);
+			const height = getSize(deltaHeight, this.minHeight, this.vHeight, this.gridSize);
+			const width = getSize(deltaWidth, this.minWidth, this.vWidth, this.gridSize);
 
 			if (left || top) {
 				const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
