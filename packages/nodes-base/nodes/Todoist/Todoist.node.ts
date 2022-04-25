@@ -148,7 +148,7 @@ export class Todoist implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project ID',
 				name: 'project',
 				type: 'options',
 				typeOptions: {
@@ -170,7 +170,7 @@ export class Todoist implements INodeType {
 				description: 'The project you want to operate on.',
 			},
 			{
-				displayName: 'Section',
+				displayName: 'Section ID',
 				name: 'section',
 				type: 'options',
 				typeOptions: {
@@ -191,7 +191,7 @@ export class Todoist implements INodeType {
 				description: 'Section to which you want move the task',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Labels ID',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -246,6 +246,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: '[]',
+				hint: 'See docs for possible commands: https://developer.todoist.com/sync/v8/#sync',
 				required: false,
 				description: 'Sync body',
 			},
@@ -328,7 +329,7 @@ export class Todoist implements INodeType {
 						description: 'Task priority from 1 (normal) to 4 (urgent).',
 					},
 					{
-						displayName: 'Section',
+						displayName: 'Section ID',
 						name: 'section',
 						type: 'options',
 						typeOptions: {
@@ -496,7 +497,7 @@ export class Todoist implements INodeType {
 						description: '2-letter code specifying language in case due_string is not written in English.',
 					},
 					{
-						displayName: 'Labels',
+						displayName: 'Labels ID',
 						name: 'labels',
 						type: 'multiOptions',
 						typeOptions: {
