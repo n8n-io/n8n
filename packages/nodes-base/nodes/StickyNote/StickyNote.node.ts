@@ -6,7 +6,7 @@ import {
 } from 'n8n-workflow';
 
 
-export class Note implements INodeType {
+export class StickyNote implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sticky Note',
 		name: 'stickyNote',
