@@ -1,7 +1,7 @@
 ---
 openapi: 3.0.0
 info:
-  title: Public n8n API
+  title: n8n Public API
   description: n8n Public API
   termsOfService: https://n8n.io/legal/terms
   contact:
@@ -9,26 +9,22 @@ info:
   license:
     name: Sustainable Use License
     url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
-  version: 1.0.0
+  version: v1
 externalDocs:
   description: n8n API documentation
   url: https://docs.n8n.io/api/
 servers:
-  # Added by API Auto Mocking Plugin
   - url: /api/v1
 tags:
-- name: users
+- name: User
   description: Operations about user
-  externalDocs:
-    description: Find out more about our store
-    url: http://swagger.io
 paths:
   /users:
     get:
       x-eov-operation-id: getUsers
       x-eov-operation-handler: v1/handlers/Users
       tags:
-      - users
+      - User
       summary: Retrieve all users
       description: Retrieve all users from your instance. Only available for the instance owner.
       parameters:
@@ -74,7 +70,7 @@ paths:
       x-eov-operation-id: createUsers
       x-eov-operation-handler: v1/handlers/Users
       tags:
-      - users
+      - User
       summary: Invite a user
       description: Invites a user to your instance. Only available for the instance owner.
       operationId: createUser
@@ -107,7 +103,7 @@ paths:
       x-eov-operation-id: getUser
       x-eov-operation-handler: v1/handlers/Users
       tags:
-      - users
+      - User
       summary: Get user by ID/Email
       description: Retrieve a user from your instance. Only available for the instance owner.
       operationId: getUser
@@ -142,7 +138,7 @@ paths:
       x-eov-operation-id: deleteUser
       x-eov-operation-handler: v1/handlers/Users
       tags:
-      - users
+      - User
       summary: Delete user by ID/Email
       description: Deletes a user from your instance. Only available for the instance owner.
       operationId: deleteUser
