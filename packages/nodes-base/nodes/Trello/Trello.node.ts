@@ -26,6 +26,11 @@ import {
 } from './BoardDescription';
 
 import {
+	boardMemberFields,
+	boardMemberOperations,
+} from './BoardMemberDescription';
+
+import {
 	cardFields,
 	cardOperations,
 } from './CardDescription';
@@ -85,6 +90,10 @@ export class Trello implements INodeType {
 						value: 'board',
 					},
 					{
+						name: 'Board Members',
+						value: 'boardMembers',
+					},
+					{
 						name: 'Card',
 						value: 'card',
 					},
@@ -114,6 +123,7 @@ export class Trello implements INodeType {
 			// ----------------------------------
 			...attachmentOperations,
 			...boardOperations,
+			...boardMemberOperations,
 			...cardOperations,
 			...cardCommentOperations,
 			...checklistOperations,
@@ -125,6 +135,7 @@ export class Trello implements INodeType {
 			// ----------------------------------
 			...attachmentFields,
 			...boardFields,
+			...boardMemberFields,
 			...cardFields,
 			...cardCommentFields,
 			...checklistFields,
@@ -213,7 +224,7 @@ export class Trello implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(qs, updateFields);
 
-					}  else if (operation === 'getMembers') {
+					} else if (operation === 'getMembers') {
 						// ----------------------------------
 						//         getMembers
 						// ----------------------------------
@@ -224,7 +235,7 @@ export class Trello implements INodeType {
 
 						endpoint = `boards/${id}/members`;
 
-					}  else if (operation === 'addMember') {
+					} else if (operation === 'addMember') {
 						// ----------------------------------
 						//         addMember
 						// ----------------------------------
@@ -270,8 +281,64 @@ export class Trello implements INodeType {
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
+				}	else if (resource === 'boardMembers') {
+					if (operation === 'getMembers') {
+							// ----------------------------------
+							//         getMembers
+							// ----------------------------------
 
+							requestMethod = 'GET';
 
+							const id = this.getNodeParameter('id', i) as string;
+
+							endpoint = `boards/${id}/members`;
+
+						} else if (operation === 'addMember') {
+							// ----------------------------------
+							//         addMember
+							// ----------------------------------
+
+							requestMethod = 'PUT';
+
+							const id = this.getNodeParameter('id', i) as string;
+							const idMember = this.getNodeParameter('idMember', i) as string;
+
+							endpoint = `boards/${id}/members/${idMember}`;
+
+							qs.type = this.getNodeParameter('type', i) as string;
+							qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
+
+						} else if (operation === 'removeMember') {
+							// ----------------------------------
+							//         removeMember
+							// ----------------------------------
+
+							requestMethod = 'DELETE';
+
+							const id = this.getNodeParameter('id', i) as string;
+							const idMember = this.getNodeParameter('idMember', i) as string;
+
+							endpoint = `boards/${id}/members/${idMember}`;
+
+						} else if (operation === 'inviteMemberViaEmail') {
+							// ----------------------------------
+							//         inviteMemberViaEmail
+							// ----------------------------------
+
+							requestMethod = 'PUT';
+
+							const id = this.getNodeParameter('id', i) as string;
+
+							endpoint = `boards/${id}/members`;
+
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							qs.email = this.getNodeParameter('email', i) as string;
+							qs.type = additionalFields.type as string;
+							body.fullName = additionalFields.fullName as string;
+						} else {
+							throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						}
 				} else if (resource === 'card') {
 
 					if (operation === 'create') {
