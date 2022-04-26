@@ -6,9 +6,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express = require('express');
 
-import { UserRequest } from '../../../../requests';
+import { UserRequest } from '../../../requests';
 
-import { User } from '../../../../databases/entities/User';
+import { User } from '../../../databases/entities/User';
 
 import {
 	clean,
@@ -21,11 +21,11 @@ import {
 	inviteUsers,
 	saveUsersWithRole,
 	transferWorkflowsAndCredentials,
-} from '../../../helpers';
+} from '../../helpers';
 
-import { ResponseHelper } from '../../../..';
+import { ResponseHelper } from '../../..';
 
-import { middlewares } from '../../../middlewares';
+import { middlewares } from '../../middlewares';
 
 export = {
 	createUsers: [
