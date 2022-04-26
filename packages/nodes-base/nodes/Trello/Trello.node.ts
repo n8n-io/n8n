@@ -224,60 +224,6 @@ export class Trello implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(qs, updateFields);
 
-					} else if (operation === 'getMembers') {
-						// ----------------------------------
-						//         getMembers
-						// ----------------------------------
-
-						requestMethod = 'GET';
-
-						const id = this.getNodeParameter('id', i) as string;
-
-						endpoint = `boards/${id}/members`;
-
-					} else if (operation === 'addMember') {
-						// ----------------------------------
-						//         addMember
-						// ----------------------------------
-
-						requestMethod = 'PUT';
-
-						const id = this.getNodeParameter('id', i) as string;
-						const idMember = this.getNodeParameter('idMember', i) as string;
-
-						endpoint = `boards/${id}/members/${idMember}`;
-
-						qs.type = this.getNodeParameter('type', i) as string;
-						qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
-
-					} else if (operation === 'removeMember') {
-						// ----------------------------------
-						//         removeMember
-						// ----------------------------------
-
-						requestMethod = 'DELETE';
-
-						const id = this.getNodeParameter('id', i) as string;
-						const idMember = this.getNodeParameter('idMember', i) as string;
-
-						endpoint = `boards/${id}/members/${idMember}`;
-
-					} else if (operation === 'inviteMemberViaEmail') {
-						// ----------------------------------
-						//         inviteMemberViaEmail
-						// ----------------------------------
-
-						requestMethod = 'PUT';
-
-						const id = this.getNodeParameter('id', i) as string;
-
-						endpoint = `boards/${id}/members`;
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						qs.email = this.getNodeParameter('email', i) as string;
-						qs.type = additionalFields.type as string;
-						body.fullName = additionalFields.fullName as string;
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
