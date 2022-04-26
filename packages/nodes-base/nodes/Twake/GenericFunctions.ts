@@ -28,7 +28,7 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://connectors.albatros.twakeapp.com/n8n${resource}`,
+		uri: uri || `https://plugins.twake.app/plugins/n8n${resource}`,
 		json: true,
 	};
 
