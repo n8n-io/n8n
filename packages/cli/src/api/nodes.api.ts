@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
-import { Db, ResponseHelper, LoadNodesAndCredentials, Push } from '..';
+import { ResponseHelper, LoadNodesAndCredentials, Push } from '..';
 import { NodeRequest } from '../requests';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { executeCommand } from '../CommunityNodes/helpers';
+import {
+	getAllInstalledPackages,
+	removePackageFromDatabase,
+	searchInstalledPackage,
+} from '../CommunityNodes/packageModel';
+import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
+import config = require('../../config');
 
 export const nodesController = express.Router();
 
@@ -23,6 +30,25 @@ nodesController.use((req, res, next) => {
 	next();
 });
 
+nodesController.use((req, res, next) => {
+	if (!isAuthenticatedRequest(req) || req.user.globalRole.name !== 'owner') {
+		res.status(403).json({ status: 'error', message: 'Unauthorized' });
+		return;
+	}
+	next();
+});
+
+nodesController.use((req, res, next) => {
+	if (config.getEnv('executions.mode') === 'queue' && req.method !== 'GET') {
+		res.status(400).json({
+			status: 'error',
+			message: 'Package management is disabled when running in "queue" mode',
+		});
+		return;
+	}
+	next();
+});
+
 nodesController.post(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Post) => {
@@ -30,6 +56,15 @@ nodesController.post(
 		if (!name) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
+				undefined,
+				400,
+			);
+		}
+
+		const installedPackage = await searchInstalledPackage(name);
+		if (installedPackage) {
+			throw new ResponseHelper.ResponseError(
+				`Package "${name}" is already installed. For updating, click the corresponding button.`,
 				undefined,
 				400,
 			);
@@ -62,10 +97,10 @@ nodesController.post(
 nodesController.get(
 	'/',
 	ResponseHelper.send(async () => {
-		let pendingUpdates: IDataObject;
+		let pendingUpdates;
 		try {
 			// Command succeeds when there are no updates.
-			// NPM handles this oddly. It fails if there are updates.
+			// NPM handles this oddly. It exits with code 1 when there are updates.
 			// More here: https://github.com/npm/rfcs/issues/473
 			await executeCommand('npm outdated --json');
 		} catch (error) {
@@ -76,17 +111,15 @@ nodesController.get(
 				pendingUpdates = JSON.parse(error.stdout);
 			}
 		}
-		const packages = await Db.collections.InstalledPackages.find({
-			relations: ['installedNodes'],
-		});
+		const packages = await getAllInstalledPackages();
 
 		if (pendingUpdates !== undefined) {
 			for (let i = 0; i < packages.length; i++) {
 				const installedPackage = packages[i];
-				// eslint-disable-next-line no-prototype-builtins
+				// eslint-disable-next-line no-prototype-builtins, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 				if (pendingUpdates.hasOwnProperty(installedPackage.packageName)) {
 					// @ts-ignore
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 					installedPackage.updateAvailable = pendingUpdates[installedPackage.packageName].latest;
 				}
 			}
@@ -108,12 +141,7 @@ nodesController.delete(
 			);
 		}
 
-		const installedPackage = await Db.collections.InstalledPackages.findOne({
-			where: {
-				packageName: name,
-			},
-			relations: ['installedNodes'],
-		});
+		const installedPackage = await searchInstalledPackage(name);
 
 		if (!installedPackage) {
 			throw new ResponseHelper.ResponseError(
@@ -143,7 +171,7 @@ nodesController.delete(
 			);
 		}
 
-		void (await Db.collections.InstalledPackages.remove(installedPackage));
+		void (await removePackageFromDatabase(installedPackage));
 	}),
 );
 
@@ -159,12 +187,7 @@ nodesController.patch(
 				400,
 			);
 		}
-		const installedPackage = await Db.collections.InstalledPackages.findOne({
-			where: {
-				packageName: name,
-			},
-			relations: ['installedNodes'],
-		});
+		const installedPackage = await searchInstalledPackage(name);
 
 		if (!installedPackage) {
 			throw new ResponseHelper.ResponseError(

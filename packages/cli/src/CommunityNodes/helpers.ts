@@ -16,7 +16,7 @@ export const parsePackageName = (originalString: string | undefined): IParsedNpm
 
 	const scope = originalString.includes('/') ? originalString.split('/')[0] : undefined;
 
-	const packageNameWithoutScope = scope ? originalString.replace(scope, '') : originalString;
+	const packageNameWithoutScope = scope ? originalString.replace(`${scope}/`, '') : originalString;
 
 	if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
 		throw new Error('Package name is not valid');
