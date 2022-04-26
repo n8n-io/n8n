@@ -16,7 +16,8 @@
 	    "outDir": "dist",
 		"types": [
 		  "webpack-env",
-		  "jest"
+		  "jest",
+		  "vitest/globals"
 		],
 	  	"typeRoots": [
 		  "@testing-library",
