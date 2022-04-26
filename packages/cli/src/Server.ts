@@ -581,8 +581,9 @@ class App {
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
-		this.app.use(`/${this.publicApiEndpoint}`, ...(await loadPublicApiVersions()));
-
+		if (!config.getEnv('publicApiEndpoints.disable')) {
+			this.app.use(`/${this.publicApiEndpoint}`, ...(await loadPublicApiVersions()));
+		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
