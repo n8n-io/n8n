@@ -172,7 +172,7 @@ export const boardMemberFields: INodeProperties[] = [
 			{
 				name: 'Observer',
 				value: 'observer',
-				description: 'Invite as observer',
+				description: 'Invite as observer (Trello premium feature)',
 			},
 		],
 		description: 'Determines the type of membership the user being added should have.',
@@ -311,7 +311,7 @@ export const boardMemberFields: INodeProperties[] = [
 					{
 						name: 'Observer',
 						value: 'observer',
-						description: 'Invite as observer',
+						description: 'Invite as observer (Trello premium feature)',
 					},
 				],
 				description: 'Determines the type of membership the user being added should have.',
