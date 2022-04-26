@@ -194,6 +194,16 @@ export class ItemLists implements INodeType {
 						value: 'aggregateAllItemData',
 					},
 				],
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'aggregateItems',
+						],
+					},
+				},
 			},
 			// Aggregate Individual Fields
 			{
