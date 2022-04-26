@@ -65,6 +65,7 @@ import {
 	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,
+	N8nSticky,
 	N8nTabs,
 	N8nFormInputs,
 	N8nFormBox,
@@ -100,6 +101,7 @@ Vue.use(N8nMenuItem);
 Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
+Vue.component('n8n-sticky', N8nSticky);
 Vue.use(N8nRadioButtons);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);

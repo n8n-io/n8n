@@ -158,7 +158,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'Page title. Appears at the top of the page and can be found via Quick Find',
+		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
 		displayName: 'Simplify Output',

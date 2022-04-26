@@ -253,7 +253,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedName',
 				type: 'string',
 				default: '',
-				description: `The name that was entered when the case was created. This field can't be updated after the case has been created`,
+				description: 'The name that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Supplied Phone',
@@ -459,7 +459,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedName',
 				type: 'string',
 				default: '',
-				description: `The name that was entered when the case was created. This field can't be updated after the case has been created`,
+				description: 'The name that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Supplied Phone',

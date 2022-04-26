@@ -90,17 +90,17 @@ export class Merge implements INodeType {
 					{
 						name: 'Inner Join',
 						value: 'inner',
-						description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items)',
+						description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
 					},
 					{
 						name: 'Left Join',
 						value: 'left',
-						description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items)',
+						description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
 					},
 					{
 						name: 'Outer Join',
 						value: 'outer',
-						description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items)',
+						description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
 					},
 				],
 				default: 'left',

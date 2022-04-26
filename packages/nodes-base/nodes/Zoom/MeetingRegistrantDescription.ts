@@ -57,7 +57,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Email',
@@ -93,7 +92,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'First Name.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -153,7 +151,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Last Name.',
 			},
 			{
 				displayName: 'Occurrence IDs',
@@ -229,7 +226,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 
 				],
 				default: '',
-				description: 'Role in purchase process.',
 			},
 			{
 				displayName: 'State',
@@ -267,7 +263,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Return All',
@@ -333,7 +328,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: `Occurrence ID.`,
 			},
 			{
 				displayName: 'Status',
@@ -378,7 +372,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Action',
@@ -434,7 +427,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurrence ID.',
 			},
 
 		],

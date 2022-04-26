@@ -131,7 +131,6 @@ export const eventFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'Event ID',
 		displayOptions: {
 			show: {
 				resource: [
@@ -198,7 +197,6 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Event ID',
 	},
 	{
 		displayName: 'First Name',
