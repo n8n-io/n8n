@@ -517,7 +517,7 @@ test(
 				expect(error).toBe('Email could not be sent');
 			}
 
-			const storedUser = await Db.collections.User!.findOneOrFail(id);
+			const storedUser = await Db.collections.User.findOneOrFail(id);
 			const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
 				storedUser;
 
@@ -552,7 +552,7 @@ test(
 				const response = await authOwnerAgent.post('/users').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 
-				const users = await Db.collections.User!.find();
+				const users = await Db.collections.User.find();
 				expect(users.length).toBe(1); // DB unaffected
 			}),
 		);
@@ -576,7 +576,7 @@ test(
 		expect(Array.isArray(data)).toBe(true);
 		expect(data.length).toBe(0);
 
-		const users = await Db.collections.User!.find();
+		const users = await Db.collections.User.find();
 		expect(users.length).toBe(1);
 	},
 	SMTP_TEST_TIMEOUT,
