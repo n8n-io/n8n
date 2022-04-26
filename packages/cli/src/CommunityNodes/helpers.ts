@@ -36,7 +36,7 @@ export const parsePackageName = (originalString: string | undefined): IParsedNpm
 	};
 };
 
-export const executeCommand = async (command: string): Promise<void> => {
+export const executeCommand = async (command: string): Promise<string> => {
 	const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 	// Make sure the node-download folder exists
 	try {
@@ -54,7 +54,8 @@ export const executeCommand = async (command: string): Promise<void> => {
 	};
 
 	try {
-		await execAsync(command, execOptions);
+		const commandResult = await execAsync(command, execOptions);
+		return commandResult.stdout;
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		if (error.message.includes('404 Not Found')) {

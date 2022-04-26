@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { LoggerProxy } from 'n8n-workflow';
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
 import { Db, ResponseHelper, LoadNodesAndCredentials, Push } from '..';
 import { NodeRequest } from '../requests';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { executeCommand } from '../CommunityNodes/helpers';
 
 export const nodesController = express.Router();
 
@@ -61,9 +62,35 @@ nodesController.post(
 nodesController.get(
 	'/',
 	ResponseHelper.send(async () => {
+		let pendingUpdates: IDataObject;
+		try {
+			// Command succeeds when there are no updates.
+			// NPM handles this oddly. It fails if there are updates.
+			// More here: https://github.com/npm/rfcs/issues/473
+			await executeCommand('npm outdated --json');
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+			if (error.code === 1) {
+				// Updates available
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				pendingUpdates = JSON.parse(error.stdout);
+			}
+		}
 		const packages = await Db.collections.InstalledPackages.find({
 			relations: ['installedNodes'],
 		});
+
+		if (pendingUpdates !== undefined) {
+			for (let i = 0; i < packages.length; i++) {
+				const installedPackage = packages[i];
+				// eslint-disable-next-line no-prototype-builtins
+				if (pendingUpdates.hasOwnProperty(installedPackage.packageName)) {
+					// @ts-ignore
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					installedPackage.updateAvailable = pendingUpdates[installedPackage.packageName].latest;
+				}
+			}
+		}
 		return packages;
 	}),
 );
