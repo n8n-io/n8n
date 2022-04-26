@@ -213,7 +213,9 @@ export class Set implements INodeType {
 				}
 			});
 
-			newItem.json.versionTest = this.getNodeParameter('versionTest', itemIndex);
+
+			newItem.json.versionFromParameter = this.getNodeParameter('versionTest', itemIndex);
+			newItem.json.versionFromNode = this.getNode().typeVersion;
 
 			returnData.push(newItem);
 		}
