@@ -374,7 +374,7 @@ export const appointmentFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		default: '',
+		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {

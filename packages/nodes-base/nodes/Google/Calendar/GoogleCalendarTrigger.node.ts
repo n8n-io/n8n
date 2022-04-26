@@ -74,7 +74,6 @@ export class GoogleCalendarTrigger implements INodeType {
 						value: 'eventUpdated',
 					},
 				],
-				description: '',
 			},
 			{
 				displayName: 'Options',

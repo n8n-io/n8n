@@ -396,7 +396,7 @@ export const contactFields: INodeProperties[] = [
 						],
 					},
 				},
-				default: '',
+				default: [],
 				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
@@ -576,7 +576,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: '',
+				default: [],
 				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
@@ -699,7 +699,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: '',
+				default: [],
 				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
@@ -844,7 +844,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: '',
+				default: [],
 				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
@@ -915,7 +915,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Filter Groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Filter Group',
 		typeOptions: {
 			multipleValues: true,
@@ -940,7 +940,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Filters',
 						name: 'filtersUi',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						placeholder: 'Add Filter',
 						typeOptions: {
 							multipleValues: true,
@@ -1025,7 +1025,7 @@ export const contactFields: INodeProperties[] = [
 								],
 							},
 						],
-						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 					},
 				],
 			},

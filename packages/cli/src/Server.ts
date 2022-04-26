@@ -137,6 +137,7 @@ import {
 	WorkflowHelpers,
 	WorkflowRunner,
 	getCredentialForUser,
+	getCredentialWithoutUser,
 } from '.';
 
 import config from '../config';
@@ -1820,18 +1821,18 @@ class App {
 						LoggerProxy.error(
 							'OAuth1 callback failed because of insufficient parameters received',
 							{
-								userId: req.user.id,
+								userId: req.user?.id,
 								credentialId,
 							},
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const credential = await getCredentialForUser(credentialId, req.user);
+					const credential = await getCredentialWithoutUser(credentialId);
 
 					if (!credential) {
 						LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
-							userId: req.user.id,
+							userId: req.user?.id,
 							credentialId,
 						});
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -1881,7 +1882,7 @@ class App {
 						oauthToken = await requestPromise(options);
 					} catch (error) {
 						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
-							userId: req.user.id,
+							userId: req.user?.id,
 							credentialId,
 						});
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -1911,13 +1912,13 @@ class App {
 					await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
 					LoggerProxy.verbose('OAuth1 callback successful for new credential', {
-						userId: req.user.id,
+						userId: req.user?.id,
 						credentialId,
 					});
 					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 				} catch (error) {
 					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
-						userId: req.user.id,
+						userId: req.user?.id,
 						credentialId: req.query.cid,
 					});
 					// Error response
@@ -2082,11 +2083,11 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const credential = await getCredentialForUser(state.cid, req.user);
+					const credential = await getCredentialWithoutUser(state.cid);
 
 					if (!credential) {
 						LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
-							userId: req.user.id,
+							userId: req.user?.id,
 							credentialId: state.cid,
 						});
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -2127,7 +2128,7 @@ class App {
 						!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
 					) {
 						LoggerProxy.debug('OAuth2 callback state is invalid', {
-							userId: req.user.id,
+							userId: req.user?.id,
 							credentialId: state.cid,
 						});
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -2178,7 +2179,7 @@ class App {
 
 					if (oauthToken === undefined) {
 						LoggerProxy.error('OAuth2 callback failed: unable to get access tokens', {
-							userId: req.user.id,
+							userId: req.user?.id,
 							credentialId: state.cid,
 						});
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -2212,7 +2213,7 @@ class App {
 					// Save the credentials in DB
 					await Db.collections.Credentials.update(state.cid, newCredentialsData);
 					LoggerProxy.verbose('OAuth2 callback successful for new credential', {
-						userId: req.user.id,
+						userId: req.user?.id,
 						credentialId: state.cid,
 					});
 

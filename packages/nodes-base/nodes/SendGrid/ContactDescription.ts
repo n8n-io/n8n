@@ -108,7 +108,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'The query field accepts valid  <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/">SGQL</a> for searching for a contact.',
+				description: 'The query field accepts valid <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/">SGQL</a> for searching for a contact.',
 			},
 		],
 	},
@@ -242,7 +242,7 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getListIds',
 								},
-								default: '',
+								default: [],
 								description: 'ID of the field to set.',
 							},
 						],

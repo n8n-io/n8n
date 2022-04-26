@@ -64,7 +64,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Data to Send',
@@ -192,7 +191,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Return All',
@@ -432,7 +430,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Table Record ID',

@@ -158,7 +158,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Severity of the alert. Default=Medium',
+		description: 'Severity of the alert. Default=Medium.',
 	},
 	{
 		displayName: 'Start Date',
@@ -247,7 +247,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Traffict Light Protocol (TLP). Default=Amber',
+		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
 		displayName: 'Tags',
@@ -329,7 +329,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		required: false,
-		default: '',
+		default: {},
 		options: [
 			{
 				displayName: 'Custom Fields',
@@ -433,7 +433,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		required: false,
-		default: '',
+		default: {},
 		options: [
 			{
 				displayName: 'Custom Fields',
@@ -600,7 +600,7 @@ export const caseFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Start Date',
@@ -672,7 +672,7 @@ export const caseFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
@@ -852,7 +852,7 @@ export const caseFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Start Date',
@@ -925,7 +925,7 @@ export const caseFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
