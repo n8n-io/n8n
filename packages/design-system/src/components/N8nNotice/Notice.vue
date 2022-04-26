@@ -1,6 +1,6 @@
 <template>
 	<div :id="id" :class="classes" role="alert">
-	  <div class="notice-content">
+		<div class="notice-content">
 			<n8n-text size="small">
 				<slot>
 					<span
@@ -12,8 +12,8 @@
 					<span v-if="canTruncate">
 						<a
 							role="button"
-						  :aria-controls="`${id}-content`"
-						  :aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
+							:aria-controls="`${id}-content`"
+							:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
 							@click="toggleExpanded"
 						>
 							{{ t(expanded ? 'notice.showLess' : 'notice.showMore') }}
@@ -21,7 +21,7 @@
 					</span>
 				</slot>
 			</n8n-text>
-	  </div>
+		</div>
 	</div>
 </template>
 
@@ -37,19 +37,23 @@ const DEFAULT_TRUNCATION_MAX_LENGTH = 150;
 export default Vue.extend({
 	directives: {},
 	mixins: [
-	  Locale,
+		Locale,
 	],
 	props: {
 		id: {
 			type: String,
 			default: () => uid('notice'),
 		},
-		type: {
+		theme: {
 			type: String,
 			default: 'warning',
 		},
+		truncateAt: {
+			type: Number,
+			default: 150,
+		},
 		truncate: {
-			type: [Boolean, Number],
+			type: Boolean,
 			default: false,
 		},
 		content: {
@@ -66,21 +70,16 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		classes (): string[] {
+		classes(): string[] {
 			return [
 				'notice',
 				this.$style['notice'],
-		  	this.$style[`notice-${this.type}`],
+				this.$style[this.theme],
 			];
 		},
-		truncateAt(): boolean | number {
-			return this.truncate === true
-				? DEFAULT_TRUNCATION_MAX_LENGTH
-				: this.truncate;
+		canTruncate(): boolean {
+			return this.truncate && this.content.length > this.truncateAt;
 		},
-	  canTruncate(): boolean {
-		  return !!this.truncateAt && this.content.length > this.truncateAt;
-	  },
 		truncatedContent(): string {
 			if (!this.canTruncate || this.expanded) {
 				return this.content;
@@ -106,42 +105,42 @@ export default Vue.extend({
 <style lang="scss" module>
 .notice {
 	display: flex;
-  color: var(--custom-font-black);
-  margin: 0;
-  padding: var(--spacing-xs);
+	color: var(--custom-font-black);
+	margin: 0;
+	padding: var(--spacing-xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;
 	border-style: solid;
-  border-color: var(--border-color);
-  border-radius: var(--border-radius-small);
+	border-color: var(--border-color);
+	border-radius: var(--border-radius-small);
 
-  a {
+	a {
 		font-weight: var(--font-weight-bold);
-  }
+	}
 }
 
-.notice-warning {
-  --border-color: #F2DDA6;
-  --background-color: #FFF6D7;
+.warning {
+	--border-color: #F2DDA6;
+	--background-color: #FFF6D7;
 }
 
-.notice-danger {
-  --border-color: var(--color-danger-tint-1);
-  --background-color: var(--color-danger-tint-2);
+.danger {
+	--border-color: var(--color-danger-tint-1);
+	--background-color: var(--color-danger-tint-2);
 }
 
-.notice-success {
-  --border-color: var(--color-success-tint-1);
-  --background-color: var(--color-success-tint-2);
+.success {
+	--border-color: var(--color-success-tint-1);
+	--background-color: var(--color-success-tint-2);
 }
 
-.notice-info {
-  --border-color: var(--color-info-tint-1);
-  --background-color: var(--color-info-tint-2);
+.info {
+	--border-color: var(--color-info-tint-1);
+	--background-color: var(--color-info-tint-2);
 }
 
 .expanded {
-  + span {
+	+ span {
 		margin-top: var(--spacing-4xs);
 		display: block;
 	}
