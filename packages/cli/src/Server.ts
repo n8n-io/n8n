@@ -676,14 +676,17 @@ class App {
 			next();
 		});
 
-		this.app.use(`/${this.restEndpoint}/node`, nodesController);
-
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
+
+		// ----------------------------------------
+		// Packages and nodes management
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/node`, nodesController);
 
 		// ----------------------------------------
 		// Healthcheck
