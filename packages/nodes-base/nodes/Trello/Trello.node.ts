@@ -229,62 +229,66 @@ export class Trello implements INodeType {
 					}
 				}	else if (resource === 'boardMembers') {
 					if (operation === 'getMembers') {
-							// ----------------------------------
-							//         getMembers
-							// ----------------------------------
+						// ----------------------------------
+						//         getMembers
+						// ----------------------------------
 
-							requestMethod = 'GET';
+						requestMethod = 'GET';
 
-							const id = this.getNodeParameter('id', i) as string;
+						const id = this.getNodeParameter('id', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
 
-							endpoint = `boards/${id}/members`;
+						endpoint = `boards/${id}/members`;
 
-						} else if (operation === 'addMember') {
-							// ----------------------------------
-							//         addMember
-							// ----------------------------------
+					} else if (operation === 'addMember') {
+						// ----------------------------------
+						//         addMember
+						// ----------------------------------
 
-							requestMethod = 'PUT';
+						requestMethod = 'PUT';
 
-							const id = this.getNodeParameter('id', i) as string;
-							const idMember = this.getNodeParameter('idMember', i) as string;
+						const id = this.getNodeParameter('id', i) as string;
+						const idMember = this.getNodeParameter('idMember', i) as string;
+
+						endpoint = `boards/${id}/members/${idMember}`;
+
+						qs.type = this.getNodeParameter('type', i) as string;
+						qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
+
+					} else if (operation === 'removeMember') {
+						// ----------------------------------
+						//         removeMember
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const id = this.getNodeParameter('id', i) as string;
+						const idMember = this.getNodeParameter('idMember', i) as string;
 
 							endpoint = `boards/${id}/members/${idMember}`;
 
-							qs.type = this.getNodeParameter('type', i) as string;
-							qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
+					} else if (operation === 'inviteMemberViaEmail') {
+						// ----------------------------------
+						//         inviteMemberViaEmail
+						// ----------------------------------
 
-						} else if (operation === 'removeMember') {
-							// ----------------------------------
-							//         removeMember
-							// ----------------------------------
+						requestMethod = 'PUT';
 
-							requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
 
-							const id = this.getNodeParameter('id', i) as string;
-							const idMember = this.getNodeParameter('idMember', i) as string;
-
-							endpoint = `boards/${id}/members/${idMember}`;
-
-						} else if (operation === 'inviteMemberViaEmail') {
-							// ----------------------------------
-							//         inviteMemberViaEmail
-							// ----------------------------------
-
-							requestMethod = 'PUT';
-
-							const id = this.getNodeParameter('id', i) as string;
-
-							endpoint = `boards/${id}/members`;
+						endpoint = `boards/${id}/members`;
 
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-							qs.email = this.getNodeParameter('email', i) as string;
-							qs.type = additionalFields.type as string;
-							body.fullName = additionalFields.fullName as string;
-						} else {
-							throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-						}
+						qs.email = this.getNodeParameter('email', i) as string;
+						qs.type = additionalFields.type as string;
+						body.fullName = additionalFields.fullName as string;
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
 				} else if (resource === 'card') {
 
 					if (operation === 'create') {

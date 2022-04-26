@@ -66,6 +66,42 @@ export const boardMemberFields: INodeProperties[] = [
 		},
 		description: 'The ID of the board to get members from.',
 	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getMembers',
+				],
+				resource: [
+					'boardMembers',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 20,
+		displayOptions: {
+			show: {
+				operation: [
+					'getMembers',
+				],
+				resource: [
+					'boardMembers',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
 
 		// ----------------------------------
 	//         board:addMember
