@@ -67,7 +67,7 @@ test(
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual({});
 
-				const user = await Db.collections.User!.findOneOrFail({ email: payload.email });
+				const user = await Db.collections.User.findOneOrFail({ email: payload.email });
 				expect(user.resetPasswordToken).toBeDefined();
 				expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
 			}),
