@@ -5,14 +5,18 @@ import {
 import {
 	IBinaryData,
 	IBinaryKeyData,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 
 import {
 	pushoverApiRequest,
@@ -36,6 +40,7 @@ export class Pushover implements INodeType {
 			{
 				name: 'pushoverApi',
 				required: true,
+				testedBy: 'pushoverCredentialTest',
 			},
 		],
 		properties: [
@@ -286,11 +291,11 @@ export class Pushover implements INodeType {
 						description: `A title for your supplementary URL, otherwise just the URL is shown`,
 					},
 					{
-						displayName: 'HTML',
+						displayName: 'HTML Formatting',
 						name: 'html',
-						type: 'string',
-						default: '',
-						description: `Set to 1 to enable HTML parsing`,
+						type: 'boolean',
+						default: false,
+						description: `Enable messages formatting with HTML tags`,
 					},
 				],
 			},
@@ -298,6 +303,28 @@ export class Pushover implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async pushoverCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					const token = credential?.data?.apiKey as string;
+					const options: OptionsWithUri = {
+						method: 'GET',
+						uri: `https://api.pushover.net/1/licenses.json?token=${token}`,
+						json: true,
+					};
+					await this.helpers.request.call(this, options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: 'The API Key included in the request is invalid',
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 		loadOptions: {
 			async getSounds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { sounds } = await pushoverApiRequest.call(this, 'GET', '/sounds.json', {});
@@ -332,6 +359,10 @@ export class Pushover implements INodeType {
 						const priority = this.getNodeParameter('priority', i) as number;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.html !== undefined) {
+							additionalFields.html = additionalFields.html ? '1' : '';
+						}
 
 						const body: IDataObject = {
 							user: userKey,
