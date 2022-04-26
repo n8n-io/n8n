@@ -146,7 +146,7 @@ export const responderFields: INodeProperties[] = [
 								value: 3,
 							},
 						],
-						description: 'Severity of the case. Default=Medium',
+						description: 'Severity of the case. Default=Medium.',
 					},
 					{
 						displayName: 'Start Date',
@@ -192,7 +192,7 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
-						description: 'Traffict Light Protocol (TLP). Default=Amber',
+						description: 'Traffict Light Protocol (TLP). Default=Amber.',
 					},
 					{
 						displayName: 'Tags',
@@ -277,7 +277,7 @@ export const responderFields: INodeProperties[] = [
 								value: 3,
 							},
 						],
-						description: 'Severity of the case. Default=Medium',
+						description: 'Severity of the case. Default=Medium.',
 					},
 					{
 						displayName: 'Date',
@@ -315,7 +315,7 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
-						description: 'Traffict Light Protocol (TLP). Default=Amber',
+						description: 'Traffict Light Protocol (TLP). Default=Amber.',
 					},
 					{
 						displayName: 'Status',
@@ -340,7 +340,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'Imported',
 							},
 						],
-						description: 'Status of the alert. Default=New',
+						description: 'Status of the alert. Default=New.',
 					},
 					{
 						displayName: 'Type',
@@ -448,7 +448,6 @@ export const responderFields: INodeProperties[] = [
 												value: 'user-agent',
 											},
 										],
-										description: '',
 									},
 									{
 										displayName: 'Data',
@@ -462,7 +461,6 @@ export const responderFields: INodeProperties[] = [
 											},
 										},
 										default: '',
-										description: '',
 									},
 									{
 										displayName: 'Binary Property',
@@ -476,21 +474,18 @@ export const responderFields: INodeProperties[] = [
 											},
 										},
 										default: 'data',
-										description: '',
 									},
 									{
 										displayName: 'Message',
 										name: 'message',
 										type: 'string',
 										default: '',
-										description: '',
 									},
 									{
 										displayName: 'Tags',
 										name: 'tags',
 										type: 'string',
 										default: '',
-										description: '',
 									},
 								],
 							},
@@ -668,7 +663,7 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
-						description: 'Traffict Light Protocol (TLP). Default=Amber',
+						description: 'Traffict Light Protocol (TLP). Default=Amber.',
 					},
 					{
 						displayName: 'IOC',

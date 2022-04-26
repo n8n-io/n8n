@@ -20,7 +20,7 @@ import {
 	getWorkspaces,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { snakeCase } from 'change-case';
 

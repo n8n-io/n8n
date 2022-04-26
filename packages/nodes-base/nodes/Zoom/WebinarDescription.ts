@@ -119,7 +119,6 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Approval type.',
 			},
 			{
 				displayName: 'Audio',
@@ -162,14 +161,12 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 'none',
-				description: 'Auto recording.',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'string',
 				default: '',
-				description: 'Duration.',
 			},
 			{
 				displayName: 'Host Video',
@@ -218,7 +215,7 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 1,
-				description: 'Registration type. Used for recurring webinar with fixed time only',
+				description: 'Registration type. Used for recurring webinar with fixed time only.',
 			},
 			{
 				displayName: 'Start Time',
@@ -242,7 +239,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Webinar topic.`,
 			},
 			{
 				displayName: 'Webinar Type',
@@ -263,7 +259,6 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.',
 			},
 
 		],
@@ -287,7 +282,6 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Webinar ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -318,7 +312,7 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Show Previous Occurrences',
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'To view webinar details of all previous occurrences of the recurring webinar.',
 			},
 		],
@@ -404,7 +398,6 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Webinar ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -506,7 +499,6 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Approval type.',
 			},
 			{
 				displayName: 'Auto Recording',
@@ -527,7 +519,6 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 'none',
-				description: 'Auto recording.',
 			},
 			{
 				displayName: 'Audio',
@@ -556,7 +547,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'duration',
 				type: 'string',
 				default: '',
-				description: 'Duration.',
 			},
 			{
 				displayName: 'Host Video',
@@ -636,7 +626,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Webinar topic.`,
 			},
 			{
 				displayName: 'Webinar Type',
@@ -657,7 +646,6 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.',
 			},
 		],
 	},

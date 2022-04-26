@@ -15,7 +15,7 @@ import {
 	flatten,
 } from '../../utils/utilities';
 
-import * as mssql from 'mssql';
+import mssql from 'mssql';
 
 import {
 	ITables,
@@ -130,8 +130,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
+				description: `Comma-separated list of the properties which should used as columns for the new rows.`,
 			},
 
 			// ----------------------------------
@@ -175,8 +174,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for rows to update.',
+				description: `Comma-separated list of the properties which should used as columns for rows to update.`,
 			},
 
 			// ----------------------------------
@@ -214,10 +212,6 @@ export class MicrosoftSql implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('microsoftSql');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const config = {
 			server: credentials.server as string,

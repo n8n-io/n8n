@@ -19,7 +19,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as iconv from 'iconv-lite';
+import iconv from 'iconv-lite';
 iconv.encodingExists('utf8');
 
 // Create options for bomAware and encoding
@@ -109,7 +109,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name of the binary key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey"',
+				description: 'The name of the binary key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
 				displayName: 'Destination Key',
@@ -128,7 +128,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: '',
-				description: 'The name the JSON key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey"',
+				description: 'The name the JSON key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 			},
 
 			// ----------------------------------
@@ -165,7 +165,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey"',
+				description: 'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
 				displayName: 'Destination Key',
@@ -181,7 +181,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name the binary key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey"',
+				description: 'The name the binary key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 			},
 
 			{

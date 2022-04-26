@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio';
+import cheerio from 'cheerio';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
@@ -114,7 +114,6 @@ export class HtmlExtract implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The extraction values.',
 				default: {},
 				options: [
 					{

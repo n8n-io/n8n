@@ -249,7 +249,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				],
-				default: '',
+				default: {},
 				description: 'Array of supported attachments to add to the message.',
 			},
 			{

@@ -251,7 +251,7 @@ export const releaseFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
 		},
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [

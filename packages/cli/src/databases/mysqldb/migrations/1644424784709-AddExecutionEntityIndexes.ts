@@ -5,7 +5,7 @@ export class AddExecutionEntityIndexes1644424784709 implements MigrationInterfac
 	name = 'AddExecutionEntityIndexes1644424784709';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
 			'DROP INDEX `IDX_c4d999a5e90784e8caccf5589d` ON `' + tablePrefix + 'execution_entity`',
@@ -41,7 +41,7 @@ export class AddExecutionEntityIndexes1644424784709 implements MigrationInterfac
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 		await queryRunner.query(
 			'DROP INDEX `IDX_81fc04c8a17de15835713505e4` ON `' + tablePrefix + 'execution_entity`',
 		);

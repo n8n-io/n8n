@@ -7,6 +7,7 @@ export const tableRecordOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -63,7 +64,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Data to Send',
@@ -71,7 +71,7 @@ export const tableRecordFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'mapInput',
 				description: 'Use when node input names match destination field names',
 			},
@@ -117,7 +117,7 @@ export const tableRecordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: false,
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
 		displayName: 'Fields to Send',
@@ -191,7 +191,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Return All',
@@ -208,7 +207,7 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -268,15 +267,16 @@ export const tableRecordFields: INodeProperties[] = [
 						'tableName',
 					],
 				},
-				default: '',
+				default: [],
 				description: 'A list of fields to return',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Filter',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',
@@ -380,8 +380,9 @@ export const tableRecordFields: INodeProperties[] = [
 						'tableName',
 					],
 				},
-				default: '',
+				default: [],
 				description: 'A list of fields to return',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Return Values',
@@ -429,7 +430,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Table Record ID',
@@ -455,7 +455,7 @@ export const tableRecordFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'mapInput',
 				description: 'Use when node input names match destination field names',
 			},
@@ -501,7 +501,7 @@ export const tableRecordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: false,
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
 		displayName: 'Fields to Send',

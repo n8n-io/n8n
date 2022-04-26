@@ -949,7 +949,7 @@ export class Workflow {
 			const triggerResponse = await nodeType.trigger.call(triggerFunctions);
 
 			// Add the manual trigger response which resolves when the first time data got emitted
-			triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
+			triggerResponse!.manualTriggerResponse = new Promise((resolve, reject) => {
 				triggerFunctions.emit = (
 					(resolveEmit) =>
 					(
@@ -967,6 +967,20 @@ export class Workflow {
 						resolveEmit(data);
 					}
 				)(resolve);
+				triggerFunctions.emitError = (
+					(rejectEmit) =>
+					(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>) => {
+						additionalData.hooks!.hookFunctions.sendResponse = [
+							async (): Promise<void> => {
+								if (responsePromise) {
+									responsePromise.reject(error);
+								}
+							},
+						];
+
+						rejectEmit(error);
+					}
+				)(reject);
 			});
 
 			return triggerResponse;

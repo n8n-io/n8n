@@ -17,7 +17,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
@@ -41,18 +41,18 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		if (authenticationMethod === 'apiKey') {
 			const credentials = await this.getCredentials('hubspotApi');
 
-			options.qs.hapikey = credentials!.apiKey as string;
+			options.qs.hapikey = credentials.apiKey as string;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'appToken') {
 			const credentials = await this.getCredentials('hubspotAppToken');
 
-			options.headers!['Authorization'] = `Bearer ${credentials!.appToken}`;
+			options.headers!['Authorization'] = `Bearer ${credentials.appToken}`;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
 
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
-				options.qs.hapikey = credentials!.apiKey as string;
+				options.qs.hapikey = credentials.apiKey as string;
 				return await this.helpers.request!(options);
 
 			} else {

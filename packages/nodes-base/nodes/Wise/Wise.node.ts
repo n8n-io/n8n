@@ -40,7 +40,7 @@ import {
 	omit,
 } from 'lodash';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
 
@@ -439,7 +439,7 @@ export class Wise implements INodeType {
 
 						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
 
-						const { environment } = await this.getCredentials('wiseApi') as IDataObject;
+						const { environment } = await this.getCredentials('wiseApi');
 
 						if (environment === 'test') {
 							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {

@@ -1,4 +1,4 @@
-import moment = require('moment');
+import moment from 'moment';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
@@ -23,6 +23,7 @@ export class If implements INodeType {
 			color: '#408000',
 		},
 		inputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main'],
 		outputNames: ['true', 'false'],
 		properties: [

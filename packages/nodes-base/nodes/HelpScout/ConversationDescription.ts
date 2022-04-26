@@ -195,8 +195,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: `When autoReply is set to true, an auto reply will be sent
-				as long as there is at least one customer thread in the conversation.`,
+				description: 'When autoReply is set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation.',
 			},
 			{
 				displayName: 'Closed At',
@@ -385,7 +384,6 @@ export const conversationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                conversation:delete                         */
@@ -406,7 +404,6 @@ export const conversationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'conversation ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                conversation:getAll                         */
