@@ -417,7 +417,7 @@ export default mixins(
 					return 0;
 				}
 
-				if (runData[this.node.name][this.runIndex].data === undefined ||
+				if (!runData[this.node.name][this.runIndex] || !runData[this.node.name][this.runIndex].data === undefined ||
 					runData[this.node.name][this.runIndex].data!.main === undefined
 				) {
 					return 0;
