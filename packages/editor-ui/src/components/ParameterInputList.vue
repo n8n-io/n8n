@@ -14,11 +14,10 @@
 				/>
 			</div>
 
-			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
-				<n8n-text size="small">
-					<span v-html="$locale.nodeText().inputLabelDisplayName(parameter, path)"></span>
-				</n8n-text>
-			</div>
+			<n8n-notice
+				v-else-if="parameter.type === 'notice'"
+				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+			/>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
