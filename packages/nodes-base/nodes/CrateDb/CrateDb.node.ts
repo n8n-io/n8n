@@ -124,8 +124,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 
 			// ----------------------------------
@@ -168,8 +167,7 @@ export class CrateDb implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Comma separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
+				description: `Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".`,
 			},
 			{
 				displayName: 'Columns',
@@ -182,8 +180,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for rows to update.',
+				description: `Comma-separated list of the properties which should used as columns for rows to update.`,
 			},
 
 			// ----------------------------------
@@ -199,7 +196,7 @@ export class CrateDb implements INodeType {
 					},
 				},
 				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
+				description: 'Comma-separated list of the fields that the operation will return',
 			},
 			// ----------------------------------
 			//         additional fields
@@ -243,7 +240,7 @@ export class CrateDb implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters.',
 					},
 				],
 			},

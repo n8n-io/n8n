@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="!!node || renaming"
+		:visible="(!!node || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
@@ -41,6 +41,7 @@ import RunData from '@/components/RunData.vue';
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
+import { STICKY_NODE_TYPE } from '@/constants';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -76,15 +77,18 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 			return null;
 		},
+		isActiveStickyNode(): boolean {
+			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
+		},
 	},
 	watch: {
 		node (node, oldNode) {
-			if(node && !oldNode) {
+			if(node && !oldNode && !this.isActiveStickyNode) {
 				this.triggerWaitingWarningEnabled = false;
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
-			if (window.top) {
+			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
 			}
 		},

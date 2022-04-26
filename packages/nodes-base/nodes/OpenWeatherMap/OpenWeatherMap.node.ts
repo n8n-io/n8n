@@ -136,7 +136,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/',
+				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -187,7 +187,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/',
+				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{

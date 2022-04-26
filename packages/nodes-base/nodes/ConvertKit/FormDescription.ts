@@ -57,7 +57,6 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Form ID.',
 	},
 	{
 		displayName: 'Email',

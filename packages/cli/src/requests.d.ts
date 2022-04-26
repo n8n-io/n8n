@@ -237,12 +237,16 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{ oauth_verifier: string; oauth_token: string; cid: string }
-		>;
+		> & {
+			user?: User;
+		};
 	}
 
 	namespace OAuth2Credential {
 		type Auth = OAuth1Credential.Auth;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }> & {
+			user?: User;
+		};
 	}
 }
 

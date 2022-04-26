@@ -355,7 +355,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the project is active or archived. Defaults to true',
+				description: 'Whether the project is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Fixed Fee',
@@ -529,7 +529,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the project is active or archived. Defaults to true',
+				description: 'Whether the project is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Billable',

@@ -76,7 +76,6 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'List by',
 	},
 	{
 		displayName: 'Value',
@@ -298,7 +297,6 @@ export const companyFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -404,7 +402,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Attribute',
 		typeOptions: {
 			multipleValues: true,

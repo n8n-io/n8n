@@ -298,7 +298,6 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'click_id',
 				type: 'string',
 				default: '',
-				description: 'Click ID.',
 			},
 			{
 				displayName: 'Email',
@@ -326,7 +325,6 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'The Source ID.',
 			},
 		],
 	},

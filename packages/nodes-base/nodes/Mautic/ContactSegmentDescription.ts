@@ -53,7 +53,6 @@ export const contactSegmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 
@@ -76,7 +75,6 @@ export const contactSegmentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getSegments',
 		},
 		default: '',
-		description: 'Segment ID',
 
 	},
 ];
