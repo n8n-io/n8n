@@ -26,6 +26,7 @@ export async function elasticsearchApiRequest(
 		username,
 		password,
 		baseUrl,
+		ignoreSSLIssues,
 	} = await this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
@@ -40,6 +41,7 @@ export async function elasticsearchApiRequest(
 		qs,
 		uri: `${baseUrl}${endpoint}`,
 		json: true,
+		rejectUnauthorized: !ignoreSSLIssues,
 	};
 
 	if (!Object.keys(body).length) {
