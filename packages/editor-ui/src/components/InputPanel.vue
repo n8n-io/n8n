@@ -12,7 +12,7 @@
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
 					<n8n-option :label="$locale.baseText('ndv.input.immediate')" :value="IMMEDIATE_KEY" :key="IMMEDIATE_KEY"></n8n-option>
-					<n8n-option v-for="node in workflowNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
+					<n8n-option v-for="node in parentNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 			</div>
 		</template>
@@ -79,11 +79,12 @@ export default mixins(
 		overrideOutputIndex (): number | undefined {
 			return this.selectedNode === IMMEDIATE_KEY ? this.parentNodeOutputIndex : undefined;
 		},
-		workflowNodes (): INodeUi[] {
+		parentNodes (): INodeUi[] {
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeUi[] = this.$store.getters.allNodes;
+			const nodes: INodeUi[] = this.workflow.getParentNodes(this.activeNode.name)
+				.map((nodeName: string) => this.$store.getters.getNodeByName(nodeName));
 			return nodes.filter((node) => this.activeNode && (node.name !== this.activeNode.name));
 		},
 	},
