@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
@@ -158,7 +159,7 @@ export function meNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			const ramdonToken = randomBytes(20).toString('hex');
+			const ramdonToken = randomBytes(40).toString('hex');
 			const apiKey = `n8n_api_${ramdonToken}`;
 			await Db.collections.User!.update(req.user.id, {
 				apiKey,
@@ -183,18 +184,16 @@ export function meNamespace(this: N8nApp): void {
 	/**
 	 * Get an API Key
 	 */
-	this.app.delete(
+	this.app.get(
 		`/${this.restEndpoint}/me/api-key`,
-		ResponseHelper.send(async () => {
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
 			const user = await Db.collections.User!.findOne({
 				where: {
 					apiKey: null,
 				},
 			});
 
-			if (user) {
-				return { apiKey: user.apiKey, success: true };
-			}
+			return { apiKey: user?.apiKey };
 		}),
 	);
 }
