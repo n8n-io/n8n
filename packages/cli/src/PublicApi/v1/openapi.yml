@@ -7,16 +7,14 @@ info:
   contact:
     email: hello@n8n.io
   license:
-    name: Apache 2.0 with Commons Clause
+    name: Sustainable Use License
     url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
   version: 1.0.0
 externalDocs:
-  description: Find out more about Swagger
-  url: http://swagger.io
+  description: n8n API documentation
+  url: https://docs.n8n.io/api/
 servers:
   # Added by API Auto Mocking Plugin
-  - description: SwaggerHub API Auto Mocking
-    url: https://virtserver.swaggerhub.com/RicardoE105/n8n/1.0.0
   - url: /api/v1
 tags:
 - name: users
@@ -32,11 +30,11 @@ paths:
       tags:
       - users
       summary: Retrieve all users
-      description: Retrieve all users from your instance. Only available for the instance owner
+      description: Retrieve all users from your instance. Only available for the instance owner.
       parameters:
       - name: limit
         in: query
-        description: The maximum number of items to return
+        description: The maximum number of items to return.
         required: false
         schema:
           type: number
@@ -44,10 +42,9 @@ paths:
           default: 100
       - name: cursor
         in: query
-        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail
+        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
         required: false
         style: form
-        explode: true
         schema:
           type: string
           example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
@@ -55,15 +52,14 @@ paths:
         in: query
         required: false
         style: form
-        explode: true
-        description: Whether to include the role information the user object
+        description: Whether to include the role information the user object.
         schema:
           type: boolean
           example: false
           default: false
       responses:
         "200":
-          description: Successful operation
+          description: Operation successful.
           content:
             application/json:
               schema:
@@ -83,7 +79,7 @@ paths:
       description: Invites a user to your instance. Only available for the instance owner.
       operationId: createUser
       requestBody:
-        description: Created user object
+        description: Created user object.
         content:
           application/json:
             schema:
@@ -118,7 +114,7 @@ paths:
       parameters:
       - name: identifier
         in: path
-        description: The ID or email of the user
+        description: The ID or email of the user.
         required: true
         schema:
           type: string
@@ -131,7 +127,7 @@ paths:
           example: true
       responses:
         "200":
-          description: Successful operation
+          description: Operation successful.
           content:
             application/json:
               schema:
@@ -153,14 +149,14 @@ paths:
       parameters:
       - name: identifier
         in: path
-        description: The name that needs to be deleted
+        description: The ID if the user to be deleted.
         required: true
         schema:
           type: string
           format: identifier
       - name: transferId
         in: query
-        description: ID of the user to transfer workflows and credentials to.
+        description: ID of the user to transfer workflows and credentials to. Must not be equal to the to-be-deleted user.
         required: false
         schema:
           type: string
@@ -172,7 +168,7 @@ paths:
           example: true
       responses:
         "200":
-          description: Successful operation
+          description: Operation successful.
           content:
             application/json:
               schema:
@@ -212,31 +208,31 @@ components:
         email:
           type: string
           format: email
-          example: jhon.doe@company.com
+          example: john.doe@company.com
         firstName:
           maxLength: 32
           type: string
           description: User's first name
           readOnly: true
-          example: jhon
+          example: john
         lastName:
           maxLength: 32
           type: string
           description: User's last name
           readOnly: true
-          example: doe
+          example: Doe
         isPending:
           type: boolean
-          description: Whether the user finished setting up the invitation or not
+          description: Whether the user finished setting up their account in response to the invitation (true) or not (false).
           readOnly: true
         createdAt:
           type: string
-          description: Time the user was created
+          description: Time the user was created.
           format: date-time
           readOnly: true
         updatedAt:
           type: string
-          description: Last time the user was updaded
+          description: Last time the user was updated.
           format: date-time
           readOnly: true
         globalRole:
@@ -270,17 +266,17 @@ components:
           example: global
         createdAt:
           type: string
-          description: Time the role was created
+          description: Time the role was created.
           format: date-time
           readOnly: true
         updatedAt:
           type: string
-          description: Last time the role was updaded
+          description: Last time the role was updaded.
           format: date-time
           readOnly: true
   responses:
     NotFound:
-      description: The specified resource was not found
+      description: The specified resource was not found.
       content:
         application/json:
           schema:
