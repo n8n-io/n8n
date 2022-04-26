@@ -252,7 +252,7 @@ class LoadNodesAndCredentialsClass {
 					return promises;
 				});
 			} catch (error) {
-				LoggerProxy.error('Failed to save installed packages and nodes', { error });
+				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
 				throw error;
 			}
 		} else {
@@ -340,7 +340,7 @@ class LoadNodesAndCredentialsClass {
 					await Promise.all(promises);
 				});
 			} catch (error) {
-				LoggerProxy.error('Failed to save installed packages and nodes', { error });
+				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
 				throw error;
 			}
 		} else {
