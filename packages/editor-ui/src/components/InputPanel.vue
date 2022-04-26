@@ -101,6 +101,7 @@ export default mixins(
 <style lang="scss" module>
 .titleSection {
 	display: flex;
+	max-width: 200px;
 
 	> * {
 		margin-right: var(--spacing-2xs);
