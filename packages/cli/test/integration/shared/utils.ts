@@ -35,7 +35,7 @@ import type { N8nApp } from '../../../src/UserManagement/Interfaces';
  * @param applyAuth Whether to apply auth middleware to test server.
  * @param endpointGroups Groups of endpoints to apply to test server.
  */
-export function initTestServer({
+export async function initTestServer({
 	applyAuth,
 	endpointGroups,
 }: {
@@ -66,7 +66,7 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router | express.Router[]> = {
 			credentials: credentialsController,
-			//publicApi,
+			publicApi: await loadPublicApiVersions(),
 		};
 
 		for (const group of routerEndpoints) {

@@ -11,7 +11,8 @@ export function randomString(min: number, max: number) {
 }
 
 export function randomApiKey() {
-	return randomBytes(20).toString('hex');
+	const ramdonKey = randomBytes(20).toString('hex');
+	return `n8n_api_${ramdonKey}`;
 }
 
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];

@@ -18,7 +18,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 

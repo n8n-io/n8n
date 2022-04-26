@@ -19,7 +19,7 @@ let app: express.Application;
 let testDbName = '';
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
