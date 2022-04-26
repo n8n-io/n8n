@@ -11,6 +11,8 @@ import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../Us
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
+import { randomBytes } from 'crypto';
+import { userInfo } from 'os';
 
 export function meNamespace(this: N8nApp): void {
 	/**
@@ -147,6 +149,52 @@ export function meNamespace(this: N8nApp): void {
 			);
 
 			return { success: true };
+		}),
+	);
+
+	/**
+	 * Creates an API Key
+	 */
+	this.app.post(
+		`/${this.restEndpoint}/users/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			const ramdonToken = randomBytes(20).toString('hex');
+			const apiKey = `n8n_api_${ramdonToken}`;
+			await Db.collections.User!.update(req.user.id, {
+				apiKey,
+			});
+			return { apiKey, success: true };
+		}),
+	);
+
+	/**
+	 * Deletes an API Key
+	 */
+	this.app.delete(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			await Db.collections.User!.update(req.user.id, {
+				apiKey: null,
+			});
+			return { success: true };
+		}),
+	);
+
+	/**
+	 * Get an API Key
+	 */
+	this.app.delete(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async () => {
+			const user = await Db.collections.User!.findOne({
+				where: {
+					apiKey: null,
+				},
+			});
+
+			if (user) {
+				return { apiKey: user.apiKey, success: true };
+			}
 		}),
 	);
 }

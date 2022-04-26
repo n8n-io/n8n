@@ -5,10 +5,9 @@ import { In } from 'typeorm';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { randomBytes } from 'crypto';
 import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { AuthenticatedRequest, UserRequest } from '../../requests';
+import { UserRequest } from '../../requests';
 import {
 	getInstanceBaseUrl,
 	hashPassword,
@@ -562,34 +561,6 @@ export function usersNamespace(this: N8nApp): void {
 				message_type: 'Resend invite',
 			});
 
-			return { success: true };
-		}),
-	);
-
-	/**
-	 * Creates an API Key
-	 */
-	this.app.post(
-		`/${this.restEndpoint}/users/me/api-key`,
-		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			const ramdonToken = randomBytes(20).toString('hex');
-			const apiKey = `n8n_api_${ramdonToken}`;
-			await Db.collections.User!.update(req.user.id, {
-				apiKey,
-			});
-			return { apiKey, success: true };
-		}),
-	);
-
-	/**
-	 * Deletes an API Key
-	 */
-	this.app.delete(
-		`/${this.restEndpoint}/users/me/api-key`,
-		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			await Db.collections.User!.update(req.user.id, {
-				apiKey: null,
-			});
 			return { success: true };
 		}),
 	);
