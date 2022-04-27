@@ -94,17 +94,15 @@ class LoadNodesAndCredentialsClass {
 		this.includeNodes = config.getEnv('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
-		let nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
+		const nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
 
 		try {
 			// Read downloaded nodes and credentials
 			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
 			await fsAccess(downloadedNodesFolderModules);
-			nodePackages = [
-				...nodePackages,
-				...(await this.getN8nNodePackages(downloadedNodesFolderModules)),
-			];
+			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
+			nodePackages.push(...downloadedPackages);
 			// eslint-disable-next-line no-empty
 		} catch (error) {}
 
