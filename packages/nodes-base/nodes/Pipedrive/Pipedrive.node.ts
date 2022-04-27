@@ -3629,6 +3629,46 @@ export class Pipedrive implements INodeType {
 			},
 
 			// ----------------------------------
+			//         organization:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Predefined Filter',
+						name: 'filterId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
+						default: '',
+						description: 'ID of the filter to use.',
+					},
+					{
+						displayName: 'First Char',
+						name: 'firstChar',
+						type: 'string',
+						default: '',
+						description: 'If supplied, only organizations whose name starts with the specified letter will be returned ',
+					},
+				],
+			},
+
+			// ----------------------------------
 			//         person:getAll
 			// ----------------------------------
 			{
@@ -3980,6 +4020,7 @@ export class Pipedrive implements INodeType {
 					'deal': 'deals',
 					'activity': 'activity',
 					'person': 'people',
+					'organization': 'org'
 				} as { [id: string]: string };
 
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: type[resource] as string });
@@ -4863,6 +4904,17 @@ export class Pipedrive implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.filterId) {
+							qs.filter_id = additionalFields.filterId as string;
+						}
+
+						if (additionalFields.firstChar) {
+							qs.first_char = additionalFields.firstChar as string;
+							qs.first_char = qs.first_char.substring(0, 1);
 						}
 
 						endpoint = `/organizations`;
