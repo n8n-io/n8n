@@ -426,13 +426,14 @@ export default mixins(
 					return 0;
 				}
 
-				if (!runData[this.node.name][this.runIndex] || !runData[this.node.name][this.runIndex].data === undefined ||
-					runData[this.node.name][this.runIndex].data!.main === undefined
-				) {
-					return 0;
+				if (runData[this.node.name][this.runIndex]) {
+					const taskData = runData[this.node.name][this.runIndex].data;
+					if (taskData && taskData.main) {
+						return taskData.main.length - 1;
+					}
 				}
 
-				return runData[this.node.name][this.runIndex].data!.main.length - 1;
+				return 0;
 			},
 			maxRunIndex (): number {
 				if (this.node === null) {
