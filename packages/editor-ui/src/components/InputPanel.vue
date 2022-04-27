@@ -23,14 +23,21 @@
 				</n8n-select>
 			</div>
 		</template>
-		<template v-slot:no-output-data>
+
+		<template v-slot:node-not-run>
 			<div :class="$style.noOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<n8n-button type="outline" @click="executePrevious" size="medium" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" />
-				<n8n-text size="small">
-					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
-				</n8n-text>
+				<div v-if="immediateNodeName">
+					<NodeExecuteButton type="outline" :nodeName="immediateNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
+					<n8n-text size="small">
+						{{ $locale.baseText('ndv.input.noOutputData.hint') }}
+					</n8n-text>
+				</div>
 			</div>
+		</template>
+
+		<template v-slot:no-output-data>
+			<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
 		</template>
 	</RunData>
 </template>
@@ -41,6 +48,7 @@ import { Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 const IMMEDIATE_INPUT_KEY = '__IMMEDIATE_INPUT__';
 
@@ -48,7 +56,7 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'InputPanel',
-	components: { RunData },
+	components: { RunData, NodeExecuteButton },
 	props: {
 		currentNodeName: {
 			type: String,
@@ -60,6 +68,9 @@ export default mixins(
 			type: Boolean,
 		},
 		workflow: {
+		},
+		immediateNodeName: {
+			type: String,
 		},
 		immediate: {
 			type: Boolean,
@@ -102,8 +113,8 @@ export default mixins(
 		},
 	},
 	methods: {
-		executePrevious() {
-			this.$emit('executePrevious');
+		onNodeExecute() {
+			this.$emit('execute');
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);

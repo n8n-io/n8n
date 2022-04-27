@@ -39,6 +39,17 @@
 				</n8n-info-tip>
 			</div>
 		</template>
+
+		<template v-slot:node-not-run>
+			<div v-if="workflowRunning">
+				<div :class="$style.spinner"><n8n-spinner /></div>
+				<n8n-text>{{ $locale.baseText('ndv.output.executing') }}</n8n-text>
+			</div>
+			<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
+			<n8n-text v-else-if="isTriggerNode && !isScheduleTrigger">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
+			<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+		</template>
+
 		<template v-slot:no-output-data>
 			<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
 			<n8n-text>

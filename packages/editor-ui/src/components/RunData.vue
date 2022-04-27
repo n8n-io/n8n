@@ -55,13 +55,7 @@
 			</div>
 
 			<div v-if="!hasNodeRun" :class="$style.center">
-				<div v-if="workflowRunning">
-					<div :class="$style.spinner"><n8n-spinner /></div>
-					<n8n-text>{{ $locale.baseText('ndv.output.executing') }}</n8n-text>
-				</div>
-				<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
-				<n8n-text v-else-if="isTriggerNode && !isScheduleTrigger">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
-				<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+				<slot name="node-not-run"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">

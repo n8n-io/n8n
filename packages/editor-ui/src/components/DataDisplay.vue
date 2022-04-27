@@ -33,6 +33,7 @@
 				:linkedRuns="linked"
 				:currentNodeName="inputNodeName"
 				:immediate="!selectedInput"
+				:immediateNodeName="parentNode"
 				@linkRun="onLinkRunToInput"
 				@unlinkRun="onUnlinkRun"
 				@runChange="onRunInputIndexChange"

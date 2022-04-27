@@ -1,7 +1,8 @@
 <template>
 	<n8n-button
 		:loading="workflowRunning"
-		:label="label"
+		:label="buttonLabel"
+		:type="type"
 		size="small"
 		@click="onClick"
 	/>
@@ -18,6 +19,12 @@ export default mixins(
 ).extend({
 	props: {
 		nodeName: {
+			type: String,
+		},
+		label: {
+			type: String,
+		},
+		type: {
 			type: String,
 		},
 	},
@@ -43,7 +50,10 @@ export default mixins(
 		isScheduleTrigger (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
-		label(): string {
+		buttonLabel(): string {
+			if (this.label) {
+				return this.label;
+			}
 			if (this.isPollingTypeNode) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
