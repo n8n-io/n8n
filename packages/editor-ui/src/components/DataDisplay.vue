@@ -218,6 +218,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 		},
 		onInputSelect(value: string) {
+			this.runInputIndex = 0;
+			this.linkedRuns = true;
 			this.selectedInput = value;
 		},
 	},

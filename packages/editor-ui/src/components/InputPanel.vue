@@ -99,7 +99,7 @@ export default mixins(
 			this.$emit('unlinkRun');
 		},
 		onSelect(value: string) {
-			this.$emit('select', value);
+			this.$emit('select', value === IMMEDIATE_INPUT_KEY ? undefined : value);
 		},
 	},
 });
