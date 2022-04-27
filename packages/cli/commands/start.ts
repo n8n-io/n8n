@@ -33,6 +33,8 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
+import { executeCommand } from '../src/CommunityNodes/helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -205,6 +207,32 @@ export class Start extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const installedPackages = await getAllInstalledPackages();
+				const missingPackages = new Set<string>();
+				installedPackages.forEach((installedpackage) => {
+					installedpackage.installedNodes.forEach((installedNode) => {
+						if (!loadNodesAndCredentials.nodeTypes[installedNode.name]) {
+							missingPackages.add(
+								`${installedpackage.packageName}@${installedpackage.installedVersion}`,
+							);
+						}
+					});
+				});
+
+				if (missingPackages.size) {
+					LoggerProxy.error(
+						'n8n has detected that some installed packages could not be found. Attempting installation now.',
+					);
+					const packageList = Array.from(missingPackages).join(' ');
+					const command = `npm install ${packageList}`;
+					// We are not catching possible errors bwlow
+					// Therefore n8n's init stops
+					await executeCommand(command);
+					LoggerProxy.error(
+						'Missing packages installed correctly. To prevent this in the future, make sure your .n8n folder is persisted.',
+					);
+				}
 
 				await UserSettings.getEncryptionKey();
 
