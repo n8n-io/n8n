@@ -188,4 +188,17 @@ export default Vue.extend({
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
 }
+
+.spinner {
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
+
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--spacing-s);
+}
+
 </style>

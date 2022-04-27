@@ -809,18 +809,6 @@ export default mixins(
 	}
 }
 
-.spinner {
-	* {
-		color: var(--color-primary);
-		min-height: 40px;
-		min-width: 40px;
-	}
-
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--spacing-s);
-}
-
 .container {
 	position: relative;
 	width: 100%;
