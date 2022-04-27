@@ -146,7 +146,7 @@ export default mixins(
 }
 
 .noOutputData {
-	max-width: 160px;
+	max-width: 180px;
 
 	> *:first-child {
 		margin-bottom: var(--spacing-m);
