@@ -75,12 +75,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
-				<n8n-text>
-					{{ $locale.baseText('ndv.output.noOutputData.message') }}
-					<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
-					{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
-				</n8n-text>
+				<slot name="no-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
@@ -584,9 +579,6 @@ export default mixins(
 				const inputData = this.getMainInputData(runData[this.node.name][runIndex].data!, outputIndex);
 
 				return inputData.length;
-			},
-			openSettings() {
-				this.$emit('openSettings');
 			},
 			init() {
 				// Reset the selected output index every time another node gets selected

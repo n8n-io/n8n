@@ -11,7 +11,6 @@
 		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
-		@openSettings="openSettings"
 		@runChange="onRunIndexChange">
 		<template v-slot:header>
 			<div :class="$style.titleSection">
@@ -22,6 +21,15 @@
 					<n8n-option :label="$locale.baseText('ndv.input.immediate')" :value="IMMEDIATE_INPUT_KEY" :key="IMMEDIATE_INPUT_KEY"></n8n-option>
 					<n8n-option v-for="node in parentNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
+			</div>
+		</template>
+		<template v-slot:no-output-data>
+			<div :class="$style.noOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
+				<n8n-button type="outline" @click="executePrevious" size="medium" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" />
+				<n8n-text size="small">
+					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
+				</n8n-text>
 			</div>
 		</template>
 	</RunData>
@@ -94,8 +102,8 @@ export default mixins(
 		},
 	},
 	methods: {
-		openSettings() {
-			this.$emit('openSettings');
+		executePrevious() {
+			this.$emit('executePrevious');
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
@@ -120,6 +128,18 @@ export default mixins(
 
 	> * {
 		margin-right: var(--spacing-2xs);
+	}
+}
+
+.noOutputData {
+	max-width: 160px;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
+
+	> * {
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 

@@ -7,7 +7,6 @@
 		:emptyOutputMessage="$locale.baseText('ndv.output.emptyOutput')"
 		:tooMuchDataTitle="$locale.baseText('ndv.output.tooMuchData.title')"
 		:noDataInBranchMessage="$locale.baseText('ndv.output.noOutputDataInBranch')"
-		@openSettings="openSettings"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -39,6 +38,14 @@
 					</template>
 				</n8n-info-tip>
 			</div>
+		</template>
+		<template v-slot:no-output-data>
+			<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
+			<n8n-text>
+				{{ $locale.baseText('ndv.output.noOutputData.message') }}
+				<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
+			</n8n-text>
 		</template>
 	</RunData>
 </template>
