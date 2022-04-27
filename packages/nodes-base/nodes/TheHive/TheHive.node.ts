@@ -40,10 +40,6 @@ import {
 } from './descriptions/LogDescription';
 
 import {
-	Buffer,
-} from 'buffer';
-
-import {
 	And,
 	Between,
 	ContainsString,
@@ -71,7 +67,7 @@ export class TheHive implements INodeType {
 		name: 'theHive',
 		icon: 'file:thehive.svg',
 		group: ['transform'],
-		subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		version: 1,
 		description: 'Consume TheHive API',
 		defaults: {
@@ -91,6 +87,7 @@ export class TheHive implements INodeType {
 				name: 'resource',
 				type: 'options',
 				required: true,
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Alert',
@@ -2106,7 +2103,3 @@ export class TheHive implements INodeType {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
-
-
-
-

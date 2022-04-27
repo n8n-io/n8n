@@ -6,6 +6,7 @@ export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		default: 'getAll',
 		type: 'options',
 		required: true,
@@ -80,7 +81,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -104,8 +105,8 @@ export const taskFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Title',

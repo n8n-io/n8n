@@ -1,6 +1,4 @@
-import {
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -43,7 +41,7 @@ export class TheHiveTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						name: 'Alert Created',
@@ -148,29 +146,35 @@ export class TheHiveTrigger implements INodeType {
 			return {};
 		}
 
+		// While TheHive uses "deleted" for the other objects, a task is not deleted but is updated with the status "Cancel"
+		if (
+			bodyData.operation === 'update' &&
+			bodyData.objectType === 'case_task' &&
+			(bodyData.details as IDataObject)?.status === 'Cancel'
+		) {
+			bodyData.operation = 'delete';
+		}
+
 		// Don't start the workflow if the event is not fired
 		// Replace Creation with Create for TheHive 3 support
 		const operation = (bodyData.operation as string).replace('Creation', 'Create');
 		const event = `${(bodyData.objectType as string).toLowerCase()}_${operation.toLowerCase()}`;
+
 		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
 		}
 
 		// The data to return and so start the workflow with
 		const returnData: IDataObject[] = [];
-		returnData.push(
-			{
-				event,
-				body: this.getBodyData(),
-				headers: this.getHeaderData(),
-				query: this.getQueryData(),
-			},
-		);
+		returnData.push({
+			event,
+			body: this.getBodyData(),
+			headers: this.getHeaderData(),
+			query: this.getQueryData(),
+		});
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }

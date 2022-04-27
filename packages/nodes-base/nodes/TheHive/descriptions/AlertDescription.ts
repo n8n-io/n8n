@@ -11,6 +11,7 @@ export const alertOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'loadAlertOptions',
@@ -42,7 +43,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -65,8 +66,8 @@ export const alertFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -356,7 +357,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'if true, the alert becomes active when updated default=true',
+		description: 'Whether set to true, the alert becomes active when updated',
 	},
 	{
 		displayName: 'Artifacts',
@@ -506,7 +507,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -590,7 +591,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 		],
 	},
@@ -739,7 +740,7 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Description',
@@ -747,14 +748,14 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true.',
+				description: 'Whether set to true, the alert becomes active when updated',
 			},
 			{
 				displayName: 'Severity',
@@ -814,7 +815,7 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Title of the alert.',
+				description: 'Title of the alert',
 			},
 			{
 				displayName: 'TLP',
@@ -935,7 +936,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'follow',
 				type: 'boolean',
 				default: false,
-				description: 'if true, the alert becomes active when updated default=true',
+				description: 'Whether set to true, the alert becomes active when updated',
 			},
 			{
 				displayName: 'Severity',

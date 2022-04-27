@@ -10,6 +10,7 @@ export const observableOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		required: true,
 		default: 'getAll',
@@ -65,7 +66,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -89,8 +90,8 @@ export const observableFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -267,7 +268,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+		description: 'Whether an observable is an IOC (Indicator of compromise)',
 	},
 	{
 		displayName: 'Sighted',
@@ -285,7 +286,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Sighted previously',
+		description: 'Whether sighted previously',
 	},
 	{
 		displayName: 'Status',
@@ -467,12 +468,12 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'sighted previously',
+				description: 'Sighted previously',
 				type: 'boolean',
 				default: false,
 			},
@@ -555,24 +556,24 @@ export const observableFields: INodeProperties[] = [
 				description: 'Type of the observable',
 			},
 			{
-				displayName: 'Date range',
+				displayName: 'Date Range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add date range inputs',
+						displayName: 'Add Date Range Inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From date',
+								displayName: 'From Date',
 								name: 'fromDate',
 								type: 'dateTime',
 								required: false,
 								default: '',
 							},
 							{
-								displayName: 'To date',
+								displayName: 'To Date',
 								name: 'toDate',
 								type: 'dateTime',
 								required: false,
@@ -594,7 +595,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Keyword',

@@ -10,6 +10,7 @@ export const caseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		default: 'getAll',
 		type: 'options',
 		required: true,
@@ -45,7 +46,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -68,8 +69,8 @@ export const caseFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	// Required fields
 	{
@@ -211,7 +212,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Flag of the case default=false',
+		description: 'Whether to flag of the case',
 	},
 	{
 		displayName: 'TLP',
@@ -509,7 +510,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the case default=false',
+				description: 'Whether to flag of the case',
 			},
 			{
 				displayName: 'Impact Status',
@@ -777,7 +778,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the case default=false',
+				description: 'Whether to flag of the case',
 			},
 			{
 				displayName: 'Impact Status',

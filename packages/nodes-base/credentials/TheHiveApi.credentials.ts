@@ -1,4 +1,6 @@
 import {
+	IAuthenticateHeaderAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -48,4 +50,17 @@ export class TheHiveApi implements ICredentialType {
 			default: false,
 		},
 	];
+	authenticate = {
+		type: 'headerAuth',
+		properties: {
+			name: 'Authorization',
+			value: '=Bearer {{$credentials.ApiKey}}',
+		},
+	} as IAuthenticateHeaderAuth;
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: `={{$credentials?.url}}`,
+			url: '/api/case',
+		},
+	};
 }
