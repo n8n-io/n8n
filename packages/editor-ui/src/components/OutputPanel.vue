@@ -1,16 +1,36 @@
 <template>
-	<RunData :nodeUi="node" :runIndex="runIndex" :linkedRuns="linkedRuns" :canLinkRuns="canLinkRuns" @openSettings="openSettings" @runChange="onRunIndexChange" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun">
+	<RunData
+		:nodeUi="node"
+		:runIndex="runIndex"
+		:linkedRuns="linkedRuns"
+		:canLinkRuns="canLinkRuns"
+		@openSettings="openSettings"
+		@runChange="onRunIndexChange"
+		@linkRun="onLinkRun"
+		@unlinkRun="onUnlinkRun"
+	>
 		<template name="header">
 			<div :class="$style.titleSection">
 				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
 				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
 					<div>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
+						<n8n-text :bold="true" size="small">{{
+							$locale.baseText('runData.startTime') + ':'
+						}}</n8n-text>
+						{{ runMetadata.startTime }}<br />
+						<n8n-text :bold="true" size="small">{{
+							$locale.baseText('runData.executionTime') + ':'
+						}}</n8n-text>
+						{{ runMetadata.executionTime }} {{ $locale.baseText('runData.ms') }}
 					</div>
 				</n8n-info-tip>
 
-				<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasNodeRun && staleData">
+				<n8n-info-tip
+					theme="warning"
+					type="tooltip"
+					tooltipPlacement="right"
+					v-if="hasNodeRun && staleData"
+				>
 					<template>
 						<span v-html="$locale.baseText('ndv.output.staleDataWarning')"></span>
 					</template>
@@ -41,10 +61,10 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		workflowExecution (): IExecutionResponse | null {
+		workflowExecution(): IExecutionResponse | null {
 			return this.$store.getters.getWorkflowExecution;
 		},
-		workflowRunData (): IRunData | null {
+		workflowRunData(): IRunData | null {
 			if (this.workflowExecution === null) {
 				return null;
 			}
@@ -52,12 +72,14 @@ export default Vue.extend({
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
-			return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+			return Boolean(
+				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
+			);
 		},
-		node (): INodeUi {
+		node(): INodeUi {
 			return this.$store.getters.activeNode;
 		},
-		runTaskData (): ITaskData | null {
+		runTaskData(): ITaskData | null {
 			if (!this.node || this.workflowExecution === null) {
 				return null;
 			}
@@ -74,7 +96,7 @@ export default Vue.extend({
 
 			return runData[this.node.name][this.runIndex];
 		},
-		runMetadata (): {executionTime: number, startTime: string} | null {
+		runMetadata(): { executionTime: number; startTime: string } | null {
 			if (!this.runTaskData) {
 				return null;
 			}
