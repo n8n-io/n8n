@@ -249,7 +249,6 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import Vue from 'vue/types/umd';
 
 import { saveAs } from 'file-saver';
 
