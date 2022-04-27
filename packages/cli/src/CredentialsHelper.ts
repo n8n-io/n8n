@@ -437,8 +437,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Add special database related data
 		newCredentialsData.updatedAt = new Date();
 
-		// TODO: also add user automatically depending on who is logged in, if anybody is logged in
-
 		// Save the credentials in DB
 		const findQuery = {
 			id: credentials.id,
@@ -563,7 +561,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			parameters: {},
 			name: 'Temp-Node',
 			type: nodeType.description.name,
-			// TODO: What it should really do is to get the version from UI
 			typeVersion: Array.isArray(nodeType.description.version)
 				? nodeType.description.version.slice(-1)[0]
 				: nodeType.description.version,
