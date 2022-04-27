@@ -7,31 +7,59 @@
 		width="85%"
 		append-to-body
 	>
-		<n8n-tooltip placement="bottom-start" :value="showTriggerWaitingWarning" :disabled="!showTriggerWaitingWarning" :manual="true">
-			<div slot="content" :class="$style.triggerWarning">{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}</div>
+		<n8n-tooltip
+			placement="bottom-start"
+			:value="showTriggerWaitingWarning"
+			:disabled="!showTriggerWaitingWarning"
+			:manual="true"
+		>
+			<div slot="content" :class="$style.triggerWarning">
+				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
+			</div>
 			<div :class="$style.backToCanvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">{{ $locale.baseText('ndv.backToCanvas') }}</n8n-text>
+				<n8n-text color="text-xlight" size="medium" :bold="true">{{
+					$locale.baseText('ndv.backToCanvas')
+				}}</n8n-text>
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" v-if="activeNode" >
-			<InputPanel v-if="!isTriggerNode" :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="inputRun" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
-			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
-			<OutputPanel :canLinkRuns="canLinkRuns" :runIndex="outputRun" :linkedRuns="linked" @linkRun="onLinkRunToOutput" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
+		<div class="data-display" v-if="activeNode">
+			<InputPanel
+				v-if="!isTriggerNode"
+				:workflow="workflow"
+				:canLinkRuns="canLinkRuns"
+				:runIndex="inputRun"
+				:linkedRuns="linked"
+				:currentNodeName="inputNodeName"
+				:immediate="!selectedInput"
+				@linkRun="onLinkRunToInput"
+				@unlinkRun="onUnlinkRun"
+				@runChange="onRunInputIndexChange"
+				@openSettings="openSettings"
+				@select="onInputSelect"
+			/>
+			<NodeSettings
+				:eventBus="settingsEventBus"
+				@valueChanged="valueChanged"
+				@execute="onNodeExecute"
+			/>
+			<OutputPanel
+				:canLinkRuns="canLinkRuns"
+				:runIndex="outputRun"
+				:linkedRuns="linked"
+				@linkRun="onLinkRunToOutput"
+				@unlinkRun="onUnlinkRun"
+				@runChange="onRunOutputIndexChange"
+				@openSettings="openSettings"
+			/>
 		</div>
 	</el-dialog>
 </template>
 
 <script lang="ts">
-import {
-	INodeTypeDescription, IRunData, IRunExecutionData, Workflow,
-} from 'n8n-workflow';
-import {
-	IExecutionResponse,
-	INodeUi,
-	IUpdateInformation,
-} from '../Interface';
+import { INodeTypeDescription, IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
+import { IExecutionResponse, INodeUi, IUpdateInformation } from '../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -58,7 +86,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			type: Boolean,
 		},
 	},
-	data () {
+	data() {
 		return {
 			settingsEventBus: new Vue(),
 			runInputIndex: 0,
@@ -70,47 +98,59 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
 		showTriggerWaitingWarning(): boolean {
-			return this.triggerWaitingWarningEnabled && !!this.activeNodeType && !this.activeNodeType.group.includes('trigger') && this.workflowRunning && this.executionWaitingForWebhook;
+			return (
+				this.triggerWaitingWarningEnabled &&
+				!!this.activeNodeType &&
+				!this.activeNodeType.group.includes('trigger') &&
+				this.workflowRunning &&
+				this.executionWaitingForWebhook
+			);
 		},
-		activeNode (): INodeUi {
+		activeNode(): INodeUi {
 			return this.$store.getters.activeNode;
 		},
-		inputNodeName (): string | undefined {
+		inputNodeName(): string | undefined {
 			return this.selectedInput || this.parentNode;
 		},
-		inputNode (): INodeUi {
+		inputNode(): INodeUi {
 			return this.$store.getters.getNodeByName(this.inputNodeName);
 		},
-		activeNodeType (): INodeTypeDescription | null {
+		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
 				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
 		},
-		workflow (): Workflow {
+		workflow(): Workflow {
 			return this.getWorkflow();
 		},
-		parentNode (): string | undefined {
+		parentNode(): string | undefined {
 			if (!this.activeNode) {
 				return undefined;
 			}
 
 			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1)[0];
 		},
-		isTriggerNode (): boolean {
-			return !!this.activeNodeType && (this.activeNodeType.group.includes('trigger') || this.activeNodeType.name === START_NODE_TYPE);
+		isTriggerNode(): boolean {
+			return (
+				!!this.activeNodeType &&
+				(this.activeNodeType.group.includes('trigger') ||
+					this.activeNodeType.name === START_NODE_TYPE)
+			);
 		},
 		isActiveStickyNode(): boolean {
-			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
+			return (
+				!!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE
+			);
 		},
-		workflowExecution (): IExecutionResponse | null {
+		workflowExecution(): IExecutionResponse | null {
 			return this.$store.getters.getWorkflowExecution;
 		},
-		workflowRunData (): IRunData | null {
+		workflowRunData(): IRunData | null {
 			if (this.workflowExecution === null) {
 				return null;
 			}
@@ -168,18 +208,23 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	watch: {
-		activeNode (node, oldNode) {
-			if(node && !oldNode && !this.isActiveStickyNode) {
+		activeNode(node, oldNode) {
+			if (node && !oldNode && !this.isActiveStickyNode) {
 				this.runInputIndex = 0;
 				this.runOutputIndex = 0;
 				this.linkedRuns = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
-				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()) });
-				this.$telemetry.track('User opened node modal', { node_type: this.activeNodeType ? this.activeNodeType.name : '', workflow_id: this.$store.getters.workflowId });
+				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
+					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
+				});
+				this.$telemetry.track('User opened node modal', {
+					node_type: this.activeNodeType ? this.activeNodeType.name : '',
+					workflow_id: this.$store.getters.workflowId,
+				});
 			}
 			if (window.top && !this.isActiveStickyNode) {
-				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
+				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
 			}
 		},
 	},
@@ -206,13 +251,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		openSettings() {
 			this.settingsEventBus.$emit('openSettings');
 		},
-		valueChanged (parameterData: IUpdateInformation) {
+		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
-		nodeTypeSelected (nodeTypeName: string) {
+		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		close () {
+		close() {
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
@@ -236,7 +281,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 });
-
 </script>
 
 <style lang="scss">
@@ -264,8 +308,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	height: 100%;
 }
 
-.fade-enter-active, .fade-enter-to, .fade-leave-active {
-	transition: all .75s ease;
+.fade-enter-active,
+.fade-enter-to,
+.fade-leave-active {
+	transition: all 0.75s ease;
 	opacity: 1;
 }
 
