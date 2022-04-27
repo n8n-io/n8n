@@ -7,6 +7,7 @@
 		:canLinkRuns="canLinkRuns"
 		:emptyOutputMessage="$locale.baseText('ndv.input.emptyOutput')"
 		:emptyOutputHint="$locale.baseText('ndv.input.emptyOutput.hint')"
+		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@openSettings="openSettings"

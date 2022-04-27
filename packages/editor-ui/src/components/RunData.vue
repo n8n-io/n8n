@@ -84,7 +84,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.tooMuchData.title') }}</n8n-text>
+				<n8n-text :bold="true" color="text-dark">{{ tooMuchDataTitle }}</n8n-text>
 				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('ndv.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
 
 				<n8n-button
@@ -291,6 +291,9 @@ export default mixins(
 				type: String,
 			},
 			emptyOutputHint: {
+				type: String,
+			},
+			tooMuchDataTitle: {
 				type: String,
 			},
 		},
