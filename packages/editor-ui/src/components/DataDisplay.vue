@@ -16,7 +16,7 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="activeNode" >
-			<InputPanel v-if="isTriggerNode" :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="inputRun" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
+			<InputPanel v-if="!isTriggerNode" :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="inputRun" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
 			<OutputPanel :canLinkRuns="canLinkRuns" :runIndex="outputRun" :linkedRuns="linked" @linkRun="onLinkRunToOutput" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
@@ -44,7 +44,7 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
-import { STICKY_NODE_TYPE } from '@/constants';
+import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -102,7 +102,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1)[0];
 		},
 		isTriggerNode (): boolean {
-			return !!(this.activeNodeType && this.activeNodeType.group.includes('trigger'));
+			return !!this.activeNodeType && (this.activeNodeType.group.includes('trigger') || this.activeNodeType.name === START_NODE_TYPE);
 		},
 		isActiveStickyNode(): boolean {
 			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
