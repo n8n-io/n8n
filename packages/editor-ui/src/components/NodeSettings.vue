@@ -415,7 +415,7 @@ export default mixins(
 
 					// Get the parameters with the now new defaults according to the
 					// from the user actually defined parameters
-					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false, node.typeVersion);
+					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false, node);
 
 					for (const key of Object.keys(nodeParameters as object)) {
 						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
