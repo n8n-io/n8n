@@ -16,9 +16,9 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="activeNode" >
-			<InputPanel :workflow="workflow" :runIndex="runInputIndex" :linkedRuns="linkedRuns" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
+			<InputPanel :workflow="workflow" :runIndex="runInputIndex" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
-			<OutputPanel :runIndex="runOutputIndex" :linkedRuns="linkedRuns" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
+			<OutputPanel :runIndex="runOutputIndex" :linkedRuns="linked" @linkRun="onLinkRunToOutput" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
@@ -63,7 +63,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			settingsEventBus: new Vue(),
 			runInputIndex: 0,
 			runOutputIndex: 0,
-			linkedRuns: false,
+			linkedRuns: true,
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
 		};
@@ -81,6 +81,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		inputNodeName (): string | undefined {
 			return this.selectedInput || this.parentNode;
+		},
+		inputNode (): INodeUi {
+			return this.$store.getters.getNodeByName(this.inputNodeName);
 		},
 		activeNodeType (): INodeTypeDescription | null {
 			if (this.activeNode) {
@@ -101,43 +104,63 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		isActiveStickyNode(): boolean {
 			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
 		},
-		// workflowExecution (): IExecutionResponse | null {
-		// 	return this.$store.getters.getWorkflowExecution;
-		// },
-		// workflowRunData (): IRunData | null {
-		// 	if (this.workflowExecution === null) {
-		// 		return null;
-		// 	}
-		// 	const executionData: IRunExecutionData = this.workflowExecution.data;
-		// 	if (executionData && executionData.resultData) {
-		// 		return executionData.resultData.runData;
-		// 	}
-		// 	return null;
-		// },
-		// maxOutputRun(): number {
-		// 	if (this.activeNode === null) {
-		// 		return 0;
-		// 	}
+		workflowExecution (): IExecutionResponse | null {
+			return this.$store.getters.getWorkflowExecution;
+		},
+		workflowRunData (): IRunData | null {
+			if (this.workflowExecution === null) {
+				return null;
+			}
+			const executionData: IRunExecutionData = this.workflowExecution.data;
+			if (executionData && executionData.resultData) {
+				return executionData.resultData.runData;
+			}
+			return null;
+		},
+		maxOutputRun(): number {
+			if (this.activeNode === null) {
+				return 0;
+			}
 
-		// 	const runData: IRunData | null = this.workflowRunData;
+			const runData: IRunData | null = this.workflowRunData;
 
-		// 	if (runData === null || !runData.hasOwnProperty(this.activeNode.name)) {
-		// 		return 0;
-		// 	}
+			if (runData === null || !runData.hasOwnProperty(this.activeNode.name)) {
+				return 0;
+			}
 
-		// 	if (runData[this.activeNode.name].length) {
-		// 		return runData[this.activeNode.name].length - 1;
-		// 	}
+			if (runData[this.activeNode.name].length) {
+				return runData[this.activeNode.name].length - 1;
+			}
 
-		// 	return 0;
-		// },
+			return 0;
+		},
+		maxInputRun(): number {
+			if (this.inputNode === null) {
+				return 0;
+			}
+
+			const runData: IRunData | null = this.workflowRunData;
+
+			if (runData === null || !runData.hasOwnProperty(this.inputNode.name)) {
+				return 0;
+			}
+
+			if (runData[this.inputNode.name].length) {
+				return runData[this.inputNode.name].length - 1;
+			}
+
+			return 0;
+		},
+		linked(): boolean {
+			return this.linkedRuns && this.maxOutputRun > 0 && this.maxOutputRun === this.maxInputRun;
+		},
 	},
 	watch: {
 		activeNode (node, oldNode) {
 			if(node && !oldNode && !this.isActiveStickyNode) {
 				this.runInputIndex = 0;
 				this.runOutputIndex = 0;
-				this.linkedRuns = false;
+				this.linkedRuns = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()) });
@@ -149,8 +172,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
-		onLinkRun() {
+		onLinkRunToInput() {
 			this.linkedRuns = true;
+			this.runOutputIndex = this.runInputIndex;
+		},
+		onLinkRunToOutput() {
+			this.linkedRuns = true;
+			this.runInputIndex = this.runOutputIndex;
 		},
 		onUnlinkRun() {
 			this.linkedRuns = false;
@@ -179,9 +207,15 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
+			if (this.linked) {
+				this.runInputIndex = run;
+			}
 		},
 		onRunInputIndexChange(run: number) {
 			this.runInputIndex = run;
+			if (this.linked) {
+				this.runOutputIndex = run;
+			}
 		},
 		onInputSelect(value: string) {
 			this.selectedInput = value;
