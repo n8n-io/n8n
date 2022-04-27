@@ -50,7 +50,7 @@
 		</template>
 
 		<template v-slot:no-output-data>
-			<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
+			<n8n-text :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
 			<n8n-text>
 				{{ $locale.baseText('ndv.output.noOutputData.message') }}
 				<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
