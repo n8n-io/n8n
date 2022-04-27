@@ -1,5 +1,5 @@
 <template>
-	<RunData :nodeUi="node" :runIndex="runIndex" :linkedRuns="linkedRuns" @openSettings="openSettings" @runChange="onRunIndexChange" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun">
+	<RunData :nodeUi="node" :runIndex="runIndex" :linkedRuns="linkedRuns" :canLinkRuns="canLinkRuns" @openSettings="openSettings" @runChange="onRunIndexChange" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun">
 		<template name="header">
 			<div :class="$style.titleSection">
 				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
@@ -34,6 +34,9 @@ export default Vue.extend({
 			type: Number,
 		},
 		linkedRuns: {
+			type: Boolean,
+		},
+		canLinkRuns: {
 			type: Boolean,
 		},
 	},

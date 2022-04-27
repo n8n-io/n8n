@@ -4,6 +4,7 @@
 		:runIndex="runIndex"
 		:overrideOutputIndex="overrideOutputIndex"
 		:linkedRuns="linkedRuns"
+		:canLinkRuns="canLinkRuns"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@openSettings="openSettings"
@@ -49,6 +50,9 @@ export default mixins(
 		workflow: {
 		},
 		immediate: {
+			type: Boolean,
+		},
+		canLinkRuns: {
 			type: Boolean,
 		},
 	},
