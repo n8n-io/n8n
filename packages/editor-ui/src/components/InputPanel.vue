@@ -9,6 +9,8 @@
 		:emptyOutputHint="$locale.baseText('ndv.input.emptyOutput.hint', { interpolate: { nodeName: activeNode.name } })"
 		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
 		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
+		:isExecuting="isExecutingPrevious"
+		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange">
@@ -88,6 +90,13 @@ export default mixins(
 		};
 	},
 	computed: {
+		isExecutingPrevious(): boolean {
+			const executingNode = this.$store.getters.executingNode;
+			if (executingNode) {
+				return !!this.parentNodes.find((node) => node.name === executingNode);
+			}
+			return false;
+		},
 		currentWorkflow(): Workflow {
 			return this.workflow as Workflow;
 		},
@@ -171,4 +180,5 @@ export default mixins(
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
 }
+
 </style>

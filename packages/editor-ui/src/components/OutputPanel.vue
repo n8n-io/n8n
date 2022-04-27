@@ -7,6 +7,8 @@
 		:emptyOutputMessage="$locale.baseText('ndv.output.emptyOutput')"
 		:tooMuchDataTitle="$locale.baseText('ndv.output.tooMuchData.title')"
 		:noDataInBranchMessage="$locale.baseText('ndv.output.noOutputDataInBranch')"
+		:isExecuting="isNodeRunning"
+		:executingMessage="$locale.baseText('ndv.output.executing')"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -41,10 +43,7 @@
 		</template>
 
 		<template v-slot:node-not-run>
-			<div v-if="workflowRunning">
-				<div :class="$style.spinner"><n8n-spinner /></div>
-				<n8n-text>{{ $locale.baseText('ndv.output.executing') }}</n8n-text>
-			</div>
+			<n8n-text v-if="workflowRunning">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
 			<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
 			<n8n-text v-else-if="isTriggerNode && !isScheduleTrigger">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
 			<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
@@ -99,6 +98,10 @@ export default Vue.extend({
 		},
 		isScheduleTrigger (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+		},
+		isNodeRunning(): boolean {
+			const executingNode = this.$store.getters.executingNode;
+			return executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -187,18 +190,6 @@ export default Vue.extend({
 	color: var(--color-text-light);
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
-}
-
-.spinner {
-	* {
-		color: var(--color-primary);
-		min-height: 40px;
-		min-width: 40px;
-	}
-
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--spacing-s);
 }
 
 </style>

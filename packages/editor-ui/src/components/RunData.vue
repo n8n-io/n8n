@@ -54,7 +54,12 @@
 				</el-dropdown>
 			</div>
 
-			<div v-if="!hasNodeRun" :class="$style.center">
+			<div v-if="isExecuting" :class="$style.center">
+				<div :class="$style.spinner"><n8n-spinner /></div>
+				<n8n-text>{{ executingMessage }}</n8n-text>
+			</div>
+
+			<div v-else-if="!hasNodeRun" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
 
@@ -286,6 +291,12 @@ export default mixins(
 				type: String,
 			},
 			noDataInBranchMessage: {
+				type: String,
+			},
+			isExecuting: {
+				type: Boolean,
+			},
+			executingMessage: {
 				type: String,
 			},
 		},
@@ -992,6 +1003,18 @@ export default mixins(
 .displayModes {
 	position: absolute;
 	right: var(--spacing-s);
+}
+
+.spinner {
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
+
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--spacing-s);
 }
 
 </style>

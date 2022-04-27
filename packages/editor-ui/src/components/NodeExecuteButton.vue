@@ -1,6 +1,7 @@
 <template>
 	<n8n-button
-		:loading="workflowRunning"
+		:loading="nodeRunning"
+		:disabled="workflowRunning && !nodeRunning"
 		:label="buttonLabel"
 		:type="type"
 		size="small"
@@ -37,6 +38,10 @@ export default mixins(
 				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
+		},
+		nodeRunning (): boolean {
+			const executingNode = this.$store.getters.executingNode;
+			return executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
