@@ -63,7 +63,7 @@
 
 <script lang="ts">
 import { IExecutionResponse, INodeUi } from '@/Interface';
-import { IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import Vue from 'vue';
 import RunData from './RunData.vue';
 
@@ -82,6 +82,27 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		node(): INodeUi {
+			return this.$store.getters.activeNode;
+		},
+		nodeType (): INodeTypeDescription | null {
+			if (this.node) {
+				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+			}
+			return null;
+		},
+		isTriggerNode (): boolean {
+			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+		},
+		isPollingTypeNode (): boolean {
+			return !!(this.nodeType && this.nodeType.polling);
+		},
+		isScheduleTrigger (): boolean {
+			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+		},
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.$store.getters.getWorkflowExecution;
 		},
@@ -96,9 +117,6 @@ export default Vue.extend({
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
 			);
-		},
-		node(): INodeUi {
-			return this.$store.getters.activeNode;
 		},
 		runTaskData(): ITaskData | null {
 			if (!this.node || this.workflowExecution === null) {

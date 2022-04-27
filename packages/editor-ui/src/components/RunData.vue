@@ -327,15 +327,6 @@ export default mixins(
 				}
 				return null;
 			},
-			isTriggerNode (): boolean {
-				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
-			},
-			isPollingTypeNode (): boolean {
-				return !!(this.nodeType && this.nodeType.polling);
-			},
-			isScheduleTrigger (): boolean {
-				return !!(this.nodeType && this.nodeType.group.includes('schedule'));
-			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
@@ -354,9 +345,6 @@ export default mixins(
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
