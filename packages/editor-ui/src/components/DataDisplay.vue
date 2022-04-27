@@ -16,9 +16,9 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="activeNode" >
-			<InputPanel :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="runInputIndex" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
+			<InputPanel :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="inputRun" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
-			<OutputPanel :canLinkRuns="canLinkRuns" :runIndex="runOutputIndex" :linkedRuns="linked" @linkRun="onLinkRunToOutput" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
+			<OutputPanel :canLinkRuns="canLinkRuns" :runIndex="outputRun" :linkedRuns="linked" @linkRun="onLinkRunToOutput" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
@@ -134,6 +134,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 			return 0;
 		},
+		outputRun(): number {
+			return Math.min(this.runOutputIndex, this.maxOutputRun);
+		},
 		maxInputRun(): number {
 			if (this.inputNode === null) {
 				return 0;
@@ -150,6 +153,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 
 			return 0;
+		},
+		inputRun(): number {
+			return Math.min(this.runInputIndex, this.maxInputRun);
 		},
 		canLinkRuns(): boolean {
 			return this.maxOutputRun > 0 && this.maxOutputRun === this.maxInputRun;
@@ -221,7 +227,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 		},
 		onInputSelect(value: string) {
-			this.runInputIndex = 0;
+			this.runInputIndex = this.runOutputIndex;
 			this.linkedRuns = true;
 			this.selectedInput = value;
 		},
