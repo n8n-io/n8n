@@ -7,7 +7,7 @@
 						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
 						role="region"
-						v-html="renderedContent"
+						v-html="sanitizedContent"
 					/>
 					<span v-if="canTruncate">
 						<a
@@ -35,6 +35,7 @@ import {uid} from "../../utils";
 const DEFAULT_TRUNCATION_MAX_LENGTH = 150;
 
 export default Vue.extend({
+	name: 'n8n-notice',
 	directives: {},
 	mixins: [
 		Locale,
@@ -89,9 +90,6 @@ export default Vue.extend({
 		},
 		sanitizedContent(): string {
 			return sanitizeHtml(this.truncatedContent);
-		},
-		renderedContent(): string {
-			return this.sanitizedContent;
 		},
 	},
 	methods: {

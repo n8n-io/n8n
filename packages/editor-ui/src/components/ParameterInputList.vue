@@ -17,6 +17,8 @@
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
+				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
 			/>
 
 			<div

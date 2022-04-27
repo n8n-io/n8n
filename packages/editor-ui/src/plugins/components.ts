@@ -99,7 +99,7 @@ Vue.use(N8nLink);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
-Vue.use(N8nNotice);
+Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
