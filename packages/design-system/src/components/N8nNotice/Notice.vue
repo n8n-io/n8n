@@ -118,8 +118,8 @@ export default Vue.extend({
 }
 
 .warning {
-	--border-color: #F2DDA6;
-	--background-color: #FFF6D7;
+	--border-color: var(--color-warning-tint-1);
+	--background-color: var(--color-warning-tint-2);
 }
 
 .danger {
