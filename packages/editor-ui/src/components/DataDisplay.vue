@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="(!!node || renaming) && !isActiveStickyNode"
+		:visible="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
@@ -15,19 +15,20 @@
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" v-if="node" >
-			<InputPanel :runIndex="runInputIndex" @runChange="onRunInputIndexChange" @openSettings="openSettings" />
+		<div class="data-display" v-if="activeNode" >
+			<InputPanel :workflow="workflow" :runIndex="runInputIndex" :linkedRuns="linkedRuns" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
-			<OutputPanel :runIndex="runOutputIndex" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
+			<OutputPanel :runIndex="runOutputIndex" :linkedRuns="linkedRuns" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
 
 <script lang="ts">
 import {
-	INodeTypeDescription,
+	INodeTypeDescription, IRunData, IRunExecutionData, Workflow,
 } from 'n8n-workflow';
 import {
+	IExecutionResponse,
 	INodeUi,
 	IUpdateInformation,
 } from '../Interface';
@@ -62,6 +63,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			settingsEventBus: new Vue(),
 			runInputIndex: 0,
 			runOutputIndex: 0,
+			linkedRuns: false,
+			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
 		};
 	},
@@ -71,29 +74,74 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
 		showTriggerWaitingWarning(): boolean {
-			return this.triggerWaitingWarningEnabled && !!this.nodeType && !this.nodeType.group.includes('trigger') && this.workflowRunning && this.executionWaitingForWebhook;
+			return this.triggerWaitingWarningEnabled && !!this.activeNodeType && !this.activeNodeType.group.includes('trigger') && this.workflowRunning && this.executionWaitingForWebhook;
 		},
-		node (): INodeUi {
+		activeNode (): INodeUi {
 			return this.$store.getters.activeNode;
 		},
-		nodeType (): INodeTypeDescription | null {
-			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+		inputNodeName (): string | undefined {
+			return this.selectedInput || this.parentNode;
+		},
+		activeNodeType (): INodeTypeDescription | null {
+			if (this.activeNode) {
+				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
+		},
+		workflow (): Workflow {
+			return this.getWorkflow();
+		},
+		parentNode (): string | undefined {
+			if (!this.activeNode) {
+				return undefined;
+			}
+
+			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1)[0];
 		},
 		isActiveStickyNode(): boolean {
 			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
 		},
+		// workflowExecution (): IExecutionResponse | null {
+		// 	return this.$store.getters.getWorkflowExecution;
+		// },
+		// workflowRunData (): IRunData | null {
+		// 	if (this.workflowExecution === null) {
+		// 		return null;
+		// 	}
+		// 	const executionData: IRunExecutionData = this.workflowExecution.data;
+		// 	if (executionData && executionData.resultData) {
+		// 		return executionData.resultData.runData;
+		// 	}
+		// 	return null;
+		// },
+		// maxOutputRun(): number {
+		// 	if (this.activeNode === null) {
+		// 		return 0;
+		// 	}
+
+		// 	const runData: IRunData | null = this.workflowRunData;
+
+		// 	if (runData === null || !runData.hasOwnProperty(this.activeNode.name)) {
+		// 		return 0;
+		// 	}
+
+		// 	if (runData[this.activeNode.name].length) {
+		// 		return runData[this.activeNode.name].length - 1;
+		// 	}
+
+		// 	return 0;
+		// },
 	},
 	watch: {
-		node (node, oldNode) {
+		activeNode (node, oldNode) {
 			if(node && !oldNode && !this.isActiveStickyNode) {
 				this.runInputIndex = 0;
 				this.runOutputIndex = 0;
+				this.linkedRuns = false;
+				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
-				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
-				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
+				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()) });
+				this.$telemetry.track('User opened node modal', { node_type: this.activeNodeType ? this.activeNodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
 			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
@@ -101,9 +149,15 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onLinkRun() {
+			this.linkedRuns = true;
+		},
+		onUnlinkRun() {
+			this.linkedRuns = false;
+		},
 		onNodeExecute() {
 			setTimeout(() => {
-				if (!this.node || !this.workflowRunning) {
+				if (!this.activeNode || !this.workflowRunning) {
 					return;
 				}
 				this.triggerWaitingWarningEnabled = true;
@@ -128,6 +182,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		onRunInputIndexChange(run: number) {
 			this.runInputIndex = run;
+		},
+		onInputSelect(value: string) {
+			this.selectedInput = value;
 		},
 	},
 });

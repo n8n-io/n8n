@@ -1,5 +1,5 @@
 <template>
-	<RunData :nodeUi="node" :runIndex="runIndex" @openSettings="openSettings" @runChange="onRunIndexChange">
+	<RunData :nodeUi="node" :runIndex="runIndex" :linkedRuns="linkedRuns" @openSettings="openSettings" @runChange="onRunIndexChange" @linkRun="onLinkRun" @unlinkRun="onUnlinkRun">
 		<template name="header">
 			<div :class="$style.titleSection">
 				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
@@ -33,6 +33,9 @@ export default Vue.extend({
 		runIndex: {
 			type: Number,
 		},
+		linkedRuns: {
+			type: Boolean,
+		},
 	},
 	computed: {
 		workflowExecution (): IExecutionResponse | null {
@@ -48,7 +51,7 @@ export default Vue.extend({
 		hasNodeRun(): boolean {
 			return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
 		},
-		node (): INodeUi | null {
+		node (): INodeUi {
 			return this.$store.getters.activeNode;
 		},
 		runTaskData (): ITaskData | null {
@@ -90,6 +93,12 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		onLinkRun() {
+			this.$emit('linkRun');
+		},
+		onUnlinkRun() {
+			this.$emit('unlinkRun');
+		},
 		openSettings() {
 			this.$emit('openSettings');
 		},

@@ -19,6 +19,9 @@
 				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
+
+			<n8n-icon-button v-if="linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
+			<n8n-icon-button v-else icon="link" type="text" size="small" @click="linkRun" />
 		</div>
 
 		<div v-if="maxOutputIndex > 0 && overrideOutputIndex === undefined" :class="{[$style.tabs]: displayMode === 'table'}">
@@ -273,6 +276,9 @@ export default mixins(
 			runIndex: {
 				type: Number,
 			},
+			linkedRuns: {
+				type: Boolean,
+			},
 			overrideOutputIndex: {
 				type: Number,
 			},
@@ -490,6 +496,12 @@ export default mixins(
 			},
 		},
 		methods: {
+			linkRun() {
+				this.$emit('linkRun');
+			},
+			unlinkRun() {
+				this.$emit('unlinkRun');
+			},
 			onPageSizeChange(pageSize: number) {
 				this.pageSize = pageSize;
 				const maxPage = Math.ceil(this.dataCount / this.pageSize);
@@ -910,6 +922,7 @@ export default mixins(
 	max-width: 200px;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
+	display: flex;
 }
 
 .copyButton {
