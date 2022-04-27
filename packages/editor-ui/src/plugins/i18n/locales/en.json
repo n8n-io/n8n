@@ -304,7 +304,7 @@
 	"ndv.input.tooMuchData.title": "Input data is huge",
 	"ndv.input.noOutputDataInBranch": "No input data in this branch",
 	"ndv.input.noOutputDataInNode": "Node did not output any data. n8n stops executing the workflow when a node has no output data.",
-	"ndv.input.noOutputData": "No output data",
+	"ndv.input.noOutputData": "No input data",
 	"ndv.input.noOutputData.executePrevious": "Execute previous nodes",
 	"ndv.input.noOutputData.title": "No input data yet",
 	"ndv.input.noOutputData.hint": "(From the earliest node that has no output data yet)",
