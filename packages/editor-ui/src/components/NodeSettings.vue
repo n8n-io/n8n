@@ -6,7 +6,7 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
 				</div>
 			</div>
 			<NodeTabs v-model="openPanel" :nodeType="nodeType" />

@@ -28,20 +28,20 @@
 
 		<template v-slot:node-not-run>
 			<div :class="$style.noOutputData" v-if="immediateNodeName">
-				<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
 				<NodeExecuteButton type="outline" :nodeName="immediateNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
 				<n8n-text size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
 			</div>
 			<div :class="$style.notConnected" v-else>
-				<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.notConnected.title') }}</n8n-text>
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.notConnected.title') }}</n8n-text>
 				<n8n-text tag="div">{{ $locale.baseText('ndv.input.notConnected.message') }}</n8n-text>
 			</div>
 		</template>
 
 		<template v-slot:no-output-data>
-			<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
+			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
 			<n8n-text tag="div">{{ $locale.baseText('ndv.input.noOutputDataInNode') }}</n8n-text>
 		</template>
 	</RunData>

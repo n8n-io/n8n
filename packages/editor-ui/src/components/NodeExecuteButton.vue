@@ -1,10 +1,10 @@
 <template>
 	<n8n-button
 		:loading="nodeRunning"
-		:disabled="workflowRunning && !nodeRunning"
+		:disabled="workflowRunning && !nodeRunningg"
 		:label="buttonLabel"
 		:type="type"
-		size="small"
+		:size="size"
 		@click="onClick"
 	/>
 </template>
@@ -26,6 +26,9 @@ export default mixins(
 			type: String,
 		},
 		type: {
+			type: String,
+		},
+		size: {
 			type: String,
 		},
 	},
