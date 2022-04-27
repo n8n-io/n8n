@@ -299,6 +299,8 @@
 	"ndv.execute.listenForEvent": "Listen For Event",
 	"ndv.input": "Input",
 	"ndv.input.immediate": "Immediate",
+	"ndv.input.emptyOutput": "This input item is empty.",
+	"ndv.input.emptyOutput.hint": "<b>Node name</b> will still execute when it recieves an empty item.",
 	"ndv.output": "Output",
 	"ndv.output.all": "all",
 	"ndv.output.branch": "Branch",

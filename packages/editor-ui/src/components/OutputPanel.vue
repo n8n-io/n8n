@@ -4,6 +4,7 @@
 		:runIndex="runIndex"
 		:linkedRuns="linkedRuns"
 		:canLinkRuns="canLinkRuns"
+		:emptyOutputMessage="$locale.baseText('ndv.output.emptyOutput')"
 		@openSettings="openSettings"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"

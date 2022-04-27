@@ -101,7 +101,10 @@
 					</tr>
 					<tr v-for="(row, index1) in tableData.data" :key="index1">
 						<td>
-							<n8n-text>{{ $locale.baseText('ndv.output.emptyOutput') }}</n8n-text>
+							<n8n-text>
+								{{ emptyOutputMessage }}
+								<span v-if="emptyOutputHint && index1 === 0" v-html="emptyOutputHint"></span>
+							</n8n-text>
 						</td>
 					</tr>
 				</table>
@@ -283,6 +286,12 @@ export default mixins(
 			},
 			canLinkRuns: {
 				type: Boolean,
+			},
+			emptyOutputMessage: {
+				type: String,
+			},
+			emptyOutputHint: {
+				type: String,
 			},
 		},
 		data () {

@@ -5,6 +5,8 @@
 		:overrideOutputIndex="overrideOutputIndex"
 		:linkedRuns="linkedRuns"
 		:canLinkRuns="canLinkRuns"
+		:emptyOutputMessage="$locale.baseText('ndv.input.emptyOutput')"
+		:emptyOutputHint="$locale.baseText('ndv.input.emptyOutput.hint')"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@openSettings="openSettings"
