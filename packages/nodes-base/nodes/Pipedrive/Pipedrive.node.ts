@@ -3663,7 +3663,7 @@ export class Pipedrive implements INodeType {
 						name: 'firstChar',
 						type: 'string',
 						default: '',
-						description: 'If supplied, only organizations whose name starts with the specified letter will be returned ',
+						description: 'If supplied, only organizations whose name starts with the specified letter will be returned',
 					},
 				],
 			},
@@ -4020,7 +4020,7 @@ export class Pipedrive implements INodeType {
 					'deal': 'deals',
 					'activity': 'activity',
 					'person': 'people',
-					'organization': 'org'
+					'organization': 'org',
 				} as { [id: string]: string };
 
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: type[resource] as string });
