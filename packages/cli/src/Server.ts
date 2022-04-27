@@ -2744,7 +2744,7 @@ class App {
 						await Queue.getInstance().stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution?.findOne(
+					const executionDb = (await Db.collections.Execution.findOne(
 						req.params.id,
 					)) as IExecutionFlattedDb;
 					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
