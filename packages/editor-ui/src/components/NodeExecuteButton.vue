@@ -1,7 +1,7 @@
 <template>
 	<n8n-button
 		:loading="nodeRunning"
-		:disabled="workflowRunning && !nodeRunningg"
+		:disabled="workflowRunning && !nodeRunning"
 		:label="buttonLabel"
 		:type="type"
 		:size="size"

@@ -55,7 +55,7 @@
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
-				<div :class="$style.spinner"><n8n-spinner /></div>
+				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>
 
