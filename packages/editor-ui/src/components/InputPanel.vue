@@ -27,12 +27,10 @@
 		<template v-slot:node-not-run>
 			<div :class="$style.noOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<div v-if="immediateNodeName">
-					<NodeExecuteButton type="outline" :nodeName="immediateNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
-					<n8n-text size="small">
-						{{ $locale.baseText('ndv.input.noOutputData.hint') }}
-					</n8n-text>
-				</div>
+				<NodeExecuteButton v-if="immediateNodeName" type="outline" :nodeName="immediateNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
+				<n8n-text v-if="immediateNodeName" size="small">
+					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
+				</n8n-text>
 			</div>
 		</template>
 
