@@ -6,12 +6,13 @@
 		:canLinkRuns="canLinkRuns"
 		:emptyOutputMessage="$locale.baseText('ndv.output.emptyOutput')"
 		:tooMuchDataTitle="$locale.baseText('ndv.output.tooMuchData.title')"
+		:noDataInBranchMessage="$locale.baseText('ndv.output.noOutputDataInBranch')"
 		@openSettings="openSettings"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 	>
-		<template name="header">
+		<template v-slot:header>
 			<div :class="$style.titleSection">
 				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
 				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">

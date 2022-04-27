@@ -8,11 +8,12 @@
 		:emptyOutputMessage="$locale.baseText('ndv.input.emptyOutput')"
 		:emptyOutputHint="$locale.baseText('ndv.input.emptyOutput.hint')"
 		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
+		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@openSettings="openSettings"
 		@runChange="onRunIndexChange">
-		<template name="header">
+		<template v-slot:header>
 			<div :class="$style.titleSection">
 				<n8n-select size="small" :value="immediate ? IMMEDIATE_INPUT_KEY : currentNodeName" @input="onSelect">
 					<template slot="prepend">

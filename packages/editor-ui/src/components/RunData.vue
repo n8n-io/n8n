@@ -3,7 +3,7 @@
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
-			<slot></slot>
+			<slot name="header"></slot>
 
 			<div v-if="!hasRunError" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
@@ -70,7 +70,7 @@
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
 				<n8n-text>
-					{{ $locale.baseText('ndv.output.noOutputDataInBranch') }}
+					{{ noDataInBranchMessage }}
 				</n8n-text>
 			</div>
 
@@ -294,6 +294,9 @@ export default mixins(
 				type: String,
 			},
 			tooMuchDataTitle: {
+				type: String,
+			},
+			noDataInBranchMessage: {
 				type: String,
 			},
 		},
