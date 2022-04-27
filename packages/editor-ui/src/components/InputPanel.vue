@@ -6,7 +6,7 @@
 		:linkedRuns="linkedRuns"
 		:canLinkRuns="canLinkRuns"
 		:emptyOutputMessage="$locale.baseText('ndv.input.emptyOutput')"
-		:emptyOutputHint="$locale.baseText('ndv.input.emptyOutput.hint')"
+		:emptyOutputHint="$locale.baseText('ndv.input.emptyOutput.hint', { interpolate: { nodeName: activeNode.name } })"
 		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
 		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		@linkRun="onLinkRun"
