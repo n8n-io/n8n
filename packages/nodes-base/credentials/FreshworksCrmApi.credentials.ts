@@ -26,10 +26,35 @@ export class FreshworksCrmApi implements ICredentialType {
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string',
+			type: 'options',
+			options: [
+				{
+					name: 'freshworks.com',
+					value: 'freshworks.com',
+				},
+				{
+					name: 'myfreshworks.com',
+					value: 'myfreshworks.com',
+				},
+				{
+					name: 'Custom',
+					value: 'custom',
+				},
+			],
 			default: 'myfreshworks.com',
-			placeholder: '',
-			description: 'Host in the Freshworks CRM org URL. For example, in <code>https://n8n-org.myfreshworks.com</code>, the host is <code>myfreshworks.com</code>.',
-		},		
+		},
+		{
+			displayName: 'Custom Host',
+			name: 'customHost',
+			type: 'string',
+			displayOptions: {
+				show: {
+					host: [
+						'custom',
+					],
+				},
+			},
+			default: '',
+		},
 	];
 }

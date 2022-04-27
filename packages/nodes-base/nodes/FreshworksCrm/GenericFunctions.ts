@@ -31,7 +31,16 @@ export async function freshworksCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, domain, host } = await this.getCredentials('freshworksCrmApi') as FreshworksCrmApiCredentials;
+	const { apiKey, domain, host, customHost } = await this.getCredentials('freshworksCrmApi') as FreshworksCrmApiCredentials;
+	let baseUrl = `${domain}.${host}`;
+
+	if (host === 'custom') {
+		if (domain === '') {
+			baseUrl = customHost.replace('https://', '');
+		} else {
+			baseUrl = `${domain}.${customHost}`;
+		}
+	}
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -40,7 +49,7 @@ export async function freshworksCrmApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://${domain}.${host}/crm/sales/api${endpoint}`,
+		uri: `https://${baseUrl}/crm/sales/api${endpoint}`,
 		json: true,
 	};
 
