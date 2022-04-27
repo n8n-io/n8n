@@ -283,7 +283,7 @@ export default mixins(
 				type: Number,
 			},
 			canLinkRuns: {
-				type: Number,
+				type: Boolean,
 			},
 		},
 		data () {
