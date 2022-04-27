@@ -194,7 +194,7 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 
 					const submissionQueryOptions = this.getNodeParameter('options', i) as IDataObject;
-					const filterJson = this.getNodeParameter('filterJson', i) as string;
+					const filterJson = this.getNodeParameter('filterJson', i, null) as string;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/data/`,
