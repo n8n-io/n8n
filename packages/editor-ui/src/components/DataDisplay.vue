@@ -39,6 +39,7 @@
 				@runChange="onRunInputIndexChange"
 				@openSettings="openSettings"
 				@select="onInputSelect"
+				@execute="onNodeExecute"
 			/>
 			<NodeSettings
 				:eventBus="settingsEventBus"
