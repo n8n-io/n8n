@@ -16,7 +16,7 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="activeNode" >
-			<InputPanel :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="inputRun" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
+			<InputPanel v-if="isTriggerNode" :workflow="workflow" :canLinkRuns="canLinkRuns" :runIndex="inputRun" :linkedRuns="linked" :currentNodeName="inputNodeName" :immediate="!selectedInput" @linkRun="onLinkRunToInput" @unlinkRun="onUnlinkRun" @runChange="onRunInputIndexChange" @openSettings="openSettings" @select="onInputSelect" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" @execute="onNodeExecute" />
 			<OutputPanel :canLinkRuns="canLinkRuns" :runIndex="outputRun" :linkedRuns="linked" @linkRun="onLinkRunToOutput" @unlinkRun="onUnlinkRun" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
@@ -100,6 +100,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 
 			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1)[0];
+		},
+		isTriggerNode (): boolean {
+			return !!(this.activeNodeType && this.activeNodeType.group.includes('trigger'));
 		},
 		isActiveStickyNode(): boolean {
 			return !!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE;
