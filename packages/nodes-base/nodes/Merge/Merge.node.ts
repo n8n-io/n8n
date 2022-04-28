@@ -262,6 +262,10 @@ export class Merge implements INodeType {
 
 				newItem = {
 					json: {},
+					pairedItem: [
+						dataInput1[i].pairedItem as IPairedItemData,
+						dataInput2[i].pairedItem as IPairedItemData,
+					],
 				};
 
 				if (dataInput1[i].binary !== undefined) {
@@ -279,11 +283,6 @@ export class Merge implements INodeType {
 				for (const key of Object.keys(dataInput2[i].json)) {
 					newItem.json[key] = dataInput2[i].json[key];
 				}
-
-				newItem.pairedItem = [
-					dataInput1[i].pairedItem as IPairedItemData,
-					dataInput2[i].pairedItem as IPairedItemData,
-				];
 
 				// Copy binary data
 				if (dataInput2[i].binary !== undefined) {
@@ -311,12 +310,19 @@ export class Merge implements INodeType {
 
 			for (entry1 of dataInput1) {
 				for (entry2 of dataInput2) {
-					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
+					returnData.push({
+						json: {
+							...(entry1.json), ...(entry2.json)
+						},
+						pairedItem: [
+							entry1.pairedItem as IPairedItemData,
+							entry2.pairedItem as IPairedItemData,
+						],
+					});
 				}
 			}
 			return [returnData];
 		} else if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
-			// TODO: pairedItem still has to get added to other modes!
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1) {
 				// If it has no input data from first input return nothing
