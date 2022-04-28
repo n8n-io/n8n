@@ -411,6 +411,7 @@
 	"nodeSettings.waitBetweenTries.description": "How long to wait between each attempt (in milliseconds)",
 	"nodeSettings.waitBetweenTries.displayName": "Wait Between Tries (ms)",
 	"nodeView.addNode": "Add node",
+	"nodeView.addSticky": "Click to add sticky note",
 	"nodeView.confirmMessage.beforeRouteLeave.cancelButtonText": "Leave without saving",
 	"nodeView.confirmMessage.beforeRouteLeave.confirmButtonText": "Save",
 	"nodeView.confirmMessage.beforeRouteLeave.headline": "Save changes before leaving?",

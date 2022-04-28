@@ -386,7 +386,7 @@ export class DateTime implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 
 		const workflowTimezone = this.getTimezone();

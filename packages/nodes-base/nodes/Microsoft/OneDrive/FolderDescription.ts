@@ -115,7 +115,6 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Folder ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:search                              */
@@ -135,8 +134,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The query text used to search for items. Values may be matched
-		across several fields including filename, metadata, and file content.`,
+		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:share                               */

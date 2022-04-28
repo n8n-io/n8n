@@ -64,7 +64,6 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Email',
 	},
 	{
 		displayName: 'Event Name',
@@ -89,7 +88,6 @@ export const eventFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [

@@ -237,7 +237,9 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{ oauth_verifier: string; oauth_token: string; cid: string }
-		>;
+		> & {
+			user?: User;
+		};
 	}
 
 	namespace OAuth2Credential {

@@ -62,7 +62,7 @@ export const messageFields: INodeProperties[] = [
 			loadOptionsMethod: 'getUsers',
 		},
 		required: true,
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +73,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
 	},
 	{
 		displayName: 'Content',
@@ -118,7 +118,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
 	},
 	{
 		displayName: 'Topic',
@@ -239,7 +239,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: 'The topic of the message. Only required for stream messages',
+				description: 'The topic of the message. Only required for stream messages.',
 			},
 		],
 	},

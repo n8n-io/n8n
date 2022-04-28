@@ -126,7 +126,6 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: 'defineBelow',
-		description: '',
 	},
 	{
 		displayName: 'Inputs to Ignore',
@@ -243,7 +242,7 @@ export const rowFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Condition',
 		options: [
 			{

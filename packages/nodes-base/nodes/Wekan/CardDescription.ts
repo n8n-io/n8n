@@ -160,7 +160,6 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The author ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -186,7 +185,7 @@ export const cardFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of assignee IDs attached to the card.',
 			},
 			{
@@ -203,7 +202,7 @@ export const cardFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of member IDs attached to the card.',
 			},
 		],
@@ -400,7 +399,6 @@ export const cardFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'List ID',
@@ -604,7 +602,7 @@ export const cardFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of assignee IDs attached to the card.',
 			},
 			{
@@ -764,7 +762,7 @@ export const cardFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of member IDs attached to the card.',
 			},
 			{

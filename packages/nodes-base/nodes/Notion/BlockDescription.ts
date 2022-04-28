@@ -55,7 +55,7 @@ export const blockFields = [
 				],
 			},
 		},
-		description: `The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too`,
+		description: 'The Block URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.',
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
@@ -77,7 +77,7 @@ export const blockFields = [
 				],
 			},
 		},
-		description: `The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too`,
+		description: 'The Block URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.',
 	},
 	{
 		displayName: 'Return All',

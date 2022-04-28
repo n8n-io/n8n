@@ -243,7 +243,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
-				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped',
+				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped.',
 			},
 			{
 				displayName: 'Phone',
@@ -461,7 +461,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
-				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped',
+				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped.',
 			},
 			{
 				displayName: 'Phone',

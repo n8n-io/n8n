@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	IOAuth2Options,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -36,23 +37,16 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
+
+	const oAuth2Options: IOAuth2Options = {
+		tokenType: 'Bearer',
+		property: 'authed_user.access_token',
+	};
+
 	try {
 		let response: any; // tslint:disable-line:no-any
-
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('slackApi');
-			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-			//@ts-ignore
-			response = await this.helpers.request(options);
-		} else {
-
-			const oAuth2Options: IOAuth2Options = {
-				tokenType: 'Bearer',
-				property: 'authed_user.access_token',
-			};
-			//@ts-ignore
-			response = await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
-		}
+		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, { oauth2: oAuth2Options });
 
 		if (response.ok === false) {
 			if (response.error === 'paid_teams_only') {
@@ -66,7 +60,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
