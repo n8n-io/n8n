@@ -379,10 +379,9 @@ $--main-panel-width: 350px;
 	composes: panel;
 	left: calc(50% - $--main-panel-width / 2);
 	height: 100%;
-	> * {
-		border: var(--border-base);
-		border-radius: var(--border-radius-large);
-	}
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
 }
 
 .triggerWarning {
