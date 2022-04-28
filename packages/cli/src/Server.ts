@@ -567,12 +567,14 @@ class App {
 						return;
 					}
 
-					try {
-						const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-						await resolveJwt(authCookie);
-					} catch (error) {
-						res.status(401).send('Unauthorized');
-						return;
+					if (!config.getEnv('userManagement.disabled')) {
+						try {
+							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
+							await resolveJwt(authCookie);
+						} catch (error) {
+							res.status(401).send('Unauthorized');
+							return;
+						}
 					}
 
 					this.push.add(req.query.sessionId as string, req, res);
