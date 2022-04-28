@@ -1,4 +1,6 @@
 import {
+	IAuthenticateBasicAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -31,4 +33,18 @@ export class WordpressApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
+	authenticate: IAuthenticateBasicAuth = {
+		type: 'basicAuth',
+		properties: {
+		 userPropertyName: 'username',
+		 passwordPropertyName: 'password',
+	 },
+ };
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
+			url: '/users',
+			method: 'GET',
+		},
+	};
 }
