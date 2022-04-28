@@ -24,8 +24,8 @@
 			</div>
 		</n8n-tooltip>
 
-		<div @click="close" class="data-display" v-if="activeNode">
-			<div @click.stop :class="$style.inputPanel">
+		<div class="data-display" v-if="activeNode">
+			<div :class="$style.inputPanel">
 				<InputPanel
 					v-if="!isTriggerNode"
 					:workflow="workflow"
@@ -43,14 +43,14 @@
 					@execute="onNodeExecute"
 				/>
 			</div>
-			<div @click.stop :class="$style.mainPanel">
+			<div :class="$style.mainPanel">
 				<NodeSettings
 					:eventBus="settingsEventBus"
 					@valueChanged="valueChanged"
 					@execute="onNodeExecute"
 				/>
 			</div>
-			<div @click.stop :class="$style.outputPanel">
+			<div :class="$style.outputPanel">
 				<OutputPanel
 					:canLinkRuns="canLinkRuns"
 					:runIndex="outputRun"
