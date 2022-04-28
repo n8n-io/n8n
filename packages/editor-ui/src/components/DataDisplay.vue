@@ -382,6 +382,7 @@ $--main-panel-width: 350px;
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 	overflow: hidden;
+	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.6)
 }
 
 .triggerWarning {
