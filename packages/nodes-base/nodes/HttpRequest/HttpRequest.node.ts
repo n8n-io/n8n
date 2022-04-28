@@ -883,15 +883,13 @@ export class HttpRequest implements INodeType {
 		];
 
 		let authenticateWith;
-		let isHttpRequestNodeVersion1 = false;
+		const nodeVersion = this.getNode().typeVersion;
 
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 		try {
 			authenticateWith = this.getNodeParameter('authenticateWith', 0) as 'nodeCredential' | 'genericAuth' | 'none';
-		} catch (_) {
-			isHttpRequestNodeVersion1 = true;
-		}
+		} catch (_) {}
 
 		let httpBasicAuth;
 		let httpDigestAuth;
@@ -901,7 +899,7 @@ export class HttpRequest implements INodeType {
 		let oAuth2Api;
 		let nodeCredentialType;
 
-		if (authenticateWith === 'genericAuth' || isHttpRequestNodeVersion1) {
+		if (authenticateWith === 'genericAuth' || nodeVersion === 1) {
 			try {
 				httpBasicAuth = await this.getCredentials('httpBasicAuth');
 			} catch (_) {}
@@ -1219,7 +1217,7 @@ export class HttpRequest implements INodeType {
 			if (
 				authenticateWith === 'genericAuth' ||
 				authenticateWith === 'none' ||
-				isHttpRequestNodeVersion1
+				nodeVersion === 1
 			) {
 				if (oAuth1Api) {
 					requestPromises.push(
