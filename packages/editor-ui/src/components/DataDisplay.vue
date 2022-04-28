@@ -25,6 +25,7 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="activeNode">
+			<div @click="close" :class="$style.modalBackground"></div>
 			<div :class="$style.inputPanel">
 				<InputPanel
 					v-if="!isTriggerNode"
@@ -332,6 +333,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 <style lang="scss" module>
 $--main-panel-width: 350px;
+
+.modalBackground {
+	height: 100%;
+	width: 100%;
+}
 
 .panel {
 	position: absolute;
