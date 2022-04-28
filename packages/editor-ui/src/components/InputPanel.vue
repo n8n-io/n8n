@@ -39,7 +39,7 @@
 					<WireMeUp />
 				</div>
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.notConnected.title') }}</n8n-text>
-				<n8n-text tag="div">{{ $locale.baseText('ndv.input.notConnected.message') }}</n8n-text>
+				<n8n-text tag="div"><span v-html="$locale.baseText('ndv.input.notConnected.message')"></span></n8n-text>
 			</div>
 		</template>
 
