@@ -611,11 +611,11 @@ export const customObjectFields: INodeProperties[] = [
 													},
 													{
 														name: 'Contains Exactly',
-														value: 'CONSTAIN_TOKEN',
+														value: 'CONTAINS_TOKEN',
 													},
 													{
 														name: 'Doesn\'t Contain Exactly',
-														value: 'NOT_CONSTAIN_TOKEN',
+														value: 'NOT_CONTAINS_TOKEN',
 													},
 
 												],
