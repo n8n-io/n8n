@@ -1,4 +1,4 @@
-import { IRestApiContext, IN8nPrompts, IN8nValueSurveyData, IN8nUISettings } from '../Interface';
+import {IRestApiContext, IN8nPrompts, IN8nValueSurveyData, IN8nUISettings} from '../Interface';
 import { makeRestApiRequest, get, post } from './helpers';
 import { N8N_IO_BASE_URL } from '@/constants';
 

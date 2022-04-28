@@ -19,6 +19,12 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
 			</n8n-menu-item>
+			<n8n-menu-item index="/settings/api" :class="$style.tab">
+				<i :class="$style.icon">
+					<font-awesome-icon icon="plug" />
+				</i>
+				<span slot="title">{{ $locale.baseText('settings.api') }}</span>
+			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
