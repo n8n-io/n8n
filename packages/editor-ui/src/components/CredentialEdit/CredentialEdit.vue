@@ -395,6 +395,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				parameter,
 				'',
+				null,
 			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
@@ -598,6 +599,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				false,
 				false,
+				null,
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {

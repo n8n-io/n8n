@@ -251,7 +251,7 @@ export default mixins(
 				// If it is not defined no need to do a proper check
 				return true;
 			}
-			return this.displayParameter(this.node.parameters, credentialTypeDescription, '');
+			return this.displayParameter(this.node.parameters, credentialTypeDescription, '', this.node);
 		},
 
 		getIssues (credentialTypeName: string): string[] {
