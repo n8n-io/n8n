@@ -37,13 +37,14 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: object | IRequestBody, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('aws');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
-
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
+	};
 	const options = sign({
 		// @ts-ignore
 		uri: endpoint,
@@ -53,10 +54,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		path: '/',
 		headers: { ...headers },
 		body: JSON.stringify(body),
-	}, {
-		accessKeyId: credentials.accessKeyId,
-		secretAccessKey: credentials.secretAccessKey,
-	});
+	}, securityHeaders);
 
 	try {
 		return JSON.parse(await this.helpers.request!(options));

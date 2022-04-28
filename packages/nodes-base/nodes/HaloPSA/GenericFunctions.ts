@@ -28,7 +28,7 @@ interface IHaloPSATokens {
 export async function getAccessTokens(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<IHaloPSATokens> {
-	const credentials = (await this.getCredentials('haloPSAApi')) as IDataObject;
+	const credentials = await this.getCredentials('haloPSAApi');
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -67,7 +67,7 @@ export async function haloPSAApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
+	const resourceApiUrl = (await this.getCredentials('haloPSAApi'))
 		.resourceApiUrl as string;
 
 	try {

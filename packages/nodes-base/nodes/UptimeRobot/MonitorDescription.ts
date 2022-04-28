@@ -263,7 +263,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'Statuses',
 				name: 'statuses',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				options: [
 					{
 						name: 'Paused',
@@ -291,7 +291,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'Types',
 				name: 'types',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				options: [
 					{
 						name: 'Heartbeat',

@@ -59,7 +59,6 @@ export const stateFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID.',
 	},
 
 	/* -------------------------------------------------------------------------- */

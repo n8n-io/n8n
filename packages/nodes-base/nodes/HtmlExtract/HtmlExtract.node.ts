@@ -114,7 +114,6 @@ export class HtmlExtract implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The extraction values.',
 				default: {},
 				options: [
 					{

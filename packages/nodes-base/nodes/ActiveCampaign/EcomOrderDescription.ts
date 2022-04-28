@@ -73,7 +73,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+		description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 	},
 	{
 		displayName: 'External checkout ID',
@@ -437,7 +437,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 			},
 			{
 				displayName: 'External checkout ID',

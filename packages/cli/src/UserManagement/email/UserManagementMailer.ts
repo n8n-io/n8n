@@ -12,6 +12,7 @@ import {
 } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
+// TODO: make function fully async (remove sync functions)
 async function getTemplate(configKeyName: string, defaultFilename: string) {
 	const templateOverride = (await GenericHelpers.getConfigValue(
 		`userManagement.emails.templates.${configKeyName}`,
@@ -60,7 +61,6 @@ export class UserManagementMailer {
 		let template = await getTemplate('invite', 'invite.html');
 		template = replaceStrings(template, inviteEmailData);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',

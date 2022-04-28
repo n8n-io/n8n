@@ -72,7 +72,6 @@ export const attachmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: '',
 	},
 	{
 		displayName: 'Name',

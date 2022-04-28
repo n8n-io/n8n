@@ -64,7 +64,6 @@ export const logFields: INodeProperties[] = [
 				name: 'entityId',
 				type: 'string',
 				default: '',
-				description: 'The entity ID.',
 			},
 			{
 				displayName: 'Start Time',

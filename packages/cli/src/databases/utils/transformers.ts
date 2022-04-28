@@ -2,8 +2,13 @@
 import { IPersonalizationSurveyAnswers } from '../../Interfaces';
 
 export const idStringifier = {
-	from: (value: number): string | number => (value ? value.toString() : value),
-	to: (value: string): number | string => (value ? Number(value) : value),
+	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
+	to: (value: string): number | string => (typeof value === 'string' ? Number(value) : value),
+};
+
+export const lowerCaser = {
+	from: (value: string): string => value,
+	to: (value: string): string => (typeof value === 'string' ? value.toLowerCase() : value),
 };
 
 /**
