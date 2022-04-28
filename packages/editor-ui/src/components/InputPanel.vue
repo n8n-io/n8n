@@ -35,6 +35,9 @@
 				</n8n-text>
 			</div>
 			<div :class="$style.notConnected" v-else>
+				<div>
+					<WireMeUp />
+				</div>
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.notConnected.title') }}</n8n-text>
 				<n8n-text tag="div">{{ $locale.baseText('ndv.input.notConnected.message') }}</n8n-text>
 			</div>
@@ -54,6 +57,7 @@ import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import WireMeUp from './WireMeUp.vue';
 
 const IMMEDIATE_INPUT_KEY = '__IMMEDIATE_INPUT__';
 
@@ -61,7 +65,7 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'InputPanel',
-	components: { RunData, NodeExecuteButton },
+	components: { RunData, NodeExecuteButton, WireMeUp },
 	props: {
 		currentNodeName: {
 			type: String,
@@ -168,6 +172,10 @@ export default mixins(
 
 .notConnected {
 	max-width: 300px;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
 
 	> * {
 		margin-bottom: var(--spacing-2xs);
