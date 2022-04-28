@@ -1,4 +1,4 @@
-<template>
+ <template>
 	<!-- eslint-disable-next-line vue/no-mutating-props -->
 	<a v-if="version" :set="version = version" :href="version.documentationUrl" target="_blank" :class="$style.card">
 		<div :class="$style.header">
