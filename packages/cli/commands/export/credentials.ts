@@ -123,9 +123,6 @@ export class ExportCredentialsCommand extends Command {
 
 			if (flags.decrypted) {
 				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
-					throw new Error('No encryption key got found to decrypt the credentials!');
-				}
 
 				for (let i = 0; i < credentials.length; i++) {
 					const { name, type, nodesAccess, data } = credentials[i];

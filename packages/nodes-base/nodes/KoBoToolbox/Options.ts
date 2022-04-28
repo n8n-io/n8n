@@ -67,7 +67,7 @@ export const options = {
 			name: 'selectMask',
 			type: 'string',
 			default: 'select_*',
-			description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays',
+			description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
 		},
 		{
 			displayName: 'Number Mask',

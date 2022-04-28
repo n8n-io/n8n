@@ -112,14 +112,13 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Line Items',
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -211,7 +210,6 @@ export const invoiceFields: INodeProperties[] = [
 						],
 						default: '',
 						required: true,
-						description: 'Tax Type',
 					},
 					{
 						displayName: 'Tax Amount',
@@ -232,7 +230,7 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'discountRate',
 						type: 'string',
 						default: '',
-						description: 'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts',
+						description: 'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts.',
 					},
 					// {
 					// 	displayName: 'Tracking',
@@ -336,7 +334,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation',
+				description: 'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation.',
 			},
 			{
 				displayName: 'Due Date',
@@ -400,7 +398,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'sendToContact',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved',
+				description: 'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved.',
 			},
 			{
 				displayName: 'Status',
@@ -470,7 +468,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Invoice ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -506,7 +503,6 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'Contact ID',
 			},
 			{
 				displayName: 'Currency',
@@ -532,7 +528,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation',
+				description: 'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation.',
 			},
 			{
 				displayName: 'Due Date',
@@ -582,7 +578,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'lineItemsUi',
 				placeholder: 'Add Line Item',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -671,7 +667,6 @@ export const invoiceFields: INodeProperties[] = [
 								],
 								default: '',
 								required: true,
-								description: 'Tax Type',
 							},
 							{
 								displayName: 'Tax Amount',
@@ -692,7 +687,7 @@ export const invoiceFields: INodeProperties[] = [
 								name: 'discountRate',
 								type: 'string',
 								default: '',
-								description: 'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts',
+								description: 'Percentage discount or discount amount being applied to a line item. Only supported on ACCREC invoices - ACCPAY invoices and credit notes in Xero do not support discounts.',
 							},
 							// {
 							// 	displayName: 'Tracking',
@@ -762,7 +757,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'sendToContact',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved',
+				description: 'Whether the invoice in the Xero app should be marked as "sent". This can be set only on invoices that have been approved.',
 			},
 			{
 				displayName: 'Status',
@@ -832,7 +827,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Invoice ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   invoice:getAll                           */
@@ -945,7 +939,6 @@ export const invoiceFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Statuses',
@@ -976,7 +969,7 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
+				description: 'The where parameter allows you to filter on endpoints and elements that don\'t have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>.',
 			},
 		],
 	},

@@ -214,7 +214,7 @@ export const draftFields: INodeProperties[] = [
 						],
 					},
 				],
-				default: '',
+				default: {},
 				description: 'Array of supported attachments to add to the message.',
 			},
 		],

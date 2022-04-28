@@ -33,7 +33,6 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -173,9 +172,6 @@ export class Start extends Command {
 					// If we don't have a JWT secret set, generate
 					// one based and save to config.
 					const encryptionKey = await UserSettings.getEncryptionKey();
-					if (!encryptionKey) {
-						throw new Error('Fatal error setting up user management: no encryption key set.');
-					}
 
 					// For a key off every other letter from encryption key
 					// CAREFUL: do not change this or it breaks all existing tokens.
@@ -210,11 +206,7 @@ export class Start extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
-
-				if (!encryptionKey) {
-					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-				}
+				await UserSettings.getEncryptionKey();
 
 				// Load settings from database and set them to config.
 				const databaseSettings = await Db.collections.Settings.find({ loadOnStartup: true });

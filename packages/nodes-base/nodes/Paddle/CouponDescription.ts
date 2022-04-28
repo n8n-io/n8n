@@ -93,7 +93,7 @@ export const couponFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'Comma-separated list of product IDs. Required if coupon_type is product.',
 		required: true,
 	},
@@ -314,7 +314,6 @@ export const couponFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -577,7 +576,6 @@ export const couponFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -643,7 +641,7 @@ export const couponFields: INodeProperties[] = [
 				displayName: 'Discount',
 				name: 'discount',
 				type: 'fixedCollection',
-				default: 'discountProperties',
+				default: {},
 				options: [
 					{
 						displayName: 'Discount Properties',

@@ -109,17 +109,14 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Represents the result of a given call, for example, “we'll call back,” or “call
-				 unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user
-				  in an organization with Salesforce CRM Call Center.`,
+				description: 'Represents the result of a given call, for example, “we\'ll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Duration In Seconds',
 				name: 'callDurationInSeconds',
 				type: 'number',
 				default: '',
-				description: `Duration of the call in seconds. Not subject to field-level security,
-				 available for any user in an organization with Salesforce CRM Call Center`,
+				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center',
 			},
 			{
 				displayName: 'Call Object',
@@ -232,7 +229,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: `The frequency of the recurring task. For example, “2nd” or “3rd.”`,
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -260,8 +257,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The last date on which the task repeats. This field has a timestamp that
-				is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
+				description: 'The last date on which the task repeats. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
 				displayName: 'Recurrence Month Of Year',
@@ -360,10 +356,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'reminderDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the time when the reminder is scheduled to fire,
-				if IsReminderSet is set to true. If IsReminderSet is set to false, then the
-				 user may have deselected the reminder checkbox in the Salesforce user interface,
-				 or the reminder has already fired at the time indicated by the value.`,
+				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
 				displayName: 'Subject',
@@ -390,9 +383,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'whatId',
 				type: 'string',
 				default: '',
-				description: `The WhatId represents nonhuman objects such as accounts, opportunities,
-				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a
-				WhatId is equivalent to the ID of a related object.`,
+				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
 				displayName: 'Who Id',
@@ -457,17 +448,14 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Represents the result of a given call, for example, “we'll call back,” or “call
-				 unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user
-				  in an organization with Salesforce CRM Call Center.`,
+				description: 'Represents the result of a given call, for example, “we\'ll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Duration In Seconds',
 				name: 'callDurationInSeconds',
 				type: 'number',
 				default: '',
-				description: `Duration of the call in seconds. Not subject to field-level security,
-				 available for any user in an organization with Salesforce CRM Call Center`,
+				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center',
 			},
 			{
 				displayName: 'Call Object',
@@ -601,8 +589,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The last date on which the task repeats. This field has a timestamp that
-				is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
+				description: 'The last date on which the task repeats. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
 				displayName: 'Recurrence Instance',
@@ -612,7 +599,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: `The frequency of the recurring task. For example, “2nd” or “3rd.”`,
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -728,10 +715,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'reminderDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the time when the reminder is scheduled to fire,
-				if IsReminderSet is set to true. If IsReminderSet is set to false, then the
-				 user may have deselected the reminder checkbox in the Salesforce user interface,
-				 or the reminder has already fired at the time indicated by the value.`,
+				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
 				displayName: 'Type',
@@ -748,9 +732,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'whatId',
 				type: 'string',
 				default: '',
-				description: `The WhatId represents nonhuman objects such as accounts, opportunities,
-				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a
-				WhatId is equivalent to the ID of a related object.`,
+				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
 				displayName: 'Who Id',

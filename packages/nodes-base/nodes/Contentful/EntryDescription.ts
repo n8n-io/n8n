@@ -149,7 +149,7 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'fields.title',
 				default: '',
-				description: 'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma separated operators.',
+				description: 'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma-separated operators.',
 			},
 			{
 				displayName: 'Include',

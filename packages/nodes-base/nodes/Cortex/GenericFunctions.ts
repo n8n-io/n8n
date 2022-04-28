@@ -25,10 +25,6 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	const credentials = await this.getCredentials('cortexApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
 
 	let options: OptionsWithUri = {

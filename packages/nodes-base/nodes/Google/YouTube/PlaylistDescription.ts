@@ -118,7 +118,7 @@ export const playlistFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: `Keyword tags associated with the playlist. Mulplie can be defined separated by comma`,
+				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 			{
 				displayName: 'Default Language',
@@ -557,7 +557,7 @@ export const playlistFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: `Keyword tags associated with the playlist. Mulplie can be defined separated by comma`,
+				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 		],
 	},
