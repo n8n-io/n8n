@@ -4,7 +4,7 @@
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
-		width="85%"
+		width="auto"
 		append-to-body
 	>
 		<n8n-tooltip
@@ -25,36 +25,42 @@
 		</n8n-tooltip>
 
 		<div class="data-display" v-if="activeNode">
-			<InputPanel
-				v-if="!isTriggerNode"
-				:workflow="workflow"
-				:canLinkRuns="canLinkRuns"
-				:runIndex="inputRun"
-				:linkedRuns="linked"
-				:currentNodeName="inputNodeName"
-				:immediate="!selectedInput"
-				:immediateNodeName="parentNode"
-				@linkRun="onLinkRunToInput"
-				@unlinkRun="onUnlinkRun"
-				@runChange="onRunInputIndexChange"
-				@openSettings="openSettings"
-				@select="onInputSelect"
-				@execute="onNodeExecute"
-			/>
-			<NodeSettings
-				:eventBus="settingsEventBus"
-				@valueChanged="valueChanged"
-				@execute="onNodeExecute"
-			/>
-			<OutputPanel
-				:canLinkRuns="canLinkRuns"
-				:runIndex="outputRun"
-				:linkedRuns="linked"
-				@linkRun="onLinkRunToOutput"
-				@unlinkRun="onUnlinkRun"
-				@runChange="onRunOutputIndexChange"
-				@openSettings="openSettings"
-			/>
+			<div :class="$style.inputPanel">
+				<InputPanel
+					v-if="!isTriggerNode"
+					:workflow="workflow"
+					:canLinkRuns="canLinkRuns"
+					:runIndex="inputRun"
+					:linkedRuns="linked"
+					:currentNodeName="inputNodeName"
+					:immediate="!selectedInput"
+					:immediateNodeName="parentNode"
+					@linkRun="onLinkRunToInput"
+					@unlinkRun="onUnlinkRun"
+					@runChange="onRunInputIndexChange"
+					@openSettings="openSettings"
+					@select="onInputSelect"
+					@execute="onNodeExecute"
+				/>
+			</div>
+			<div :class="$style.mainPanel">
+				<NodeSettings
+					:eventBus="settingsEventBus"
+					@valueChanged="valueChanged"
+					@execute="onNodeExecute"
+				/>
+			</div>
+			<div :class="$style.outputPanel">
+				<OutputPanel
+					:canLinkRuns="canLinkRuns"
+					:runIndex="outputRun"
+					:linkedRuns="linked"
+					@linkRun="onLinkRunToOutput"
+					@unlinkRun="onUnlinkRun"
+					@runChange="onRunOutputIndexChange"
+					@openSettings="openSettings"
+				/>
+			</div>
 		</div>
 	</el-dialog>
 </template>
@@ -288,7 +294,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 <style lang="scss">
 .data-display-wrapper {
 	height: 85%;
+	width: 100%;
 	margin-top: 48px !important;
+	background: none;
+	border: none;
 
 	.el-dialog__header {
 		padding: 0 !important;
@@ -304,10 +313,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 }
 
 .data-display {
-	background-color: #fff;
-	border-radius: 8px;
-	display: flex;
 	height: 100%;
+	width: 100%;
+	display: flex;
 }
 
 .fade-enter-active,
@@ -323,13 +331,63 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 </style>
 
 <style lang="scss" module>
+$--main-panel-width: 350px;
+
+.panel {
+	position: absolute;
+	> * {
+		border: var(--border-base);
+		overflow: hidden;
+	}
+}
+
+.dataPanel {
+	composes: panel;
+	height: calc(100% - 2 * var(--spacing-l));
+	width: calc(50% - $--main-panel-width / 2 - var(--spacing-l));
+	position: absolute;
+	top: var(--spacing-l);
+	> * {
+		overflow: hidden;
+		border: var(--border-base);
+	}
+}
+
+.inputPanel {
+	composes: dataPanel;
+	right: calc(50% + $--main-panel-width / 2);
+
+	> * {
+		border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
+	}
+}
+
+.outputPanel {
+	composes: dataPanel;
+	left: calc(50% + $--main-panel-width / 2);
+
+	> * {
+		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
+	}
+}
+
+.mainPanel {
+	composes: panel;
+	left: calc(50% - $--main-panel-width / 2);
+	height: 100%;
+	> * {
+		border-radius: var(--border-radius-large);
+	}
+}
+
 .triggerWarning {
 	max-width: 180px;
 }
 
 .backToCanvas {
-	position: absolute;
-	top: -40px;
+	position: fixed;
+	top: var(--spacing-xs);
+	left: var(--spacing-l);
 
 	&:hover {
 		cursor: pointer;
@@ -342,9 +400,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 @media (min-width: $--breakpoint-lg) {
 	.backToCanvas {
-		position: fixed;
-		top: 10px;
-		left: 20px;
+		top: var(--spacing-xs);
+		left: var(--spacing-m);
 	}
 }
 </style>

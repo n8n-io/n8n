@@ -544,6 +544,8 @@ export default mixins(
 	overflow: hidden;
 	min-width: 350px;
 	max-width: 350px;
+	background-color: var(--color-background-xlight);
+	height: 100%;
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
