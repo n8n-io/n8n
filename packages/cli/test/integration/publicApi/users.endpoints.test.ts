@@ -7,12 +7,7 @@ import { Db } from '../../../src';
 import config = require('../../../config');
 import { SUCCESS_RESPONSE_BODY } from '../shared/constants';
 import { Role } from '../../../src/databases/entities/Role';
-import {
-	randomApiKey,
-	randomEmail,
-	randomName,
-	randomValidPassword,
-} from '../shared/random';
+import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
@@ -96,7 +91,6 @@ test('GET /users should fail due to invalid API Key', async () => {
 });
 
 test('GET /users should fail due to member trying to access owner only endpoint', async () => {
-
 	const member = await testDb.createUser();
 
 	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: member });
@@ -106,8 +100,19 @@ test('GET /users should fail due to member trying to access owner only endpoint'
 	expect(response.statusCode).toBe(403);
 });
 
-test('GET /users should return all users', async () => {
+test('GET /users should fail due no instance owner not setup', async () => {
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.get('/v1/users');
+
+	expect(response.statusCode).toBe(500);
+});
+
+test('GET /users should return all users', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
 	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
@@ -147,18 +152,6 @@ test('GET /users should return all users', async () => {
 		expect(createdAt).toBeDefined();
 		expect(updatedAt).toBeDefined();
 	}
-});
-
-test('GET /users should fail due no instance owner not setup', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
-
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
-
-	const response = await authOwnerAgent.get('/v1/users');
-
-	expect(response.statusCode).toBe(500);
 });
 
 test('GET /users/:identifier should fail due to missing API Key', async () => {

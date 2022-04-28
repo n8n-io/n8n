@@ -216,6 +216,8 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
+		// TODO: instance owner should be able to delete any credentials, add tests!!!!
+
 		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
