@@ -131,6 +131,9 @@ export default mixins(
 
 				return ["n8n-nodes-base.httpRequest"].includes(node.type);
 			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
+			},
 		},
 		methods: {
 			multipleValues (parameter: INodeProperties): boolean {
