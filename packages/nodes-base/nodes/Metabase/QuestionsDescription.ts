@@ -90,6 +90,16 @@ export const questionsOperations: INodeProperties[] = [
 						url: '={{"/api/card/" + $parameter.questionId + "/query/" + $parameter.format}}',
 						returnFullResponse: true,
 					},
+					output: {
+						postReceive: [
+							{
+								type: 'binaryData',
+								properties: {
+									destinationProperty: 'Result',
+								},
+							},
+						],
+					},
 				},
 			},
 		],
@@ -131,10 +141,6 @@ export const questionsFields: INodeProperties[] = [
 						{
 								name: 'JSON',
 								value: 'json',
-						},
-						{
-								name: 'API',
-								value: 'api',
 						},
 						{
 								name: 'XLSX',
