@@ -293,9 +293,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 <style lang="scss">
 .data-display-wrapper {
-	height: 85%;
+	height: 90%;
 	width: 100%;
-	margin-top: 48px !important;
+	margin-top: var(--spacing-xl) !important;
 	background: none;
 	border: none;
 
@@ -348,7 +348,7 @@ $--main-panel-width: 350px;
 .dataPanel {
 	composes: panel;
 	min-width: 320px;
-	height: calc(100% - 2 * var(--spacing-l));
+	height: calc(100% - 2 * var(--spacing-s));
 	width: calc(50% - $--main-panel-width / 2 - var(--spacing-l));
 	position: absolute;
 	top: var(--spacing-l);
