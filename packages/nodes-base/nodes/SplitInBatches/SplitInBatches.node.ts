@@ -94,6 +94,12 @@ export class SplitInBatches implements INodeType {
 			return null;
 		}
 
+		returnItems.map((item, index) => {
+			item.pairedItem = {
+				item: index,
+			};
+		});
+
 		return this.prepareOutputData(returnItems);
 	}
 }

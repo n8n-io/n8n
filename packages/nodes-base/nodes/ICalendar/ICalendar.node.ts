@@ -354,6 +354,9 @@ export class ICalendar implements INodeType {
 						binary: {
 							[binaryPropertyName]: binaryData,
 						},
+						pairedItem: {
+							item: i,
+						},
 					},
 				);
 			}

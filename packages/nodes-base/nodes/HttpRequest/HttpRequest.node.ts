@@ -1012,6 +1012,9 @@ export class HttpRequest implements INodeType {
 							json: {
 								error: response.reason,
 							},
+							pairedItem: {
+								item: itemIndex,
+							},
 						},
 					);
 					continue;
@@ -1031,6 +1034,9 @@ export class HttpRequest implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (items[itemIndex].binary !== undefined) {
@@ -1075,11 +1081,19 @@ export class HttpRequest implements INodeType {
 
 						returnItem[property] = response![property];
 					}
-					returnItems.push({ json: returnItem });
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
+						},
+						pairedItem: {
+							item: itemIndex,
 						},
 					});
 				}
@@ -1099,7 +1113,12 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: returnItem });
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
 					if (responseFormat === 'json' && typeof response === 'string') {
 						try {
@@ -1110,9 +1129,19 @@ export class HttpRequest implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						response.forEach(item => returnItems.push({ json: item }));
+						response.forEach(item => returnItems.push({
+							json: item,
+							pairedItem: {
+								item: itemIndex,
+							},
+						}));
 					} else {
-						returnItems.push({ json: response });
+						returnItems.push({
+							json: response,
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
 					}
 				}
 			}
