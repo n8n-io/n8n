@@ -5,7 +5,11 @@ import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 
 import { UserSettings } from 'n8n-core';
-import { NODE_PACKAGE_PREFIX, RESPONSE_ERROR_MESSAGES } from '../constants';
+import {
+	NODE_PACKAGE_PREFIX,
+	NPM_PACKAGE_NOT_FOUND_ERROR,
+	RESPONSE_ERROR_MESSAGES,
+} from '../constants';
 import { IParsedNpmPackageName } from '../Interfaces';
 
 const execAsync = promisify(exec);
@@ -59,7 +63,7 @@ export const executeCommand = async (command: string): Promise<string> => {
 		return commandResult.stdout;
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		if (error.message.includes('404 Not Found')) {
+		if (error.message.includes(NPM_PACKAGE_NOT_FOUND_ERROR)) {
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 		}
 		throw error;
