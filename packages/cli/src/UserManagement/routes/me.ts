@@ -157,7 +157,7 @@ export function meNamespace(this: N8nApp): void {
 	 * Creates an API Key
 	 */
 	this.app.post(
-		`/${this.restEndpoint}/users/me/api-key`,
+		`/${this.restEndpoint}/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
 			const ramdonToken = randomBytes(40).toString('hex');
 			const apiKey = `n8n_api_${ramdonToken}`;
