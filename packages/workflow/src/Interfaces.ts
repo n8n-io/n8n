@@ -1113,7 +1113,7 @@ export interface IRequestOptionsFromParameters {
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
-	version: number;
+	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
