@@ -870,6 +870,12 @@ export class FreshworksCrm implements INodeType {
 
 					// https://developers.freshworks.com/crm/api/#search
 
+					const query = this.getNodeParameter('query', i) as string;
+					let entities = this.getNodeParameter('entities', i);
+					if (Array.isArray(entities)) {
+						entities = entities.join(',');
+					}
+					console.log(entities);
 					if (operation === 'lookup') {
 
 						// ----------------------------------------
@@ -878,10 +884,7 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#lookup_search
 
-						const query = this.getNodeParameter('query', i) as string;
 						const field = this.getNodeParameter('field', i) as string;
-						const entities = this.getNodeParameter('entities', i) as string;
-
 						const endpoint = `/lookup?q=${query}&f=${field}&entities=${entities}`;
 
 						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
@@ -893,9 +896,6 @@ export class FreshworksCrm implements INodeType {
 						// ----------------------------------------
 
 						// https://developers.freshworks.com/crm/api/#search
-
-						const query = this.getNodeParameter('query', i) as string;
-						const entities = this.getNodeParameter('entities', i) as string;
 
 						const endpoint = `/search?q=${query}&include=${entities}`;
 
