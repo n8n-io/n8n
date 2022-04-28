@@ -341,7 +341,6 @@ $--main-panel-width: 350px;
 .panel {
 	position: absolute;
 	> * {
-		border: var(--border-base);
 		overflow: hidden;
 	}
 }
@@ -355,7 +354,6 @@ $--main-panel-width: 350px;
 	top: var(--spacing-l);
 	> * {
 		overflow: hidden;
-		border: var(--border-base);
 	}
 }
 
@@ -382,6 +380,7 @@ $--main-panel-width: 350px;
 	left: calc(50% - $--main-panel-width / 2);
 	height: 100%;
 	> * {
+		border: var(--border-base);
 		border-radius: var(--border-radius-large);
 	}
 }
