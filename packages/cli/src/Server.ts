@@ -253,7 +253,7 @@ class App {
 		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
 		this.timezone = config.get('generic.timezone');
 		this.restEndpoint = config.get('endpoints.rest');
-		this.publicApiEndpoint = config.get('publicApiEndpoints.path');
+		this.publicApiEndpoint = config.get('publicApi.path');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -323,6 +323,9 @@ class App {
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
+			},
+			publicApi: {
+				enabled: config.getEnv('publicApi.disabled') === false,
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
@@ -581,7 +584,7 @@ class App {
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
-		if (!config.getEnv('publicApiEndpoints.disable')) {
+		if (!config.getEnv('publicApi.disabled')) {
 			this.app.use(`/${this.publicApiEndpoint}`, ...(await loadPublicApiVersions()));
 		}
 		// Parse cookies for easier access

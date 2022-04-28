@@ -457,6 +457,7 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
+	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 	hiringBannerEnabled: boolean;
@@ -479,6 +480,9 @@ export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+}
+export interface IPublicApiSettings {
+	enabled: boolean;
 }
 
 export interface IPackageVersions {

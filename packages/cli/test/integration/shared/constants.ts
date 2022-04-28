@@ -2,7 +2,7 @@ import config from '../../../config';
 
 export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 
-export const PUBLIC_API_REST_PATH_SEGMENT = config.get('publicApiEndpoints.path') as Readonly<string>;
+export const PUBLIC_API_REST_PATH_SEGMENT = config.getEnv('publicApi.path') as Readonly<string>;
 
 export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	'healthz',

@@ -576,11 +576,11 @@ export const schema = {
 		},
 	},
 
-	publicApiEndpoints: {
-		disable: {
+	publicApi: {
+		disabled: {
 			format: Boolean,
 			default: false,
-			env: 'N8N_PUBLIC_API_DISABLE',
+			env: 'N8N_PUBLIC_API_DISABLED',
 			doc: 'Whether to disable the Public API',
 		},
 		path: {
