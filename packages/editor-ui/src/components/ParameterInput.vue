@@ -110,6 +110,7 @@
 			:size="inputSize"
 			filterable
 			:value="displayValue"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
