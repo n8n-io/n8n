@@ -701,11 +701,11 @@ export const dealFields: INodeProperties[] = [
 											},
 											{
 												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
+												value: 'CONTAINS_TOKEN',
 											},
 											{
-												name: `Doesn't Contain Exactly`,
-												value: 'NOT_CONSTAIN_TOKEN',
+												name: 'Doesn\'t Contain Exactly',
+												value: 'NOT_CONTAINS_TOKEN',
 											},
 										],
 										default: 'EQ',
