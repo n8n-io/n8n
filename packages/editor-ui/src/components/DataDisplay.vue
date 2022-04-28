@@ -44,13 +44,6 @@
 					@execute="onNodeExecute"
 				/>
 			</div>
-			<div :class="$style.mainPanel">
-				<NodeSettings
-					:eventBus="settingsEventBus"
-					@valueChanged="valueChanged"
-					@execute="onNodeExecute"
-				/>
-			</div>
 			<div :class="$style.outputPanel">
 				<OutputPanel
 					:canLinkRuns="canLinkRuns"
@@ -60,6 +53,13 @@
 					@unlinkRun="onUnlinkRun"
 					@runChange="onRunOutputIndexChange"
 					@openSettings="openSettings"
+				/>
+			</div>
+			<div :class="$style.mainPanel">
+				<NodeSettings
+					:eventBus="settingsEventBus"
+					@valueChanged="valueChanged"
+					@execute="onNodeExecute"
 				/>
 			</div>
 		</div>
@@ -349,6 +349,7 @@ $--main-panel-width: 350px;
 
 .dataPanel {
 	composes: panel;
+	min-width: 320px;
 	height: calc(100% - 2 * var(--spacing-l));
 	width: calc(50% - $--main-panel-width / 2 - var(--spacing-l));
 	position: absolute;
@@ -361,7 +362,7 @@ $--main-panel-width: 350px;
 
 .inputPanel {
 	composes: dataPanel;
-	right: calc(50% + $--main-panel-width / 2);
+	left: var(--spacing-l);
 
 	> * {
 		border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
@@ -370,7 +371,7 @@ $--main-panel-width: 350px;
 
 .outputPanel {
 	composes: dataPanel;
-	left: calc(50% + $--main-panel-width / 2);
+	right: var(--spacing-l);
 
 	> * {
 		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
