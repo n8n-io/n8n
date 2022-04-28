@@ -6,18 +6,41 @@
 					{{ $locale.baseText('settings.api') }}
 				</n8n-heading>
 			</div>
-			<n8n-card v-if="apiKey">
-				Hello
-			</n8n-card>
+
+			<div v-if="apiKey">
+				<p class="mb-s">
+					<n8n-text color="text-base">
+						<font-awesome-icon icon="info-circle" />
+						{{ $locale.baseText('settings.api.view.info') }}
+						<n8n-link to="https://docs.n8n.io/api/">
+							{{ $locale.baseText('generic.learnMore') }}
+						</n8n-link>
+					</n8n-text>
+				</p>
+				<n8n-card :class="$style.card">
+					<span :class="$style.delete">
+						<n8n-link @click="showDeleteModal">
+							{{ $locale.baseText('generic.delete') }}
+						</n8n-link>
+					</span>
+					<CopyInput
+						:label="$locale.baseText('settings.api.view.myKey')"
+						:value="apiKey"
+						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+					/>
+				</n8n-card>
+			</div>
 			<div :class="$style.placeholder" v-else>
 				<n8n-heading size="xlarge">
 					{{ $locale.baseText('settings.api.create.title') }}
 				</n8n-heading>
 				<p class="mt-2xs mb-l">
-					{{$locale.baseText('settings.api.create.description')}}
-					<a href="https://docs.n8n.io/reference/glossary/#rest-api" target="_blank">
-						{{$locale.baseText('settings.api.create.description.link')}}
-					</a>
+					<n8n-text color="text-base">
+						{{$locale.baseText('settings.api.create.description')}}
+						<n8n-link to="https://docs.n8n.io/api/">
+							{{$locale.baseText('settings.api.create.description.link')}}
+						</n8n-link>
+					</n8n-text>
 				</p>
 				<n8n-button :loading="loading" size="large" class="mt-l" @click="createApiKey">
 					{{$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')}}
@@ -34,6 +57,8 @@ import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
+import CopyInput from '../components/CopyInput.vue';
+import {DELETE_API_KEY_MODAL_KEY} from "../constants";
 
 export default mixins(
 	showMessage,
@@ -41,30 +66,35 @@ export default mixins(
 	name: 'SettingsPersonalView',
 	components: {
 		SettingsView,
+		CopyInput,
 	},
 	data() {
 		return {
-			apiKey: '' as string | null,
 			loading: false,
 			mounted: false,
 			error: '',
 		};
 	},
-	async mounted() {
+	mounted() {
 		this.getApiKey();
 	},
 	computed: {
 		currentUser() {
 			return this.$store.getters['users/currentUser'] as IUser;
 		},
+		apiKey() {
+			return this.$store.getters['settings/apiKey'];
+		},
 	},
 	methods: {
+		showDeleteModal() {
+			this.$store.dispatch('ui/openModal', DELETE_API_KEY_MODAL_KEY);
+		},
 		async getApiKey() {
 			try {
-				const { apiKey } = await getApiKey(this.$store.getters['getRestApiContext']);
-				this.apiKey = apiKey;
+				this.$store.dispatch('settings/getApiKey');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.error.get'));
+				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
 				this.mounted = true;
 			}
@@ -73,21 +103,11 @@ export default mixins(
 			this.loading = true;
 
 			try {
-				const { apiKey } = await createApiKey(this.$store.getters['getRestApiContext']);
-				this.apiKey = apiKey;
+				this.$store.dispatch('settings/createApiKey');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.error.create'));
+				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
 				this.loading = false;
-			}
-		},
-		async deleteApiKey() {
-			this.loading = true;
-
-			try {
-				await deleteApiKey(this.$store.getters['getRestApiContext']);
-			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.error.delete'));
 			}
 		},
 	},
@@ -119,6 +139,17 @@ export default mixins(
 	justify-content: center;
 	align-items: center;
 	flex-direction: column;
+}
+
+.card {
+	position: relative;
+}
+
+.delete {
+	position: absolute;
+	display: inline-block;
+	top: var(--spacing-s);
+	right: var(--spacing-s);
 }
 </style>
 

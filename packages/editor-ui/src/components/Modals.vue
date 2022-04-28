@@ -88,6 +88,10 @@
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
 		</ModalRoot>
+
+		<ModalRoot :name="DELETE_API_KEY_MODAL_KEY">
+			<DeleteApiKeyModal />
+		</ModalRoot>
 	</div>
 </template>
 
@@ -95,6 +99,7 @@
 import Vue from "vue";
 import {
 	ABOUT_MODAL_KEY,
+	DELETE_API_KEY_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -120,6 +125,7 @@ import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import CredentialsList from "./CredentialsList.vue";
 import InviteUsersModal from "./InviteUsersModal.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
+import DeleteApiKeyModal from "./DeleteApiKeyModal.vue";
 import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
 import ModalRoot from "./ModalRoot.vue";
 import PersonalizationModal from "./PersonalizationModal.vue";
@@ -142,6 +148,7 @@ export default Vue.extend({
 		CredentialEdit,
 		CredentialsList,
 		CredentialsSelectModal,
+		DeleteApiKeyModal,
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
 		InviteUsersModal,
@@ -155,6 +162,7 @@ export default Vue.extend({
 		WorkflowOpen,
 	},
 	data: () => ({
+		DELETE_API_KEY_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_LIST_MODAL_KEY,

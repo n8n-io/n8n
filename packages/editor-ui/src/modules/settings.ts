@@ -12,6 +12,7 @@ import Vue from 'vue';
 import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
+import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -24,6 +25,9 @@ const module: Module<ISettingsState, IRootState> = {
 			smtpSetup: false,
 		},
 		templatesEndpointHealthy: false,
+		api: {
+			key: undefined,
+		},
 	},
 	getters: {
 		versionCli(state: ISettingsState) {
@@ -68,6 +72,9 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
+		apiKey: (state): string | undefined => {
+			return state.api.key;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -84,6 +91,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setTemplatesEndpointHealthy(state: ISettingsState) {
 			state.templatesEndpointHealthy = true;
+		},
+		setApiKey(state: ISettingsState, apiKey: string | undefined) {
+			state.api.key = apiKey;
 		},
 	},
 	actions: {
@@ -152,6 +162,18 @@ const module: Module<ISettingsState, IRootState> = {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
 			context.commit('setTemplatesEndpointHealthy', true);
+		},
+		async getApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
+			context.commit('setApiKey', apiKey);
+		},
+		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);
+			context.commit('setApiKey', apiKey);
+		},
+		async deleteApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			await deleteApiKey(context.rootGetters['getRestApiContext']);
+			context.commit('setApiKey', undefined);
 		},
 	},
 };

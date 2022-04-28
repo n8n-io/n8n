@@ -833,6 +833,9 @@ export interface ISettingsState {
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementConfig;
 	templatesEndpointHealthy: boolean;
+	api: {
+		key: string | undefined;
+	};
 }
 
 export interface ITemplateState {

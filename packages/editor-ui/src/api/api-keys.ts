@@ -6,7 +6,7 @@ export function getApiKey(context: IRestApiContext): Promise<{ apiKey: string | 
 }
 
 export function createApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {
-	return makeRestApiRequest(context, 'POST', '/users/me/api-key');
+	return makeRestApiRequest(context, 'POST', '/me/api-key');
 }
 
 export function deleteApiKey(context: IRestApiContext): Promise<{ success: boolean }> {

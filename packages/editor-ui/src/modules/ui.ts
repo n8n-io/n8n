@@ -1,5 +1,6 @@
 import {
 	ABOUT_MODAL_KEY,
+	DELETE_API_KEY_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -30,6 +31,9 @@ const module: Module<IUiState, IRootState> = {
 	state: {
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[DELETE_API_KEY_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -145,6 +149,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 	},
 	actions: {
+		closeModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
+			context.commit('closeModal', modalKey);
+		},
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
 		},
