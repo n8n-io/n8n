@@ -161,7 +161,7 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
 			const ramdonToken = randomBytes(40).toString('hex');
 			const apiKey = `n8n_api_${ramdonToken}`;
-			await Db.collections.User!.update(req.user.id, {
+			await Db.collections.User.update(req.user.id, {
 				apiKey,
 			});
 			return { apiKey, success: true };
@@ -174,7 +174,7 @@ export function meNamespace(this: N8nApp): void {
 	this.app.delete(
 		`/${this.restEndpoint}/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			await Db.collections.User!.update(req.user.id, {
+			await Db.collections.User.update(req.user.id, {
 				apiKey: null,
 			});
 			return { success: true };
@@ -187,13 +187,7 @@ export function meNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			const user = await Db.collections.User!.findOne({
-				where: {
-					apiKey: null,
-				},
-			});
-
-			return { apiKey: user?.apiKey };
+			return { apiKey: req.user.apiKey };
 		}),
 	);
 }
