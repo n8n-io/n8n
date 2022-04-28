@@ -14,50 +14,50 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Update an object or create it if it does not exist',
+				description: 'Update or create a custom object.',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a custom Object',
+				description: 'Create a custom Object.',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Archive a custom Object',
+				description: 'Archive a custom Object.',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a custom Object',
+				description: 'Get a custom Object.',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search custom Objects',
+				description: 'Search custom Objects.',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: '(Partially) Update a custom Object',
+				description: 'Update a custom Object.',
 			},
 			{
 				name: 'Batched get',
 				value: 'batchGet',
-				description: 'Like get, but this has fewer options and costs only one request per 100 objects. Requires continueOnFail',
+				description: 'Like get, but this has fewer options and costs only one request per 100 objects. Requires continueOnFail.',
 			},
 			{
 				name: 'Batched delete',
 				value: 'batchDelete',
-				description: 'Like delete, but this costs only up to two requests per 100 objects. Requires continueOnFail',
+				description: 'Like delete, but this costs only up to two requests per 100 objects. Requires continueOnFail.',
 			},
 			{
 				name: 'Batched Create/Update',
 				value: 'batchUpsert',
-				description: 'Like upsert, but this costs only up to three requests per 100 objects. Requires continueOnFail',
+				description: 'Like upsert, but this costs only up to three requests per 100 objects. Requires continueOnFail.',
 			},
 		],
-		default: 'create',
+		default: 'upsert',
 		description: 'The operation to perform.',
 	},
 	{
@@ -101,7 +101,7 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: {},
+				default: [],
 				options: [
 					{
 						name: 'customPropertiesValues',
@@ -122,7 +122,7 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the property',
+								description: 'Value of the property.',
 							},
 						],
 					},
@@ -140,13 +140,13 @@ export const customObjectFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
 				operation: ['update'],
 			},
 		},
+		required: true,
 		default: '',
 		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
 	},
@@ -162,7 +162,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+		description: 'The value of the ID Property of the object.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -185,7 +185,7 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: {},
+				default: [],
 				options: [
 					{
 						name: 'customPropertiesValues',
@@ -206,7 +206,7 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the property',
+								description: 'Value of the property.',
 							},
 						],
 					},
@@ -225,13 +225,13 @@ export const customObjectFields: INodeProperties[] = [
 			loadOptionsDependsOn: ['customObjectType'],
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
 				operation: ['upsert', 'batchUpsert'],
 			},
 		},
+		required: true,
 		default: '',
 		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
 	},
@@ -247,7 +247,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+		description: 'The value of the ID Property of the object.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -270,7 +270,7 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: {},
+				default: [],
 				options: [
 					{
 						name: 'customPropertiesValues',
@@ -291,7 +291,7 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the property',
+								description: 'Value of the property.',
 							},
 						],
 					},
@@ -309,13 +309,13 @@ export const customObjectFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
 				operation: ['get'],
 			},
 		},
+		required: true,
 		default: '',
 		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
 	},
@@ -331,7 +331,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+		description: 'The value of the ID Property of the object.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -353,8 +353,8 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
-				default: '',
-				description: `A list of the properties to be returned in the response. `,
+				default: [],
+				description: 'A list of the properties to be returned in the response.',
 			},
 			{
 				displayName: 'Properties with history',
@@ -363,8 +363,8 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
-				default: '',
-				description: `A list of the properties to be returned along with their history of previous values.`,
+				default: [],
+				description: 'A list of the properties to be returned along with their history of previous values.',
 			},
 			// {
 			//     displayName: 'Associations',
@@ -374,14 +374,14 @@ export const customObjectFields: INodeProperties[] = [
 			//         loadOptionsMethod: 'getCustomObjectAssociations',
 			//     },
 			//     default: '',
-			//     description: `A list of object types to retrieve associated IDs for.`,
+			//     description: 'A list of object types to retrieve associated IDs for.',
 			// },
 			{
 				displayName: 'Archived',
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: `Whether to return only results that have been archived.`,
+				description: 'Whether to return only results that have been archived.',
 			},
 		],
 	},
@@ -395,13 +395,13 @@ export const customObjectFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
 				operation: ['batchGet'],
 			},
 		},
+		required: true,
 		default: '',
 		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
 	},
@@ -417,7 +417,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+		description: 'The value of the ID Property of the object.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -439,8 +439,8 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
-				default: '',
-				description: `A list of the properties to be returned in the response. `,
+				default: [],
+				description: 'A list of the properties to be returned in the response.',
 			},
 			{
 				displayName: 'Properties with history',
@@ -449,8 +449,8 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
-				default: '',
-				description: `A list of the properties to be returned along with their history of previous values.`,
+				default: [],
+				description: 'A list of the properties to be returned along with their history of previous values.',
 			},
 		],
 	},
@@ -496,7 +496,7 @@ export const customObjectFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Limit the number of results.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -518,14 +518,14 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
-				default: '',
-				description: `A list of the properties to be returned in the response. `,
+				default: [],
+				description: 'A list of the properties to be returned in the response.',
 			},
 			{
 				displayName: 'Filter Groups',
 				name: 'filterGroups',
 				type: 'fixedCollection',
-				default: '',
+				default: [],
 				placeholder: 'Add Filter Group',
 				typeOptions: {
 					multipleValues: true,
@@ -540,7 +540,7 @@ export const customObjectFields: INodeProperties[] = [
 								displayName: 'Filters',
 								name: 'filtersUi',
 								type: 'fixedCollection',
-								default: '',
+								default: [],
 								placeholder: 'Add Filter',
 								typeOptions: {
 									multipleValues: true,
@@ -598,7 +598,7 @@ export const customObjectFields: INodeProperties[] = [
 														value: 'IN',
 													},
 													{
-														name: `Not in a set`,
+														name: 'Not in a set',
 														value: 'NOT_IN',
 													},
 													{
@@ -614,7 +614,7 @@ export const customObjectFields: INodeProperties[] = [
 														value: 'CONSTAIN_TOKEN',
 													},
 													{
-														name: `Doesn't Contain Exactly`,
+														name: 'Doesn\'t Contain Exactly',
 														value: 'NOT_CONSTAIN_TOKEN',
 													},
 
@@ -650,7 +650,7 @@ export const customObjectFields: INodeProperties[] = [
 												},
 												type: 'string',
 												default: '',
-												description: 'The lower bound for a between filter',
+												description: 'The lower bound for a between filter.',
 											},
 											{
 												displayName: 'High value',
@@ -664,7 +664,7 @@ export const customObjectFields: INodeProperties[] = [
 												},
 												type: 'string',
 												default: '',
-												description: 'The upper bound for a between filter',
+												description: 'The upper bound for a between filter.',
 											},
 											{
 												displayName: 'Values',
@@ -686,12 +686,12 @@ export const customObjectFields: INodeProperties[] = [
 										],
 									},
 								],
-								description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+								description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 							},
 						],
 					},
 				],
-				description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
+				description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 			},
 			{
 				displayName: 'Sort',
@@ -701,14 +701,14 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: '',
-				description: `Sort the results ascending by this property`,
+				description: 'Sort the results ascending by this property',
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Search all searchable properties for this string`,
+				description: 'Search all searchable properties for this string.',
 			},
 		],
 	},
@@ -722,7 +722,7 @@ export const customObjectFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
-		required: false,
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
@@ -744,40 +744,6 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+		description: 'The value of the ID Property of the object.',
 	},
-	//*-------------------------------------------------------------------------- */
-	/*                               customObject:search                          */
-	/* -------------------------------------------------------------------------- */
-	// {
-	//     displayName: 'Get All',
-	//     name: 'returnAll',
-	//     type: 'boolean',
-	//     displayOptions: {
-	//         show: {
-	//             resource: ['customObject'],
-	//             operation: ['search'],
-	//         },
-	//     },
-	//     default: false,
-	//     description: 'If all results should be returned or only up to a given limit.',
-	// },
-	// {
-	//     displayName: 'Limit',
-	//     name: 'limit',
-	//     type: 'number',
-	//     displayOptions: {
-	//         show: {
-	//             resource: ['customObject'],
-	//             operation: ['search'],
-	//             returnAll: [false],
-	//         },
-	//     },
-	//     typeOptions: {
-	//         minValue: 1,
-	//         maxValue: 250,
-	//     },
-	//     default: 100,
-	//     description: 'How many results to return.',
-	// },
 ];
