@@ -26,9 +26,8 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<div :class="$style.inputPanel">
+			<div :class="$style.inputPanel" v-if="!isTriggerNode">
 				<InputPanel
-					v-if="!isTriggerNode"
 					:workflow="workflow"
 					:canLinkRuns="canLinkRuns"
 					:runIndex="inputRun"
