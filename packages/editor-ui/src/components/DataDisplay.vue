@@ -55,6 +55,24 @@
 				/>
 			</div>
 			<div :class="$style.mainPanel">
+				<div :class="$style.dragButton">
+					<div :class="$style.grid">
+						<div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+						</div>
+						<div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+						</div>
+					</div>
+				</div>
 				<NodeSettings
 					:eventBus="settingsEventBus"
 					@valueChanged="valueChanged"
@@ -379,10 +397,49 @@ $--main-panel-width: 350px;
 	composes: panel;
 	left: calc(50% - $--main-panel-width / 2);
 	height: 100%;
-	border: var(--border-base);
-	border-radius: var(--border-radius-large);
-	overflow: hidden;
-	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.06)
+	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.06);
+
+	&:hover {
+		.dragButton {
+			visibility: visible;
+		}
+	}
+}
+
+.dragButton {
+	background-color: var(--color-background-base);
+	width: 64px;
+	height: 21px;
+	top: -20px;
+	left: 40%;
+	border-top-left-radius: var(--border-radius-large);
+	border-top-right-radius: var(--border-radius-large);
+	position: absolute;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	visibility: hidden;
+}
+
+.grid {
+	> div:first-child {
+		> div {
+			margin-bottom: 2px;
+		}
+	}
+
+	> div {
+		display: flex;
+
+		> div {
+			height: 2px;
+			width: 2px;
+			border-radius: 50%;
+			background-color: var(--color-foreground-xdark);
+			margin-right: 4px;
+		}
+	}
 }
 
 .triggerWarning {

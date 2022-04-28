@@ -546,6 +546,8 @@ export default mixins(
 	max-width: 350px;
 	background-color: var(--color-background-xlight);
 	height: 100%;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
