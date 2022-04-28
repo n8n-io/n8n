@@ -1239,7 +1239,7 @@ export class HttpRequest implements INodeType {
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
 					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
-				)
+				);
 			}
 		}
 
