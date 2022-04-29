@@ -54,8 +54,8 @@
 					@openSettings="openSettings"
 				/>
 			</div>
-			<div :class="$style.mainPanel">
-				<div :class="$style.dragButton">
+			<div :class="$style.mainPanel" :style="mainPanelStyles">
+				<div :class="$style.dragButton" @mousedown="onDragStart">
 					<div :class="$style.grid">
 						<div>
 							<div></div>
@@ -100,6 +100,8 @@ import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
+const MAIN_PANEL_WIDTH = 350;
+
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
@@ -120,7 +122,15 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			linkedRuns: true,
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
+			windowWidth: 0,
+			mainPanelPosition: 0,
 		};
+	},
+	mounted() {
+		window.addEventListener('resize', this.setTotalWidth);
+	},
+	destroyed() {
+		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
@@ -232,6 +242,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		linked(): boolean {
 			return this.linkedRuns && this.canLinkRuns;
 		},
+		mainPanelStyles(): { left: string } {
+			const padding = 24 + 80; // padding + min width for panels
+			let pos = this.mainPanelPosition + MAIN_PANEL_WIDTH / 2;
+			pos = Math.max(padding, pos - MAIN_PANEL_WIDTH);
+			pos = Math.min(pos, this.windowWidth - MAIN_PANEL_WIDTH - padding);
+
+			return {
+				left: `${pos}px`,
+			};
+		},
 	},
 	watch: {
 		activeNode(node, oldNode) {
@@ -241,6 +261,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.linkedRuns = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
+
+				this.setTotalWidth();
+				this.mainPanelPosition = this.windowWidth / 2 ;
+
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
 				});
@@ -255,6 +279,29 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onDragStart(e: MouseEvent) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			window.addEventListener('mousemove', this.onDrag);
+			window.addEventListener('mouseup', this.onDragEnd);
+		},
+		onDrag(e: MouseEvent) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			this.mainPanelPosition = e.pageX;
+		},
+		onDragEnd(e: MouseEvent) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			window.removeEventListener('mousemove', this.onDrag);
+			window.removeEventListener('mouseup', this.onDragEnd);
+		},
+		setTotalWidth() {
+			this.windowWidth = window.innerWidth;
+		},
 		onLinkRunToInput() {
 			this.linkedRuns = true;
 			this.runOutputIndex = this.runInputIndex;
@@ -395,7 +442,6 @@ $--main-panel-width: 350px;
 
 .mainPanel {
 	composes: panel;
-	left: calc(50% - $--main-panel-width / 2);
 	height: 100%;
 	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.06);
 
