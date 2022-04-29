@@ -259,7 +259,11 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				return this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
+				return [
+					VIEWS.PERSONAL_SETTINGS,
+					VIEWS.USERS_SETTINGS,
+					VIEWS.API_SETTINGS,
+				].some((route) => this.canUserAccessRouteByName(route));
 			},
 			helpMenuItems (): object[] {
 				return [

@@ -19,7 +19,7 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/api" :class="$style.tab">
+			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="plug" />
 				</i>
@@ -53,6 +53,9 @@ export default mixins(
 		},
 		canAccessUsersSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
+		},
+		canAccessApiSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);

@@ -530,6 +530,7 @@ export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
 	um?: boolean;
+	api?: boolean;
 }
 
 export interface IPermissions {
@@ -631,6 +632,9 @@ export interface IN8nUISettings {
 	templates: {
 		enabled: boolean;
 		host: string;
+	};
+	publicApi: {
+		enabled: boolean;
 	};
 }
 
@@ -834,6 +838,7 @@ export interface ISettingsState {
 	userManagement: IUserManagementConfig;
 	templatesEndpointHealthy: boolean;
 	api: {
+		enabled: boolean;
 		key: string | undefined;
 	};
 }

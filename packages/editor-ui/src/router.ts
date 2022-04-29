@@ -375,6 +375,9 @@ const router = new Router({
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
+					deny: {
+						api: false,
+					},
 				},
 			},
 		},

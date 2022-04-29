@@ -26,6 +26,7 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		templatesEndpointHealthy: false,
 		api: {
+			enabled: false,
 			key: undefined,
 		},
 	},
@@ -35,6 +36,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		isUserManagementEnabled(state: ISettingsState): boolean {
 			return state.userManagement.enabled;
+		},
+		isPublicApiEnabled(state: ISettingsState): boolean {
+			return state.api.enabled;
 		},
 		showSetupPage(state: ISettingsState) {
 			return state.userManagement.showSetupOnFirstLoad;
@@ -82,6 +86,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.userManagement.enabled = settings.userManagement.enabled;
 			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			state.userManagement.smtpSetup = settings.userManagement.smtpSetup;
+			state.api.enabled = settings.publicApi.enabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
