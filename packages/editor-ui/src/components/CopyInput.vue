@@ -3,7 +3,7 @@
 		<n8n-input-label :label="label">
 			<div :class="$style.copyText" @click="copy">
 				<span>{{ value }}</span>
-				<div :class="$style.copyButton"><span>{{ copyButtonText || $locale.baseText('generic.copyToClipboard') }}</span></div>
+				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
 			</div>
 		</n8n-input-label>
 		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
@@ -28,9 +28,15 @@ export default mixins(copyPaste, showMessage).extend({
 		},
 		copyButtonText: {
 			type: String,
+			default(): string {
+				return this.$locale.baseText('generic.copyToClipboard');
+			},
 		},
 		toastTitle: {
 			type: String,
+			default(): string {
+				return this.$locale.baseText('generic.copiedToClipboard');
+			},
 		},
 		toastMessage: {
 			type: String,
@@ -41,7 +47,7 @@ export default mixins(copyPaste, showMessage).extend({
 			this.copyToClipboard(this.value);
 
 			this.$showMessage({
-				title: this.toastTitle || this.$locale.baseText('generic.copiedToClipboard'),
+				title: this.toastTitle,
 				message: this.toastMessage,
 				type: 'success',
 			});

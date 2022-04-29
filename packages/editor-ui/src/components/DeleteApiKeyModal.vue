@@ -52,14 +52,14 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		cancel() {
-			this.$store.dispatch('ui/closeModal', DELETE_API_KEY_MODAL_KEY);
+			this.modalBus.$emit('close');
 		},
 		async deleteApiKey() {
 			this.loading = true;
 
 			try {
-				this.$store.dispatch('settings/deleteApiKey');
-				this.$store.dispatch('ui/closeModal', DELETE_API_KEY_MODAL_KEY);
+				await this.$store.dispatch('settings/deleteApiKey');
+				this.modalBus.$emit('close');
 				this.$showMessage({ title: this.$locale.baseText("settings.api.delete.toast"), type: 'success' });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));

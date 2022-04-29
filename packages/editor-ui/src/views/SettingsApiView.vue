@@ -7,7 +7,7 @@
 				</n8n-heading>
 			</div>
 
-			<div v-if="apiKey">
+			<div v-if="hasApiKey">
 				<p class="mb-s">
 					<n8n-text color="text-base">
 						<font-awesome-icon icon="info-circle" />
@@ -51,7 +51,6 @@
 </template>
 
 <script lang="ts">
-import {createApiKey, deleteApiKey, getApiKey } from '../api/api-keys';
 import { showMessage } from '@/components/mixins/showMessage';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
@@ -72,17 +71,17 @@ export default mixins(
 		return {
 			loading: false,
 			mounted: false,
-			error: '',
+			apiKey: '',
 		};
 	},
 	mounted() {
 		this.getApiKey();
 	},
 	computed: {
-		currentUser() {
-			return this.$store.getters['users/currentUser'] as IUser;
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
 		},
-		apiKey() {
+		hasApiKey(): string {
 			return this.$store.getters['settings/apiKey'];
 		},
 	},
@@ -92,7 +91,7 @@ export default mixins(
 		},
 		async getApiKey() {
 			try {
-				this.$store.dispatch('settings/getApiKey');
+				this.apiKey = await this.$store.dispatch('settings/getApiKey');
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
@@ -103,7 +102,7 @@ export default mixins(
 			this.loading = true;
 
 			try {
-				this.$store.dispatch('settings/createApiKey');
+				this.apiKey = await this.$store.dispatch('settings/createApiKey');
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
