@@ -317,7 +317,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
 
-			this.isDragging = false;
+			setTimeout(() => {
+				this.isDragging = false;
+			}, 0);
 		},
 		setTotalWidth() {
 			this.windowWidth = window.innerWidth;
@@ -351,6 +353,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		close() {
+			if (this.isDragging) {
+				return;
+			}
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
