@@ -27,21 +27,26 @@ paths:
         - credentials
       summary: Create a credential
       description: Creates a credential that can be used by nodes of the specified type.
+      requestBody:
+        description: Credential to be created.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createCredentialRequest'
       responses:
         '200':
           description: Operation successful.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserInformation'
-        '403':
-          description: Forbidden. You are not allowed to delete this credential.
+                $ref: '#/components/schemas/Credential'
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: Credential not found
   /credentials/{id}:
     delete:
       x-eov-operation-id: deleteCredential
@@ -50,6 +55,7 @@ paths:
         - credentials
       summary: Delete credential by ID
       description: Deletes a credential from your instance. You must be the owner of the credentials
+      operationId: deleteCredential
       parameters:
         - name: id
           in: path
@@ -63,7 +69,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserInformation'
+                $ref: '#/components/schemas/CredentialDeleteResponse'
         '401':
           description: Unauthorized
           content:
@@ -251,6 +257,70 @@ components:
           type: string
         description:
           type: string
+    Credential:
+      required:
+        - name
+        - type
+      type: object
+      properties:
+        id:
+          type: number
+          readOnly: true
+          example: 42
+        name:
+          type: string
+          example: Joe's Github Credentials
+        type:
+          type: string
+          example: github
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
+    createCredentialRequest:
+      required:
+        - name
+        - type
+      type: object
+      properties:
+        name:
+          type: string
+          example: Joe's Github Credentials
+        type:
+          type: string
+          example: github
+        data:
+          type: object
+          example: { token: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' }
+    CredentialDeleteResponse:
+      required:
+        - name
+        - type
+      type: object
+      properties:
+        name:
+          type: string
+          example: Joe's Github Credentials
+        type:
+          type: string
+          readOnly: true
+          example: github
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
     UserInformation:
       required:
         - email

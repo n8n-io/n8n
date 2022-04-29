@@ -24,8 +24,6 @@ export = {
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
 			delete req.body.id; // delete if sent
 
-			// TODO: handle nodesAccess
-
 			const newCredential = await createCredential(req.body as Partial<CredentialsEntity>);
 
 			const encryptedData = await encryptCredential(newCredential);

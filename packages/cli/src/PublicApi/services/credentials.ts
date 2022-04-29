@@ -32,18 +32,28 @@ export async function getSharedCredentials(
 }
 
 export async function createCredential(
-	properties?: Partial<CredentialsEntity>,
+	properties: Partial<CredentialsEntity>,
 ): Promise<CredentialsEntity> {
 	const newCredential = new CredentialsEntity();
 
 	Object.assign(newCredential, properties);
 
-	await validateEntity(newCredential);
-
-	// Add the added date for node access permissions
-	for (const nodeAccess of newCredential.nodesAccess) {
-		nodeAccess.date = new Date();
+	if (!newCredential.nodesAccess || newCredential.nodesAccess.length === 0) {
+		newCredential.nodesAccess = [
+			{
+				nodeType: `n8n-nodes-base.${properties.type?.toLowerCase() ?? 'unknown'}`,
+				date: new Date(),
+			},
+		];
+	} else {
+		// Add the added date for node access permissions
+		newCredential.nodesAccess.forEach((nodeAccess) => {
+			// eslint-disable-next-line no-param-reassign
+			nodeAccess.date = new Date();
+		});
 	}
+
+	await validateEntity(newCredential);
 	return newCredential;
 }
 
