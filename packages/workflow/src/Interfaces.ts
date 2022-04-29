@@ -1432,9 +1432,12 @@ export interface INodeGraphItem {
 	type: string;
 	resource?: string;
 	operation?: string;
-	domain?: string;
+	domain_base?: string;
+	domain_path?: string;
 	position: [number, number];
 	mode?: string;
+	credential_type?: string;
+	credential_set?: boolean;
 }
 
 export interface INodeNameIndex {

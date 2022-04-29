@@ -60,6 +60,19 @@ function areOverlapping(
 	);
 }
 
+function getDomainBase(url: string) {
+	try {
+		return new URL(url).hostname;
+	} catch (_) {
+		return url;
+	}
+}
+
+function getDomainPath(url: string) {
+	// @TODO Full anonymization logic: UUIDs
+	return url.replace(/d+/g, '');
+}
+
 export function generateNodesGraph(
 	workflow: IWorkflowBase,
 	nodeTypes: INodeTypes,
@@ -98,14 +111,23 @@ export function generateNodesGraph(
 			const nodeItem: INodeGraphItem = {
 				type: node.type,
 				position: node.position,
+				// @TODO TBD if all or only HTTPRN
+				// credential_set: node.credentials ? Object.keys(node.credentials).length > 0 : false,
 			};
 
 			if (node.type === 'n8n-nodes-base.httpRequest') {
-				try {
-					nodeItem.domain = new URL(node.parameters.url as string).hostname;
-				} catch (e) {
-					nodeItem.domain = node.parameters.url as string;
+				if (node.parameters.authenticateWith !== 'none') {
+					// @TODO TBD if all or only HTTPRN
+					// nodeItem.credential_type =
+					// 	node.parameters.authenticateWith === 'genericAuth'
+					// 		? (node.parameters.genericAuthType as string)
+					// 		: (node.parameters.nodeCredentialType as string);
 				}
+
+				const { url } = node.parameters as { url: string };
+
+				nodeItem.domain_base = getDomainBase(url);
+				nodeItem.domain_path = getDomainPath(url);
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
