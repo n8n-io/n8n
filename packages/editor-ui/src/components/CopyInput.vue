@@ -29,7 +29,7 @@ export default mixins(copyPaste, showMessage).extend({
 		copyButtonText: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copyToClipboard');
+				return this.$locale.baseText('generic.copy');
 			},
 		},
 		toastTitle: {

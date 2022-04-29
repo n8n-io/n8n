@@ -26,6 +26,7 @@
 					<CopyInput
 						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
+						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 					/>
 				</n8n-card>
