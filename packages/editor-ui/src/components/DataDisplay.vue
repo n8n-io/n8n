@@ -255,6 +255,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		inputPanelStyles(): {width: string} {
 			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - 24;
 			width = Math.min(width, this.windowWidth - 24 * 2 - 80 - MAIN_PANEL_WIDTH);
+			width = Math.max(320, width);
 			return {
 				width: `${width}px`,
 			};
@@ -262,6 +263,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		outputPanelStyles(): {width: string} {
 			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - 24;
 			width = Math.min(width, this.windowWidth - 24 * 2 - 80 - MAIN_PANEL_WIDTH);
+			width = Math.max(320, width);
 			return {
 				width: `${width}px`,
 			};
@@ -426,7 +428,6 @@ $--main-panel-width: 350px;
 
 .dataPanel {
 	composes: panel;
-	min-width: 320px;
 	height: calc(100% - 2 * var(--spacing-s));
 	position: absolute;
 	top: var(--spacing-l);
