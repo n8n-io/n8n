@@ -391,8 +391,10 @@ class App {
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-			this.publicApiEndpoint,
 		];
+		if (!config.getEnv('publicApiEndpoints.disable')) {
+			ignoredEndpoints.push(this.publicApiEndpoint);
+		}
 		// eslint-disable-next-line prefer-spread
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
 
