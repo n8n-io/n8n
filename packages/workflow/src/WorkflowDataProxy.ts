@@ -536,6 +536,12 @@ export class WorkflowDataProxy {
 
 			let sourceData: ISourceData | null = incomingSourceData;
 
+			if (typeof pairedItem === 'number') {
+				pairedItem = {
+					item: pairedItem,
+				};
+			}
+
 			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
 				taskData =
 					that.runExecutionData!.resultData.runData[sourceData.previousNode][
