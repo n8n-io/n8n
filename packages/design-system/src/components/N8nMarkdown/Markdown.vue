@@ -1,6 +1,10 @@
 <template>
 	<div>
-		<div v-if="!loading" ref="editor" :class="$style.markdown" v-html="htmlContent" />
+		<div
+			v-if="!loading"
+			ref="editor"
+			:class="$style[theme]" v-html="htmlContent"
+		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
 				:key="index">
@@ -59,6 +63,9 @@ export default {
 		content: {
 			type: String,
 		},
+		withMultiBreaks: {
+			type: Boolean,
+		},
 		images: {
 			type: Array,
 		},
@@ -74,6 +81,10 @@ export default {
 			default: () => {
 				return 3;
 			},
+		},
+		theme: {
+			type: String,
+			default: 'markdown',
 		},
 		options: {
 			type: Object,
@@ -106,7 +117,11 @@ export default {
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			const html = this.md.render(escapeMarkdown(this.content));
+			let contentToRender = this.content;
+			if (this.withMultiBreaks) {
+				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
+			}
+			const html = this.md.render(escapeMarkdown(contentToRender));
 			const safeHtml = xss(html, {
 				onTagAttr: (tag, name, value, isWhiteAttr) => {
 					if (tag === 'img' && name === 'src') {
@@ -211,6 +226,67 @@ export default {
 		padding-left: 10px;
 		font-style: italic;
 		border-left: var(--border-color-base) 2px solid;
+	}
+}
+
+.sticky {
+	color: var(--color-text-dark);
+
+	h1, h2, h3, h4 {
+		margin-bottom: var(--spacing-2xs);
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-height-loose);
+	}
+
+	h1 {
+		font-size: 36px;
+	}
+
+	h2 {
+		font-size: 24px;
+	}
+
+	h3, h4, h5, h6 {
+		font-size: var(--font-size-m);
+	}
+
+	p {
+		margin-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-line-height-loose);
+	}
+
+	ul, ol {
+		margin-bottom: var(--spacing-2xs);
+		padding-left: var(--spacing-m);
+
+		li {
+			margin-top: 0.25em;
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-regular);
+			line-height: var(--font-line-height-regular);
+		}
+	}
+
+	code {
+		background-color: var(--color-background-base);
+		padding: 0 var(--spacing-4xs);
+		color: var(--color-secondary);
+	}
+
+	pre > code,li > code, p > code {
+		color: var(--color-secondary);
+	}
+
+	a {
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	img {
+		object-fit: contain;
 	}
 }
 

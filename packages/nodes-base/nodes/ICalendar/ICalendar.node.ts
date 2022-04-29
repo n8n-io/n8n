@@ -60,7 +60,7 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event begins. (For all-day events, the time will be ignored.)',
+				description: 'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
 			},
 			{
 				displayName: 'End',
@@ -68,7 +68,7 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event ends. (For all-day events, the time will be ignored.)',
+				description: 'Date and time at which the event ends. (For all-day events, the time will be ignored.).',
 			},
 			{
 				displayName: 'All Day',
@@ -217,7 +217,7 @@ export class ICalendar implements INodeType {
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: `A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>)`,
+						description: 'A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>).',
 					},
 					{
 						displayName: 'Organizer',
@@ -299,7 +299,7 @@ export class ICalendar implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (operation === 'createEventFile') {

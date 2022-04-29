@@ -27,10 +27,6 @@ export async function apiRequest(
 ) {
 	const credentials = await this.getCredentials('bambooHrApi');
 
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
-
 	//set-up credentials
 	const apiKey = credentials.apiKey;
 	const subdomain = credentials.subdomain;

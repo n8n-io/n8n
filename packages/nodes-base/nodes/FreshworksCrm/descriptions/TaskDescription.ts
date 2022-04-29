@@ -294,7 +294,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		default: false,
+		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {

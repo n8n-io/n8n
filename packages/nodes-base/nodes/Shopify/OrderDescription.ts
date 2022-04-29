@@ -73,11 +73,10 @@ export const orderFields: INodeProperties[] = [
 				name: 'billingAddressUi',
 				placeholder: 'Add Billing Address',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Billing address',
 				options: [
 					{
 						name: 'billingAddressValues',
@@ -152,7 +151,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'discountCodesUi',
 				placeholder: 'Add Discount Code',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -302,11 +301,10 @@ export const orderFields: INodeProperties[] = [
 				name: 'shippingAddressUi',
 				placeholder: 'Add Shipping',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Shipping Address',
 				options: [
 					{
 						name: 'shippingAddressValues',
@@ -381,7 +379,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'sourceName',
 				type: 'string',
 				default: '',
-				description: 'Where the order originated. Can be set only during order creation, and is not writeable afterwards',
+				description: 'Where the order originated. Can be set only during order creation, and is not writeable afterwards.',
 			},
 			{
 				displayName: 'Tags',
@@ -394,7 +392,7 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Test',
 				name: 'test',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Whether this is a test order.',
 			},
 		],
@@ -536,7 +534,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the order will return, formatted as a string of comma-separated values. By default all the fields are returned',
+				description: 'Fields the order will return, formatted as a string of comma-separated values. By default all the fields are returned.',
 			},
 		],
 	},
@@ -715,7 +713,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the orders will return, formatted as a string of comma-separated values. By default all the fields are returned',
+				description: 'Fields the orders will return, formatted as a string of comma-separated values. By default all the fields are returned.',
 			},
 			{
 				displayName: 'IDs',
@@ -859,11 +857,10 @@ export const orderFields: INodeProperties[] = [
 				name: 'shippingAddressUi',
 				placeholder: 'Add Shipping',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
-				description: 'Shipping Address',
 				options: [
 					{
 						name: 'shippingAddressValues',
@@ -938,7 +935,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'sourceName',
 				type: 'string',
 				default: '',
-				description: 'Where the order originated. Can be set only during order creation, and is not writeable afterwards',
+				description: 'Where the order originated. Can be set only during order creation, and is not writeable afterwards.',
 			},
 			{
 				displayName: 'Tags',

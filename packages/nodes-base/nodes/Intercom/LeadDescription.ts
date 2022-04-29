@@ -76,7 +76,6 @@ export const leadFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'Delete by',
 	},
 	{
 		displayName: 'Value',
@@ -313,7 +312,6 @@ export const leadFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -472,7 +470,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Attribute',
 		typeOptions: {
 			multipleValues: true,

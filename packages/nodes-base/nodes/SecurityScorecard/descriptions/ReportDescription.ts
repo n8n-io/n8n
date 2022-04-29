@@ -133,7 +133,7 @@ export const reportFields: INodeProperties[] = [
 	{
 		displayName: 'Scorecard Identifier',
 		name: 'scorecardIdentifier',
-		description: 'Primary identifier of a company or scorecard, i.e. domain',
+		description: 'Primary identifier of a company or scorecard, i.e. domain.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -176,7 +176,6 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Portfolio ID',
 	},
 	{
 		displayName: 'Branding',

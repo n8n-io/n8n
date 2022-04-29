@@ -91,7 +91,7 @@ describe('Owner shell', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email);
+			expect(email).toBe(validPayload.email.toLowerCase());
 			expect(firstName).toBe(validPayload.firstName);
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
@@ -101,9 +101,9 @@ describe('Owner shell', () => {
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
 
-			const storedOwnerShell = await Db.collections.User!.findOneOrFail(id);
+			const storedOwnerShell = await Db.collections.User.findOneOrFail(id);
 
-			expect(storedOwnerShell.email).toBe(validPayload.email);
+			expect(storedOwnerShell.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwnerShell.firstName).toBe(validPayload.firstName);
 			expect(storedOwnerShell.lastName).toBe(validPayload.lastName);
 		}
@@ -117,7 +117,7 @@ describe('Owner shell', () => {
 			const response = await authOwnerShellAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedOwnerShell = await Db.collections.User!.findOneOrFail();
+			const storedOwnerShell = await Db.collections.User.findOneOrFail();
 			expect(storedOwnerShell.email).toBeNull();
 			expect(storedOwnerShell.firstName).toBeNull();
 			expect(storedOwnerShell.lastName).toBeNull();
@@ -140,7 +140,7 @@ describe('Owner shell', () => {
 				const response = await authOwnerShellAgent.patch('/me/password').send(payload);
 				expect([400, 500].includes(response.statusCode)).toBe(true);
 
-				const storedMember = await Db.collections.User!.findOneOrFail();
+				const storedMember = await Db.collections.User.findOneOrFail();
 
 				if (payload.newPassword) {
 					expect(storedMember.password).not.toBe(payload.newPassword);
@@ -152,7 +152,7 @@ describe('Owner shell', () => {
 			}),
 		);
 
-		const storedOwnerShell = await Db.collections.User!.findOneOrFail();
+		const storedOwnerShell = await Db.collections.User.findOneOrFail();
 		expect(storedOwnerShell.password).toBeNull();
 	});
 
@@ -168,7 +168,7 @@ describe('Owner shell', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const storedShellOwner = await Db.collections.User!.findOneOrFail({
+			const storedShellOwner = await Db.collections.User.findOneOrFail({
 				where: { email: IsNull() },
 			});
 
@@ -181,7 +181,7 @@ describe('Member', () => {
 	beforeEach(async () => {
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
-		await Db.collections.Settings!.update(
+		await Db.collections.Settings.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: JSON.stringify(true) },
 		);
@@ -245,7 +245,7 @@ describe('Member', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email);
+			expect(email).toBe(validPayload.email.toLowerCase());
 			expect(firstName).toBe(validPayload.firstName);
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
@@ -255,9 +255,9 @@ describe('Member', () => {
 			expect(globalRole.name).toBe('member');
 			expect(globalRole.scope).toBe('global');
 
-			const storedMember = await Db.collections.User!.findOneOrFail(id);
+			const storedMember = await Db.collections.User.findOneOrFail(id);
 
-			expect(storedMember.email).toBe(validPayload.email);
+			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
 			expect(storedMember.firstName).toBe(validPayload.firstName);
 			expect(storedMember.lastName).toBe(validPayload.lastName);
 		}
@@ -271,7 +271,7 @@ describe('Member', () => {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedMember = await Db.collections.User!.findOneOrFail();
+			const storedMember = await Db.collections.User.findOneOrFail();
 			expect(storedMember.email).toBe(member.email);
 			expect(storedMember.firstName).toBe(member.firstName);
 			expect(storedMember.lastName).toBe(member.lastName);
@@ -295,7 +295,7 @@ describe('Member', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-		const storedMember = await Db.collections.User!.findOneOrFail();
+		const storedMember = await Db.collections.User.findOneOrFail();
 		expect(storedMember.password).not.toBe(member.password);
 		expect(storedMember.password).not.toBe(validPayload.newPassword);
 	});
@@ -308,7 +308,7 @@ describe('Member', () => {
 			const response = await authMemberAgent.patch('/me/password').send(payload);
 			expect([400, 500].includes(response.statusCode)).toBe(true);
 
-			const storedMember = await Db.collections.User!.findOneOrFail();
+			const storedMember = await Db.collections.User.findOneOrFail();
 
 			if (payload.newPassword) {
 				expect(storedMember.password).not.toBe(payload.newPassword);
@@ -330,7 +330,7 @@ describe('Member', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const { personalizationAnswers: storedAnswers } = await Db.collections.User!.findOneOrFail();
+			const { personalizationAnswers: storedAnswers } = await Db.collections.User.findOneOrFail();
 
 			expect(storedAnswers).toEqual(validPayload);
 		}
@@ -400,7 +400,7 @@ describe('Owner', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email);
+			expect(email).toBe(validPayload.email.toLowerCase());
 			expect(firstName).toBe(validPayload.firstName);
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
@@ -410,20 +410,14 @@ describe('Owner', () => {
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
 
-			const storedOwner = await Db.collections.User!.findOneOrFail(id);
+			const storedOwner = await Db.collections.User.findOneOrFail(id);
 
-			expect(storedOwner.email).toBe(validPayload.email);
+			expect(storedOwner.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwner.firstName).toBe(validPayload.firstName);
 			expect(storedOwner.lastName).toBe(validPayload.lastName);
 		}
 	});
 });
-
-const TEST_USER = {
-	email: randomEmail(),
-	firstName: randomName(),
-	lastName: randomName(),
-};
 
 const SURVEY = [
 	'codingSkill',
@@ -444,7 +438,7 @@ const VALID_PATCH_ME_PAYLOADS = [
 		password: randomValidPassword(),
 	},
 	{
-		email: randomEmail(),
+		email: randomEmail().toUpperCase(),
 		firstName: randomName(),
 		lastName: randomName(),
 		password: randomValidPassword(),

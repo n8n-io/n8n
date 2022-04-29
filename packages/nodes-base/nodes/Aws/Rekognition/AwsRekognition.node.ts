@@ -205,7 +205,7 @@ export class AwsRekognition implements INodeType {
 						displayName: 'Regions of Interest',
 						name: 'regionsOfInterestUi',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						placeholder: 'Add Region of Interest',
 						displayOptions: {
 							show: {
@@ -272,7 +272,7 @@ export class AwsRekognition implements INodeType {
 						displayName: 'Word Filter',
 						name: 'wordFilterUi',
 						type: 'collection',
-						default: '',
+						default: {},
 						placeholder: 'Add Word Filter',
 						displayOptions: {
 							show: {

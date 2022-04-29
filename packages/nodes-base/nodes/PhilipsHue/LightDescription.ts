@@ -250,7 +250,7 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 65534,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the ct. ct_inc is ignored if the ct attribute is provided',
+				description: 'Increments or decrements the value of the ct. ct_inc is ignored if the ct attribute is provided.',
 			},
 			{
 				displayName: 'Coordinates',
