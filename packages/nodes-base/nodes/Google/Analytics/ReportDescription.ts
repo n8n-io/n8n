@@ -141,14 +141,12 @@ export const reportFields: INodeProperties[] = [
 								name: 'startDate',
 								type: 'dateTime',
 								default: '',
-								description: 'Start date',
 							},
 							{
 								displayName: 'End Date',
 								name: 'endDate',
 								type: 'dateTime',
 								default: '',
-								description: 'End date',
 							},
 						],
 					},
@@ -310,7 +308,7 @@ export const reportFields: INodeProperties[] = [
 								name: 'expression',
 								type: 'string',
 								default: 'ga:newUsers',
-								description: `<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>`,
+								description: '<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
 							},
 							{
 								displayName: 'Formatting Type',

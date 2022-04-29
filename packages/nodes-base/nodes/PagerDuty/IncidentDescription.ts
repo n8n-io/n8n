@@ -131,12 +131,18 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given.',
 			},
 			{
+				displayName: 'Incident Details',
+				name: 'details',
+				type: 'string',
+				default: '',
+				description: 'Additional details about the incident which will go in the body',
+			},
+			{
 				displayName: 'Incident Key',
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
-				description: `Sending subsequent requests referencing the same service and with the same incident_key
-				 will result in those requests being rejected if an open incident matches that incident_key.`,
+				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key.',
 			},
 			{
 				displayName: 'Priority ID',
@@ -363,7 +369,7 @@ export const incidentFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getServices',
 				},
-				default: '',
+				default: [],
 				description: 'Returns only the incidents associated with the passed service(s).',
 			},
 			{
@@ -371,7 +377,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months)',
+				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
 				displayName: 'Sort By',
@@ -399,7 +405,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'triggered',
 					},
 				],
-				default: '',
+				default: [],
 				description: 'Returns only the incidents associated with the passed service(s).',
 			},
 			{
@@ -417,14 +423,14 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC',
+				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC.',
 			},
 			{
 				displayName: 'Until',
 				name: 'until',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the date range over which you want to search. (the limit on date ranges is 6 months)',
+				description: 'The end of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
 				displayName: 'Urgencies',
@@ -440,7 +446,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'low',
 					},
 				],
-				default: '',
+				default: [],
 				description: 'urgencies of the incidents to be returned. Defaults to all urgencies. Account must have the urgencies ability to do this',
 			},
 			{
@@ -448,7 +454,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'userIds',
 				type: 'string',
 				default: '',
-				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple Ids can be added separated by comma)',
+				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple Ids can be added separated by comma).',
 			},
 		],
 	},

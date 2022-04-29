@@ -7,6 +7,7 @@ import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
 import type { User } from '../../src/databases/entities/User';
 import * as testDb from './shared/testDb';
+import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 
 jest.mock('../../src/telemetry');
@@ -61,14 +62,14 @@ test('POST /credentials should create cred', async () => {
 	expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 	expect(encryptedData).not.toBe(payload.data);
 
-	const credential = await Db.collections.Credentials!.findOneOrFail(id);
+	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(payload.name);
 	expect(credential.type).toBe(payload.type);
 	expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 	expect(credential.data).not.toBe(payload.data);
 
-	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['user', 'credentials'],
 		where: { credentials: credential },
 	});
@@ -91,7 +92,7 @@ test('POST /credentials should fail with invalid inputs', async () => {
 
 test('POST /credentials should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockResolvedValue(undefined);
+	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
@@ -130,11 +131,11 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual({ data: true });
 
-	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
+	const deletedCredential = await Db.collections.Credentials.findOne(savedCredential.id);
 
 	expect(deletedCredential).toBeUndefined(); // deleted
 
-	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+	const deletedSharedCredential = await Db.collections.SharedCredentials.findOne();
 
 	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
@@ -150,11 +151,11 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual({ data: true });
 
-	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
+	const deletedCredential = await Db.collections.Credentials.findOne(savedCredential.id);
 
 	expect(deletedCredential).toBeUndefined(); // deleted
 
-	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+	const deletedSharedCredential = await Db.collections.SharedCredentials.findOne();
 
 	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
@@ -169,11 +170,11 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual({ data: true });
 
-	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
+	const deletedCredential = await Db.collections.Credentials.findOne(savedCredential.id);
 
 	expect(deletedCredential).toBeUndefined(); // deleted
 
-	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+	const deletedSharedCredential = await Db.collections.SharedCredentials.findOne();
 
 	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
@@ -188,11 +189,11 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 
 	expect(response.statusCode).toBe(404);
 
-	const shellCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
+	const shellCredential = await Db.collections.Credentials.findOne(savedCredential.id);
 
 	expect(shellCredential).toBeDefined(); // not deleted
 
-	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+	const deletedSharedCredential = await Db.collections.SharedCredentials.findOne();
 
 	expect(deletedSharedCredential).toBeDefined(); // not deleted
 });
@@ -225,14 +226,14 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
-	const credential = await Db.collections.Credentials!.findOneOrFail(id);
+	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
 	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
-	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['credentials'],
 		where: { credentials: credential },
 	});
@@ -260,14 +261,14 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
-	const credential = await Db.collections.Credentials!.findOneOrFail(id);
+	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
 	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
-	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['credentials'],
 		where: { credentials: credential },
 	});
@@ -294,14 +295,14 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
-	const credential = await Db.collections.Credentials!.findOneOrFail(id);
+	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
 	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
-	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['credentials'],
 		where: { credentials: credential },
 	});
@@ -322,7 +323,7 @@ test('PATCH /credentials/:id should not update non-owned cred for member', async
 
 	expect(response.statusCode).toBe(404);
 
-	const shellCredential = await Db.collections.Credentials!.findOneOrFail(savedCredential.id);
+	const shellCredential = await Db.collections.Credentials.findOneOrFail(savedCredential.id);
 
 	expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
 });
@@ -354,7 +355,8 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 
 test('PATCH /credentials/:id should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockResolvedValue(undefined);
+	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
+
 
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
@@ -504,7 +506,8 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
 
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockResolvedValue(undefined);
+	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
+
 
 	const response = await authOwnerAgent
 		.get(`/credentials/${savedCredential.id}`)

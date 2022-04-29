@@ -874,13 +874,7 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as ICredentialDataDecryptedObject;
-
-	if (credentials === undefined) {
-		throw new Error('No credentials were returned!');
-	}
+	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials.oauthTokenData === undefined) {
 		throw new Error('OAuth credentials not connected!');
@@ -997,9 +991,7 @@ export async function requestOAuth1(
 		| IHttpRequestOptions,
 	isN8nRequest = false,
 ) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as ICredentialDataDecryptedObject;
+	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
 		throw new Error('No credentials were returned!');
@@ -1344,7 +1336,7 @@ export async function getCredentials(
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
-): Promise<ICredentialDataDecryptedObject | undefined> {
+): Promise<ICredentialDataDecryptedObject> {
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -1381,11 +1373,12 @@ export async function getCredentials(
 			!NodeHelpers.displayParameter(
 				additionalData.currentNodeParameters || node.parameters,
 				nodeCredentialDescription,
+				node,
 				node.parameters,
 			)
 		) {
-			// Credentials should not be displayed so return undefined even if they would be defined
-			return undefined;
+			// Credentials should not be displayed even if they would be defined
+			throw new NodeOperationError(node, 'Credentials not found');
 		}
 	}
 
@@ -1402,15 +1395,15 @@ export async function getCredentials(
 				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"!`);
 			}
 		} else {
-			// Credentials are not required so resolve with undefined
-			return undefined;
+			// Credentials are not required
+			throw new NodeOperationError(node, 'Node does not require credentials');
 		}
 	}
 
 	if (fullAccess && (!node.credentials || !node.credentials[type])) {
 		// Make sure that fullAccess nodes still behave like before that if they
 		// request access to credentials that are currently not set it returns undefined
-		return undefined;
+		throw new NodeOperationError(node, 'Credentials not found');
 	}
 
 	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
@@ -1680,7 +1673,7 @@ export function getExecutePollFunctions(
 			__emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -1834,7 +1827,7 @@ export function getExecuteTriggerFunctions(
 			emitError: (error: Error): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getNode: () => {
@@ -2024,7 +2017,7 @@ export function getExecuteFunctions(
 			async getCredentials(
 				type: string,
 				itemIndex?: number,
-			): Promise<ICredentialDataDecryptedObject | undefined> {
+			): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(
 					workflow,
 					node,
@@ -2268,7 +2261,7 @@ export function getExecuteSingleFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(
 					workflow,
 					node,
@@ -2464,7 +2457,7 @@ export function getLoadOptionsFunctions(
 ): ILoadOptionsFunctions {
 	return ((workflow: Workflow, node: INode, path: string) => {
 		const that = {
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, 'internal');
 			},
 			getCurrentNodeParameter: (
@@ -2608,7 +2601,7 @@ export function getExecuteHookFunctions(
 ): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -2767,7 +2760,7 @@ export function getExecuteWebhookFunctions(
 				}
 				return additionalData.httpRequest.body;
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getHeaderData(): object {

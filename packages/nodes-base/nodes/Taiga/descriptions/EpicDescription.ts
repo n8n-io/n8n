@@ -123,7 +123,7 @@ export const epicFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the epic is blocked. Requires "Is Blocked" toggle to be enabled',
+				description: 'Reason why the epic is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Color',
@@ -384,7 +384,7 @@ export const epicFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the epic is blocked. Requires "Is Blocked" toggle to be enabled',
+				description: 'Reason why the epic is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Color',

@@ -119,7 +119,7 @@ export class Worker extends Command {
 
 	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
-		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId);
+		const executionDb = await Db.collections.Execution.findOne(jobData.executionId);
 
 		if (!executionDb) {
 			LoggerProxy.error('Worker failed to find execution data in database. Cannot continue.', {
@@ -139,7 +139,7 @@ export class Worker extends Command {
 			const findOptions = {
 				select: ['id', 'staticData'],
 			} as FindOneOptions;
-			const workflowData = await Db.collections.Workflow!.findOne(
+			const workflowData = await Db.collections.Workflow.findOne(
 				currentExecutionDb.workflowData.id,
 				findOptions,
 			);

@@ -195,8 +195,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: `Comma-separated list of the fields to be included into the new document.`,
 		},
 
 		// ----------------------------------
@@ -231,8 +230,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: `Comma-separated list of the fields to be included into the new document.`,
 		},
 		{
 			displayName: 'Upsert',
@@ -266,7 +264,14 @@ export const nodeDescription: INodeTypeDescription = {
 					name: 'dateFields',
 					type: 'string',
 					default: '',
-					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
+					description: 'Comma separeted list of fields that will be parse as Mongo Date type',
+				},
+				{
+					displayName:'Use Dot Notation',
+					name: 'useDotNotation',
+					type: 'boolean',
+					default: false,
+					description: 'Wheather to use dot notation to access date fields',
 				},
 			],
 		},
