@@ -18,8 +18,43 @@ servers:
 tags:
 - name: User
   description: Operations about user
+- name: Execution
+  description: Operations about execution
 paths:
   /users:
+    post:
+      x-eov-operation-id: createUsers
+      x-eov-operation-handler: v1/handlers/Users
+      tags:
+      - User
+      summary: Invite a user
+      description: Invites a user to your instance. Only available for the instance owner.
+      operationId: createUser
+      requestBody:
+        description: Created user object.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserInformation'
+        required: true
+      responses:
+        "200":
+          description: A User object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     get:
       x-eov-operation-id: getUsers
       x-eov-operation-handler: v1/handlers/Users
@@ -60,38 +95,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserDetailsResponse'
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      x-eov-operation-id: createUsers
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-      - User
-      summary: Invite a user
-      description: Invites a user to your instance. Only available for the instance owner.
-      operationId: createUser
-      requestBody:
-        description: Created user object.
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/UserInformation'
-        required: true
-      responses:
-        "200":
-          description: A User object
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserInformation'
         "401":
           description: Unauthorized
           content:
@@ -177,6 +180,121 @@ paths:
                 $ref: '#/components/schemas/Error'
         "404":
           description: User not found
+  /executions:
+    get:
+      x-eov-operation-id: getExecutions
+      x-eov-operation-handler: v1/handlers/Executions
+      tags:
+      - Execution
+      summary: Retrieve all executions
+      description: Retrieve all executions from your instance.
+      parameters:
+      - name: status
+        in: query
+        description: Status to filter the executions by.
+        required: false
+        schema:
+          type: string
+          enum: ['error', 'running', 'success', 'waiting']
+          default: 'any'
+      - name: workflowId
+        in: query
+        description: Workflow to filter the executions by.
+        required: false
+        schema:
+          type: number
+          example: 1000
+      - name: limit
+        in: query
+        description: The maximum number of items to return.
+        required: false
+        schema:
+          type: number
+          example: 100
+          default: 100
+      - name: cursor
+        in: query
+        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
+        required: false
+        style: form
+        schema:
+          type: string
+          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailsResponse'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+  /executions/{executionId}:
+    get:
+      x-eov-operation-id: getExecution
+      x-eov-operation-handler: v1/handlers/Executions
+      tags:
+      - Execution
+      summary: Retrieve an execution
+      description: Retrieve an execution from you instance.
+      parameters:
+        - name: executionId
+          in: path
+          description: The ID of the execution.
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+    delete:
+      x-eov-operation-id: deleteExecution
+      x-eov-operation-handler: v1/handlers/Executions
+      tags:
+      - Execution
+      summary: Delete an execution
+      description: Deletes an execution from your instance.
+      parameters:
+      - name: executionId
+        in: path
+        description: The ID of the execution to be deleted.
+        required: true
+        schema:
+          type: number
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+
 components:
   schemas:
     Error:
@@ -233,6 +351,18 @@ components:
           readOnly: true
         globalRole:
           $ref: '#/components/schemas/RoleInformation'
+    ExecutionDetailsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionInformation'
+        nextCursor:
+          type: string
+          description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+          nullable: true
+          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
     UserDetailsResponse:
       type: object
       properties:
@@ -245,6 +375,39 @@ components:
           description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
           nullable: true
           example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+    ExecutionInformation:
+      type: object
+      properties:
+        id:
+          type: number
+          example: 1000
+        data:
+          type: string
+        finished:
+          type: boolean
+          example: true
+        mode:
+          type: string
+          enum: ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook']
+        retryOf:
+          type: string
+          nullable: true
+        retrySuccessId:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+        stoppedAt:
+          type: string
+          format: date-time
+        workflowId:
+          type: string
+          example: 1000
+        waitTill:
+          type: string
+          nullable: true
+          format: date-time
     RoleInformation:
       type: object
       properties:

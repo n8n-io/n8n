@@ -4,11 +4,11 @@
 /* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
-import { In } from 'typeorm';
 import { validate as uuidValidate } from 'uuid';
 import { OpenAPIV3, Format } from 'express-openapi-validator/dist/framework/types';
 import express = require('express');
 import validator from 'validator';
+import { In } from 'typeorm';
 import { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
 import { ActiveWorkflowRunner, Db, InternalHooksManager, ITelemetryUserDeletionData } from '..';
@@ -18,37 +18,55 @@ import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 
-interface IPaginationOffsetDecoded {
-	offset: number;
-	limit: number;
-}
 export type OperationID = 'getUsers' | 'getUser';
 
-export const decodeCursor = (cursor: string): IPaginationOffsetDecoded => {
-	const { offset, limit } = JSON.parse(Buffer.from(cursor, 'base64').toString());
-	return {
-		offset,
-		limit,
-	};
+type PaginationBase = { limit: number };
+
+type PaginationOffsetDecoded = PaginationBase & { offset: number };
+
+type PaginationCursorDecoded = PaginationBase & { lastId: number };
+
+type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
+
+type CursorPagination = PaginationBase & { lastId: number; numberOfNextRecords: number };
+
+export const decodeCursor = (cursor: string): PaginationOffsetDecoded | PaginationCursorDecoded => {
+	return JSON.parse(Buffer.from(cursor, 'base64').toString()) as
+		| PaginationCursorDecoded
+		| PaginationOffsetDecoded;
 };
 
-export const encodeNextCursor = (
-	offset: number,
-	limit: number,
-	numberOfRecords: number,
-): string | null => {
-	const retrieveRecordsLength = offset + limit;
-
-	if (retrieveRecordsLength < numberOfRecords) {
+const encodeOffSetPagination = (pagination: OffsetPagination): string | null => {
+	if (pagination.numberOfTotalRecords > pagination.offset + pagination.limit) {
 		return Buffer.from(
 			JSON.stringify({
-				limit,
-				offset: offset + limit,
+				limit: pagination.limit,
+				offset: pagination.offset + pagination.limit,
 			}),
 		).toString('base64');
 	}
-
 	return null;
+};
+
+const encodeCursoPagination = (pagination: CursorPagination): string | null => {
+	if (pagination.numberOfNextRecords) {
+		return Buffer.from(
+			JSON.stringify({
+				lastId: pagination.lastId,
+				limit: pagination.limit,
+			}),
+		).toString('base64');
+	}
+	return null;
+};
+
+export const encodeNextCursor = (
+	pagination: OffsetPagination | CursorPagination,
+): string | null => {
+	if ('offset' in pagination) {
+		return encodeOffSetPagination(pagination);
+	}
+	return encodeCursoPagination(pagination);
 };
 
 export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
@@ -193,13 +211,13 @@ export async function getAllUsersAndCount(data: {
 	limit?: number;
 	offset?: number;
 }): Promise<[User[], number]> {
-	const users = await Db.collections.User!.find({
+	const users = await Db.collections.User.find({
 		where: {},
 		relations: data?.includeRole ? ['globalRole'] : undefined,
 		skip: data.offset,
 		take: data.limit,
 	});
-	const count = await Db.collections.User!.count();
+	const count = await Db.collections.User.count();
 	return [users, count];
 }
 

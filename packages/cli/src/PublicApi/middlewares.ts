@@ -11,10 +11,9 @@ import type { UserRequest } from '../requests';
 import * as UserManagementMailer from '../UserManagement/email/UserManagementMailer';
 
 import { decodeCursor, getGlobalMemberRole } from './helpers';
+import { Role, PaginatatedRequest } from './publicApiRequest';
 
-type Role = 'owner' | 'member';
-
-const instanceOwnerSetup = (
+export const instanceOwnerSetup = (
 	req: express.Request,
 	res: express.Response,
 	next: express.NextFunction,
@@ -36,8 +35,8 @@ const emailSetup = (
 	next();
 };
 
-const authorize =
-	(role: [Role]) =>
+export const authorize =
+	(role: Role[]) =>
 	(req: express.Request, res: express.Response, next: express.NextFunction): any => {
 		const {
 			globalRole: { name: userRole },
@@ -76,17 +75,22 @@ const transferingToDeletedUser = (
 	next();
 };
 
-const validCursor = (
-	req: UserRequest.Get,
+export const validCursor = (
+	req: PaginatatedRequest,
 	res: express.Response,
 	next: express.NextFunction,
 ): any => {
 	if (req.query.cursor) {
 		const { cursor } = req.query;
 		try {
-			const { offset, limit } = decodeCursor(cursor);
-			req.query.offset = offset;
-			req.query.limit = limit;
+			const paginationData = decodeCursor(cursor);
+			if ('offset' in paginationData) {
+				req.query.offset = paginationData.offset;
+				req.query.limit = paginationData.limit;
+			} else {
+				req.query.lastId = paginationData.lastId;
+				req.query.limit = paginationData.limit;
+			}
 		} catch (error) {
 			return res.status(400).json({
 				message: 'An invalid cursor was used',
