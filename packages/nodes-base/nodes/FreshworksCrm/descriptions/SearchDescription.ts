@@ -7,6 +7,7 @@ export const searchOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,7 +36,7 @@ export const searchFields: INodeProperties[] = [
 	//          Search: lookup
 	// ----------------------------------------
 	{
-		displayName: 'Search term',
+		displayName: 'Search Term',
 		name: 'query',
 		type: 'string',
 		required: true,
@@ -105,16 +106,16 @@ export const searchFields: INodeProperties[] = [
 				value: 'note',
 			},
 			{
-				name: 'Task',
-				value: 'task',
+				name: 'Product',
+				value: 'product',
 			},
 			{
-				name: 'Sales activity',
+				name: 'Sales Activity',
 				value: 'sales_activity',
 			},
 			{
-				name: 'Product',
-				value: 'product',
+				name: 'Task',
+				value: 'task',
 			},
 			{
 				name: 'User',

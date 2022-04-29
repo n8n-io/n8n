@@ -76,6 +76,7 @@ export class FreshworksCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -875,7 +876,7 @@ export class FreshworksCrm implements INodeType {
 					if (Array.isArray(entities)) {
 						entities = entities.join(',');
 					}
-					console.log(entities);
+
 					if (operation === 'lookup') {
 
 						// ----------------------------------------
