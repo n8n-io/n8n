@@ -3,13 +3,17 @@ import express = require('express');
 import { ResponseHelper } from '../../..';
 import { CredentialsEntity } from '../../../databases/entities/CredentialsEntity';
 import { CredentialRequest } from '../../../requests';
+import { externalHooks } from '../../../Server';
 
 import { middlewares } from '../../middlewares';
 import {
+	createCredential,
+	encryptCredential,
 	getCredentials,
 	getSharedCredentials,
 	removeCredential,
 	sanitizeCredentials,
+	saveCredential,
 } from '../../services/credentials';
 
 export = {
@@ -17,7 +21,28 @@ export = {
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {},
+		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+			delete req.body.id; // delete if sent
+
+			// TODO: handle nodesAccess
+
+			const newCredential = await createCredential(req.body as Partial<CredentialsEntity>);
+
+			const encryptedData = await encryptCredential(newCredential);
+
+			Object.assign(newCredential, encryptedData);
+
+			await externalHooks.run('credentials.create', [encryptedData]);
+
+			const savedCredential = await saveCredential(newCredential, req.user);
+
+			// LoggerProxy.verbose('New credential created', {
+			// 	credentialId: newCredential.id,
+			// 	ownerId: req.user.id,
+			// });
+
+			return res.json(sanitizeCredentials(savedCredential));
+		},
 	],
 	deleteCredential: [
 		async (

@@ -1,7 +1,10 @@
 import { FindOneOptions } from 'typeorm';
+import { UserSettings, Credentials } from 'n8n-core';
 import { Db, ICredentialsDb } from '../..';
 import { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
+import { validateEntity } from '../../GenericHelpers';
+import { User } from '../../databases/entities/User';
 
 export async function getCredentials(
 	credentialId: number | string,
@@ -28,8 +31,68 @@ export async function getSharedCredentials(
 	return Db.collections.SharedCredentials.findOne(options);
 }
 
+export async function createCredential(
+	properties?: Partial<CredentialsEntity>,
+): Promise<CredentialsEntity> {
+	const newCredential = new CredentialsEntity();
+
+	Object.assign(newCredential, properties);
+
+	await validateEntity(newCredential);
+
+	// Add the added date for node access permissions
+	for (const nodeAccess of newCredential.nodesAccess) {
+		nodeAccess.date = new Date();
+	}
+	return newCredential;
+}
+
+export async function saveCredential(
+	credential: CredentialsEntity,
+	user: User,
+): Promise<CredentialsEntity> {
+	const role = await Db.collections.Role.findOneOrFail({
+		name: 'owner',
+		scope: 'credential',
+	});
+
+	return Db.transaction(async (transactionManager) => {
+		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
+
+		savedCredential.data = credential.data;
+
+		const newSharedCredential = new SharedCredentials();
+
+		Object.assign(newSharedCredential, {
+			role,
+			user,
+			credentials: savedCredential,
+		});
+
+		await transactionManager.save<SharedCredentials>(newSharedCredential);
+
+		return savedCredential;
+	});
+}
+
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
 	return Db.collections.Credentials.remove(credentials);
+}
+
+export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	// Encrypt the data
+	const coreCredential = new Credentials(
+		{ id: null, name: credential.name },
+		credential.type,
+		credential.nodesAccess,
+	);
+
+	// @ts-ignore
+	coreCredential.setData(credential.data, encryptionKey);
+
+	return coreCredential.getDataToSave() as ICredentialsDb;
 }
 
 export function sanitizeCredentials(credentials: CredentialsEntity): Partial<CredentialsEntity>;
@@ -45,7 +108,7 @@ export function sanitizeCredentials(
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { data, nodesAccess, ...rest } = credential;
+		const { data, nodesAccess, shared, ...rest } = credential;
 		return rest;
 	});
 
