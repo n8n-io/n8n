@@ -151,10 +151,6 @@ export default mixins(
 				return [];
 			}
 
-			if (parameters.length && (!parameters[0].hasOwnProperty('options') && !parameters[0].hasOwnProperty('values'))) {
-				return [];
-			}
-
 			const arrayMatch = currentParameterName.match(/(.*)\[([\d])\]$/);
 			if (arrayMatch !== null && arrayMatch.length > 0) {
 				currentParameterName = arrayMatch[1];
