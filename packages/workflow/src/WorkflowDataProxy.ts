@@ -665,7 +665,7 @@ export class WorkflowDataProxy {
 										// If no data could be found, try to resolve automatically
 										throw new ExpressionError('Could not resolve, as pairedItem data is missing', {
 											runIndex: that.runIndex,
-											itemIndex: that.itemIndex,
+											itemIndex,
 											failExecution: true,
 										});
 									}
@@ -674,7 +674,7 @@ export class WorkflowDataProxy {
 										// If no data could be found, try to resolve automatically
 										throw new ExpressionError('Could not resolve, as source data is missing', {
 											runIndex: that.runIndex,
-											itemIndex: that.itemIndex,
+											itemIndex,
 											failExecution: true,
 										});
 									}

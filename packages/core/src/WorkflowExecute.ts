@@ -187,9 +187,9 @@ export class WorkflowExecute {
 							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							runData[connection.node][runIndex].data![connection.type][connection.index]!,
 						);
-						incomingSourceData.main.push(
-							runData[connection.node][runIndex].source[connection.index],
-						);
+						incomingSourceData.main.push({
+							previousNode: connection.node,
+						});
 					}
 				}
 			}
