@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
@@ -141,18 +138,20 @@ async function invite(
 			const resp: { success?: boolean; id?: string } = {};
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${apiKeyOwnerId}&inviteeId=${user?.id}`;
-			const sentEmail = await mailer?.invite({
-				email: user!.email,
-				inviteAcceptUrl,
-				domain: baseUrl,
-			});
+			if (user?.email) {
+				const sentEmail = await mailer?.invite({
+					email: user.email,
+					inviteAcceptUrl,
+					domain: baseUrl,
+				});
 
-			if (sentEmail?.success) {
-				resp.success = true;
-				resp.id = user?.id;
-			} else {
-				resp.success = false;
-				resp.id = user?.id;
+				if (sentEmail?.success) {
+					resp.success = true;
+					resp.id = user?.id;
+				} else {
+					resp.success = false;
+					resp.id = user?.id;
+				}
 			}
 			return resp;
 		}),
@@ -333,7 +332,7 @@ export function clean(
 
 export async function authenticationHandler(
 	req: express.Request,
-	scopes: any,
+	scopes: unknown,
 	schema: OpenAPIV3.ApiKeySecurityScheme,
 ): Promise<boolean> {
 	const apiKey = req.headers[schema.name.toLowerCase()];

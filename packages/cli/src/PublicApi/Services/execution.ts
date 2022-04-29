@@ -1,4 +1,4 @@
-import { In, Equal, Not, ObjectLiteral, MoreThan, LessThan } from 'typeorm';
+import { In, Equal, Not, ObjectLiteral, LessThan } from 'typeorm';
 import { Db, IExecutionFlattedDb } from '../..';
 import { ExecutionStatus } from '../publicApiRequest';
 
