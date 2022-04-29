@@ -35,15 +35,12 @@ import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
-	FindConditions,
 	FindManyOptions,
 	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
-	LessThan,
 	LessThanOrEqual,
-	MoreThan,
 	Not,
 	Raw,
 } from 'typeorm';
@@ -61,13 +58,7 @@ import { createHmac } from 'crypto';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
-import {
-	BinaryDataManager,
-	Credentials,
-	IBinaryDataConfig,
-	LoadNodeParameterOptions,
-	UserSettings,
-} from 'n8n-core';
+import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
 
 import {
 	ICredentialType,
@@ -154,14 +145,11 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type {
-	CredentialRequest,
 	ExecutionRequest,
 	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
-	AuthenticatedRequest,
 	TagsRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
