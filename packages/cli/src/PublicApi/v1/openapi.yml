@@ -20,11 +20,13 @@ tags:
   description: Operations about user
 - name: Execution
   description: Operations about execution
+- name: Workflow
+  description: Operations about workflow
 paths:
   /users:
     post:
       x-eov-operation-id: createUsers
-      x-eov-operation-handler: v1/handlers/Users
+      x-eov-operation-handler: v1/handlers/users
       tags:
       - User
       summary: Invite a user
@@ -57,7 +59,7 @@ paths:
 
     get:
       x-eov-operation-id: getUsers
-      x-eov-operation-handler: v1/handlers/Users
+      x-eov-operation-handler: v1/handlers/users
       tags:
       - User
       summary: Retrieve all users
@@ -104,7 +106,7 @@ paths:
   /users/{identifier}:
     get:
       x-eov-operation-id: getUser
-      x-eov-operation-handler: v1/handlers/Users
+      x-eov-operation-handler: v1/handlers/users
       tags:
       - User
       summary: Get user by ID/Email
@@ -139,7 +141,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       x-eov-operation-id: deleteUser
-      x-eov-operation-handler: v1/handlers/Users
+      x-eov-operation-handler: v1/handlers/users
       tags:
       - User
       summary: Delete user by ID/Email
@@ -183,7 +185,7 @@ paths:
   /executions:
     get:
       x-eov-operation-id: getExecutions
-      x-eov-operation-handler: v1/handlers/Executions
+      x-eov-operation-handler: v1/handlers/executions
       tags:
       - Execution
       summary: Retrieve all executions
@@ -196,7 +198,6 @@ paths:
         schema:
           type: string
           enum: ['error', 'running', 'success', 'waiting']
-          default: 'any'
       - name: workflowId
         in: query
         description: Workflow to filter the executions by.
@@ -214,7 +215,7 @@ paths:
           default: 100
       - name: cursor
         in: query
-        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
+        description: Paginate through executions by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
         required: false
         style: form
         schema:
@@ -238,7 +239,7 @@ paths:
   /executions/{executionId}:
     get:
       x-eov-operation-id: getExecution
-      x-eov-operation-handler: v1/handlers/Executions
+      x-eov-operation-handler: v1/handlers/executions
       tags:
       - Execution
       summary: Retrieve an execution
@@ -267,7 +268,7 @@ paths:
           description: User not found
     delete:
       x-eov-operation-id: deleteExecution
-      x-eov-operation-handler: v1/handlers/Executions
+      x-eov-operation-handler: v1/handlers/executions
       tags:
       - Execution
       summary: Delete an execution
@@ -294,7 +295,234 @@ paths:
                 $ref: '#/components/schemas/Error'
         "404":
           description: User not found
-
+  /workflows:
+    post:
+      x-eov-operation-id: createWorkflow
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Create a workflow
+      description: Create a workflow in your instance.
+      requestBody:
+        description: Created user object.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowInformation'
+        required: true
+      responses:
+        "200":
+          description: A User object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      x-eov-operation-id: getWorkflows
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Retrieve all workflows
+      description: Retrieve all workflows from your instance.
+      parameters:
+      - name: active
+        in: query
+        schema:
+          type: boolean
+          example: true
+      - name: tags
+        in: query
+        required: false
+        explode: false
+        schema:
+          type: string
+          example: test,production
+      - name: limit
+        in: query
+        description: The maximum number of items to return.
+        required: false
+        schema:
+          type: number
+          example: 100
+          default: 100
+      - name: cursor
+        in: query
+        description: Paginate through workflows by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
+        required: false
+        style: form
+        schema:
+          type: string
+          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowDetailsResponse'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+  /workflows/{workflowId}:
+    get:
+      x-eov-operation-id: getWorkflow
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Retrive all workflows
+      description: Retrieve all workflows from your instance.
+      parameters:
+        - name: workflowId
+          in: path
+          description: The ID of the workflow.
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+    delete:
+      x-eov-operation-id: deleteWorkflow
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Delete a workflow
+      description: Deletes a workflow from your instance.
+      parameters:
+      - name: workflowId
+        in: path
+        description: The ID of the workflow to be deleted.
+        required: true
+        schema:
+          type: number
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+    put:
+      x-eov-operation-id: updateWorkflow
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Update a workflow
+      description: Update a workflow.
+      parameters:
+        - name: workflowId
+          in: path
+          description: The ID of the workflow.
+          required: true
+          schema:
+            type: number
+      requestBody:
+        description: Updated workflow object.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowInformation'
+        required: true
+      responses:
+        "200":
+          description: Workflow object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /workflows/{workflowId}/activate:
+    post:
+      x-eov-operation-id: activateWorkflow
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Activate a workflow
+      description: Active a workflow.
+      parameters:
+        - name: workflowId
+          in: path
+          description: The ID of the workflow.
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Workflow object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /workflows/{workflowId}/desactivate:
+    post:
+      x-eov-operation-id: desactivateWorkflow
+      x-eov-operation-handler: v1/handlers/workflows
+      tags:
+      - Workflow
+      summary: Desactivate a workflow
+      description: Desactivate a workflow.
+      parameters:
+        - name: workflowId
+          in: path
+          description: The ID of the workflow.
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Workflow object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowInformation'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     Error:
@@ -360,7 +588,7 @@ components:
             $ref: '#/components/schemas/ExecutionInformation'
         nextCursor:
           type: string
-          description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+          description: Paginate through executions by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
           nullable: true
           example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
     UserDetailsResponse:
@@ -373,6 +601,18 @@ components:
         nextCursor:
           type: string
           description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+          nullable: true
+          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+    WorkflowDetailsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowInformation'
+        nextCursor:
+          type: string
+          description: Paginate through workflows by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
           nullable: true
           example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
     ExecutionInformation:
@@ -395,6 +635,7 @@ components:
         retrySuccessId:
           type: string
           nullable: true
+          example: 2
         startedAt:
           type: string
           format: date-time
@@ -409,6 +650,7 @@ components:
           nullable: true
           format: date-time
     RoleInformation:
+      readOnly: true
       type: object
       properties:
         id:
@@ -433,6 +675,119 @@ components:
           description: Last time the role was updaded.
           format: date-time
           readOnly: true
+    TagInformation:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 12
+        name:
+          type: string
+          example: Production
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+    NodeInformation:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Jira
+        type:
+          type: string
+          example: n8n-nodes-base.Jira
+        typeVersion:
+          type: number
+          example: 1
+        position:
+          type: array
+          items:
+            type: number
+          example: [-100, 80]
+        parameters:
+          type: object
+          example: { additionalProperties: {} }
+        credentials:
+          type: object
+          example: { jiraSoftwareCloudApi: { id: "35", name: "jiraApi"} }
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+    WorkflowSettingInformation:
+      type: object
+      properties:
+        saveExecutionProgress:
+          type: boolean
+        saveManualExecutions:
+          type: boolean
+        saveDataErrorExecution:
+          type: string
+          enum: ['all', 'none']
+        saveDataSuccessExecution:
+          type: string
+          enum: ['all', 'none']
+        executionTimeout:
+          type: number
+          example: 3600
+          maxLength: 3600
+        errorWorkflow:
+          type: string
+          example: 10
+          description: The ID of the workflow that contains the error trigger node.
+        timezone:
+          type: string
+          example: America/New_York
+    WorkflowInformation:
+      type: object
+      properties:
+        id:
+          type: number
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          example: Workflow 1
+        active:
+          type: boolean
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeInformation'
+        connections:
+          type: object
+          example: { main: [{node: "Jira", type: "main", index: 0}] }
+        settings:
+          $ref: '#/components/schemas/WorkflowSettingInformation'
+        staticData:
+          type: string
+          nullable: true
+          readOnly: true
+          example: "{ iterationId: 2 }"
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagInformation'
+          readOnly: true
+
   responses:
     NotFound:
       description: The specified resource was not found.
