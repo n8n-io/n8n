@@ -107,9 +107,9 @@ export async function executeErrorWorkflow(
 			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
 
 			if (user.globalRole.name === 'owner') {
-				workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+				workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
 			} else {
-				const sharedWorkflowData = await Db.collections.SharedWorkflow!.findOne({
+				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
 					where: {
 						workflow: { id: workflowId },
 						user,
@@ -121,7 +121,7 @@ export async function executeErrorWorkflow(
 				}
 			}
 		} else {
-			workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+			workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
 		}
 
 		if (workflowData === undefined) {
@@ -426,7 +426,7 @@ export async function saveStaticDataById(
 	workflowId: string | number,
 	newStaticData: IDataObject,
 ): Promise<void> {
-	await Db.collections.Workflow!.update(workflowId, {
+	await Db.collections.Workflow.update(workflowId, {
 		staticData: newStaticData,
 	});
 }
@@ -440,7 +440,7 @@ export async function saveStaticDataById(
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
-	const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+	const workflowData = await Db.collections.Workflow.findOne(workflowId, {
 		select: ['staticData'],
 	});
 
@@ -479,7 +479,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Db.collections.Credentials?.find({
+					const credentials = await Db.collections.Credentials.find({
 						name,
 						type: nodeCredentialType,
 					});
@@ -515,7 +515,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// check if credentials for ID-type are not yet cached
 			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
 				// check first if ID-type combination exists
-				const credentials = await Db.collections.Credentials?.findOne({
+				const credentials = await Db.collections.Credentials.findOne({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
@@ -529,7 +529,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Db.collections.Credentials?.find({
+				const credsByName = await Db.collections.Credentials.find({
 					name: nodeCredentials.name,
 					type: nodeCredentialType,
 				});
@@ -586,7 +586,7 @@ export function whereClause({
  * Get the IDs of the workflows that have been shared with the user.
  */
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
-	const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		relations: ['workflow'],
 		where: whereClause({
 			user,

@@ -175,7 +175,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Address',
 		displayOptions: {
 			show: {

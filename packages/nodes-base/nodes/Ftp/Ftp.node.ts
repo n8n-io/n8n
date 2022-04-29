@@ -238,7 +238,6 @@ export class Ftp implements INodeType {
 				name: 'oldPath',
 				type: 'string',
 				default: '',
-				description: 'The old path',
 				required: true,
 			},
 			{
@@ -253,7 +252,6 @@ export class Ftp implements INodeType {
 				name: 'newPath',
 				type: 'string',
 				default: '',
-				description: 'The new path',
 				required: true,
 			},
 			{
@@ -402,10 +400,6 @@ export class Ftp implements INodeType {
 			credentials = await this.getCredentials('ftp');
 		}
 		try {
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
-			}
 
 			let ftp: ftpClient;
 			let sftp: sftpClient;

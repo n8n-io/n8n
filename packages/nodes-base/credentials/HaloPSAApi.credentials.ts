@@ -22,8 +22,7 @@ export class HaloPSAApi implements ICredentialType {
 					value: 'hostedHalo',
 				},
 			],
-			default: '',
-			description: 'Hosting Type',
+			default: 'onPremise',
 		},
 		{
 			displayName: 'HaloPSA Authorisation Server URL',
@@ -38,7 +37,7 @@ export class HaloPSAApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			description: `The Resource server is available at your "Halo Web Application url/api"`,
+			description: 'The Resource server is available at your "Halo Web Application url/api"',
 		},
 		{
 			displayName: 'Client ID',
@@ -46,7 +45,7 @@ export class HaloPSAApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Must be your application client id',
+			description: 'Must be your application client ID',
 		},
 		{
 			displayName: 'Client Secret',

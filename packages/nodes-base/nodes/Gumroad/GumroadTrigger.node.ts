@@ -15,6 +15,7 @@ import {
 } from './GenericFunctions';
 
 export class GumroadTrigger implements INodeType {
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'Gumroad Trigger',
 		name: 'gumroadTrigger',

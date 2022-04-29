@@ -176,7 +176,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Severity of the alert. Default=Medium',
+		description: 'Severity of the alert. Default=Medium.',
 	},
 	{
 		displayName: 'Date',
@@ -248,7 +248,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Traffict Light Protocol (TLP). Default=Amber',
+		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
 		displayName: 'Status',
@@ -363,7 +363,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'artifactUi',
 		type: 'fixedCollection',
 		placeholder: 'Add Artifact',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -404,7 +404,6 @@ export const alertFields: INodeProperties[] = [
 							},
 						},
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Binary Property',
@@ -418,21 +417,18 @@ export const alertFields: INodeProperties[] = [
 							},
 						},
 						default: 'data',
-						description: '',
 					},
 					{
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Case Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -493,7 +489,7 @@ export const alertFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		type: 'collection',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -577,7 +573,7 @@ export const alertFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		type: 'collection',
 		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -604,7 +600,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -621,7 +617,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Artifact',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -779,7 +775,7 @@ export const alertFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Status',
@@ -844,7 +840,7 @@ export const alertFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
@@ -960,7 +956,7 @@ export const alertFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Tags',
@@ -998,7 +994,7 @@ export const alertFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
