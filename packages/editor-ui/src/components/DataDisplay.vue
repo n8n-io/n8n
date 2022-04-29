@@ -55,7 +55,7 @@
 				/>
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
-				<div :class="$style.dragButton" @mousedown="onDragStart">
+				<div :class="{[$style.dragButton]: true, [$style.visible]: isDragging}" @mousedown="onDragStart">
 					<div :class="$style.grid">
 						<div>
 							<div></div>
@@ -124,6 +124,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			triggerWaitingWarningEnabled: false,
 			windowWidth: 0,
 			mainPanelPosition: 0,
+			isDragging: false,
 		};
 	},
 	mounted() {
@@ -298,6 +299,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		onDragStart(e: MouseEvent) {
 			e.preventDefault();
 			e.stopPropagation();
+			this.isDragging = true;
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
@@ -314,6 +316,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
+
+			this.isDragging = false;
 		},
 		setTotalWidth() {
 			this.windowWidth = window.innerWidth;
@@ -480,6 +484,10 @@ $--main-panel-width: 350px;
 	align-items: center;
 	justify-content: center;
 	visibility: hidden;
+}
+
+.visible {
+	visibility: visible;
 }
 
 .grid {
