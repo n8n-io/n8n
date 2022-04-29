@@ -326,10 +326,17 @@ export const workflowHelpers = mixins(
 					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
+					const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
+
 					// Add the node credentials if there are some set and if they should be displayed
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+							if (fullAccess) {
+								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								continue;
+							}
+
 							const credentialTypeDescription = nodeType.credentials
 								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
 
