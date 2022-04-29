@@ -26,7 +26,7 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<div :class="$style.inputPanel" v-if="!isTriggerNode">
+			<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
 				<InputPanel
 					:workflow="workflow"
 					:canLinkRuns="canLinkRuns"
@@ -43,7 +43,7 @@
 					@execute="onNodeExecute"
 				/>
 			</div>
-			<div :class="$style.outputPanel">
+			<div :class="$style.outputPanel" :style="outputPanelStyles">
 				<OutputPanel
 					:canLinkRuns="canLinkRuns"
 					:runIndex="outputRun"
@@ -252,6 +252,20 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				left: `${pos}px`,
 			};
 		},
+		inputPanelStyles(): {width: string} {
+			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - 24;
+			width = Math.min(width, this.windowWidth - 24 * 2 - 80 - MAIN_PANEL_WIDTH);
+			return {
+				width: `${width}px`,
+			};
+		},
+		outputPanelStyles(): {width: string} {
+			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - 24;
+			width = Math.min(width, this.windowWidth - 24 * 2 - 80 - MAIN_PANEL_WIDTH);
+			return {
+				width: `${width}px`,
+			};
+		},
 	},
 	watch: {
 		activeNode(node, oldNode) {
@@ -414,7 +428,6 @@ $--main-panel-width: 350px;
 	composes: panel;
 	min-width: 320px;
 	height: calc(100% - 2 * var(--spacing-s));
-	width: calc(50% - $--main-panel-width / 2 - var(--spacing-l));
 	position: absolute;
 	top: var(--spacing-l);
 	> * {
