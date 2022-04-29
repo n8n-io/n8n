@@ -32,6 +32,20 @@ export function isEmailSetUp(): boolean {
 	return smtp && host && user && pass;
 }
 
+export function isUserManagementEnabled(): boolean {
+	return (
+		!config.getEnv('userManagement.disabled') ||
+		config.getEnv('userManagement.isInstanceOwnerSetUp')
+	);
+}
+
+export function isUserManagementDisabled(): boolean {
+	return (
+		config.getEnv('userManagement.disabled') &&
+		!config.getEnv('userManagement.isInstanceOwnerSetUp')
+	);
+}
+
 async function getInstanceOwnerRole(): Promise<Role> {
 	const ownerRole = await Db.collections.Role.findOneOrFail({
 		where: {

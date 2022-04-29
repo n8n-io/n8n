@@ -19,7 +19,12 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
-import { isAuthExcluded, isPostUsersId, isAuthenticatedRequest } from '../UserManagementHelper';
+import {
+	isAuthExcluded,
+	isPostUsersId,
+	isAuthenticatedRequest,
+	isUserManagementDisabled,
+} from '../UserManagementHelper';
 import { Db } from '../..';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
@@ -75,7 +80,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		}
 
 		// skip authentication if user management is disabled
-		if (config.getEnv('userManagement.disabled')) {
+		if (isUserManagementDisabled()) {
 			req.user = await Db.collections.User.findOneOrFail(
 				{},
 				{

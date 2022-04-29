@@ -169,7 +169,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl, isEmailSetUp, isUserManagementEnabled } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -311,9 +311,7 @@ class App {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled:
-					config.getEnv('userManagement.disabled') === false ||
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+				enabled: isUserManagementEnabled(),
 				showSetupOnFirstLoad:
 					config.getEnv('userManagement.disabled') === false &&
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -346,9 +344,7 @@ class App {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled:
-				config.getEnv('userManagement.disabled') === false ||
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			enabled: isUserManagementEnabled(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -567,7 +563,7 @@ class App {
 						return;
 					}
 
-					if (!config.getEnv('userManagement.disabled')) {
+					if (isUserManagementEnabled()) {
 						try {
 							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
 							await resolveJwt(authCookie);
@@ -3047,9 +3043,7 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
-			n8n_multi_user_allowed:
-				config.getEnv('userManagement.disabled') === false ||
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};
 
