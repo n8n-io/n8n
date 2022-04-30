@@ -459,10 +459,6 @@ export class Xata implements INodeType {
 
 				}
 
-
-
-
-
 			} catch (error) {
 
 				if (this.continueOnFail()) {
@@ -595,8 +591,8 @@ export class Xata implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'Operation undefined');
 
 		}
-		return [this.helpers.returnJsonArray(returnData)];
 
+		return [this.helpers.returnJsonArray(returnData)];
 
 	}
 }
