@@ -1,0 +1,5 @@
+description: Operation successful.
+content:
+  application/json:
+    schema:
+      $ref: '../schemas/UserInformation.yml'

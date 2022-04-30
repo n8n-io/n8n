@@ -1,0 +1,35 @@
+get:
+  x-eov-operation-id: getExecutions
+  x-eov-operation-handler: v1/handlers/executions
+  tags:
+  - Execution
+  summary: Retrieve all executions
+  description: Retrieve all executions from your instance.
+  parameters:
+    - name: status
+      in: query
+      description: Status to filter the executions by.
+      required: false
+      schema:
+        type: string
+        enum: ['error', 'running', 'success', 'waiting']
+    - name: workflowId
+      in: query
+      description: Workflow to filter the executions by.
+      required: false
+      schema:
+        type: number
+        example: 1000
+    - $ref: '../parameters/Limit.yml'
+    - $ref: '../parameters/Cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ExecutionDetailsResponse.yml'
+    "401":
+      $ref: '../responses/Unauthorized.yml'
+    '404':
+      $ref: '../responses/NotFound.yml'

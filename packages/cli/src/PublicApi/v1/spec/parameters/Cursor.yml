@@ -1,0 +1,8 @@
+name: cursor
+in: query
+description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
+required: false
+style: form
+schema:
+  type: string
+  example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA

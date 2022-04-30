@@ -1,0 +1,11 @@
+type: object
+properties:
+  data:
+    type: array
+    items:
+      $ref: './UserInformation.yml'
+  nextCursor:
+    type: string
+    description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+    nullable: true
+    example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
