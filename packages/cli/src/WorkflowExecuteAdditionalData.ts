@@ -584,7 +584,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
+						// await Db.collections.Execution.save(executionData as IExecutionFlattedDb);
 						await Db.collections.Execution.update(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
