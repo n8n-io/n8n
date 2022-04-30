@@ -3018,6 +3018,7 @@ describe('Workflow', () => {
 					testData.input.nodeValues,
 					false,
 					false,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
@@ -3027,6 +3028,7 @@ describe('Workflow', () => {
 					testData.input.nodeValues,
 					true,
 					false,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
 
@@ -3036,6 +3038,7 @@ describe('Workflow', () => {
 					testData.input.nodeValues,
 					false,
 					true,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
@@ -3045,6 +3048,7 @@ describe('Workflow', () => {
 					testData.input.nodeValues,
 					true,
 					true,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
