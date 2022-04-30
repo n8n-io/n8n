@@ -607,14 +607,16 @@ export class WorkflowDataProxy {
 
 				const itemInput = pairedItem.input || 0;
 				if (itemInput >= taskData.source.length) {
-					throw createExpressionError('Could not resolve as the defined node input is not valid.');
+					throw createExpressionError(
+						`Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData.previousNode}'.`,
+					);
 				}
 
 				sourceData = taskData.source[pairedItem.input || 0] || null;
 			}
 
 			if (sourceData === null) {
-				throw createExpressionError('Could not resolve, proably no pairedItem exists');
+				throw createExpressionError('Could not resolve, proably no pairedItem exists.');
 			}
 
 			taskData =
@@ -663,20 +665,40 @@ export class WorkflowDataProxy {
 
 									if (pairedItem === undefined) {
 										// If no data could be found, try to resolve automatically
-										throw new ExpressionError('Could not resolve, as pairedItem data is missing', {
-											runIndex: that.runIndex,
-											itemIndex,
-											failExecution: true,
-										});
+										throw new ExpressionError(
+											'Could not resolve pairedItem, as pairedItem data is missing.',
+											{
+												runIndex: that.runIndex,
+												itemIndex,
+												failExecution: true,
+											},
+										);
 									}
 
 									if (!that.executeData?.source) {
 										// If no data could be found, try to resolve automatically
-										throw new ExpressionError('Could not resolve, as source data is missing', {
-											runIndex: that.runIndex,
-											itemIndex,
-											failExecution: true,
-										});
+										throw new ExpressionError(
+											'Could not resolve pairedItem, as source data is missing.',
+											{
+												runIndex: that.runIndex,
+												itemIndex,
+												failExecution: true,
+											},
+										);
+									}
+
+									// Before resolving the pairedItem make sure that the requested node comes in the
+									// graph before the current one
+									const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
+									if (!parentNodes.includes(nodeName)) {
+										throw new ExpressionError(
+											`Could not resolve pairedItem, as the node '${nodeName}' is not a parent of node ${that.activeNodeName}.`,
+											{
+												runIndex: that.runIndex,
+												itemIndex,
+												failExecution: true,
+											},
+										);
 									}
 
 									const sourceData: ISourceData = that.executeData?.source.main![

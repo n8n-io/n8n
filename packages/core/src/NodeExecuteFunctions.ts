@@ -1442,6 +1442,7 @@ export function getNodeParameter(
 		);
 	} catch (e) {
 		if (e.context) e.context.parameter = parameterName;
+		e.cause = value;
 		throw e;
 	}
 
