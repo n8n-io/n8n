@@ -550,11 +550,15 @@ export class WorkflowDataProxy {
 
 				const previousNodeOutput = sourceData.previousNodeOutput || 0;
 				if (previousNodeOutput >= taskData.data!.main.length) {
-					throw createExpressionError('Could not resolve as the defined node-output is not valid.');
+					throw createExpressionError(
+						`Could not resolve as the defined node-output is not valid on node '${sourceData.previousNode}'.`,
+					);
 				}
 
 				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
-					throw createExpressionError('Could not resolve as the defined item index is not valid.');
+					throw createExpressionError(
+						`Could not resolve as the defined item index is not valid on node '${sourceData.previousNode}'.`,
+					);
 				}
 
 				const itemPreviousNode: INodeExecutionData =
@@ -575,7 +579,9 @@ export class WorkflowDataProxy {
 								const itemInput = item.input || 0;
 								if (itemInput >= taskData.source.length) {
 									throw createExpressionError(
-										'Could not resolve as the defined node input is not valid.',
+										`Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${
+											sourceData!.previousNode
+										}'.`,
 									);
 								}
 
@@ -589,7 +595,7 @@ export class WorkflowDataProxy {
 
 					if (results.length !== 1) {
 						throw createExpressionError(
-							'Could not resolve, as no definitive match could be found.',
+							`Could not resolve, as no clear pairedItem could be found. There are '${results.length}' matching items starting from node '${sourceData.previousNode}'.`,
 						);
 					}
 
@@ -626,11 +632,15 @@ export class WorkflowDataProxy {
 
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
 			if (previousNodeOutput >= taskData.data!.main.length) {
-				throw createExpressionError('Could not resolve as the defined node-output is not valid.');
+				throw createExpressionError(
+					`Could not resolve pairedItem as the node output '${previousNodeOutput}' does not exist on node '${sourceData.previousNode}'`,
+				);
 			}
 
 			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
-				throw createExpressionError('Could not resolve as the defined item index is not valid.');
+				throw createExpressionError(
+					`Could not resolve pairedItem as the item with the index '${pairedItem.item}' does not exist on node '${sourceData.previousNode}'.`,
+				);
 			}
 
 			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
