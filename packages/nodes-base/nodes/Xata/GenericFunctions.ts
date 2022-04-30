@@ -208,6 +208,11 @@ export async function xataApiFetchAll(this: IExecuteFunctions, options: IHttpReq
 			delete (options['body'] as IDataObject)['filter']; // if set, filter already encoded in cursor.
 
 		}
+		if (options['body']!.hasOwnProperty('sort')) {
+
+			delete (options['body'] as IDataObject)['sort']; // if set, sort already encoded in cursor.
+
+		}
 
 	}
 

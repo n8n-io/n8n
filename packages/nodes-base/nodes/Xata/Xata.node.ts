@@ -214,6 +214,17 @@ export class Xata implements INodeType {
 
 
 					},
+					{
+						displayName: 'Sort (JSON) as string',
+						name: 'sort',
+						type: 'string',
+						default: '',
+						placeholder: '',
+						description: 'Sort (JSON) as specified in the Xata API (the sort property is already set). If you use expressions make sure you stringify the arguments.',
+
+
+					},
+
 
 				],
 			}
