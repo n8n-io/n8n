@@ -126,14 +126,14 @@ export class Telegram implements INodeType {
 						description: 'Get the Administrators of a chat.',
 					},
 					{
+						name: 'Get Member',
+						value: 'member',
+						description: 'Get the member of a chat.',
+					},
+					{
 						name: 'Leave',
 						value: 'leave',
 						description: 'Leave a group, supergroup or channel.',
-					},
-					{
-						name: 'Member',
-						value: 'member',
-						description: 'Get the member of a chat.',
 					},
 					{
 						name: 'Set Description',
@@ -2222,6 +2222,9 @@ export class Telegram implements INodeType {
 						});
 						continue;
 					}
+				} else if (resource === 'chat' && operation === 'administrators') {
+					returnData.push(...this.helpers.returnJsonArray(responseData.result));
+					continue;
 				}
 
 				// if (resource === 'bot' && operation === 'info') {
