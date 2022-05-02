@@ -437,6 +437,7 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
+			state.nodeMetadata = {};
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
