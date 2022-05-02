@@ -88,6 +88,7 @@ import {
 } from './GenericFunctions';
 
 import { associationFields, associationOperations } from './AssociationDescription';
+import { propertyGroupFields, propertyGroupOperations } from './PropertyGroupDescription';
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
@@ -188,6 +189,10 @@ export class Hubspot implements INodeType {
 						value: 'association',
 					},
 					{
+						name: 'Property Group',
+						value: 'propertyGroup',
+					},
+					{
 						name: 'Deal',
 						value: 'deal',
 					},
@@ -222,6 +227,9 @@ export class Hubspot implements INodeType {
 			// ASSOCIATION
 			...associationOperations,
 			...associationFields,
+			// PROPERTY GROUP
+			...propertyGroupOperations,
+			...propertyGroupFields,
 			// DEAL
 			...dealOperations,
 			...dealFields,
@@ -2541,6 +2549,61 @@ export class Hubspot implements INodeType {
 								const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, { limit });
 								responseData = response.results;
 							}
+						}
+					}
+					//https://developers.hubspot.com/docs/api/crm/properties
+					if (resource === 'propertyGroup') {
+						if (operation === 'create') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const groupName = this.getNodeParameter('groupName', i) as string;
+							const label = this.getNodeParameter('label', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, any>;
+							const displayOrder = additionalFields.displayOrder as string;
+
+							const parameters = {
+								name: groupName,
+								label,
+								...(displayOrder ? { displayOrder } : {}),
+							};
+
+							const endpoint = `/crm/v3/properties/${objectType}/groups`;
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, parameters);
+						}
+						if (operation === 'update') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const groupName = this.getNodeParameter('groupName', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, any>;
+							const displayOrder = additionalFields.displayOrder as number | undefined;
+							const label = additionalFields.label as string | undefined;
+
+							const parameters = {
+								...(label != null ? { label } : {}),
+								...(displayOrder != null ? { displayOrder } : {}),
+							};
+
+							const endpoint = `/crm/v3/properties/${objectType}/groups/${groupName}`;
+							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, parameters);
+						}
+						if (operation === 'get') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const groupName = this.getNodeParameter('groupName', i) as string;
+
+							const endpoint = `/crm/v3/properties/${objectType}/groups/${groupName}`;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
+						}
+						if (operation === 'getAll') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+
+							const endpoint = `/crm/v3/properties/${objectType}/groups`;
+							const response = await hubspotApiRequest.call(this, 'GET', endpoint);
+							responseData = response?.results || [];
+						}
+						if (operation === 'delete') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const groupName = this.getNodeParameter('groupName', i) as string;
+
+							const endpoint = `/crm/v3/properties/${objectType}/groups/${groupName}`;
+							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 						}
 					}
 					//https://developers.hubspot.com/docs/methods/deals/deals_overview
