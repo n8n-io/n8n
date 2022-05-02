@@ -120,7 +120,6 @@ import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import CredentialsList from "./CredentialsList.vue";
 import InviteUsersModal from "./InviteUsersModal.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
-import DeleteApiKeyModal from "./DeleteApiKeyModal.vue";
 import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
 import ModalRoot from "./ModalRoot.vue";
 import PersonalizationModal from "./PersonalizationModal.vue";
