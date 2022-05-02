@@ -60,17 +60,72 @@ function areOverlapping(
 	);
 }
 
-function getDomainBase(url: string) {
+const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathnamePlusQs>\/.*)/;
+
+export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
-		return new URL(url).hostname;
+		const url = new URL(raw);
+
+		return [url.protocol, url.hostname].join('//');
 	} catch (_) {
-		return url;
+		const match = urlParts.exec(raw);
+
+		if (!match?.groups?.protocolPlusDomain) return '';
+
+		return match.groups.protocolPlusDomain;
 	}
 }
 
-function getDomainPath(url: string) {
-	// @TODO Full anonymization logic: UUIDs
-	return url.replace(/d+/g, '');
+function isSensitive(segment: string) {
+	return /%40/.test(segment) || /^\d+$/.test(segment) || /^[0-9A-F]{8}/i.test(segment);
+}
+
+export const ANONYMIZATION_CHARACTER = '*';
+
+function sanitizeRoute(raw: string, check = isSensitive, char = ANONYMIZATION_CHARACTER) {
+	return raw
+		.split('/')
+		.map((segment) => (check(segment) ? char.repeat(segment.length) : segment))
+		.join('/');
+}
+
+function sanitizeQuery(raw: string, check = isSensitive, char = ANONYMIZATION_CHARACTER) {
+	return raw
+		.split('&')
+		.map((segment) => {
+			const [key, value] = segment.split('=');
+			return [key, check(value) ? char.repeat(value.length) : value].join('=');
+		})
+		.join('&');
+}
+
+function sanitizeUrl(raw: string) {
+	if (/\?/.test(raw)) {
+		const [route, query] = raw.split('?');
+
+		return [sanitizeRoute(route), sanitizeQuery(query)].join('?');
+	}
+
+	return sanitizeRoute(raw);
+}
+
+/**
+ * Return pathname plus query string from URL, anonymizing IDs in route and query params.
+ */
+export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
+	try {
+		const url = new URL(raw);
+
+		if (!url.hostname) throw new Error('Malformed URL');
+
+		return sanitizeUrl(url.pathname + url.search);
+	} catch (_) {
+		const match = urlParts.exec(raw);
+
+		if (!match?.groups?.pathnamePlusQs) return '';
+
+		return sanitizeUrl(match.groups.pathnamePlusQs);
+	}
 }
 
 export function generateNodesGraph(
