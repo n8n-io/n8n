@@ -460,7 +460,7 @@ export class SpreadsheetFile implements INodeType {
 					// Read the binary spreadsheet data
 					let binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					if (options.delimiter) {
-						binaryData = Buffer.concat([Buffer.from('sep=' + options.delimiter + '\n'), binaryData])
+						binaryData = Buffer.concat([Buffer.from('sep=' + options.delimiter + '\n'), binaryData]);
 					}
 					let workbook;
 					if (options.readAsString === true) {
@@ -596,7 +596,7 @@ export class SpreadsheetFile implements INodeType {
 			
 				if (fileFormat === 'csv') {
 					wbout = Buffer.from(xlsxUtils.sheet_to_csv(ws, {
-						FS: options.delimiter ? options.delimiter as string : ','
+						FS: options.delimiter ? options.delimiter as string : ',',
 					}));
 				} else {
 					const wopts: WritingOptions = {
@@ -680,13 +680,11 @@ export class SpreadsheetFile implements INodeType {
 			
 			if (fileFormat === 'csv') {
 				set(newItem.json, destinationKey, xlsxUtils.sheet_to_csv(ws, {
-					FS: options.delimiter ? options.delimiter as string : ','
+					FS: options.delimiter ? options.delimiter as string : ',',
 				}));
 			}  else if (fileFormat === 'html') {
 				set(newItem.json, destinationKey, xlsxUtils.sheet_to_html(ws));
 			}
-
-			return this.prepareOutputData([newItem]);
 		} else {
 			if (this.continueOnFail()) {
 				return this.prepareOutputData([{json:{ error: `The operation "${operation}" is not supported!` }}]);
