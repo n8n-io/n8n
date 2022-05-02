@@ -210,6 +210,10 @@ export const nodeHelpers = mixins(
 					nodeCredentialType: string;
 				};
 
+				/**
+				 * For HTTP Request node, report missing credential if no selected credential
+				 * or if no selected credentials of the chosen generic auth type.
+				 */
 				if (
 					node.type === HTTP_REQUEST_NODE_TYPE &&
 					node.typeVersion === 2 &&
@@ -228,6 +232,39 @@ export const nodeHelpers = mixins(
 					};
 				}
 
+				/**
+				 * For HTTP Request node, report missing credential if no selected credential
+				 * and if ID of chosen credential ID does not match ID in DB, so it was deleted.
+				 */
+				if (
+					node.type === HTTP_REQUEST_NODE_TYPE &&
+					node.typeVersion === 2 &&
+					authenticateWith === 'nodeCredential' &&
+					nodeCredentialType !== '' &&
+					node.credentials !== undefined
+				) {
+					const credentialType = this.getCredentialTypeByName(nodeCredentialType);
+
+					const dbCredentialsForType: ICredentialsResponse[] | null = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType);
+
+					const selectedCredentials = node.credentials[nodeCredentialType];
+
+					if (dbCredentialsForType !== null) {
+						const idMatch = dbCredentialsForType.find((c) => c.id === selectedCredentials.id);
+						if (!idMatch) {
+							return {
+								credentials: {
+									[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
+								},
+							};
+						}
+					}
+				}
+
+				/**
+				 * For HTTP Request node, report missing credential if no selected credential
+				 * or if no selected credentials of the chosen node credential type.
+				 */
 				if (
 					node.type === HTTP_REQUEST_NODE_TYPE &&
 					node.typeVersion === 2 &&
