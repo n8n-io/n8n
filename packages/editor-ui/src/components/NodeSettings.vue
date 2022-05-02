@@ -379,7 +379,7 @@ export default mixins(
 					}
 
 					// Get only the parameters which are different to the defaults
-					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					const oldNodeParameters = Object.assign({}, nodeParameters);
 
 					// Copy the data because it is the data of vuex so make sure that
@@ -415,7 +415,7 @@ export default mixins(
 
 					// Get the parameters with the now new defaults according to the
 					// from the user actually defined parameters
-					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false);
+					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false, node);
 
 					for (const key of Object.keys(nodeParameters as object)) {
 						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
