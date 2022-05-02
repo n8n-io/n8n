@@ -1,4 +1,8 @@
 import express from 'express';
+<<<<<<< HEAD
+=======
+import { randomName } from './shared/random';
+>>>>>>> 8100b8075 (Improved unit tests, refactored more helpers and created integration tests for GET)
 import * as utils from './shared/utils';
 import type { InstalledNodePayload, InstalledPackagePayload } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
@@ -6,10 +10,17 @@ import type { User } from '../../src/databases/entities/User';
 import * as testDb from './shared/testDb';
 
 jest.mock('../../src/CommunityNodes/helpers',  () => ({
+<<<<<<< HEAD
   matchPackagesWithUpdates: jest.requireActual('../../src/CommunityNodes/helpers').matchPackagesWithUpdates,
   executeCommand: jest.fn(),
 }));
 import { executeCommand } from '../../src/CommunityNodes/helpers';
+=======
+  crossInformationPackages: jest.requireActual('../../src/CommunityNodes/helpers').crossInformationPackages,
+  executeCommand: jest.fn(),
+}));
+import { executeCommand, crossInformationPackages } from '../../src/CommunityNodes/helpers';
+>>>>>>> 8100b8075 (Improved unit tests, refactored more helpers and created integration tests for GET)
 import { CURRENT_PACKAGE_VERSION, UPDATED_PACKAGE_VERSION } from './shared/constants';
 import { installedPackagePayload } from './shared/utils';
 
