@@ -1,5 +1,5 @@
 <template>
-	<div :class="[$style[theme], $style[type]]">
+	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
 		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
 			<span>
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
@@ -33,6 +33,10 @@ export default {
 			validator: (value: string): boolean =>
 				['note', 'tooltip'].includes(value),
 		},
+		bold: {
+			type: Boolean,
+			default: true,
+		},
 		tooltipPlacement: {
 			type: String,
 			default: 'top',
@@ -44,7 +48,6 @@ export default {
 <style lang="scss" module>
 .base {
 	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
 	line-height: var(--font-size-s);
 	word-break: normal;
 	display: flex;
@@ -53,6 +56,10 @@ export default {
 	svg {
 		font-size: var(--font-size-s);
 	}
+}
+
+.bold {
+	font-weight: var(--font-weight-bold);
 }
 
 .note {
