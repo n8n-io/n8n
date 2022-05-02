@@ -11,8 +11,8 @@ import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 
 import config from '../../../config';
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
-import { AUTH_COOKIE_NAME } from '../../../src/constants';
+import { AUTHLESS_ENDPOINTS, CURRENT_PACKAGE_VERSION, REST_PATH_SEGMENT } from './constants';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, InternalHooksManager } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
@@ -24,9 +24,15 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import type { User } from '../../../src/databases/entities/User';
+<<<<<<< HEAD
 import type { EndpointGroup, PostgresSchemaSection, SmtpTestAccount } from './types';
+=======
+import type { EndpointGroup, InstalledNodePayload, InstalledPackagePayload, SmtpTestAccount } from './types';
+>>>>>>> 8100b8075 (Improved unit tests, refactored more helpers and created integration tests for GET)
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
+import { nodesController } from '../../../src/api/nodes.api';
+import { randomName } from './random';
 
 /**
  * Initialize a test server.
@@ -64,6 +70,7 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router> = {
 			credentials: credentialsController,
+			nodes: nodesController,
 		};
 
 		for (const group of routerEndpoints) {
@@ -106,7 +113,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const functionEndpoints: string[] = [];
 
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+		(['credentials', 'nodes'].includes(group) ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];
@@ -273,4 +280,25 @@ export function getPostgresSchemaSection(
 	}
 
 	return null;
+}
+
+// ----------------------------------
+//              nodes
+// ----------------------------------
+
+export function installedPackagePayload(): InstalledPackagePayload {
+	return {
+		packageName: NODE_PACKAGE_PREFIX + randomName(),
+		installedVersion: CURRENT_PACKAGE_VERSION,
+	};
+}
+
+export function installedNodePayload(packageName: string): InstalledNodePayload {
+	const nodeName = randomName();
+	return {
+		name: nodeName,
+		type: nodeName,
+		latestVersion: CURRENT_PACKAGE_VERSION,
+		package: packageName,
+	};
 }
