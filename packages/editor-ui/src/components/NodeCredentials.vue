@@ -77,6 +77,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
+import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -97,13 +98,17 @@ export default mixins(
 	computed: {
 		...mapGetters('credentials', {
 			credentialOptions: 'allCredentialsByType',
+			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
-		isProxyCredentialType(): boolean {
-			const proxyCredentialNodeTypes = ["n8n-nodes-base.httpRequest"];
-
-			return proxyCredentialNodeTypes.includes(this.node.type)
-				&& this.node.parameters.authenticateWith === 'nodeCredential'
-				&& this.node.parameters.nodeCredentialType;
+		isProxyAuth(): boolean {
+			return this.node.type === HTTP_REQUEST_NODE_TYPE
+				&& this.node.typeVersion === 2
+				&& this.node.parameters.authenticateWith === 'nodeCredential';
+		},
+		isGenericAuth(): boolean {
+			return this.node.type === HTTP_REQUEST_NODE_TYPE
+				&& this.node.typeVersion === 2
+				&& this.node.parameters.authenticateWith === 'genericAuth';
 		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
@@ -118,8 +123,16 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			if (this.isProxyCredentialType) {
-				return [this.$store.getters['credentials/getCredentialTypeByName'](this.node.parameters.nodeCredentialType)];
+			if (this.isGenericAuth) {
+				const { genericAuthType } = this.node.parameters as { genericAuthType: string };
+
+				return [this.getCredentialTypeByName(genericAuthType)];
+			}
+
+			if (this.isProxyAuth) {
+				const { nodeCredentialType } = this.node.parameters as { nodeCredentialType?: string };
+
+				if (nodeCredentialType) return [this.getCredentialTypeByName(nodeCredentialType)];
 			}
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
