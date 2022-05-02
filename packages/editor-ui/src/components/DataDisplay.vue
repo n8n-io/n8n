@@ -56,6 +56,12 @@
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
 				<div v-if="!isTriggerNode" :class="{[$style.dragButton]: true, [$style.visible]: isDragging}" @mousedown="onDragStart">
+					<span v-if="canMoveLeft" :class="{[$style.leftArrow]: true, [$style.visible]: isDragging}">
+						<font-awesome-icon icon="arrow-left" />
+					</span>
+					<span v-if="canMoveRight" :class="{[$style.rightArrow]: true, [$style.visible]: isDragging}">
+						<font-awesome-icon icon="arrow-right" />
+					</span>
 					<div :class="$style.grid">
 						<div>
 							<div></div>
@@ -261,14 +267,29 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		inputPanelMargin(): number {
 			return this.isTriggerNode ? 0: 80;
 		},
-		mainPanelStyles(): { left: string } {
-			const padding = SIDE_MARGIN + this.inputPanelMargin; // padding + min width for panels
+		minimumLeftPosition(): number {
+			return SIDE_MARGIN + this.inputPanelMargin;
+		},
+		maximumRightPosition(): number {
+			return  this.windowWidth - MAIN_PANEL_WIDTH - this.minimumLeftPosition;
+		},
+		mainPanelFinalPositionPx(): number {
+			const padding = this.minimumLeftPosition;
 			let pos = this.mainPanelPosition + MAIN_PANEL_WIDTH / 2;
 			pos = Math.max(padding, pos - MAIN_PANEL_WIDTH);
-			pos = Math.min(pos, this.windowWidth - MAIN_PANEL_WIDTH - padding);
+			pos = Math.min(pos, this.maximumRightPosition);
 
+			return pos;
+		},
+		canMoveLeft(): boolean {
+			return this.mainPanelFinalPositionPx > this.minimumLeftPosition;
+		},
+		canMoveRight(): boolean {
+			return this.mainPanelFinalPositionPx < this.maximumRightPosition;
+		},
+		mainPanelStyles(): { left: string } {
 			return {
-				left: `${pos}px`,
+				left: `${this.mainPanelFinalPositionPx}px`,
 			};
 		},
 		inputPanelStyles(): {width: string} {
@@ -506,11 +527,18 @@ $--main-panel-width: 350px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	overflow: visible;
 	visibility: hidden;
+
+	&:hover {
+		.leftArrow, .rightArrow {
+			visibility: visible;
+		}
+	}
 }
 
 .visible {
-	visibility: visible;
+	visibility: visible !important;
 }
 
 .grid {
@@ -553,6 +581,23 @@ $--main-panel-width: 350px;
 	> * {
 		margin-right: var(--spacing-3xs);
 	}
+}
+
+.arrow {
+	position: absolute;
+	color: var(--color-background-xlight);
+	font-size: var(--font-size-3xs);
+	visibility: hidden;
+}
+
+.leftArrow {
+	composes: arrow;
+	left: -16px;
+}
+
+.rightArrow {
+	composes: arrow;
+	right: -16px;
 }
 
 @media (min-width: $--breakpoint-lg) {
