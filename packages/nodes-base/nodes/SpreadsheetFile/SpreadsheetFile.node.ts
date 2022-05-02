@@ -516,7 +516,6 @@ export class SpreadsheetFile implements INodeType {
 							newItems.push({ json: rowData } as INodeExecutionData);
 						}
 					}
-
 				} catch (error) {
 					if (this.continueOnFail()) {
 						newItems.push({json:{ error: error.message }});
@@ -525,6 +524,7 @@ export class SpreadsheetFile implements INodeType {
 					throw error;
 				}
 			}
+			return this.prepareOutputData(newItems);
 		} else if (operation === 'fromJson') {
 			// Read data from spreadsheet string to workflow
 
@@ -575,6 +575,7 @@ export class SpreadsheetFile implements INodeType {
 					newItems.push({ json: rowData } as INodeExecutionData);
 				}
 			}
+			return this.prepareOutputData(newItems);
 		} else if (operation === 'toFile') {
 			try {
 
@@ -693,6 +694,6 @@ export class SpreadsheetFile implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
 		}
-		return this.prepareOutputData(newItems); 
+		return this.prepareOutputData(newItems);
 	}
 }
