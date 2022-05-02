@@ -67,6 +67,7 @@ export default mixins(copyPaste, showMessage).extend({
 		width: 100%;
 		display: block;
 		text-overflow: ellipsis;
+		color: var(--color-text-base);
 	}
 
 	padding: var(--spacing-xs);
