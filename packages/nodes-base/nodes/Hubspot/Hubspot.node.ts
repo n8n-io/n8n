@@ -87,6 +87,8 @@ import {
 	validateCredentials
 } from './GenericFunctions';
 
+import { associationFields, associationOperations } from './AssociationDescription';
+
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
@@ -182,6 +184,10 @@ export class Hubspot implements INodeType {
 						value: 'customObject',
 					},
 					{
+						name: 'Association',
+						value: 'association',
+					},
+					{
 						name: 'Deal',
 						value: 'deal',
 					},
@@ -213,6 +219,9 @@ export class Hubspot implements INodeType {
 			// CUSTOM OBJECT
 			...customObjectOperations,
 			...customObjectFields,
+			// ASSOCIATION
+			...associationOperations,
+			...associationFields,
 			// DEAL
 			...dealOperations,
 			...dealFields,
@@ -2491,6 +2500,49 @@ export class Hubspot implements INodeType {
 							responseData = { success: true };
 						}
 					}
+					//https://developers.hubspot.com/docs/api/crm/crm-custom-objects
+					if (resource === 'association') {
+						if (operation === 'delete' || operation === 'create') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const objectId = this.getNodeParameter('objectId', i) as string;
+							const toObjectType = this.getNodeParameter('toObjectType', i) as string;
+							const toObjectId = this.getNodeParameter('toObjectId', i) as string;
+							const associationType = this.getNodeParameter('associationType', i) as string;
+
+							const endpoint = `/crm/v3/objects/${objectType}/${objectId}/associations/${toObjectType}/${toObjectId}/${associationType}`;
+							const method = operation === 'create' ? 'PUT' : 'DELETE';
+							responseData = await hubspotApiRequest.call(this, method, endpoint);
+
+							if (!responseData && operation === 'delete') {
+								responseData = [{ success: true }];
+							}
+						}
+						if (operation === 'get') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const objectId = this.getNodeParameter('objectId', i) as string;
+							const toObjectType = this.getNodeParameter('toObjectType', i) as string;
+
+							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							const limit = returnAll ? undefined : this.getNodeParameter('limit', i, null) as number;
+
+							const endpoint = `/crm/v3/objects/${objectType}/${objectId}/associations/${toObjectType}`;
+
+							if (returnAll) {
+								let after: string | undefined;
+								responseData = [];
+								do {
+									const response = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, after ? { after } : {});
+									responseData.push(...response.results);
+									after = response.paging.next?.after;
+								} while (after);
+
+								console.log(responseData);
+							} else {
+								const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, { limit });
+								responseData = response.results;
+							}
+						}
+					}
 					//https://developers.hubspot.com/docs/methods/deals/deals_overview
 					if (resource === 'deal') {
 						if (operation === 'create') {
@@ -3103,7 +3155,7 @@ export class Hubspot implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						if (resource === 'customObject') {
+						if (resource === 'customObject' || resource === 'association') {
 							const errorDetails: Record<string, unknown> = {
 								httpCode: (error as JsonObject).httpCode,
 								timestamp: (error as JsonObject).timestamp,

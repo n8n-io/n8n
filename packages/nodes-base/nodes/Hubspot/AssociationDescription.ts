@@ -109,7 +109,6 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The association type.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                association:get                             */
