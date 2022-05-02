@@ -52,3 +52,9 @@ export declare namespace ExecutionRequest {
 	type Get = AuthenticatedRequest<{ executionId: number }, {}, {}, {}>;
 	type Delete = Get;
 }
+
+export declare namespace WorkflowRequest {
+	type Get = AuthenticatedRequest<{ workflowId: number }, {}, {}, {}>;
+	type Delete = Get;
+	type Activate = Get;
+}

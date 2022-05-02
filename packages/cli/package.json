@@ -19,7 +19,9 @@
     "bin": "n8n"
   },
   "scripts": {
-    "build": "tsc && cp -r ./src/UserManagement/email/templates ./dist/src/UserManagement/email; rsync -a --include='*/' --include={'*.yml','*.css'} --exclude='*' ./src/PublicApi/ ./dist/src/PublicApi/",
+    "build": "tsc; npm run build:emailTemplates; npm run build:openapi",
+    "build:emailTemplates": "cp -r ./src/UserManagement/email/templates ./dist/src/UserManagement/email",
+    "build:openapi": "rsync -a --include='*/' --include={'*.yml','swaggerTheme.css'} --exclude='*' ./src/PublicApi/ ./dist/src/PublicApi/; find ./dist/src/PublicApi/ -iname 'openapi.yml' -exec swagger-cli bundle {} --type yaml --outfile {} \\;",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
@@ -145,6 +147,7 @@
     "request-promise-native": "^1.0.7",
     "sqlite3": "^5.0.2",
     "sse-channel": "^3.1.1",
+    "swagger-cli": "^4.0.4",
     "swagger-ui-express": "^4.3.0",
     "tslib": "1.14.1",
     "typeorm": "0.2.30",

@@ -1,0 +1,6 @@
+name: includeRole
+in: query
+required: false
+schema:
+  type: boolean
+  example: true

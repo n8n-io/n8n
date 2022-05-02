@@ -25,7 +25,7 @@ paths:
   /users:
     get:
       x-eov-operation-id: getUsers
-      x-eov-operation-handler: v1/handlers/Users
+      x-eov-operation-handler: v1/handlers/users
       tags:
       - users
       summary: Retrieve all users
