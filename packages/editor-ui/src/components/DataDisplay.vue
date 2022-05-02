@@ -99,6 +99,8 @@ import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { isNumber } from './helpers';
+import { editor } from 'monaco-editor';
 
 const MAIN_PANEL_WIDTH = 350;
 const SIDE_MARGIN = 24;
@@ -124,7 +126,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
 			windowWidth: 0,
-			mainPanelPosition: 0,
 			isDragging: false,
 		};
 	},
@@ -136,6 +137,19 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
+		mainPanelPosition(): number {
+			if (this.isTriggerNode) {
+				return 0;
+			}
+
+			const relativePosition = this.$store.getters.getNodeMainPanelPosition(this.activeNode.name) as number | undefined;
+
+			if (isNumber(relativePosition)) {
+				return relativePosition * this.windowWidth;
+			}
+
+			return .5 * this.windowWidth;
+		},
 		workflowRunning(): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
@@ -282,9 +296,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.linkedRuns = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
-
 				this.setTotalWidth();
-				this.mainPanelPosition = this.isTriggerNode ? 0 : this.windowWidth / 2;
 
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
@@ -312,7 +324,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			e.preventDefault();
 			e.stopPropagation();
 
-			this.mainPanelPosition = e.pageX;
+			const newPosition = e.pageX;
+			const relativePosition = newPosition / this.windowWidth;
+			this.$store.commit('setNodeMainPanelRelativePosition', {nodeName: this.activeNode.name, relativePosition });
 		},
 		onDragEnd(e: MouseEvent) {
 			e.preventDefault();

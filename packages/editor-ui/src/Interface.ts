@@ -748,6 +748,7 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
+	mainPanelRelativePosition?: number;
 }
 
 export interface IRootState {
