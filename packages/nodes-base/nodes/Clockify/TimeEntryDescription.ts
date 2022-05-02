@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const timeEntryOperations = [
+export const timeEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const timeEntryOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const timeEntryFields = [
+export const timeEntryFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 timeEntry:create                           */
@@ -381,4 +381,4 @@ export const timeEntryFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

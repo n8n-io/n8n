@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const workbookOperations = [
+export const workbookOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const workbookOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const workbookFields = [
+export const workbookFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 workbook:addWorksheet                      */
@@ -76,8 +76,7 @@ export const workbookFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `The name of the worksheet to be added. If specified, name should be unqiue. </BR>
-				If not specified, Excel determines the name of the new worksheet.`,
+				description: `The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.`,
 			},
 		],
 	},
@@ -151,4 +150,4 @@ export const workbookFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

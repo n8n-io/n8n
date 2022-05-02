@@ -1,29 +1,29 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class JiraSoftwareCloudApi implements ICredentialType {
 	name = 'jiraSoftwareCloudApi';
 	displayName = 'Jira SW Cloud API';
 	documentationUrl = 'jira';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
 			name: 'email',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Domain',
 			name: 'domain',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'https://example.atlassian.net',
 		},

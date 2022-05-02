@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const conditionFields = [
+export const conditionFields: INodeProperties[] = [
 	{
 		displayName: 'Resource',
 		name: 'resource',
@@ -333,4 +333,4 @@ export const conditionFields = [
 		},
 		default: '',
 	},
-] as INodeProperties[];
+];

@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -24,7 +25,6 @@ export class FlowTrigger implements INodeType {
 		description: 'Handle Flow events via webhooks',
 		defaults: {
 			name: 'Flow Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -79,7 +79,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Lists ids, perhaps known better as "Projects" separated by ,`,
+				description: `Lists ids, perhaps known better as "Projects" separated by a comma (,)`,
 			},
 			{
 				displayName: 'Task ID',
@@ -99,7 +99,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Task ids separated by ,`,
+				description: `Task ids separated by a comma (,)`,
 			},
 		],
 
@@ -108,11 +108,7 @@ export class FlowTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('flowApi');
-
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
+				const credentials = await this.getCredentials('flowApi');
 
 				let webhooks;
 				const qs: IDataObject = {};
@@ -128,8 +124,8 @@ export class FlowTrigger implements INodeType {
 				try {
 					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
 					webhooks = webhooks.integration_webhooks;
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 				for (const webhook of webhooks) {
 					// @ts-ignore
@@ -142,11 +138,7 @@ export class FlowTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('flowApi');
-
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
+				const credentials = await this.getCredentials('flowApi');
 
 				let resourceIds, body, responseData;
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -186,11 +178,7 @@ export class FlowTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('flowApi');
-
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
+				const credentials = await this.getCredentials('flowApi');
 
 				const qs: IDataObject = {};
 				const webhookData = this.getWorkflowStaticData('node');
@@ -202,7 +190,7 @@ export class FlowTrigger implements INodeType {
 						const endpoint = `/integration_webhooks/${webhookId}`;
 						try {
 							await flowApiRequest.call(this, 'DELETE', endpoint, {}, qs);
-						} catch (e) {
+						} catch (error) {
 							return false;
 						}
 					}

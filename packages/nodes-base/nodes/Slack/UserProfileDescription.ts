@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 import { text } from 'express';
 
-export const userProfileOperations = [
+export const userProfileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -30,9 +30,9 @@ export const userProfileOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userProfileFields = [
+export const userProfileFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                userProfile:update                          */
@@ -126,7 +126,7 @@ export const userProfileFields = [
 				name: 'status_expiration',
 				type: 'dateTime',
 				default: '',
-				description: `is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire`,
+				description: 'is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
 			},
 			{
 				displayName: 'Status Text',
@@ -181,4 +181,4 @@ export const userProfileFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

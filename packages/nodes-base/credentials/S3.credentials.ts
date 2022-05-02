@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -8,38 +8,38 @@ export class S3 implements ICredentialType {
 	name = 's3';
 	displayName = 'S3';
 	documentationUrl = 's3';
-	properties = [
+	properties: INodeProperties[] = [
 		{
-			displayName: 'S3 endpoint',
+			displayName: 'S3 Endpoint',
 			name: 'endpoint',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Region',
 			name: 'region',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'us-east-1',
 		},
 		{
-			displayName: 'Access Key Id',
+			displayName: 'Access Key ID',
 			name: 'accessKeyId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Secret Access Key',
 			name: 'secretAccessKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			typeOptions: {
 				password: true,
 			},
 		},
 		{
-			displayName: 'Force path style',
+			displayName: 'Force Path Style',
 			name: 'forcePathStyle',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 	];

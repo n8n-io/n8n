@@ -24,13 +24,12 @@ export class MauticTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mautic Trigger',
 		name: 'mauticTrigger',
-		icon: 'file:mautic.png',
+		icon: 'file:mautic.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mautic events via webhooks',
 		defaults: {
 			name: 'Mautic Trigger',
-			color: '#52619b',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -108,7 +107,7 @@ export class MauticTrigger implements INodeType {
 						value: 'DESC',
 					},
 				],
-				description: 'Order direction for queued events in one webhook. Can be “DESC” or “ASC”',
+				description: 'Order direction for queued events in one webhook. Can be “DESC” or “ASC”.',
 			},
 		],
 	};
@@ -144,7 +143,7 @@ export class MauticTrigger implements INodeType {
 				const endpoint = `/hooks/${webhookData.webhookId}`;
 				try {
 					await mauticApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

@@ -1,5 +1,5 @@
 import {
-	IDataObject,
+	IDataObject, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -14,6 +14,8 @@ import {
 import {
 	utils as xlsxUtils,
 } from 'xlsx';
+
+import { get } from 'lodash';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -245,8 +247,8 @@ export class GoogleSheet {
 	}
 
 
-	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<string[][]> {
-		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex);
+	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption, usePathForKeyRow: boolean): Promise<string[][]> {
+		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex, usePathForKeyRow);
 		return this.appendData(range, data, valueInputMode);
 	}
 
@@ -268,7 +270,16 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption): Promise<string[][]> {
+	async updateSheetData(
+			inputData: IDataObject[],
+			indexKey: string,
+			range: string,
+			keyRowIndex: number,
+			dataStartRowIndex: number,
+			valueInputMode: ValueInputOption,
+			valueRenderMode: ValueRenderOption,
+			upsert = false,
+		): Promise<string[][]> {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
@@ -283,15 +294,15 @@ export class GoogleSheet {
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 
 		if (rangeStartSplit === null || rangeStartSplit.length !== 3 || rangeEndSplit === null || rangeEndSplit.length !== 3) {
-			throw new Error(`The range "${range}" is not valid.`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `The range "${range}" is not valid.`);
 		}
 
-		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${dataStartRowIndex}:${rangeEndSplit[1]}${dataStartRowIndex}`;
+		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${keyRowIndex + 1}:${rangeEndSplit[1]}${keyRowIndex + 1}`;
 
 		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
-			throw new Error('Could not retrieve the key row!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'Could not retrieve the key row!');
 		}
 
 		const keyColumnOrder = sheetDatakeyRow[0];
@@ -299,10 +310,10 @@ export class GoogleSheet {
 		const keyIndex = keyColumnOrder.indexOf(indexKey);
 
 		if (keyIndex === -1) {
-			throw new Error(`Could not find column for key "${indexKey}"!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `Could not find column for key "${indexKey}"!`);
 		}
 
-		const startRowIndex = rangeStartSplit[2] || '';
+		const startRowIndex = rangeStartSplit[2] || dataStartRowIndex;
 		const endRowIndex = rangeEndSplit[2] || '';
 
 		const keyColumn = this.getColumnWithOffset(rangeStartSplit[1], keyIndex);
@@ -311,7 +322,7 @@ export class GoogleSheet {
 		const sheetDataKeyColumn = await this.getData(this.encodeRange(keyColumnRange), valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
-			throw new Error('Could not retrieve the key column!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'Could not retrieve the key column!');
 		}
 
 		// TODO: The data till here can be cached optionally. Maybe add an option which can
@@ -333,14 +344,20 @@ export class GoogleSheet {
 			itemKey = inputItem[indexKey] as string;
 			// if ([undefined, null].includes(inputItem[indexKey] as string | undefined | null)) {
 			if (itemKey === undefined || itemKey === null) {
-				// Item does not have the indexKey so we can ignore it
+				// Item does not have the indexKey so we can ignore it or append it if upsert true
+				if (upsert) {
+					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode, false);
+				}
 				continue;
 			}
 
 			// Item does have the key so check if it exists in Sheet
 			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
 			if (itemKeyIndex === -1) {
-				// Key does not exist in the Sheet so it can not be updated so skip it
+				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
+				if (upsert) {
+					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode, false);
+				}
 				continue;
 			}
 
@@ -397,7 +414,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new Error(`The key row does not exist!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist!`);
 		}
 
 		// Create the keys array
@@ -409,15 +426,30 @@ export class GoogleSheet {
 			inputData[keyRowIndex],
 		];
 
+		// Standardise values array, if rows is [[]], map it to [['']] (Keep the columns into consideration)
+		for (let rowIndex = 0; rowIndex < inputData?.length; rowIndex++) {
+			if (inputData[rowIndex].length === 0) {
+				for (let i = 0; i < keys.length; i++) {
+					inputData[rowIndex][i] = '';
+				}
+			} else if (inputData[rowIndex].length < keys.length) {
+				for (let i = 0; i < keys.length; i++) {
+					if (inputData[rowIndex][i] === undefined) {
+						inputData[rowIndex].push('');
+					}
+				}
+			}
+		}
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
+
 		lookupLoop:
 		for (const lookupValue of lookupValues) {
 			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
 
 			if (returnColumnIndex === -1) {
-				throw new Error(`The column "${lookupValue.lookupColumn}" could not be found!`);
+				throw new NodeOperationError(this.executeFunctions.getNode(), `The column "${lookupValue.lookupColumn}" could not be found!`);
 			}
 
 			// Loop over all the items and find the one with the matching value
@@ -442,7 +474,7 @@ export class GoogleSheet {
 	}
 
 
-	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number): Promise<string[][]> {
+	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number, usePathForKeyRow: boolean): Promise<string[][]> {
 		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
@@ -460,7 +492,7 @@ export class GoogleSheet {
 		const keyColumnData = await this.getData(getRange, 'UNFORMATTED_VALUE');
 
 		if (keyColumnData === undefined) {
-			throw new Error('Could not retrieve the column data!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'Could not retrieve the column data!');
 		}
 
 		const keyColumnOrder = keyColumnData[0];
@@ -471,7 +503,9 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				if (item.hasOwnProperty(key) && item[key]) {
+				if (usePathForKeyRow && (get(item, key) !== undefined)) { //match by key path
+					rowData.push(get(item, key)!.toString());
+				} else if (!usePathForKeyRow && item.hasOwnProperty(key) && item[key] !== null && item[key] !== undefined) { //match by exact key name
 					rowData.push(item[key]!.toString());
 				} else {
 					rowData.push('');

@@ -3,12 +3,13 @@ import {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import * as snowflake from 'snowflake-sdk';
+import snowflake from 'snowflake-sdk';
 
 export function connect(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
 		conn.connect((err, conn) => {
 			if (!err) {
+				// @ts-ignore
 				resolve();
 			} else {
 				reject(err);
@@ -21,6 +22,7 @@ export function destroy(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
 		conn.destroy((err, conn) => {
 			if (!err) {
+				// @ts-ignore
 				resolve();
 			} else {
 				reject(err);

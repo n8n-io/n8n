@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const couponOperations = [
+export const couponOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const couponOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const couponFields = [
+export const couponFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 coupon:create	                          */
 	/* -------------------------------------------------------------------------- */
@@ -93,7 +93,7 @@ export const couponFields = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'Comma-separated list of product IDs. Required if coupon_type is product.',
 		required: true,
 	},
@@ -314,7 +314,6 @@ export const couponFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -577,7 +576,6 @@ export const couponFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -643,7 +641,7 @@ export const couponFields = [
 				displayName: 'Discount',
 				name: 'discount',
 				type: 'fixedCollection',
-				default: 'discountProperties',
+				default: {},
 				options: [
 					{
 						displayName: 'Discount Properties',
@@ -867,4 +865,4 @@ export const couponFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

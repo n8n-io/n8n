@@ -7,6 +7,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, binary?: boolean, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUrl = {
@@ -33,10 +34,7 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	try {
 		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
-		if (error.respose && error.response.body && error.response.body.detail) {
-			throw new Error(`Linkedin Error response [${error.statusCode}]: ${error.response.body.detail}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

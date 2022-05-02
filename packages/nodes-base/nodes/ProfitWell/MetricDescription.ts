@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const metricOperations = [
+export const metricOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const metricOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const metricFields = [
+export const metricFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                metric:get                                  */
@@ -81,10 +81,10 @@ export const metricFields = [
 				],
 			},
 		},
-		description: 'Can only be the current or previous month. Format should be YYYY-MM',
+		description: 'Can only be the current or previous month. Format should be YYYY-MM.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -98,7 +98,7 @@ export const metricFields = [
 				],
 			},
 		},
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -215,7 +215,7 @@ export const metricFields = [
 						description: `How much upgrades and plan length increases affect your MRR`,
 					},
 				],
-				default: '',
+				default: [],
 				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 			{
@@ -431,9 +431,9 @@ export const metricFields = [
 						description: `Net change in revenue for this plan`,
 					},
 				],
-				default: '',
+				default: [],
 				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 		],
 	},
-] as INodeProperties[];
+];

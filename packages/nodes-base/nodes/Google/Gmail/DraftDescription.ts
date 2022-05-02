@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const draftOperations = [
+export const draftOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const draftOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const draftFields = [
+export const draftFields: INodeProperties[] = [
 	{
 		displayName: 'Draft ID',
 		name: 'messageId',
@@ -82,6 +82,44 @@ export const draftFields = [
 		description: 'The message subject.',
 	},
 	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The HTML message body.',
+	},
+	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
@@ -98,7 +136,7 @@ export const draftFields = [
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message body. This can be in HTML.',
+		description:  'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -171,12 +209,12 @@ export const draftFields = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary property containing the data to be added to the email as an attachment',
+								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.`,
 							},
 						],
 					},
 				],
-				default: '',
+				default: {},
 				description: 'Array of supported attachments to add to the message.',
 			},
 		],
@@ -213,7 +251,7 @@ export const draftFields = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Format',
@@ -329,7 +367,7 @@ export const draftFields = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Format',
@@ -379,4 +417,4 @@ export const draftFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

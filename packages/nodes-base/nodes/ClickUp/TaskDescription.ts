@@ -1,8 +1,8 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -54,13 +54,13 @@ export const taskOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -238,11 +238,11 @@ export const taskFields = [
 				displayName: 'Assignees',
 				name: 'assignees',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: [],
 			},
@@ -254,7 +254,7 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Custom fields to set as JSON in the format:<br />[{"id": "", "value": ""}]',
+				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{
 				displayName: 'Content',
@@ -322,11 +322,11 @@ export const taskFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: '',
 			},
@@ -334,11 +334,11 @@ export const taskFields = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'space',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
+					loadOptionsDependsOn: [
+						'space',
+					],
 				},
 				default: [],
 				description: 'The array of tags applied to this task',
@@ -352,9 +352,10 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:update                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -371,7 +372,6 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -395,7 +395,7 @@ export const taskFields = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -458,14 +458,13 @@ export const taskFields = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status',
 			},
 			{
 				displayName: 'Start Date',
@@ -489,9 +488,10 @@ export const taskFields = [
 		],
 
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:get                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -508,11 +508,11 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -719,11 +719,11 @@ export const taskFields = [
 				displayName: 'Assignees',
 				name: 'assignees',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 
 				default: [],
@@ -890,11 +890,11 @@ export const taskFields = [
 				displayName: 'Statuses',
 				name: 'statuses',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
+					loadOptionsDependsOn: [
+						'list',
+					],
 				},
 				default: [],
 			},
@@ -909,20 +909,21 @@ export const taskFields = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'space',
-				],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
+					loadOptionsDependsOn: [
+						'space',
+					],
 				},
 				default: [],
 				description: 'The array of tags applied to this task',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:delete                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -939,11 +940,11 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'task ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:member                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:member                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -960,7 +961,6 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Return All',
@@ -1003,9 +1003,10 @@ export const taskFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:setCustomField                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:setCustomField                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'task',
@@ -1057,9 +1058,7 @@ export const taskFields = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed<br />
-		if for example needed for labels which expects the value<br />
-		to be an array.`,
+		description: 'The value is JSON and will be parsed as such. Is needed if for example needed for labels which expects the value to be an array.',
 	},
 	{
 		displayName: 'Value',
@@ -1079,4 +1078,4 @@ export const taskFields = [
 		},
 		description: 'The value to set on custom field.',
 	},
-] as INodeProperties[];
+];

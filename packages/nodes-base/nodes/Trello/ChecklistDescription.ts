@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const checklistOperations = [
+export const checklistOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist
 	// ----------------------------------
@@ -18,6 +18,11 @@ export const checklistOperations = [
 			},
 		},
 		options: [
+			{
+				name: 'Create Checklist Item',
+				value: 'createCheckItem',
+				description: 'Create a checklist item',
+			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -63,9 +68,9 @@ export const checklistOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const checklistFields = [
+export const checklistFields: INodeProperties[] = [
 	// ----------------------------------
 	//         checklist:create
 	// ----------------------------------
@@ -272,6 +277,79 @@ export const checklistFields = [
 				type: 'string',
 				default: 'all',
 				description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+			},
+		],
+	},
+
+	// ----------------------------------
+	//         checklist:createCheckItem
+	// ----------------------------------
+	{
+		displayName: 'Checklist ID',
+		name: 'checklistId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'createCheckItem',
+				],
+				resource: [
+					'checklist',
+				],
+			},
+		},
+		description: 'The ID of the checklist to update.',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'createCheckItem',
+				],
+				resource: [
+					'checklist',
+				],
+			},
+		},
+		description: 'The name of the new check item on the checklist.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'createCheckItem',
+				],
+				resource: [
+					'checklist',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Checked',
+				name: 'checked',
+				type: 'boolean',
+				default: false,
+				description: 'Determines whether the check item is already checked when created.',
+			},
+			{
+				displayName: 'Position',
+				name: 'pos',
+				type: 'string',
+				default: '',
+				description: 'The position of the checklist on the card. One of: top, bottom, or a positive number.',
 			},
 		],
 	},
@@ -527,4 +605,4 @@ export const checklistFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

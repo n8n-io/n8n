@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const opportunityOperations = [
+export const opportunityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -26,6 +26,11 @@ export const opportunityOperations = [
 				description: 'Create an opportunity',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new opportunity, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an opportunity',
@@ -43,7 +48,7 @@ export const opportunityOperations = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of opportunity's metadata.`,
+				description: `Returns an overview of opportunity's metadata`,
 			},
 			{
 				name: 'Update',
@@ -54,13 +59,55 @@ export const opportunityOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const opportunityFields = [
+export const opportunityFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                opportunity:create                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                opportunity:create                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the opportunity already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: 'If this value exists in the \'match against\' field, update the opportunity. Otherwise create a new one.',
+	},
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -74,6 +121,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -92,6 +140,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -113,6 +162,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -131,6 +181,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -163,7 +214,7 @@ export const opportunityFields = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: 'Id of the campaign that needs to be fetched',
+				description: 'ID of the campaign that needs to be fetched.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -185,7 +236,7 @@ export const opportunityFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -250,7 +301,7 @@ export const opportunityFields = [
 				description: 'Phone number for the opportunity.',
 			},
 			{
-				displayName: 'Pricebook2 Id',
+				displayName: 'Pricebook2 ID',
 				name: 'pricebook2Id',
 				type: 'string',
 				default: '',
@@ -274,20 +325,21 @@ export const opportunityFields = [
 				options: [
 					{
 						name: 'Business',
-						valie: 'Business',
+						value: 'Business',
 					},
 					{
 						name: 'New Business',
-						valie: 'New Business',
+						value: 'New Business',
 					},
 				],
 				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 opportunity:update                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 opportunity:update                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -304,7 +356,7 @@ export const opportunityFields = [
 				],
 			},
 		},
-		description: 'Id of opportunity that needs to be fetched',
+		description: 'ID of opportunity that needs to be fetched.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -341,7 +393,7 @@ export const opportunityFields = [
 					numberPrecision: 2,
 				},
 				default: '',
-				description: 'Estimated total sale amount',
+				description: 'Estimated total sale amount.',
 			},
 			{
 				displayName: 'Campaign',
@@ -351,7 +403,7 @@ export const opportunityFields = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: 'Id of the campaign that needs to be fetched',
+				description: 'ID of the campaign that needs to be fetched.',
 			},
 			{
 				displayName: 'Close Date',
@@ -380,7 +432,7 @@ export const opportunityFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -408,7 +460,7 @@ export const opportunityFields = [
 				name: 'forecastCategoryName',
 				type: 'string',
 				default: '',
-				description: 'It is implied, but not directly controlled, by the StageName field',
+				description: 'It is implied, but not directly controlled, by the StageName field.',
 			},
 			{
 				displayName: 'Lead Source',
@@ -452,7 +504,7 @@ export const opportunityFields = [
 				description: 'Phone number for the opportunity.',
 			},
 			{
-				displayName: 'Pricebook2 Id',
+				displayName: 'Pricebook2 ID',
 				name: 'pricebook2Id',
 				type: 'string',
 				default: '',
@@ -466,7 +518,7 @@ export const opportunityFields = [
 					numberPrecision: 1,
 				},
 				default: '',
-				description: 'Percentage of estimated confidence in closing the opportunity',
+				description: 'Percentage of estimated confidence in closing the opportunity.',
 			},
 			{
 				displayName: 'Stage Name',
@@ -486,11 +538,11 @@ export const opportunityFields = [
 				options: [
 					{
 						name: 'Business',
-						valie: 'Business',
+						value: 'Business',
 					},
 					{
 						name: 'New Business',
-						valie: 'New Business',
+						value: 'New Business',
 					},
 				],
 				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
@@ -498,9 +550,9 @@ export const opportunityFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  opportunity:get                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  opportunity:get                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -517,11 +569,12 @@ export const opportunityFields = [
 				],
 			},
 		},
-		description: 'Id of opportunity that needs to be fetched',
+		description: 'ID of opportunity that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  opportunity:delete                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  opportunity:delete                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -538,11 +591,12 @@ export const opportunityFields = [
 				],
 			},
 		},
-		description: 'Id of opportunity that needs to be fetched',
+		description: 'ID of opportunity that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 opportunity:getAll                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 opportunity:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -602,6 +656,69 @@ export const opportunityFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getOpportunityFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
@@ -611,9 +728,9 @@ export const opportunityFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                             opportunity:addNote                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                             opportunity:addNote                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -630,7 +747,7 @@ export const opportunityFields = [
 				],
 			},
 		},
-		description: 'Id of opportunity that needs to be fetched',
+		description: 'ID of opportunity that needs to be fetched.',
 	},
 	{
 		displayName: 'Title',
@@ -696,4 +813,4 @@ export const opportunityFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

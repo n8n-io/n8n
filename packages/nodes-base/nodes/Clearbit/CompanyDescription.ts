@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -14,26 +14,26 @@ export const companyOperations = [
 		},
 		options: [
 			{
-				name: 'Enrich',
-				value: 'enrich',
-				description: 'Look up person and company data based on an email or domain',
-			},
-			{
 				name: 'Autocomplete',
 				value: 'autocomplete',
 				description: 'Auto-complete company names and retrieve logo and domain',
+			},
+			{
+				name: 'Enrich',
+				value: 'enrich',
+				description: 'Look up person and company data based on an email or domain',
 			},
 		],
 		default: 'enrich',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 company:enrich                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:enrich                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Domain',
 		name: 'domain',
@@ -99,25 +99,26 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:autocomplete                       */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Name',
-	name: 'name',
-	type: 'string',
-	default: '',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'company',
-			],
-			operation: [
-				'autocomplete',
-			],
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:autocomplete                       */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'autocomplete',
+				],
+			},
 		},
+		description: 'Name is the partial name of the company.',
 	},
-	description: 'Name is the partial name of the company.',
-},
-] as INodeProperties[];
+];

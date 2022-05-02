@@ -1,8 +1,8 @@
 <template>
-	<div class="node-icon-wrapper" :style="iconStyleData" :class="{full: isSvgIcon}">
+	<div class="node-icon-wrapper" :style="iconStyleData">
 		<div v-if="nodeIconData !== null" class="icon">
-			<img :src="nodeIconData.path" style="width: 100%; height: 100%;" v-if="nodeIconData.type === 'file'"/>
-			<font-awesome-icon :icon="nodeIconData.path" v-else-if="nodeIconData.type === 'fa'" />
+			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" :style="imageStyleData" />
+			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
 		</div>
 		<div v-else class="node-icon-placeholder">
 			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -12,34 +12,65 @@
 
 <script lang="ts">
 
+import { IVersionNode } from '@/Interface';
+import { INodeTypeDescription } from 'n8n-workflow';
 import Vue from 'vue';
 
 interface NodeIconData {
 	type: string;
-	path: string;
+	path?: string;
 	fileExtension?: string;
+	fileBuffer?: string;
 }
 
 export default Vue.extend({
 	name: 'NodeIcon',
-	props: [
-		'nodeType',
-		'size',
-	],
+	props: {
+		nodeType: {},
+		size: {
+			type: Number,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+		circle: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	computed: {
 		iconStyleData (): object {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
 			if (!this.size) {
-				return {};
+				return {color};
 			}
 
-			const size = parseInt(this.size, 10);
-
 			return {
-				width: size + 'px',
-				height: size + 'px',
-				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
-				'line-height': size + 'px',
-				'border-radius': Math.ceil(size / 2) + 'px',
+				color,
+				width: this.size + 'px',
+				height: this.size + 'px',
+				'font-size': this.size + 'px',
+				'line-height': this.size + 'px',
+				'border-radius': this.circle ? '50%': '2px',
+				...(this.disabled && {
+					color: '#ccc',
+					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
+					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
+				}),
+			};
+		},
+		fontStyleData (): object {
+			return {
+				'max-width': this.size + 'px',
+			};
+		},
+		imageStyleData (): object {
+			return {
+				width: '100%',
+				'max-width': '100%',
+				'max-height': '100%',
 			};
 		},
 		isSvgIcon (): boolean {
@@ -49,22 +80,27 @@ export default Vue.extend({
 			return false;
 		},
 		nodeIconData (): null | NodeIconData {
-			if (this.nodeType === null) {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			if (nodeType === null) {
 				return null;
+			}
+
+			if ((nodeType as IVersionNode).iconData) {
+				return (nodeType as IVersionNode).iconData;
 			}
 
 			const restUrl = this.$store.getters.getRestUrl;
 
-			if (this.nodeType.icon) {
+			if (nodeType.icon) {
 				let type, path;
-				[type, path] = this.nodeType.icon.split(':');
+				[type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,
 					path,
 				};
 
 				if (type === 'file') {
-					returnData.path = restUrl + '/node-icon/' + this.nodeType.name;
+					returnData.path = restUrl + '/node-icon/' + nodeType.name;
 					returnData.fileExtension = path.split('.').slice(-1).join();
 				}
 
@@ -79,20 +115,24 @@ export default Vue.extend({
 <style lang="scss">
 
 .node-icon-wrapper {
-	width: 30px;
-	height: 30px;
-	border-radius: 15px;
+	width: 26px;
+	height: 26px;
+	border-radius: 2px;
 	color: #444;
-	line-height: 30px;
+	line-height: 26px;
 	font-size: 1.1em;
 	overflow: hidden;
-	background-color: #fff;
 	text-align: center;
 	font-weight: bold;
 	font-size: 20px;
 
-	&.full .icon {
-		margin: 0.24em;
+	.icon {
+		height: 100%;
+		width: 100%;
+
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 
 	.node-icon-placeholder {

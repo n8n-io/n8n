@@ -9,16 +9,12 @@ import {
 } from 'request';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('contentfulApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
+	const credentials = await this.getCredentials('contentfulApi');
 	const source = this.getNodeParameter('source', 0) as string;
 	const isPreview = source === 'previewApi';
 
@@ -39,7 +35,7 @@ export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSin
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(`Contentful error response [${error.statusCode}]: ${error.error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 
 }

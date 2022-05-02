@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const projectOperations = [
+export const projectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const projectOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const projectFields = [
+export const projectFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 project:create                             */
@@ -295,7 +295,7 @@ export const projectFields = [
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have a client.;			',
+				description: 'If provided, projects will be filtered by whether they have a client.; ',
 			},
 			{
 				displayName: 'Client Status',
@@ -525,4 +525,4 @@ export const projectFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

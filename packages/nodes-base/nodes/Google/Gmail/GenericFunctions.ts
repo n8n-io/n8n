@@ -3,7 +3,6 @@ import {
 } from 'request';
 
 import {
-	ParsedMail,
 	simpleParser,
 } from 'mailparser';
 
@@ -17,16 +16,30 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	IEmail,
 } from './Gmail.node';
 
+import moment from 'moment-timezone';
+
+import jwt from 'jsonwebtoken';
+
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
+
 const mailComposer = require('nodemailer/lib/mail-composer');
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 	let options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
@@ -36,6 +49,9 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
+		qsStringifyOptions: {
+			arrayFormat: 'repeat',
+		},
 		json: true,
 	};
 
@@ -46,29 +62,25 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 
-		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'gmailOAuth2', options);
+		if (authenticationMethod === 'serviceAccount') {
+			const credentials = await this.getCredentials('googleApi');
+
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
+
+			options.headers!.Authorization = `Bearer ${access_token}`;
+			//@ts-ignore
+			return await this.helpers.request(options);
+		} else {
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'gmailOAuth2', options);
+		}
 
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errorMessages;
-
-			if (error.response.body.error.errors) {
-				// Try to return the error prettier
-				errorMessages = error.response.body.error.errors;
-
-				errorMessages = errorMessages.map((errorItem: IDataObject) => errorItem.message);
-
-				errorMessages = errorMessages.join('|');
-
-			} else if (error.response.body.error.message) {
-				errorMessages = error.response.body.error.message;
-			}
-
-			throw new Error(`Gmail error response [${error.statusCode}]: ${errorMessages}`);
+		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
+			error.statusCode = '401';
 		}
-		throw error;
+
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -132,34 +144,40 @@ export async function encodeEmail(email: IEmail) {
 	let mailBody: Buffer;
 
 	const mailOptions = {
+		from: email.from,
 		to: email.to,
-		cc : email.cc,
+		cc: email.cc,
 		bcc: email.bcc,
 		replyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
 		text: email.body,
+		keepBcc: true,
 	} as IDataObject;
+	if (email.htmlBody) {
+		mailOptions.html = email.htmlBody;
+	}
 
 	if (email.attachments !== undefined && Array.isArray(email.attachments) && email.attachments.length > 0) {
 		const attachments = email.attachments.map((attachment) => ({
 			filename: attachment.name,
 			content: attachment.content,
 			contentType: attachment.type,
-			encoding : 'base64',
+			encoding: 'base64',
 		}));
 
 		mailOptions.attachments = attachments;
 	}
 
+	const mail = new mailComposer(mailOptions).compile();
 
-	const mail = new mailComposer(mailOptions);
+	// by default the bcc headers are deleted when the mail is built.
+	// So add keepBcc flag to averride such behaviour. Only works when
+	// the flag is set after the compilation.
+	//https://nodemailer.com/extras/mailcomposer/#bcc
+	mail.keepBcc = true;
 
-	mailBody = await new Promise((resolve) => {
-		mail.compile().build(async (err: string, result: Buffer) => {
-			resolve(result);
-		});
-	});
+	mailBody = await mail.build();
 
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
@@ -186,4 +204,58 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 export function extractEmail(s: string) {
 	const data = s.split('<')[1];
 	return data.substring(0, data.length - 1);
+}
+
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
+	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
+
+	const scopes = [
+		'https://www.googleapis.com/auth/gmail.labels',
+		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
+		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
+		'https://mail.google.com/',
+		'https://www.googleapis.com/auth/gmail.modify',
+		'https://www.googleapis.com/auth/gmail.compose',
+	];
+
+	const now = moment().unix();
+
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
+	const signature = jwt.sign(
+		{
+			'iss': credentials.email as string,
+			'sub': credentials.delegatedEmail || credentials.email as string,
+			'scope': scopes.join(' '),
+			'aud': `https://oauth2.googleapis.com/token`,
+			'iat': now,
+			'exp': now + 3600,
+		},
+		privateKey,
+		{
+			algorithm: 'RS256',
+			header: {
+				'kid': privateKey,
+				'typ': 'JWT',
+				'alg': 'RS256',
+			},
+		},
+	);
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+			assertion: signature,
+		},
+		uri: 'https://oauth2.googleapis.com/token',
+		json: true,
+	};
+
+	//@ts-ignore
+	return this.helpers.request(options);
 }

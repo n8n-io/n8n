@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const eventOperations = [
 		default: 'track',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                event:track                                 */
@@ -84,7 +84,7 @@ export const eventFields = [
 				displayName: 'Data Fields',
 				name: 'dataFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Data Field',
 				typeOptions: {
 					multipleValues: true,
@@ -131,7 +131,6 @@ export const eventFields = [
 				name: 'templateId',
 				type: 'string',
 				default: '',
-				description: `Template id`,
 			},
 			{
 				displayName: 'User ID',
@@ -142,4 +141,4 @@ export const eventFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

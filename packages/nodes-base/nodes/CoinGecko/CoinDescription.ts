@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const coinOperations = [
+export const coinOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -58,9 +58,9 @@ export const coinOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
-export const coinFields = [
+export const coinFields: INodeProperties[] = [
 	{
 		displayName: 'Search By',
 		name: 'searchBy',
@@ -111,7 +111,6 @@ export const coinFields = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currency',
@@ -178,7 +177,6 @@ export const coinFields = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currencies',
@@ -239,6 +237,7 @@ export const coinFields = [
 		name: 'contractAddress',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -260,6 +259,7 @@ export const coinFields = [
 		name: 'contractAddresses',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -273,7 +273,7 @@ export const coinFields = [
 				],
 			},
 		},
-		description: 'The contract address of tokens, comma separated.',
+		description: 'The contract address of tokens, comma-separated.',
 	},
 	{
 		displayName: 'Base Currency',
@@ -486,7 +486,7 @@ export const coinFields = [
 				type: 'string',
 				placeholder: 'bitcoin',
 				default: '',
-				description: 'Filter results by comma separated list of coin ID.',
+				description: 'Filter results by comma-separated list of coin ID.',
 			},
 			{
 				displayName: 'Category',
@@ -667,7 +667,6 @@ export const coinFields = [
 				name: 'include_exchange_logo',
 				type: 'boolean',
 				default: false,
-				description: 'Include exchange logo.',
 			},
 			{
 				displayName: 'Order',
@@ -779,4 +778,4 @@ export const coinFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

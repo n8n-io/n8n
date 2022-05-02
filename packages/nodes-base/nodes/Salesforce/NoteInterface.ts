@@ -1,4 +1,3 @@
-
 export interface INote {
 	Title?: string;
 	ParentId?: string;

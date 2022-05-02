@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const meetingOperations = [
+export const meetingOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const meetingOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const meetingFields = [
+export const meetingFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 meeting:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -178,21 +178,18 @@ export const meetingFields = [
 							},
 						],
 						default: 'none',
-						description: 'Auto recording.',
 					},
 					{
 						displayName: 'Host Meeting in China',
 						name: 'cnMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in China.',
 					},
 					{
 						displayName: 'Host Meeting in India',
 						name: 'inMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in India.',
 					},
 					{
 						displayName: 'Host Video',
@@ -241,7 +238,7 @@ export const meetingFields = [
 							},
 						],
 						default: 1,
-						description: 'Registration type. Used for recurring meetings with fixed time only',
+						description: 'Registration type. Used for recurring meetings with fixed time only.',
 					},
 					{
 						displayName: 'Watermark',
@@ -347,7 +344,7 @@ export const meetingFields = [
 				displayName: 'Show Previous Occurrences',
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'To view meeting details of all previous occurrences of the recurring meeting.',
 			},
 		],
@@ -622,21 +619,18 @@ export const meetingFields = [
 							},
 						],
 						default: 'none',
-						description: 'Auto recording.',
 					},
 					{
 						displayName: 'Host Meeting in China',
 						name: 'cnMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in China.',
 					},
 					{
 						displayName: 'Host Meeting in India',
 						name: 'inMeeting',
 						type: 'boolean',
 						default: false,
-						description: 'Host Meeting in India.',
 					},
 					{
 						displayName: 'Host Video',
@@ -685,7 +679,7 @@ export const meetingFields = [
 							},
 						],
 						default: 1,
-						description: 'Registration type. Used for recurring meetings with fixed time only',
+						description: 'Registration type. Used for recurring meetings with fixed time only.',
 					},
 					{
 						displayName: 'Watermark',
@@ -748,4 +742,4 @@ export const meetingFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const profileOperations = [
+export const profileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const profileOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const profileFields = [
+export const profileFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 profile:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -149,8 +149,7 @@ export const profileFields = [
 					},
 				],
 				default: [],
-				description: `Fetch the Humantic profile of the user for a particular persona type.<br>
-				Multiple persona values can be supported using comma as a delimiter.`,
+				description: `Fetch the Humantic profile of the user for a particular persona type. Multiple persona values can be supported using comma as a delimiter.`,
 			},
 		],
 	},
@@ -235,4 +234,4 @@ export const profileFields = [
 		},
 		description: `The resume in PDF or DOCX format.`,
 	},
-] as INodeProperties[];
+];

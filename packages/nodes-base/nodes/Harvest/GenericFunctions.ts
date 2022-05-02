@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, qs: IDataObject = {}, path: string, body: IDataObject = {}, option: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -35,11 +35,7 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('harvestApi') as IDataObject;
-
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
+			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
 			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
@@ -49,18 +45,7 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'harvestOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Harvest credentials are not valid!');
-		}
-
-		if (error.error && error.error.message) {
-			// Try to return the error prettier
-			throw new Error(`Harvest error response [${error.statusCode}]: ${error.error.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw new Error(`Harvest error response: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

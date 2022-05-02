@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const channelOperations = [
+export const channelOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,11 +43,10 @@ export const channelOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const channelFields = [
+export const channelFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:create                             */
@@ -70,7 +70,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Name',
@@ -88,7 +87,7 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Channel name as it will appear to the user in Microsoft Teams.',
+		description: 'Channel name as it will appear to the user in Microsoft Teams',
 	},
 	{
 		displayName: 'Options',
@@ -159,7 +158,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -182,7 +180,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'channel ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -207,7 +204,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -230,7 +226,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'channel ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -255,7 +250,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Return All',
@@ -272,7 +266,7 @@ export const channelFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -295,8 +289,8 @@ export const channelFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -321,7 +315,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -344,7 +337,6 @@ export const channelFields = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -368,7 +360,7 @@ export const channelFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'Channel name as it will appear to the user in Microsoft Teams',
 			},
 			{
 				displayName: 'Description',
@@ -382,4 +374,4 @@ export const channelFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

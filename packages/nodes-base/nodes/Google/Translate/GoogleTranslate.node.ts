@@ -31,7 +31,6 @@ export class GoogleTranslate implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Translate',
-			color: '#5390f5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -136,7 +135,7 @@ export class GoogleTranslate implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the<br/> language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
+				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
 				required: true,
 				displayOptions: {
 					show: {
@@ -173,7 +172,7 @@ export class GoogleTranslate implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

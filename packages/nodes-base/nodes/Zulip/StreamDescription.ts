@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const streamOperations = [
+export const streamOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const streamOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const streamFields = [
+export const streamFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                stream:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -53,7 +53,6 @@ export const streamFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -351,7 +350,6 @@ export const streamFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -493,4 +491,4 @@ export const streamFields = [
 		description: 'ID of stream to delete.',
 	},
 
-] as INodeProperties[];
+];

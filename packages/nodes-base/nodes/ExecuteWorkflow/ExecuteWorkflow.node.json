@@ -1,0 +1,24 @@
+{
+	"node": "n8n-nodes-base.executeWorkflow",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+	"categories": [
+		"Core Nodes"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.executeWorkflow/"
+			}
+		]
+	},
+	"alias": [
+		"n8n"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
+	}
+}

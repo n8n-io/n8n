@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const fileOperations = [
+export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -54,9 +54,9 @@ export const fileOperations = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fileFields = [
+export const fileFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 file:copy                                  */
@@ -76,7 +76,6 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -218,7 +217,6 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Binary Property',
@@ -236,7 +234,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:get                                   */
@@ -276,8 +274,7 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: `The query text used to search for items. Values may be matched
-		across several fields including filename, metadata, and file content.`,
+		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:share                                 */
@@ -297,7 +294,6 @@ export const fileFields = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Type',
@@ -457,6 +453,6 @@ export const fileFields = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file.',
+		description: 'Name of the binary property which contains the data for the file.',
 	},
-] as INodeProperties[];
+];

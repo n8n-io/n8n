@@ -9,6 +9,9 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -20,14 +23,13 @@ export class RealtimeDatabase implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Realtime Database',
 		name: 'googleFirebaseRealtimeDatabase',
-		icon: 'file:googleFirebaseRealtimeDatabase.png',
+		icon: 'file:googleFirebaseRealtimeDatabase.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Interact with Google Firebase - Realtime Database API',
 		defaults: {
 			name: 'Google Cloud Realtime Database',
-			color: '#ffcb2d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -52,6 +54,7 @@ export class RealtimeDatabase implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
@@ -80,7 +83,6 @@ export class RealtimeDatabase implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 				required: true,
 			},
 			{
@@ -88,9 +90,28 @@ export class RealtimeDatabase implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
-				placeholder: '/app/users',
-				description: 'Object path on database. With leading slash. Do not append .json.',
+				placeholder: 'e.g. /app/users',
+				description: 'Object path on database. Do not append .json.',
 				required: true,
+				displayOptions: {
+					hide: {
+						'operation': [ 'get' ],
+					},
+				},
+			},
+			{
+				displayName: 'Object Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. /app/users',
+				description: 'Object path on database. Do not append .json.',
+				hint: 'Leave blank to get a whole database object',
+				displayOptions: {
+					show: {
+						'operation': [ 'get' ],
+					},
+				},
 			},
 			{
 				displayName: 'Columns / Attributes',
@@ -120,7 +141,7 @@ export class RealtimeDatabase implements INodeType {
 			): Promise<INodePropertyOptions[]> {
 				const projects = await googleApiRequestAllItems.call(
 					this,
-					'projects',
+					'',
 					'GET',
 					'results',
 					{},
@@ -128,69 +149,87 @@ export class RealtimeDatabase implements INodeType {
 					{},
 					'https://firebase.googleapis.com/v1beta1/projects',
 				);
-				const returnData = projects.map((o: IDataObject) => ({ name: o.projectId, value: o.projectId })) as INodePropertyOptions[];
+
+				const returnData = projects
+				// select only realtime database projects
+					.filter((project: IDataObject) => (project.resources as IDataObject).realtimeDatabaseInstance )
+					.map((project: IDataObject) => (
+						{
+							name: project.projectId,
+							value: (project.resources as IDataObject).realtimeDatabaseInstance,
+						}
+						)) as INodePropertyOptions[];
+
 				return returnData;
 			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//https://firebase.google.com/docs/reference/rest/database
 
+
 		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
-			throw new Error(`The ${operation} operation needs input data`);
+			throw new NodeOperationError(this.getNode(), `The ${operation} operation needs input data`);
 		}
 
 		for (let i = 0; i < length; i++) {
-			const projectId = this.getNodeParameter('projectId', i) as string;
-			let method = 'GET', attributes = '';
-			const document: IDataObject = {};
-			if (operation === 'create') {
-				method = 'PUT';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			} else if (operation === 'delete') {
-				method = 'DELETE';
-			} else if (operation === 'get') {
-				method = 'GET';
-			} else if (operation === 'push') {
-				method = 'POST';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			} else if (operation === 'update') {
-				method = 'PATCH';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			}
+			try {
+				const projectId = this.getNodeParameter('projectId', i) as string;
 
-			if (attributes) {
-				const attributeList = attributes.split(',').map(el => el.trim());
-				attributeList.map((attribute: string) => {
-					if (items[i].json.hasOwnProperty(attribute)) {
-						document[attribute] = items[i].json[attribute];
-					}
-				});
-			}
-
-			responseData = await googleApiRequest.call(
-				this,
-				projectId,
-				method,
-				this.getNodeParameter('path', i) as string,
-				document,
-			);
-
-			if (responseData === null) {
-				if (operation === 'get') {
-					throw new Error(`Google Firebase error response: Requested entity was not found.`);
-				} else if (method === 'DELETE') {
-					responseData = { success: true };
+				let method = 'GET', attributes = '';
+				const document: IDataObject = {};
+				if (operation === 'create') {
+					method = 'PUT';
+					attributes = this.getNodeParameter('attributes', i) as string;
+				} else if (operation === 'delete') {
+					method = 'DELETE';
+				} else if (operation === 'get') {
+					method = 'GET';
+				} else if (operation === 'push') {
+					method = 'POST';
+					attributes = this.getNodeParameter('attributes', i) as string;
+				} else if (operation === 'update') {
+					method = 'PATCH';
+					attributes = this.getNodeParameter('attributes', i) as string;
 				}
-			}
 
+				if (attributes) {
+					const attributeList = attributes.split(',').map(el => el.trim());
+					attributeList.map((attribute: string) => {
+						if (items[i].json.hasOwnProperty(attribute)) {
+							document[attribute] = items[i].json[attribute];
+						}
+					});
+				}
+
+				responseData = await googleApiRequest.call(
+					this,
+					projectId,
+					method,
+					this.getNodeParameter('path', i) as string,
+					document,
+				);
+
+				if (responseData === null) {
+					if (operation === 'get') {
+						throw new NodeApiError(this.getNode(), responseData, { message: `Requested entity was not found.` });
+					} else if (method === 'DELETE') {
+						responseData = { success: true };
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: (error as JsonObject).message });
+					continue;
+				}
+				throw error;
+			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (typeof responseData === 'string' || typeof responseData === 'number') {

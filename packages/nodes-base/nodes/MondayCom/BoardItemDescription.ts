@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const boardItemOperations = [
+export const boardItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -55,17 +55,22 @@ export const boardItemOperations = [
 				value: 'getByColumnValue',
 				description: 'Get items by column value',
 			},
+			{
+				name: 'Move',
+				value: 'move',
+				description: 'Move item to group',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const boardItemFields = [
+export const boardItemFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:addUpdate                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:addUpdate                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Item ID',
 		name: 'itemId',
@@ -102,9 +107,9 @@ export const boardItemFields = [
 		},
 		description: 'The update text to add.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:changeColumnValue                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:changeColumnValue                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -184,11 +189,11 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value" target="_blank">here</a>.',
+		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value">here</a>.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:changeMultipleColumnValues       */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:changeMultipleColumnValues       */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -244,14 +249,14 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values" target="_blank">here</a>.',
+		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values">here</a>.',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:create                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:create                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -342,9 +347,9 @@ export const boardItemFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:delete                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Item ID',
 		name: 'itemId',
@@ -363,9 +368,9 @@ export const boardItemFields = [
 		},
 		description: `Item's ID`,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:get                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Item ID',
 		name: 'itemId',
@@ -384,9 +389,9 @@ export const boardItemFields = [
 		},
 		description: `Item's ID (Multiple can be added separated by comma)`,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -471,9 +476,9 @@ export const boardItemFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:getByColumnValue                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:getByColumnValue                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -578,4 +583,68 @@ export const boardItemFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:move                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'move',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'move',
+				],
+				resource: [
+					'boardItem',
+				],
+			},
+		},
+		default: '',
+		description: `The item's ID`,
+	},
+	{
+		displayName: 'Group ID',
+		name: 'groupId',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getGroups',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'move',
+				],
+			},
+		},
+	},
+];

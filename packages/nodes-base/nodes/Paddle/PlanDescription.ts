@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const planOperations = [
+export const planOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const planOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const planFields = [
+export const planFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 plan:get                                   */
@@ -95,4 +95,4 @@ export const planFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

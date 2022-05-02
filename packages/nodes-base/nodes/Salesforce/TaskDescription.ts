@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -38,7 +38,7 @@ export const taskOperations = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of task's metadata.`,
+				description: `Returns an overview of task's metadata`,
 			},
 			{
 				name: 'Update',
@@ -49,13 +49,13 @@ export const taskOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Status',
 		name: 'status',
@@ -99,9 +99,7 @@ export const taskFields = [
 				name: 'activityDate',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the due date of the task.<br/>
-				This field has a timestamp that is always set to midnight <br/>
-				in the Coordinated Universal Time (UTC) time zone.`,
+				description: `Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
 			},
 			{
 				displayName: 'Call Disposition',
@@ -111,17 +109,14 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Represents the result of a given call, for example, “we'll call back,” or “call<br/>
-				 unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user<br/>
-				  in an organization with Salesforce CRM Call Center.`,
+				description: 'Represents the result of a given call, for example, “we\'ll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Duration In Seconds',
 				name: 'callDurationInSeconds',
 				type: 'number',
 				default: '',
-				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
-				 available for any user in an organization with Salesforce CRM Call Center`,
+				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center',
 			},
 			{
 				displayName: 'Call Object',
@@ -131,9 +126,7 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Name of a call center. Limit is 255 characters. <br/>
-				Not subject to field-level security, available for any user in an <br/>
-				organization with Salesforce CRM Call Center.`,
+				description: `Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.`,
 			},
 			{
 				displayName: 'Call Type',
@@ -165,7 +158,7 @@ export const taskFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -236,7 +229,7 @@ export const taskFields = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: `The frequency of the recurring task. For example, “2nd” or “3rd.”`,
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -257,19 +250,14 @@ export const taskFields = [
 				name: 'recurrenceDayOfWeekMask',
 				type: 'number',
 				default: '',
-				description: `The day or days of the week on which the task repeats.<br/>
-				This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2<br/>
-				Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64<br/>
-				Multiple days are represented as the sum of their numerical values.<br/>
-				For example, Tuesday and Thursday = 4 + 16 = 20.`,
+				description: `The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64 Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20.`,
 			},
 			{
 				displayName: 'Recurrence End Date Only',
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The last date on which the task repeats. This field has a timestamp that<br/>
-				is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
+				description: 'The last date on which the task repeats. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
 				displayName: 'Recurrence Month Of Year',
@@ -347,36 +335,28 @@ export const taskFields = [
 						value: 'RecurrenceRegenerated',
 					},
 				],
-				description: `Represents what triggers a repeating task to repeat.<br/>
-				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
-				  which determines the number of days between the triggering date (due date or close date)<br/>
-				  and the due date of the next repeating task in the series.Label is Repeat This Task.`,
+				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.`,
 			},
 			{
 				displayName: 'Recurrence Start Date Only',
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The date when the recurring task begins.<br/>
-				Must be a date and time before RecurrenceEndDateOnly.`,
+				description: `The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly.`,
 			},
 			{
 				displayName: 'Recurrence TimeZone SidKey',
 				name: 'recurrenceTimeZoneSidKey',
 				type: 'string',
 				default: '',
-				description: `The time zone associated with the recurring task.<br/>
-				 For example, “UTC-8:00” for Pacific Standard Time.`,
+				description: `The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time.`,
 			},
 			{
 				displayName: 'Reminder Date Time',
 				name: 'reminderDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the time when the reminder is scheduled to fire,<br/>
-				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
-				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
-				 or the reminder has already fired at the time indicated by the value.`,
+				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
 				displayName: 'Subject',
@@ -389,27 +369,35 @@ export const taskFields = [
 				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
 			},
 			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskTypes',
+				},
+				description: `Represents Type of the task, such as Call or Meeting.`,
+			},
+			{
 				displayName: 'What Id',
 				name: 'whatId',
 				type: 'string',
 				default: '',
-				description: `The WhatId represents nonhuman objects such as accounts, opportunities,<br/>
-				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a<br/>
-				WhatId is equivalent to the ID of a related object.`,
+				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
 				displayName: 'Who Id',
 				name: 'whoId',
 				type: 'string',
 				default: '',
-				description: `The WhoId represents a human such as a lead or a contact.<br/>
-				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
+				description: `The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -426,7 +414,7 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -450,9 +438,7 @@ export const taskFields = [
 				name: 'activityDate',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the due date of the task.<br/>
-				This field has a timestamp that is always set to midnight <br/>
-				in the Coordinated Universal Time (UTC) time zone.`,
+				description: `Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
 			},
 			{
 				displayName: 'Call Disposition',
@@ -462,17 +448,14 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Represents the result of a given call, for example, “we'll call back,” or “call<br/>
-				 unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user<br/>
-				  in an organization with Salesforce CRM Call Center.`,
+				description: 'Represents the result of a given call, for example, “we\'ll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Duration In Seconds',
 				name: 'callDurationInSeconds',
 				type: 'number',
 				default: '',
-				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
-				 available for any user in an organization with Salesforce CRM Call Center`,
+				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center',
 			},
 			{
 				displayName: 'Call Object',
@@ -482,9 +465,7 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Name of a call center. Limit is 255 characters. <br/>
-				Not subject to field-level security, available for any user in an <br/>
-				organization with Salesforce CRM Call Center.`,
+				description: `Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.`,
 			},
 			{
 				displayName: 'Call Type',
@@ -516,7 +497,7 @@ export const taskFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -601,19 +582,14 @@ export const taskFields = [
 				name: 'recurrenceDayOfWeekMask',
 				type: 'number',
 				default: '',
-				description: `The day or days of the week on which the task repeats.<br/>
-				This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2<br/>
-				Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64<br/>
-				Multiple days are represented as the sum of their numerical values.<br/>
-				For example, Tuesday and Thursday = 4 + 16 = 20.`,
+				description: `The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64. Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20.`,
 			},
 			{
 				displayName: 'Recurrence End Date Only',
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The last date on which the task repeats. This field has a timestamp that<br/>
-				is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
+				description: 'The last date on which the task repeats. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
 				displayName: 'Recurrence Instance',
@@ -623,7 +599,7 @@ export const taskFields = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: `The frequency of the recurring task. For example, “2nd” or “3rd.”`,
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -694,8 +670,7 @@ export const taskFields = [
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The date when the recurring task begins.<br/>
-				Must be a date and time before RecurrenceEndDateOnly.`,
+				description: `The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly.`,
 			},
 			{
 				displayName: 'Recurrence Regenerated Type',
@@ -716,10 +691,7 @@ export const taskFields = [
 						value: 'RecurrenceRegenerated',
 					},
 				],
-				description: `Represents what triggers a repeating task to repeat.<br/>
-				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
-				  which determines the number of days between the triggering date (due date or close date)<br/>
-				  and the due date of the next repeating task in the series.Label is Repeat This Task.`,
+				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.`,
 			},
 			{
 				displayName: 'Recurrence Type',
@@ -736,42 +708,45 @@ export const taskFields = [
 				name: 'recurrenceTimeZoneSidKey',
 				type: 'string',
 				default: '',
-				description: `The time zone associated with the recurring task.<br/>
-				 For example, “UTC-8:00” for Pacific Standard Time.`,
+				description: `The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time.`,
 			},
 			{
 				displayName: 'Reminder Date Time',
 				name: 'reminderDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the time when the reminder is scheduled to fire,<br/>
-				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
-				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
-				 or the reminder has already fired at the time indicated by the value.`,
+				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskTypes',
+				},
+				description: `Represents Type of the task, such as Call or Meeting.`,
 			},
 			{
 				displayName: 'What Id',
 				name: 'whatId',
 				type: 'string',
 				default: '',
-				description: `The WhatId represents nonhuman objects such as accounts, opportunities,<br/>
-				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a<br/>
-				WhatId is equivalent to the ID of a related object.`,
+				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
 				displayName: 'Who Id',
 				name: 'whoId',
 				type: 'string',
 				default: '',
-				description: `The WhoId represents a human such as a lead or a contact.<br/>
-				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
+				description: `The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  task:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -788,11 +763,12 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  task:delete                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -809,11 +785,12 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -873,6 +850,69 @@ export const taskFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getTaskFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
@@ -881,4 +921,4 @@ export const taskFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

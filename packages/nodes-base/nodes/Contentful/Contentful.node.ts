@@ -31,7 +31,6 @@ export class Contentful implements INodeType {
 		description: 'Consume Contenful API',
 		defaults: {
 			name: 'Contentful',
-			color: '#2E75D4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -101,224 +100,232 @@ export class Contentful implements INodeType {
 		const qs: Record<string, string | number> = {};
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'space') {
-				if (operation === 'get') {
+			try {
+				if (resource === 'space') {
+					if (operation === 'get') {
 
-					const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
-					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}`);
-				}
-			}
-			if (resource === 'contentType') {
-				if (operation === 'get') {
-
-					const credentials = this.getCredentials('contentfulApi');
-
-					const env = this.getNodeParameter('environmentId', 0) as string;
-
-					const id = this.getNodeParameter('contentTypeId', 0) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`);
-
-					if (!additionalFields.rawData) {
-						responseData = responseData.fields;
+						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}`);
 					}
 				}
-			}
-			if (resource === 'entry') {
+				if (resource === 'contentType') {
+					if (operation === 'get') {
 
-				if (operation === 'get') {
+						const credentials = await this.getCredentials('contentfulApi');
 
-					const credentials = this.getCredentials('contentfulApi');
+						const env = this.getNodeParameter('environmentId', 0) as string;
 
-					const env = this.getNodeParameter('environmentId', 0) as string;
+						const id = this.getNodeParameter('contentTypeId', 0) as string;
 
-					const id = this.getNodeParameter('entryId', 0) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`);
 
-					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`, {}, qs);
-
-					if (!additionalFields.rawData) {
-						responseData = responseData.fields;
-					}
-
-				} else if (operation === 'getAll') {
-					const credentials = this.getCredentials('contentfulApi');
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const rawData = additionalFields.rawData;
-					additionalFields.rawData = undefined;
-
-					const env = this.getNodeParameter('environmentId', i) as string;
-
-					Object.assign(qs, additionalFields);
-
-					if (qs.equal) {
-						const [atribute, value] = (qs.equal as string).split('=');
-						qs[atribute] = value;
-						delete qs.equal;
-					}
-
-					if (qs.notEqual) {
-						const [atribute, value] = (qs.notEqual as string).split('=');
-						qs[atribute] = value;
-						delete qs.notEqual;
-					}
-
-					if (qs.include) {
-						const [atribute, value] = (qs.include as string).split('=');
-						qs[atribute] = value;
-						delete qs.include;
-					}
-
-					if (qs.exclude) {
-						const [atribute, value] = (qs.exclude as string).split('=');
-						qs[atribute] = value;
-						delete qs.exclude;
-					}
-
-					if (returnAll) {
-						responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
-
-						if (!rawData) {
-							const assets : IDataObject[] = [];
-							// tslint:disable-next-line: no-any
-							responseData.map((asset : any) => {
-								assets.push(asset.fields);
-							});
-							responseData = assets;
-						}
-					} else {
-						const limit = this.getNodeParameter('limit', 0) as number;
-						qs.limit = limit;
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
-						responseData = responseData.items;
-
-						if (!rawData) {
-							const assets : IDataObject[] = [];
-							// tslint:disable-next-line: no-any
-							responseData.map((asset : any) => {
-								assets.push(asset.fields);
-							});
-							responseData = assets;
+						if (!additionalFields.rawData) {
+							responseData = responseData.fields;
 						}
 					}
 				}
-			}
-			if (resource === 'asset') {
-				if (operation === 'get') {
+				if (resource === 'entry') {
 
-					const credentials = this.getCredentials('contentfulApi');
+					if (operation === 'get') {
 
-					const env = this.getNodeParameter('environmentId', 0) as string;
+						const credentials = await this.getCredentials('contentfulApi');
 
-					const id = this.getNodeParameter('assetId', 0) as string;
+						const env = this.getNodeParameter('environmentId', 0) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const id = this.getNodeParameter('entryId', 0) as string;
 
-					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`, {}, qs);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					if (!additionalFields.rawData) {
-						responseData = responseData.fields;
-					}
+						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`, {}, qs);
 
-				} else if (operation === 'getAll') {
-
-					const credentials = this.getCredentials('contentfulApi');
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const rawData = additionalFields.rawData;
-					additionalFields.rawData = undefined;
-
-					const env = this.getNodeParameter('environmentId', i) as string;
-
-					Object.assign(qs, additionalFields);
-
-					if (qs.equal) {
-						const [atribute, value] = (qs.equal as string).split('=');
-						qs[atribute] = value;
-						delete qs.equal;
-					}
-
-					if (qs.notEqual) {
-						const [atribute, value] = (qs.notEqual as string).split('=');
-						qs[atribute] = value;
-						delete qs.notEqual;
-					}
-
-					if (qs.include) {
-						const [atribute, value] = (qs.include as string).split('=');
-						qs[atribute] = value;
-						delete qs.include;
-					}
-
-					if (qs.exclude) {
-						const [atribute, value] = (qs.exclude as string).split('=');
-						qs[atribute] = value;
-						delete qs.exclude;
-					}
-
-					if (returnAll) {
-						responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
-
-						if (!rawData) {
-							const assets : IDataObject[] = [];
-							// tslint:disable-next-line: no-any
-							responseData.map((asset : any) => {
-								assets.push(asset.fields);
-							});
-							responseData = assets;
+						if (!additionalFields.rawData) {
+							responseData = responseData.fields;
 						}
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
-						responseData = responseData.items;
 
-						if (!rawData) {
-							const assets : IDataObject[] = [];
-							// tslint:disable-next-line: no-any
-							responseData.map((asset : any) => {
-								assets.push(asset.fields);
-							});
-							responseData = assets;
+					} else if (operation === 'getAll') {
+						const credentials = await this.getCredentials('contentfulApi');
+
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const rawData = additionalFields.rawData;
+						additionalFields.rawData = undefined;
+
+						const env = this.getNodeParameter('environmentId', i) as string;
+
+						Object.assign(qs, additionalFields);
+
+						if (qs.equal) {
+							const [atribute, value] = (qs.equal as string).split('=');
+							qs[atribute] = value;
+							delete qs.equal;
+						}
+
+						if (qs.notEqual) {
+							const [atribute, value] = (qs.notEqual as string).split('=');
+							qs[atribute] = value;
+							delete qs.notEqual;
+						}
+
+						if (qs.include) {
+							const [atribute, value] = (qs.include as string).split('=');
+							qs[atribute] = value;
+							delete qs.include;
+						}
+
+						if (qs.exclude) {
+							const [atribute, value] = (qs.exclude as string).split('=');
+							qs[atribute] = value;
+							delete qs.exclude;
+						}
+
+						if (returnAll) {
+							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
+
+							if (!rawData) {
+								const assets : IDataObject[] = [];
+								// tslint:disable-next-line: no-any
+								responseData.map((asset : any) => {
+									assets.push(asset.fields);
+								});
+								responseData = assets;
+							}
+						} else {
+							const limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = limit;
+							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
+							responseData = responseData.items;
+
+							if (!rawData) {
+								const assets : IDataObject[] = [];
+								// tslint:disable-next-line: no-any
+								responseData.map((asset : any) => {
+									assets.push(asset.fields);
+								});
+								responseData = assets;
+							}
 						}
 					}
 				}
-			}
-			if (resource === 'locale') {
+				if (resource === 'asset') {
+					if (operation === 'get') {
 
-				if (operation === 'getAll') {
+						const credentials = await this.getCredentials('contentfulApi');
 
-					const credentials = this.getCredentials('contentfulApi');
+						const env = this.getNodeParameter('environmentId', 0) as string;
 
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const id = this.getNodeParameter('assetId', 0) as string;
 
-					const env = this.getNodeParameter('environmentId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					if (returnAll) {
-						responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
+						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`, {}, qs);
 
-					} else {
-						const limit = this.getNodeParameter('limit', 0) as number;
-						qs.limit = limit;
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
-						responseData = responseData.items;
+						if (!additionalFields.rawData) {
+							responseData = responseData.fields;
+						}
 
+					} else if (operation === 'getAll') {
+
+						const credentials = await this.getCredentials('contentfulApi');
+
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const rawData = additionalFields.rawData;
+						additionalFields.rawData = undefined;
+
+						const env = this.getNodeParameter('environmentId', i) as string;
+
+						Object.assign(qs, additionalFields);
+
+						if (qs.equal) {
+							const [atribute, value] = (qs.equal as string).split('=');
+							qs[atribute] = value;
+							delete qs.equal;
+						}
+
+						if (qs.notEqual) {
+							const [atribute, value] = (qs.notEqual as string).split('=');
+							qs[atribute] = value;
+							delete qs.notEqual;
+						}
+
+						if (qs.include) {
+							const [atribute, value] = (qs.include as string).split('=');
+							qs[atribute] = value;
+							delete qs.include;
+						}
+
+						if (qs.exclude) {
+							const [atribute, value] = (qs.exclude as string).split('=');
+							qs[atribute] = value;
+							delete qs.exclude;
+						}
+
+						if (returnAll) {
+							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
+
+							if (!rawData) {
+								const assets : IDataObject[] = [];
+								// tslint:disable-next-line: no-any
+								responseData.map((asset : any) => {
+									assets.push(asset.fields);
+								});
+								responseData = assets;
+							}
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
+							responseData = responseData.items;
+
+							if (!rawData) {
+								const assets : IDataObject[] = [];
+								// tslint:disable-next-line: no-any
+								responseData.map((asset : any) => {
+									assets.push(asset.fields);
+								});
+								responseData = assets;
+							}
+						}
 					}
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (resource === 'locale') {
+
+					if (operation === 'getAll') {
+
+						const credentials = await this.getCredentials('contentfulApi');
+
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						const env = this.getNodeParameter('environmentId', i) as string;
+
+						if (returnAll) {
+							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
+
+						} else {
+							const limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = limit;
+							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
+							responseData = responseData.items;
+
+						}
+					}
+				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

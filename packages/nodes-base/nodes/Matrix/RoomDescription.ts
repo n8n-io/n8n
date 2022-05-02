@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const roomOperations = [
+export const roomOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,10 +44,10 @@ export const roomOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
 
-export const roomFields = [
+export const roomFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                room:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -138,7 +138,6 @@ export const roomFields = [
 			},
 		},
 		default: '',
-		description: 'Room ID or alias',
 		required: true,
 	},
 
@@ -163,7 +162,6 @@ export const roomFields = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 
@@ -188,7 +186,6 @@ export const roomFields = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 
@@ -234,7 +231,6 @@ export const roomFields = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 	{
@@ -274,4 +270,4 @@ export const roomFields = [
 		description: 'Reason for kick',
 		placeholder: 'Telling unfunny jokes',
 	},
-] as INodeProperties[];
+];

@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MicrosoftOutlookOAuth2Api implements ICredentialType {
@@ -10,13 +10,33 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Microsoft Outlook OAuth2 API';
 	documentationUrl = 'microsoft';
-	properties = [
+	properties: INodeProperties[] = [
 		//https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'openid offline_access Mail.ReadWrite Mail.Send MailboxSettings.Read',
+			type: 'hidden',
+			default: 'openid offline_access Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.Read',
+		},
+		{
+			displayName: 'Use Shared Mailbox',
+			name: 'useShared',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'User Principal Name',
+			name: 'userPrincipalName',
+			description: 'Target user\'s UPN or ID',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					useShared: [
+						true,
+					],
+				},
+			},
 		},
 	];
 }

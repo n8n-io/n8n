@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function coinGeckoApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
@@ -37,8 +37,7 @@ export async function coinGeckoApiRequest(this: IExecuteFunctions | IExecuteSing
 		return await this.helpers.request.call(this, options);
 
 	} catch (error) {
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

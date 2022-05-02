@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const channelMessageOperations = [
+export const channelMessageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,11 +28,10 @@ export const channelMessageOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const channelMessageFields = [
+export const channelMessageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 channelMessage:create                      */
@@ -55,7 +55,6 @@ export const channelMessageFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -78,7 +77,6 @@ export const channelMessageFields = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Message Type',
@@ -105,7 +103,7 @@ export const channelMessageFields = [
 				],
 			},
 		},
-		default: '',
+		default: 'text',
 		description: 'The type of the content',
 	},
 	{
@@ -127,7 +125,33 @@ export const channelMessageFields = [
 			},
 		},
 		default: '',
-		description: 'The content of the item.',
+		description: 'The content of the item',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'channelMessage',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Make Reply',
+				name: 'makeReply',
+				type: 'string',
+				default: '',
+				description: 'An optional ID of the message you want to reply to',
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 channelMessage:getAll                      */
@@ -151,7 +175,6 @@ export const channelMessageFields = [
 			},
 		},
 		default: '',
-		description: 'Team ID',
 	},
 	{
 		displayName: 'Channel ID',
@@ -174,7 +197,6 @@ export const channelMessageFields = [
 			},
 		},
 		default: '',
-		description: 'Channel ID',
 	},
 	{
 		displayName: 'Return All',
@@ -191,7 +213,7 @@ export const channelMessageFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -214,7 +236,7 @@ export const channelMessageFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

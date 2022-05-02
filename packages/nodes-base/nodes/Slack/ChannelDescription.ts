@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const channelOperations = [
+export const channelOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -104,9 +104,9 @@ export const channelOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const channelFields = [
+export const channelFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                channel:archive                             */
@@ -238,7 +238,7 @@ export const channelFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				operation: [
@@ -674,7 +674,7 @@ export const channelFields = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource. If this<br />option gets activated it will resolve the data automatically.',
+		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -702,7 +702,7 @@ export const channelFields = [
 				name: 'channelId',
 				type: 'string',
 				default: '',
-				description: `Resume a conversation by supplying an im or mpim's ID. Or provide the users field instead`,
+				description: 'Resume a conversation by supplying an im or mpim\'s ID. Or provide the users field instead.',
 			},
 			{
 				displayName: 'Return IM',
@@ -1002,4 +1002,4 @@ export const channelFields = [
 		required: true,
 		description: 'The ID of the channel to unarchive.',
 	},
-] as INodeProperties[];
+];

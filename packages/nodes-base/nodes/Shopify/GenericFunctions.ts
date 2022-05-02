@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -19,10 +19,7 @@ import {
 } from 'change-case';
 
 export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('shopifyApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('shopifyApi');
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
 
@@ -47,21 +44,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.log(error.response.body);
-		if (error.response.body && error.response.body.errors) {
-			let message = '';
-			if (typeof error.response.body.errors === 'object') {
-				for (const key of Object.keys(error.response.body.errors)) {
-					message += error.response.body.errors[key];
-				}
-			} else {
-				message = `${error.response.body.errors} |`;
-			}
-			const errorMessage = `Shopify error response [${error.statusCode}]: ${message}`;
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

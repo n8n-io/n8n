@@ -1,6 +1,12 @@
-import { INodeProperties } from 'n8n-workflow';
-export const resource = ['timeEntry'];
-export const timeEntryOperations = [
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const resource = [
+	'timeEntry',
+];
+
+export const timeEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -60,9 +66,9 @@ export const timeEntryOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const timeEntryFields = [
+export const timeEntryFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                timeEntry:getAll                            */
 	/* -------------------------------------------------------------------------- */
@@ -148,6 +154,16 @@ export const timeEntryFields = [
 				description: 'Pass true to only return running time entries and false to return non-running time entries.',
 			},
 			{
+				displayName: 'Page',
+				name: 'page',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 1,
+				description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
+			},
+			{
 				displayName: 'To',
 				name: 'to',
 				type: 'dateTime',
@@ -160,16 +176,6 @@ export const timeEntryFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Only return time entries that have been updated since the given date and time.',
-			},
-			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				default: 1,
-				description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 			},
 			{
 				displayName: 'User ID',
@@ -545,4 +551,4 @@ export const timeEntryFields = [
 
 
 
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const channelOperations = [
+export const channelOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const channelOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const channelFields = [
+export const channelFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -366,7 +366,7 @@ export const channelFields = [
 								displayName: 'Channel',
 								name: 'channel',
 								type: 'collection',
-								default: '',
+								default: {},
 								placeholder: 'Add Channel Settings',
 								typeOptions: {
 									multipleValues: false,
@@ -482,7 +482,7 @@ export const channelFields = [
 								displayName: 'Image',
 								name: 'image',
 								type: 'collection',
-								default: '',
+								default: {},
 								placeholder: 'Add Channel Settings',
 								description: `The image object encapsulates information about images that display on the channel's channel page or video watch pages.`,
 								typeOptions: {
@@ -519,7 +519,7 @@ export const channelFields = [
 								displayName: 'Status',
 								name: 'status',
 								type: 'collection',
-								default: '',
+								default: {},
 								placeholder: 'Add Status',
 								typeOptions: {
 									multipleValues: false,
@@ -583,4 +583,4 @@ export const channelFields = [
 		},
 		default: 'data',
 	},
-] as INodeProperties[];
+];

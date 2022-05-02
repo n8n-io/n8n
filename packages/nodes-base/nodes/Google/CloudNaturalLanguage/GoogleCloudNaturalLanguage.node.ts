@@ -29,7 +29,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Cloud Natural Language',
-			color: '#5288f0',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -125,7 +124,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'gcsContentUri',
 				type: 'string',
 				default: '',
-				description: 'The Google Cloud Storage URI where the file content is located. This URI must be of the form: gs://bucket_name/object_name.<br/> For more details, see https://cloud.google.com/storage/docs/reference-uris.',
+				description: `The Google Cloud Storage URI where the file content is located. This URI must be of the form: <code>gs://bucket_name/object_name</code>. For more details, see <a href="https://cloud.google.com/storage/docs/reference-uris.">reference</a>.`,
 				required: true,
 				displayOptions: {
 					show: {
@@ -150,7 +149,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				},
 				default: {},
-				description: '',
 				placeholder: 'Add Option',
 				options: [
 					{
@@ -277,7 +275,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const campaignOperations = [
+export const campaignOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const campaignOperations = [
 		default: 'get',
 		description: 'The operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const campaignFields = [
+export const campaignFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                   campaign:get                             */
 	/* -------------------------------------------------------------------------- */
@@ -114,7 +114,6 @@ export const campaignFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -196,4 +195,4 @@ export const campaignFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 const scopes = [
@@ -16,12 +16,32 @@ export class GoogleFirebaseRealtimeDatabaseOAuth2Api implements ICredentialType 
 	];
 	displayName = 'Google Firebase Realtime Database OAuth2 API';
 	documentationUrl = 'google';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: scopes.join(' '),
+		},
+		{
+			displayName: 'Region',
+			name: 'region',
+			type: 'options',
+			default: 'firebaseio.com',
+			options: [
+				{
+					name: 'us-central1',
+					value: 'firebaseio.com',
+				},
+				{
+					name: 'europe-west1',
+					value: 'europe-west1.firebasedatabase.app',
+				},
+				{
+					name: 'asia-southeast1',
+					value: 'asia-southeast1.firebasedatabase.app',
+				},
+			],
 		},
 	];
 }

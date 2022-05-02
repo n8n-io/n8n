@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -37,7 +38,6 @@ export class GSuiteAdmin implements INodeType {
 		description: 'Consume G Suite Admin API',
 		defaults: {
 			name: 'G Suite Admin',
-			color: '#ecbb26',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -124,7 +124,7 @@ export class GSuiteAdmin implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -328,7 +328,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new Error('When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
 					}
 
 					responseData = await googleApiRequest.call(
@@ -361,7 +361,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new Error('When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
 					}
 
 					if (returnAll) {

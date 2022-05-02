@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const memberOperations = [
+export const memberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const memberOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const memberFields = [
+export const memberFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                member:delete                               */
@@ -75,7 +75,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -93,7 +92,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 
 
@@ -119,7 +117,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -137,7 +134,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Resolve Identities',
@@ -179,7 +175,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Return All',
@@ -304,7 +299,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Source',
@@ -878,4 +872,4 @@ export const memberFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

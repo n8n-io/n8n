@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const stockOnHandOperations = [
+export const stockOnHandOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const stockOnHandOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const stockOnHandFields = [
+export const stockOnHandFields: INodeProperties[] = [
 
 	/* ------------------------------------------------------------------------- */
 	/*                                stockOnHand:get                            */
@@ -124,7 +124,7 @@ export const stockOnHandFields = [
 				displayName: 'Is Assembled',
 				name: 'IsAssembled',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled.',
 			},
 			{
@@ -164,4 +164,4 @@ export const stockOnHandFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

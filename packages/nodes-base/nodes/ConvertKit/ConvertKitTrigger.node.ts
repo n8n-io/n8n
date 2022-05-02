@@ -24,14 +24,13 @@ export class ConvertKitTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ConvertKit Trigger',
 		name: 'convertKitTrigger',
-		icon: 'file:convertKit.png',
+		icon: 'file:convertKit.svg',
 		subtitle: '={{$parameter["event"]}}',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle ConvertKit events via webhooks',
 		defaults: {
 			name: 'ConvertKit Trigger',
-			color: '#fb6970',
 		},
 		inputs: [],
 		outputs: ['main'],

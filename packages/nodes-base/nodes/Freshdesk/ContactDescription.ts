@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -45,9 +45,9 @@ export const contactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create/update                       */
@@ -86,8 +86,7 @@ export const contactFields = [
 				],
 			},
 		},
-		description: `Primary email address of the contact. If you want to associate<br>
-		additional email(s) with this contact, use the other_emails attribute.`,
+		description: `Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.`,
 	},
 	{
 		displayName: 'Contact ID',
@@ -136,7 +135,7 @@ export const contactFields = [
 			// 	name: 'avatar',
 			// 	type: '',
 			// 	default: '',
-			// 	description: `Avatar image of the contact The maximum file size is 5MB<br>
+			// 	description: `Avatar image of the contact The maximum file size is 5MB
 			// 	and the supported file types are .jpg, .jpeg, .jpe, and .png.`,
 			// },
 			{
@@ -154,8 +153,7 @@ export const contactFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: `Key value pairs containing the name and value of the custom field.<br>
-				Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.`,
+				description: `Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.`,
 				default: [],
 				options: [
 					{
@@ -199,8 +197,7 @@ export const contactFields = [
 						],
 					},
 				},
-				description: `Primary email address of the contact. If you want to associate<br>
-				additional email(s) with this contact, use the other_emails attribute.`,
+				description: `Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.`,
 			},
 			{
 				displayName: 'Job Title',
@@ -214,9 +211,7 @@ export const contactFields = [
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: `Language of the contact. Default language is "en".<br>
-				This attribute can only be set if the Multiple Language feature is<br>
-				enabled (Garden plan and above).`,
+				description: `Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).`,
 			},
 			{
 				displayName: 'Mobile',
@@ -248,9 +243,7 @@ export const contactFields = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Company',
-				description: `Additional companies associated with the contact.<br>
-				This attribute can only be set if the Multiple Companies feature<br>
-				is enabled (Estate plan and above).`,
+				description: `Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).`,
 			},
 			{
 				displayName: 'Other Emails',
@@ -285,8 +278,7 @@ export const contactFields = [
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: `Time zone of the contact. Default value is the time zone of the domain.<br>
-				This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above)];`,
+				description: `Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).`,
 			},
 			{
 				displayName: 'Twitter ID',
@@ -307,8 +299,7 @@ export const contactFields = [
 				name: 'view_all_tickets',
 				type: 'boolean',
 				default: false,
-				description: `Set to true if the contact can see all the tickets<br>
-				that are associated with the company to which he belong.`,
+				description: `Set to true if the contact can see all the tickets that are associated with the company to which they belong.`,
 			},
 		],
 	},
@@ -428,4 +419,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

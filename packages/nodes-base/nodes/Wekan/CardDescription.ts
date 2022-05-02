@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const cardOperations = [
+export const cardOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         card
 	// ----------------------------------
@@ -47,9 +47,9 @@ export const cardOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const cardFields = [
+export const cardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         card:create
 	// ----------------------------------
@@ -160,7 +160,6 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The author ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -186,7 +185,7 @@ export const cardFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of assignee IDs attached to the card.',
 			},
 			{
@@ -203,7 +202,7 @@ export const cardFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of member IDs attached to the card.',
 			},
 		],
@@ -400,7 +399,6 @@ export const cardFields = [
 			},
 		],
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'List ID',
@@ -604,7 +602,7 @@ export const cardFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of assignee IDs attached to the card.',
 			},
 			{
@@ -764,7 +762,7 @@ export const cardFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: '',
+				default: [],
 				description: 'The new list of member IDs attached to the card.',
 			},
 			{
@@ -794,6 +792,13 @@ export const cardFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'The new received at field of the card.',
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'number',
+				default: 0,
+				description: 'The internally used sort value of a card.',
 			},
 			{
 				displayName: 'Spent Time',
@@ -834,4 +839,4 @@ export const cardFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

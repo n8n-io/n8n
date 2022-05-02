@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const activityOperations = [
+export const activityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const activityOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const activityFields = [
+export const activityFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                activity:create                             */
@@ -204,7 +204,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -325,7 +324,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -393,7 +391,6 @@ export const activityFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -427,7 +424,7 @@ export const activityFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
@@ -451,7 +448,6 @@ export const activityFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},
@@ -626,4 +622,4 @@ export const activityFields = [
 		},
 		description: 'If more than one activity add them separated by ,',
 	},
-] as INodeProperties[];
+];

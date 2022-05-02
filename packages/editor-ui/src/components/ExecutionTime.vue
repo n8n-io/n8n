@@ -6,8 +6,6 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
-
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';

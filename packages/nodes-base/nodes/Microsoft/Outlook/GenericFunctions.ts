@@ -11,9 +11,18 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
+
+	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
+	// If accessing shared mailbox
+	if (credentials.useShared && credentials.userPrincipalName) {
+		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	}
+
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -21,7 +30,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || apiUrl,
 	};
 	try {
 		Object.assign(options, option);
@@ -37,11 +46,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error && error.response.body.error.message) {
-			// Try to return the error prettier
-			throw new Error(`Microsoft error response [${error.statusCode}]: ${error.response.body.error.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

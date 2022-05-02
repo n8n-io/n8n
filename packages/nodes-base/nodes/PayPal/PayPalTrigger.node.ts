@@ -10,6 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	payPalApiRequest,
@@ -20,13 +22,12 @@ export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal Trigger',
 		name: 'payPalTrigger',
-		icon: 'file:paypal.png',
+		icon: 'file:paypal.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle PayPal events via webhooks',
 		defaults: {
 			name: 'PayPal Trigger',
-			color: '#32325d',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -76,8 +77,8 @@ export class PayPalTrigger implements INodeType {
 				try {
 					const endpoint = '/notifications/webhooks-event-types';
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					throw new Error(`PayPal Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const event of events.event_types) {
 					const eventName = upperFist(event.name);
@@ -107,13 +108,13 @@ export class PayPalTrigger implements INodeType {
 				const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 				try {
 					await payPalApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					if (err.response && err.response.name === 'INVALID_RESOURCE_ID') {
+				} catch (error) {
+					if (error.response && error.response.name === 'INVALID_RESOURCE_ID') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						return false;
 					}
-					throw new Error(`PayPal Error: ${err}`);
+					throw new NodeApiError(this.getNode(), error);
 				}
 				return true;
 			},
@@ -131,8 +132,8 @@ export class PayPalTrigger implements INodeType {
 				const endpoint = '/notifications/webhooks';
 				try {
 					webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 
 				if (webhook.id === undefined) {
@@ -149,7 +150,7 @@ export class PayPalTrigger implements INodeType {
 					const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 					try {
 						await payPalApiRequest.call(this, endpoint, 'DELETE', {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;
@@ -183,8 +184,8 @@ export class PayPalTrigger implements INodeType {
 			};
 			try {
 				webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
-			} catch (e) {
-				throw e;
+			} catch (error) {
+				throw error;
 			}
 			if (webhook.verification_status !== 'SUCCESS') {
 				return {};

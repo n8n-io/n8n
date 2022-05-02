@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const mediaOperations = [
+export const mediaOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const mediaOperations = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const mediaFields = [
+export const mediaFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                               media:upload                                 */
@@ -100,4 +100,4 @@ export const mediaFields = [
 		placeholder: 'mxc://matrix.org/uploaded-media-uri',
 		required: true,
 	},
-] as INodeProperties[];
+];

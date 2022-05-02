@@ -7,13 +7,15 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	apiRequestAllItems,
+	downloadRecordAttachments,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class AirtableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +28,6 @@ export class AirtableTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Airtable Trigger',
-			color: '#445599',
 		},
 		credentials: [
 			{
@@ -47,11 +48,11 @@ export class AirtableTrigger implements INodeType {
 				description: 'The ID of this base.',
 			},
 			{
-				displayName: 'Table',
+				displayName: 'Table ID',
 				name: 'tableId',
 				type: 'string',
 				default: '',
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access.',
 				required: true,
 			},
 			{
@@ -59,10 +60,30 @@ export class AirtableTrigger implements INodeType {
 				name: 'triggerField',
 				type: 'string',
 				default: '',
-				description: `A Created Time or Last Modified Time field that will be used to sort records. <br>
-				If you do not have a Created Time or Last Modified Time field in your schema, please create one,<br>
-				because without this field trigger will not work correctly.`,
+				description: `A Created Time or Last Modified Time field that will be used to sort records. If you do not have a Created Time or Last Modified Time field in your schema, please create one, because without this field trigger will not work correctly.`,
 				required: true,
+			},
+			{
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
+				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+			},
+			{
+				displayName: 'Download Fields',
+				name: 'downloadFieldNames',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						downloadAttachments: [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
 			},
 			{
 				displayName: 'Additional Fields',
@@ -76,16 +97,14 @@ export class AirtableTrigger implements INodeType {
 						name: 'fields',
 						type: 'string',
 						default: '',
-						description: `Fields to be included in the response.<br>
-						Multiple ones can be set separated by comma. Example: name,id.<br>
-						By default just the trigger field will be included.`,
+						description: `Fields to be included in the response. Multiple ones can be set separated by comma. Example: <code>name, id</code>. By default just the trigger field will be included.`,
 					},
 					{
 						displayName: 'Formula',
 						name: 'formula',
 						type: 'string',
 						default: '',
-						description: `Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href="https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference" target="_blank">here</a>.`,
+						description: `Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href="https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference">here</a>.`,
 					},
 					{
 						displayName: 'View ID',
@@ -100,6 +119,7 @@ export class AirtableTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
+		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 
 		const webhookData = this.getWorkflowStaticData('node');
 
@@ -146,7 +166,13 @@ export class AirtableTrigger implements INodeType {
 
 		if (Array.isArray(records) && records.length) {
 			if (this.getMode() === 'manual' && records[0].fields[triggerField] === undefined) {
-				throw new Error(`The Field "${triggerField}" does not exist.`);
+				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
+			}
+
+			if (downloadAttachments === true) {
+				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+				const data = await downloadRecordAttachments.call(this, records, downloadFieldNames);
+				return [data];
 			}
 
 			return [this.helpers.returnJsonArray(records)];

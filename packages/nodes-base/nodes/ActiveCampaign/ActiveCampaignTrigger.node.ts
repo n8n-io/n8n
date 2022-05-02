@@ -27,7 +27,6 @@ export class ActiveCampaignTrigger implements INodeType {
 		description: 'Handle ActiveCampaign events via webhooks',
 		defaults: {
 			name: 'ActiveCampaign Trigger',
-			color: '#356ae6',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -116,7 +115,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				const endpoint = `/api/3/webhooks/${webhookData.webhookId}`;
 				try {
 					await activeCampaignApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

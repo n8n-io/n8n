@@ -49,6 +49,7 @@ Additional information and example workflows on the n8n.io website: [https://n8n
 docker run -it --rm \
 	--name n8n \
 	-p 5678:5678 \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n
 ```
 
@@ -107,41 +108,15 @@ docker run -it --rm \
 ### Start with other Database
 
 By default n8n uses SQLite to save credentials, past executions and workflows.
-n8n however also supports MongoDB and PostgresDB. To use them simply a few
+n8n however also supports PostgresDB, MySQL and MariaDB. To use them simply a few
 environment variables have to be set.
 
-It is important to still persist the data in the `/root/.n8` folder. The reason
+It is important to still persist the data in the `/root/.n8n` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
 (in case) the n8n tunnel gets used and even more important the encryption key
 for the credentials. If none gets found n8n creates automatically one on
 startup. In case credentials are already saved with a different encryption key
 it can not be used anymore as encrypting it is not possible anymore.
-
-#### Use with MongoDB
-
-> **WARNING**: Use Postgres if possible! Mongo has problems with saving large
-> amounts of data in a document and causes also other problems. So support will
-> may be dropped in the future.
-
-Replace the following placeholders with the actual data:
-  - MONGO_DATABASE
-  - MONGO_HOST
-  - MONGO_PORT
-  - MONGO_USER
-  - MONGO_PASSWORD
-
-```
-docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-e DB_TYPE=mongodb \
-	-e DB_MONGODB_CONNECTION_URL="mongodb://<MONGO_USER>:<MONGO_PASSWORD>@<MONGO_SERVER>:<MONGO_PORT>/<MONGO_DATABASE>" \
-	-v ~/.n8n:/home/node/.n8n \
-	n8nio/n8n \
-	n8n start
-```
-
-A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withMongo/README.md)
 
 #### Use with PostgresDB
 
@@ -203,7 +178,6 @@ with the given name. That makes it possible to load data easily from
 Docker- and Kubernetes-Secrets.
 
 The following environment variables support file input:
-  - DB_MONGODB_CONNECTION_URL_FILE
   - DB_POSTGRESDB_DATABASE_FILE
   - DB_POSTGRESDB_HOST_FILE
   - DB_POSTGRESDB_PASSWORD_FILE
@@ -253,10 +227,10 @@ docker run -it --rm \
 ## Build Docker-Image
 
 ```
-docker build --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
 
 # For example:
-docker build --build-arg N8N_VERSION=0.18.1 -t n8nio/n8n:0.18.1 .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8nio/n8n:0.114.0 .
 ```
 
 
@@ -289,9 +263,7 @@ If you have problems or questions go to our forum, we will then try to help you 
 ## Jobs
 
 If you are interested in working for n8n and so shape the future of the project
-check out our job posts:
-
-[https://n8n.join.com](https://n8n.join.com)
+check out our [job posts](https://apply.workable.com/n8n/)
 
 
 
@@ -305,6 +277,6 @@ Before you upgrade to the latest version make sure to check here if there are an
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) license
+n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)
+Additional information on the license can be found in the [FAQ](https://docs.n8n.io/reference/faq.html#license)

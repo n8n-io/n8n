@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const dealOperations = [
+export const dealOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const dealOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const dealFields = [
+export const dealFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                deal:create                                 */
@@ -357,7 +357,6 @@ export const dealFields = [
 				],
 			},
 		},
-		description: 'deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -589,7 +588,6 @@ export const dealFields = [
 				],
 			},
 		},
-		description: 'deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -657,7 +655,6 @@ export const dealFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -691,7 +688,7 @@ export const dealFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
@@ -715,7 +712,6 @@ export const dealFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},
@@ -894,4 +890,4 @@ export const dealFields = [
 		},
 		description: 'If more than one deal add them separated by ,',
 	},
-] as INodeProperties[];
+];

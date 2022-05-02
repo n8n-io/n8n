@@ -8,7 +8,7 @@ export const resource = {
 	value: 'asset',
 } as INodePropertyOptions;
 
-export const operations = [
+export const operations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -33,9 +33,9 @@ export const operations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fields = [
+export const fields: INodeProperties[] = [
 	{
 		displayName: 'Environment ID',
 		name: 'environmentId',
@@ -159,7 +159,7 @@ export const fields = [
 				type: 'string',
 				placeholder: 'fields.title',
 				default: '',
-				description: 'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma separated operators.',
+				description: 'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma-separated operators.',
 			},
 			{
 				displayName: 'Include',
@@ -201,4 +201,4 @@ export const fields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

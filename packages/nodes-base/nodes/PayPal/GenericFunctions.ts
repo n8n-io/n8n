@@ -10,12 +10,13 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('payPalApi');
-	const env = getEnviroment(credentials!.env as string);
+
+	const credentials = await this.getCredentials('payPalApi');
+	const env = getEnvironment(credentials.env as string);
 	const tokenInfo =  await getAccessToken.call(this);
 	const headerWithAuthentication = Object.assign({ },
 		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' });
@@ -30,33 +31,21 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response.body) {
-			let errorMessage = error.response.body.message;
-			if (error.response.body.details) {
-				errorMessage += ` - Details: ${JSON.stringify(error.response.body.details)}`;
-			}
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-function getEnviroment(env: string): string {
+function getEnvironment(env: string): string {
 	// @ts-ignore
 	return {
-		'sanbox': 'https://api.sandbox.paypal.com',
-		'live': 'https://api.paypal.com',
+		'sanbox': 'https://api-m.sandbox.paypal.com',
+		'live': 'https://api-m.paypal.com',
 	}[env];
 }
 
 async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('payPalApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	const env = getEnviroment(credentials!.env as string);
+	const credentials = await this.getCredentials('payPalApi');
+	const env = getEnvironment(credentials!.env as string);
 	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' });
@@ -72,12 +61,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-		throw new Error(error.response.body);
+		throw new NodeOperationError(this.getNode(), error);
 	}
 }
 

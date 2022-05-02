@@ -1,6 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const personOperations = [
+export const personOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,13 +44,13 @@ export const personOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const personFields = [
+export const personFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                person:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                person:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Fist Name',
 		name: 'firstName',
@@ -136,9 +138,9 @@ export const personFields = [
 		placeholder: 'info@example.com',
 		default: [],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:update                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:update                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Person ID',
 		name: 'personId',
@@ -222,9 +224,9 @@ export const personFields = [
 		placeholder: 'info@example.com',
 		default: [],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Person ID',
 		name: 'personId',
@@ -269,9 +271,9 @@ export const personFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -346,9 +348,9 @@ export const personFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 person:delete                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:delete                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Person ID',
 		name: 'personId',
@@ -367,4 +369,4 @@ export const personFields = [
 		},
 		description: 'Unique identifier for the person.',
 	},
-] as INodeProperties[];
+];

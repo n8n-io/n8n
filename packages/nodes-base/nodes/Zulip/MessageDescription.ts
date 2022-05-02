@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const messageOperations = [
 		default: 'sendPrivate',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                message:sendPrivate                         */
@@ -62,7 +62,7 @@ export const messageFields = [
 			loadOptionsMethod: 'getUsers',
 		},
 		required: true,
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +73,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
 	},
 	{
 		displayName: 'Content',
@@ -118,14 +118,16 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients.',
 	},
 	{
 		displayName: 'Topic',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: 'stream',
+			loadOptionsDependsOn: [
+				'stream',
+			],
 			loadOptionsMethod: 'getTopics',
 		},
 		required: true,
@@ -237,7 +239,7 @@ export const messageFields = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: 'The topic of the message. Only required for stream messages',
+				description: 'The topic of the message. Only required for stream messages.',
 			},
 		],
 	},
@@ -302,6 +304,6 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
-] as INodeProperties[];
+];

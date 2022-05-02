@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const trackOperations = [
+export const trackOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const trackOperations = [
 		default: 'event',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const trackFields = [
+export const trackFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                track:event                                 */
@@ -99,7 +99,7 @@ export const trackFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -341,14 +341,12 @@ export const trackFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -418,7 +416,7 @@ export const trackFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -660,17 +658,15 @@ export const trackFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

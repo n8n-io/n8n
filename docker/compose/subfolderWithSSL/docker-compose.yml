@@ -49,7 +49,7 @@ services:
       - N8N_PROTOCOL=https
       - NODE_ENV=production
       - N8N_PATH
-      - WEBHOOK_TUNNEL_URL=https://${DOMAIN_NAME}${N8N_PATH}
+      - WEBHOOK_URL=https://${DOMAIN_NAME}${N8N_PATH}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_FOLDER}/.n8n:/home/node/.n8n

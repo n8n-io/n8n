@@ -3,6 +3,6 @@ export interface ITask {
 	custom_value1?: string;
 	custom_value2?: string;
 	description?: string;
-	project?: number;
+	project_id?: number;
 	time_log?: string;
 }

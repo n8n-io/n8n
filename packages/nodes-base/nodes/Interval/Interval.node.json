@@ -1,0 +1,37 @@
+{
+	"node": "n8n-nodes-base.interval",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Core Nodes"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.interval/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide",
+				"icon": "🏭",
+				"url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/"
+			},
+			{
+				"label": "Creating triggers for n8n workflows using polling",
+				"icon": "⏲",
+				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
+			}
+		]
+	},
+	"alias": [
+		"Time",
+		"Scheduler",
+		"Polling"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
+	}
+}

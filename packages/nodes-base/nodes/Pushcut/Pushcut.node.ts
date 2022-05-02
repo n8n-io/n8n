@@ -23,10 +23,9 @@ export class Pushcut implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Pushcut API.',
+		description: 'Consume Pushcut API',
 		defaults: {
 			name: 'Pushcut',
-			color: '#1f2957',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -114,8 +113,8 @@ export class Pushcut implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getDevices',
 						},
-						default: '',
-						description: 'List of devices this notification is sent to. (default is all devices)',
+						default: [],
+						description: 'List of devices this notification is sent to. (default is all devices).',
 					},
 					{
 						displayName: 'Input',
@@ -177,7 +176,7 @@ export class Pushcut implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

@@ -6,7 +6,7 @@ import {
 	TLP,
 } from '../interfaces/AlertInterface';
 
-export const alertOperations = [
+export const alertOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const alertOperations = [
 		},
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const alertFields = [
+export const alertFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -82,6 +82,8 @@ export const alertFields = [
 				],
 				operation: [
 					'promote',
+					'markAsRead',
+					'markAsUnread',
 					'merge',
 					'update',
 					'executeResponder',
@@ -174,7 +176,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Severity of the alert. Default=Medium',
+		description: 'Severity of the alert. Default=Medium.',
 	},
 	{
 		displayName: 'Date',
@@ -246,7 +248,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Traffict Light Protocol (TLP). Default=Amber',
+		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
 		displayName: 'Status',
@@ -361,7 +363,7 @@ export const alertFields = [
 		name: 'artifactUi',
 		type: 'fixedCollection',
 		placeholder: 'Add Artifact',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -385,21 +387,10 @@ export const alertFields = [
 						name: 'dataType',
 						type: 'options',
 						default: '',
-						options: [
-							{
-								name: 'IP',
-								value: 'ip',
-							},
-							{
-								name: 'Domain',
-								value: 'domain',
-							},
-							{
-								name: 'File',
-								value: 'file',
-							},
-						],
-						description: '',
+						typeOptions: {
+							loadOptionsMethod: 'loadObservableTypes',
+						},
+						description: 'Type of the observable',
 					},
 					{
 						displayName: 'Data',
@@ -413,7 +404,6 @@ export const alertFields = [
 							},
 						},
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Binary Property',
@@ -427,21 +417,18 @@ export const alertFields = [
 							},
 						},
 						default: 'data',
-						description: '',
 					},
 					{
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Case Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -477,14 +464,11 @@ export const alertFields = [
 			},
 		},
 	},
-	// optional attributs (Create, Promote operations)
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		placeholder: 'Add Field',
-		type: 'collection',
-		required: false,
-		default: '',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -492,6 +476,110 @@ export const alertFields = [
 				],
 				operation: [
 					'create',
+					'update',
+				],
+			},
+		},
+	},
+
+	// optional attributs (Create, Promote operations)
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		placeholder: 'Add Field',
+		type: 'collection',
+		required: false,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'alert',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Case Template',
+				name: 'caseTemplate',
+				type: 'string',
+				default: '',
+				description: `Case template to use when a case is created from this alert.`,
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields (JSON)',
+				name: 'customFieldsJson',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
+				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
+			},
+		],
+	},
+	// optional attributs (Promote operation)
+
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		placeholder: 'Add Field',
+		type: 'collection',
+		required: false,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'alert',
+				],
+				operation: [
 					'promote',
 				],
 			},
@@ -512,7 +600,7 @@ export const alertFields = [
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -529,7 +617,7 @@ export const alertFields = [
 				name: 'artifactUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Artifact',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -543,20 +631,10 @@ export const alertFields = [
 								name: 'dataType',
 								type: 'options',
 								default: '',
-								options: [
-									{
-										name: 'IP',
-										value: 'ip',
-									},
-									{
-										name: 'Domain',
-										value: 'domain',
-									},
-									{
-										name: 'File',
-										value: 'file',
-									},
-								],
+								typeOptions: {
+									loadOptionsMethod: 'loadObservableTypes',
+								},
+								description: 'Type of the observable',
 							},
 							{
 								displayName: 'Data',
@@ -601,6 +679,61 @@ export const alertFields = [
 				],
 			},
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields (JSON)',
+				name: 'customFieldsJson',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
+			},
+			{
 				displayName: 'Case Template',
 				name: 'caseTemplate',
 				type: 'string',
@@ -642,7 +775,7 @@ export const alertFields = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Status',
@@ -707,7 +840,7 @@ export const alertFields = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
@@ -757,6 +890,40 @@ export const alertFields = [
 		},
 		options: [
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -789,7 +956,7 @@ export const alertFields = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Tags',
@@ -827,8 +994,8 @@ export const alertFields = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
-] as INodeProperties[];
+];

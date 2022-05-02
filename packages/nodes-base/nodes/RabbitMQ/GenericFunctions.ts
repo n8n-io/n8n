@@ -6,8 +6,8 @@ import {
 
 const amqplib = require('amqplib');
 
-export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('rabbitmq') as IDataObject;
+export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('rabbitmq');
 
 	const credentialKeys = [
 		'hostname',
@@ -16,6 +16,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 		'password',
 		'vhost',
 	];
+
 	const credentialData: IDataObject = {};
 	credentialKeys.forEach(key => {
 		credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
@@ -25,11 +26,13 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 	if (credentials.ssl === true) {
 		credentialData.protocol = 'amqps';
 
-		optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
-		optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
-		optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 		optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
-		optsData.credentials = amqplib.credentials.external();
+		if (credentials.passwordless === true) {
+			optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
+			optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+			optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
+			optsData.credentials = amqplib.credentials.external();
+		}
 	}
 
 
@@ -51,12 +54,36 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 				options.arguments = additionalArguments;
 			}
 
-			await channel.assertQueue(queue, options);
 
 			resolve(channel);
 		} catch (error) {
 			reject(error);
 		}
 	});
+}
 
+export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const channel = await rabbitmqConnect.call(this, options);
+
+	return new Promise(async (resolve, reject) => {
+		try {
+			await channel.assertQueue(queue, options);
+			resolve(channel);
+		} catch (error) {
+			reject(error);
+		}
+	});
+}
+
+export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const channel = await rabbitmqConnect.call(this, options);
+
+	return new Promise(async (resolve, reject) => {
+		try {
+			await channel.assertExchange(exchange, type, options);
+			resolve(channel);
+		} catch (error) {
+			reject(error);
+		}
+	});
 }

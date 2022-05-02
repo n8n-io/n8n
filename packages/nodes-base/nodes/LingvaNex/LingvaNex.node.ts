@@ -26,7 +26,6 @@ export class LingvaNex implements INodeType {
 		description: 'Consume LingvaNex API',
 		defaults: {
 			name: 'LingvaNex',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -77,7 +76,7 @@ export class LingvaNex implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the<br/> language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
+				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
 				required: true,
 				displayOptions: {
 					show: {
@@ -116,14 +115,13 @@ export class LingvaNex implements INodeType {
 						name: 'platform',
 						type: 'string',
 						default: 'api',
-						description: '',
 					},
 					{
 						displayName: 'Translate Mode',
 						name: 'translateMode',
 						type: 'string',
 						default: '',
-						description: 'Describe the input text format. Possible value is "html" for translating and preserving html structure.</br> If value is not specified or is other than "html" than plain text is translating.',
+						description: 'Describe the input text format. Possible value is "html" for translating and preserving html structure. If value is not specified or is other than "html" than plain text is translating.',
 					},
 				],
 			},
@@ -156,7 +154,7 @@ export class LingvaNex implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];

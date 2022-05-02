@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 import {
 	allCurrencies,
@@ -10,7 +10,7 @@ import {
 	activeCampaignDefaultGetAllProperties,
 } from './GenericFunctions';
 
-export const ecomOrderOperations = [
+export const ecomOrderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const ecomOrderOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ecomOrderFields = [
+export const ecomOrderFields: INodeProperties[] = [
 	// ----------------------------------
 	//         ecommerceOrder:create
 	// ----------------------------------
@@ -73,7 +73,7 @@ export const ecomOrderFields = [
 				],
 			},
 		},
-		description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+		description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 	},
 	{
 		displayName: 'External checkout ID',
@@ -437,7 +437,7 @@ export const ecomOrderFields = [
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 			},
 			{
 				displayName: 'External checkout ID',
@@ -682,4 +682,4 @@ export const ecomOrderFields = [
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('ecommerceOrder', 'getAll'),
 
-] as INodeProperties[];
+];

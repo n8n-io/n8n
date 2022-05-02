@@ -1,6 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const organizationOperations = [
+export const organizationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,13 +44,13 @@ export const organizationOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const organizationFields = [
+export const organizationFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                organization:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                organization:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -114,9 +116,9 @@ export const organizationFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:update                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:update                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization ID',
 		name: 'organizationId',
@@ -178,9 +180,9 @@ export const organizationFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:get                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:get                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization ID',
 		name: 'organizationId',
@@ -225,9 +227,9 @@ export const organizationFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:getAll                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:getAll                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -302,9 +304,9 @@ export const organizationFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:delete                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:delete                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization ID',
 		name: 'organizationId',
@@ -323,4 +325,4 @@ export const organizationFields = [
 		},
 		description: 'Unique identifier for the organization.',
 	},
-] as INodeProperties[];
+];

@@ -1,4 +1,4 @@
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { IPollFunctions } from 'n8n-core';
 import {
@@ -22,14 +22,13 @@ import { IWorkspaceDto } from './WorkpaceInterfaces';
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify Trigger',
-		icon: 'file:clockify.png',
+		icon: 'file:clockify.svg',
 		name: 'clockifyTrigger',
 		group: ['trigger'],
 		version: 1,
-		description: 'Watches Clockify For Events',
+		description: 'Listens to Clockify events',
 		defaults: {
 			name: 'Clockify Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -51,6 +50,7 @@ export class ClockifyTrigger implements INodeType {
 				required: true,
 				default: '',
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Trigger',
 				name: 'watchField',
@@ -117,8 +117,8 @@ export class ClockifyTrigger implements INodeType {
 		webhookData.lastTimeChecked = qs.end;
 
 		if (Array.isArray(result) && result.length !== 0) {
-			result = [this.helpers.returnJsonArray(result)];
+			return [this.helpers.returnJsonArray(result)];
 		}
-		return result;
+		return null;
 	}
 }

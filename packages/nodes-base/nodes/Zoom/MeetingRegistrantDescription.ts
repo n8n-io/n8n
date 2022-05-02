@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const meetingRegistrantOperations = [
+export const meetingRegistrantOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const meetingRegistrantOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const meetingRegistrantFields = [
+export const meetingRegistrantFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
@@ -57,7 +57,6 @@ export const meetingRegistrantFields = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Email',
@@ -93,7 +92,6 @@ export const meetingRegistrantFields = [
 				],
 			},
 		},
-		description: 'First Name.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -153,7 +151,6 @@ export const meetingRegistrantFields = [
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Last Name.',
 			},
 			{
 				displayName: 'Occurrence IDs',
@@ -229,7 +226,6 @@ export const meetingRegistrantFields = [
 
 				],
 				default: '',
-				description: 'Role in purchase process.',
 			},
 			{
 				displayName: 'State',
@@ -267,7 +263,6 @@ export const meetingRegistrantFields = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Return All',
@@ -333,7 +328,6 @@ export const meetingRegistrantFields = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: `Occurrence ID.`,
 			},
 			{
 				displayName: 'Status',
@@ -378,7 +372,6 @@ export const meetingRegistrantFields = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Action',
@@ -434,10 +427,9 @@ export const meetingRegistrantFields = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurrence ID.',
 			},
 
 		],
 	},
 
-] as INodeProperties[];
+];

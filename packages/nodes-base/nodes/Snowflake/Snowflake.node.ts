@@ -16,19 +16,18 @@ import {
 	execute,
 } from './GenericFunctions';
 
-import * as snowflake from 'snowflake-sdk';
+import snowflake from 'snowflake-sdk';
 
 export class Snowflake implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Snowflake',
 		name: 'snowflake',
-		icon: 'file:snowflake.png',
+		icon: 'file:snowflake.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, add and update data in Snowflake.',
+		description: 'Get, add and update data in Snowflake',
 		defaults: {
 			name: 'Snowflake',
-			color: '#5ebbeb',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -72,7 +71,7 @@ export class Snowflake implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -119,7 +118,7 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 
 
@@ -169,14 +168,14 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
 			},
 
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('snowflake') as unknown as snowflake.ConnectionOptions;
+		const credentials = await this.getCredentials('snowflake') as unknown as snowflake.ConnectionOptions;
 		const returnData: IDataObject[] = [];
 		let responseData;
 
