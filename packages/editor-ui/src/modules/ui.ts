@@ -145,9 +145,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 	},
 	actions: {
-		closeModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
-			context.commit('closeModal', modalKey);
-		},
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
 		},
