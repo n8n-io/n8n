@@ -71,7 +71,6 @@ export default mixins(
 		return {
 			loading: false,
 			mounted: false,
-			deleting: false,
 			apiKey: '',
 		};
 	},
@@ -117,16 +116,12 @@ export default mixins(
 			}
 		},
 		async deleteApiKey() {
-			this.deleting = true;
-
 			try {
 				await this.$store.dispatch('settings/deleteApiKey');
 				this.$showMessage({ title: this.$locale.baseText("settings.api.delete.toast"), type: 'success' });
 				this.apiKey = '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));
-			} finally {
-				this.deleting = false;
 			}
 		},
 	},
