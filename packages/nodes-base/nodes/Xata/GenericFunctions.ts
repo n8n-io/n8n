@@ -2,7 +2,6 @@ import {
 	IExecuteFunctions
 } from 'n8n-core';
 
-
 import {
 	IDataObject,
 	IHttpRequestMethods,
@@ -10,6 +9,37 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
+export function getAdditionalOptions(additionalOptions: IDataObject) {
+
+	const body = {} as IDataObject;
+
+	for (const key in additionalOptions) {
+
+		if (key === 'ignoreColumns' && additionalOptions[key] !== '') {
+
+			body[key] = (additionalOptions[key] as string[]).map(el => typeof el === 'string' ? el.trim() : null);
+
+		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key] !== '') {
+
+			try {
+
+				body[key] = JSON.parse(additionalOptions[key] as string) as IDataObject;
+
+			} catch (error) {
+
+				throw new Error(`Cannot parse ${key} to JSON. Check the ${key} (JSON) option`);
+
+			}
+
+		} else if (additionalOptions[key]) {
+
+			body[key] = additionalOptions[key];
+
+		}
+	}
+
+	return body;
+}
 
 export function getItem(this: IExecuteFunctions, index: number, item: IDataObject) {
 
@@ -45,7 +75,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 export function filterItemsColumns(item: IDataObject, filterColumns: string[], ignore: boolean) {
 
-	const returnData = ignore ? item : {} as IDataObject;
+	const returnData = ignore ? item : {} as IDataObject; // if ignore column option is used, take the data and eliminate columns
 
 	for (const key of filterColumns) {
 
@@ -65,37 +95,7 @@ export function filterItemsColumns(item: IDataObject, filterColumns: string[], i
 
 }
 
-export function getAdditionalOptions(additionalOptions: IDataObject) {
 
-	const body = {} as IDataObject;
-
-	for (const key in additionalOptions) {
-
-		if (key === 'ignoreColumns' && additionalOptions[key] !== '') {
-
-			body[key] = (additionalOptions[key] as string[]).map(el => typeof el === 'string' ? el.trim() : null);
-
-		} else if ((key === 'filter' || key === 'sort') && additionalOptions[key] !== '') {
-
-			try {
-
-				body[key] = JSON.parse(additionalOptions[key] as string) as IDataObject;
-
-			} catch (error) {
-
-				throw new Error(`Cannot parse ${key} to JSON. Check the ${key} (JSON) option`);
-
-			}
-
-		} else if (additionalOptions[key]) {
-
-			body[key] = additionalOptions[key];
-
-		}
-	}
-
-	return body;
-}
 
 export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, option: IDataObject = {}, url?: string): Promise<any> { // tslint:disable-line:no-any
 
@@ -120,8 +120,8 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 	try {
 
-		const res = await this.helpers.httpRequest(options);
-		return res;
+		const response = await this.helpers.httpRequest(options);
+		return response;
 
 	} catch (error) {
 
@@ -132,25 +132,43 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 export async function xataApiList(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, returnAll: boolean, url?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const options: IHttpRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${apiKey}`,
-		},
-		method,
-		body,
-		url: url || `https://${slug}.xata.sh/db/${database}:${branch}/tables/${table}/${resource}`,
-		json: true,
 
-	};
-
-	const results = new Array();
+	let records = new Array();
 
 	if (returnAll) {
 
 		try {
 
-			await xataApiFetchAll.call(this, options, results);
+			let arrayLength = 0 as number;
+
+			do {
+
+				const response = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, resource, body);
+				const crs = response.meta.page.cursor;
+				const recs = response.records;
+
+				for (const rec of recs) {
+
+					records.push(rec);
+
+				}
+
+				Object.assign(body, { 'page': { 'after': crs } });
+
+				if (body!.hasOwnProperty('filter')) {
+
+					delete body['filter']; // if set, filter already encoded in cursor.
+
+				}
+				if (body!.hasOwnProperty('sort')) {
+
+					delete body['sort']; // if set, sort already encoded in cursor.
+
+				}
+
+				arrayLength = recs.length as number;
+
+			} while (arrayLength !== 0);
 
 		} catch (error) {
 
@@ -165,22 +183,9 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 		try {
 
-			const response = await this.helpers.httpRequest(options);
-			const records = response.records;
-			let numRecords = 0;
-
-			for (const item of records) {
-
-				results.push(item);
-				numRecords++;
-
-				if (numRecords === limit) {
-
-					return results;
-
-				}
-
-			}
+			Object.assign(body, { 'page': { 'size': limit } });
+			const response = await xataApiRequest.call(this,apiKey,'POST',slug,database,branch,table,resource,body);
+			records = response.records;
 
 		} catch (error) {
 
@@ -188,50 +193,8 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 		}
 
-
 	}
 
-	return results;
-
-}
-
-
-
-export async function xataApiFetchAll(this: IExecuteFunctions, options: IHttpRequestOptions, results: IDataObject[], cursor?: string): Promise<any> { // tslint:disable-line:no-any
-
-	if (cursor) {
-
-		Object.assign(options['body'], { 'page': { 'after': cursor } });
-
-		if (options['body']!.hasOwnProperty('filter')) {
-
-			delete (options['body'] as IDataObject)['filter']; // if set, filter already encoded in cursor.
-
-		}
-		if (options['body']!.hasOwnProperty('sort')) {
-
-			delete (options['body'] as IDataObject)['sort']; // if set, sort already encoded in cursor.
-
-		}
-
-	}
-
-	const res = await this.helpers.httpRequest(options);
-	const records = res.records;
-
-	if (!records || records.length === 0) {
-
-		return;
-
-	}
-
-	for (const item of records) {
-
-		results.push(item);
-
-	}
-
-	const crs = res.meta.page.cursor as string;
-	await xataApiFetchAll.call(this, options, results, crs);
+	return records;
 
 }
