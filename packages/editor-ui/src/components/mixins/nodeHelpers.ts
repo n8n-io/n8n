@@ -1,4 +1,5 @@
 import {
+	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 
@@ -32,11 +33,15 @@ import { restApi } from '@/components/mixins/restApi';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from 'vuex';
 
 export const nodeHelpers = mixins(
 	restApi,
 )
 	.extend({
+		computed: {
+			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
+		},
 		methods: {
 
 			// Returns the parameter value
@@ -198,6 +203,44 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
+
+				if (
+					node.type === HTTP_REQUEST_NODE_TYPE &&
+					node.typeVersion === 2 &&
+					node.parameters.authenticateWith === 'genericAuth' &&
+					node.credentials === undefined // @TODO Or if no currently selected generic auth cred
+				) {
+					const { genericAuthType } = node.parameters as { genericAuthType: string };
+					const credentialType = this.getCredentialTypeByName(genericAuthType);
+
+					//
+
+					return {
+						credentials: {
+							[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
+						},
+					};
+				}
+
+				if (
+					node.type === HTTP_REQUEST_NODE_TYPE &&
+					node.typeVersion === 2 &&
+					node.parameters.authenticateWith === 'nodeCredential' &&
+					node.credentials === undefined // @TODO or if no currently selected service-specific cred
+				) {
+					const { nodeCredentialType } = node.parameters as { nodeCredentialType?: string };
+
+					if (!nodeCredentialType) return null;
+
+					const credentialType = this.getCredentialTypeByName(nodeCredentialType);
+
+					return {
+						credentials: {
+							[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
+						},
+					};
+				}
+
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
 					if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) !== true) {

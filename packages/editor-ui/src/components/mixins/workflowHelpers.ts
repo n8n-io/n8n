@@ -5,6 +5,7 @@ import {
 	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
+	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -326,10 +327,17 @@ export const workflowHelpers = mixins(
 					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
+					const fullAccess = node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+
 					// Add the node credentials if there are some set and if they should be displayed
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+							if (fullAccess) {
+								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								continue;
+							}
+
 							const credentialTypeDescription = nodeType.credentials
 								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
 

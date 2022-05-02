@@ -1,5 +1,6 @@
 <template>
-	<div class="paramter-input-list-wrapper">
+	<div class="parameter-input-list-wrapper" :class="{ 'has-reordered-credentials-input': showCredentialsAfter }">
+		<slot />
 		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
@@ -84,6 +85,7 @@
 <script lang="ts">
 
 import {
+	INode,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -116,6 +118,7 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'showCredentialsAfter', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -258,7 +261,21 @@ export default mixins(
 </script>
 
 <style lang="scss">
-.paramter-input-list-wrapper {
+.parameter-input-list-wrapper {
+	display: flex;
+	flex-direction: column;
+	padding-top: var(--spacing-xs);
+
+	&.has-reordered-credentials-input {
+		.node-credentials + div {
+			order: -2;
+		}
+
+		.node-credentials + div + div {
+			order: -1;
+		}
+	}
+
 	.delete-option {
 		display: none;
 		position: absolute;
@@ -291,7 +308,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
-		margin: var(--spacing-xs) 0;
+		margin: 0 0 var(--spacing-xs);
 
 		>.delete-option {
 			top: var(--spacing-5xs);
