@@ -63,6 +63,7 @@ export default mixins(copyPaste, showMessage).extend({
 		font-family: Monaco, Consolas;
 		line-height: 1.5;
 		font-size: var(--font-size-s);
+		color: var(--color-text-base);
 		overflow-wrap: break-word;
 	}
 
