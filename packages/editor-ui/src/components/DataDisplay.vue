@@ -55,7 +55,7 @@
 				/>
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
-				<div :class="{[$style.dragButton]: true, [$style.visible]: isDragging}" @mousedown="onDragStart">
+				<div v-if="!isTriggerNode" :class="{[$style.dragButton]: true, [$style.visible]: isDragging}" @mousedown="onDragStart">
 					<div :class="$style.grid">
 						<div>
 							<div></div>
@@ -101,6 +101,7 @@ import { mapGetters } from 'vuex';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
 const MAIN_PANEL_WIDTH = 350;
+const SIDE_MARGIN = 24;
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -243,8 +244,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		linked(): boolean {
 			return this.linkedRuns && this.canLinkRuns;
 		},
+		inputPanelMargin(): number {
+			return this.isTriggerNode ? 0: 80;
+		},
 		mainPanelStyles(): { left: string } {
-			const padding = 24 + 80; // padding + min width for panels
+			const padding = SIDE_MARGIN + this.inputPanelMargin; // padding + min width for panels
 			let pos = this.mainPanelPosition + MAIN_PANEL_WIDTH / 2;
 			pos = Math.max(padding, pos - MAIN_PANEL_WIDTH);
 			pos = Math.min(pos, this.windowWidth - MAIN_PANEL_WIDTH - padding);
@@ -254,16 +258,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			};
 		},
 		inputPanelStyles(): {width: string} {
-			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - 24;
-			width = Math.min(width, this.windowWidth - 24 * 2 - 80 - MAIN_PANEL_WIDTH);
+			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
+			width = Math.min(width, this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH);
 			width = Math.max(320, width);
 			return {
 				width: `${width}px`,
 			};
 		},
 		outputPanelStyles(): {width: string} {
-			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - 24;
-			width = Math.min(width, this.windowWidth - 24 * 2 - 80 - MAIN_PANEL_WIDTH);
+			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
+			width = Math.min(width, this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH);
 			width = Math.max(320, width);
 			return {
 				width: `${width}px`,
@@ -280,7 +284,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.triggerWaitingWarningEnabled = false;
 
 				this.setTotalWidth();
-				this.mainPanelPosition = this.windowWidth / 2 ;
+				this.mainPanelPosition = this.isTriggerNode ? 0 : this.windowWidth / 2;
 
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
