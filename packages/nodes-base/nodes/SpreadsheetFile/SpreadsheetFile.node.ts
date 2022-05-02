@@ -4,7 +4,6 @@ import {
 } from 'lodash';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -454,24 +453,15 @@ export class SpreadsheetFile implements INodeType {
 					const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 
-				if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
-					// Property did not get found on item
-					continue;
-				}
-				// Read the binary spreadsheet data
-				let binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-				if (options.delimiter) {
-					binaryData = Buffer.concat([new Buffer('sep=' + options.delimiter + '\n'), binaryData])
-				}
-				let workbook;
-				if (options.readAsString === true) {
-					workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });
-				} else {
-					workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
-				}
-
+					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
+						// Property did not get found on item
+						continue;
+					}
 					// Read the binary spreadsheet data
-					const binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					let binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					if (options.delimiter) {
+						binaryData = Buffer.concat([Buffer.from('sep=' + options.delimiter + '\n'), binaryData])
+					}
 					let workbook;
 					if (options.readAsString === true) {
 						workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });
@@ -535,8 +525,6 @@ export class SpreadsheetFile implements INodeType {
 					throw error;
 				}
 			}
-
-			return this.prepareOutputData(newItems);
 		} else if (operation === 'fromJson') {
 			// Read data from spreadsheet string to workflow
 
@@ -587,8 +575,6 @@ export class SpreadsheetFile implements INodeType {
 					newItems.push({ json: rowData } as INodeExecutionData);
 				}
 			}
-
-			return this.prepareOutputData(newItems);
 		} else if (operation === 'toFile') {
 			try {
 
@@ -604,70 +590,50 @@ export class SpreadsheetFile implements INodeType {
 					item = items[itemIndex];
 					itemData.push(flattenObject(item.json));
 				}
-			let wbout;
+				const ws = xlsxUtils.json_to_sheet(itemData);
+				let wbout;
 			
-			if (fileFormat === 'csv') {
-				wbout = Buffer.from(xlsxUtils.sheet_to_csv(ws, {
-					FS: options.delimiter ? options.delimiter as string : ','
-				}));
-			} else {
-				const wopts: WritingOptions = {
-					bookSST: false,
-					type: 'buffer',
-				};
-
-				if (fileFormat === 'html') {
-					wopts.bookType = 'html';
-				} else if (fileFormat === 'rtf') {
-					wopts.bookType = 'rtf';
-				} else if (fileFormat === 'ods') {
-					wopts.bookType = 'ods';
-					if (options.compression) {
-						wopts.compression = true;
-					}
-				} else if (fileFormat === 'xls') {
-					wopts.bookType = 'xls';
-				} else if (fileFormat === 'xlsx') {
-					wopts.bookType = 'xlsx';
-					if (options.compression) {
-						wopts.compression = true;
-					}
-				}
-
-				const wopts: WritingOptions = {
-					bookSST: false,
-					type: 'buffer',
-				};
-
 				if (fileFormat === 'csv') {
-					wopts.bookType = 'csv';
-				} else if (fileFormat === 'html') {
-					wopts.bookType = 'html';
-				} else if (fileFormat === 'rtf') {
-					wopts.bookType = 'rtf';
-				} else if (fileFormat === 'ods') {
-					wopts.bookType = 'ods';
-					if (options.compression) {
-						wopts.compression = true;
-					}
-				} else if (fileFormat === 'xls') {
-					wopts.bookType = 'xls';
-				} else if (fileFormat === 'xlsx') {
-					wopts.bookType = 'xlsx';
-					if (options.compression) {
-						wopts.compression = true;
-					}
-				}
+					wbout = Buffer.from(xlsxUtils.sheet_to_csv(ws, {
+						FS: options.delimiter ? options.delimiter as string : ','
+					}));
+				} else {
+					const wopts: WritingOptions = {
+						bookSST: false,
+						type: 'buffer',
+					};
 
-				// Convert the data in the correct format
-				const sheetName = options.sheetName as string || 'Sheet';
-				const wb: WorkBook = {
-					SheetNames: [sheetName],
-					Sheets: {
-						[sheetName]: ws,
-					},
-				};
-				const wbout = xlsxWrite(wb, wopts);
+					if (fileFormat === 'csv') {
+						wopts.bookType = 'csv';
+					} else if (fileFormat === 'html') {
+						wopts.bookType = 'html';
+					} else if (fileFormat === 'rtf') {
+						wopts.bookType = 'rtf';
+					} else if (fileFormat === 'ods') {
+						wopts.bookType = 'ods';
+						if (options.compression) {
+							wopts.compression = true;
+						}
+					} else if (fileFormat === 'xls') {
+						wopts.bookType = 'xls';
+					} else if (fileFormat === 'xlsx') {
+						wopts.bookType = 'xlsx';
+						if (options.compression) {
+							wopts.compression = true;
+						}
+					}
+
+					// Convert the data in the correct format
+					const sheetName = options.sheetName as string || 'Sheet';
+					const wb: WorkBook = {
+						SheetNames: [sheetName],
+						Sheets: {
+							[sheetName]: ws,
+						},
+					};
+
+					wbout = xlsxWrite(wb, wopts);
+				}
 
 				// Create a new item with only the binary spreadsheet data
 				const newItem: INodeExecutionData = {
@@ -682,7 +648,15 @@ export class SpreadsheetFile implements INodeType {
 
 				newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, fileName);
 
-			return this.prepareOutputData([newItem]);
+				newItems.push(newItem);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					newItems.push({json:{ error: error.message }});
+				} else {
+					throw error;
+				}
+			}
 		} else if (operation === 'toJson') {
 			const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
 			const destinationKey = this.getNodeParameter('destinationKey', 0) as string;
@@ -715,10 +689,10 @@ export class SpreadsheetFile implements INodeType {
 		} else {
 			if (this.continueOnFail()) {
 				return this.prepareOutputData([{json:{ error: `The operation "${operation}" is not supported!` }}]);
-			}else{
+			} else {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
 		}
-		return this.prepareOutputData(newItems);
+		return this.prepareOutputData(newItems); 
 	}
 }
