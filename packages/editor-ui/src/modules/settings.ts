@@ -75,9 +75,6 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
-		apiKey: (state): string | undefined => {
-			return state.api.key;
-		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
