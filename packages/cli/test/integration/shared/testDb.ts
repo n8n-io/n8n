@@ -16,7 +16,9 @@ import { categorize } from './utils';
 
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
-import type { CollectionName, CredentialPayload } from './types';
+import type { CollectionName, CredentialPayload, InstalledNodePayload, InstalledPackagePayload } from './types';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
+import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -228,6 +230,29 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	}
 
 	return Db.collections.User.save(shell);
+}
+
+// --------------------------------------
+// Installed nodes and packages creation
+// --------------------------------------
+
+export async function saveInstalledPackage(installedPackagePayload: InstalledPackagePayload): Promise<InstalledPackages> {
+	const newInstalledPackage = new InstalledPackages();
+
+	Object.assign(newInstalledPackage, installedPackagePayload);
+
+
+	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
+	return savedInstalledPackage;
+}
+
+export async function saveInstalledNode(installedNodePayload: InstalledNodePayload): Promise<InstalledNodes> {
+	const newInstalledNode = new InstalledNodes();
+
+	Object.assign(newInstalledNode, installedNodePayload);
+
+	const savedInstalledNode = await Db.collections.InstalledNodes.save(newInstalledNode);
+	return savedInstalledNode;
 }
 
 // ----------------------------------

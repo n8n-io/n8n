@@ -62,3 +62,11 @@ export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
  * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
  */
 export const SMTP_TEST_TIMEOUT = 30_000;
+
+/**
+ * Nodes
+ */
+
+
+export const CURRENT_PACKAGE_VERSION = '0.1.0';
+export const UPDATED_PACKAGE_VERSION = '0.2.0';

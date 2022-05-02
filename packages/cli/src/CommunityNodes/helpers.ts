@@ -10,11 +10,12 @@ import {
 	NPM_PACKAGE_NOT_FOUND_ERROR,
 	RESPONSE_ERROR_MESSAGES,
 } from '../constants';
-import { IParsedNpmPackageName } from '../Interfaces';
+import { NpmUpdatesAvailable, ParsedNpmPackageName } from '../Interfaces';
+import { InstalledPackages } from '../databases/entities/InstalledPackages';
 
 const execAsync = promisify(exec);
 
-export const parsePackageName = (originalString: string | undefined): IParsedNpmPackageName => {
+export const parsePackageName = (originalString: string | undefined): ParsedNpmPackageName => {
 	if (!originalString) {
 		throw new Error('Package name was not provided');
 	}
@@ -69,3 +70,25 @@ export const executeCommand = async (command: string): Promise<string> => {
 		throw error;
 	}
 };
+
+export function crossInformationPackages(
+	installedPackages: InstalledPackages[],
+	availableUpdates?: NpmUpdatesAvailable,
+): InstalledPackages[] {
+	if (!availableUpdates) {
+		return installedPackages;
+	}
+	const hydratedPackageList = [];
+
+	for (let i = 0; i < installedPackages.length; i++) {
+		const installedPackage = installedPackages[i];
+		if (availableUpdates[installedPackage.packageName]) {
+			// TODO: Check what's the best way to remove this ts-ignore
+			// @ts-ignore
+			installedPackage.updateAvailable = availableUpdates[installedPackage.packageName].latest;
+		}
+		hydratedPackageList.push(installedPackage);
+	}
+
+	return hydratedPackageList;
+}
