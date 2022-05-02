@@ -1,4 +1,4 @@
-import { executeCommand, parsePackageName } from '../../src/CommunityNodes/helpers';
+import { crossInformationPackages, executeCommand, parsePackageName } from '../../src/CommunityNodes/helpers';
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_NOT_FOUND_ERROR, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 jest.mock('fs/promises');
@@ -6,6 +6,10 @@ import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 
 jest.mock('child_process');
 import { exec } from 'child_process';
+import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
+import { installedNodePayload, installedPackagePayload } from '../integration/shared/utils';
+import { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
+import { NpmUpdatesAvailable } from '../../src/Interfaces';
 
 describe('CommunityNodesHelper', () => {
 
@@ -126,4 +130,86 @@ describe('CommunityNodesHelper', () => {
 			expect(fsMkdir).toHaveBeenCalledTimes(0);
 		});
 	});
+
+
+	describe('crossInformationPackage', () => {
+
+		it('Should return same list if availableUpdates is undefined', () => {
+			const fakePackages = generateListOfFakeInstalledPackages();
+			const crossedData = crossInformationPackages(fakePackages);
+			expect(crossedData).toEqual(fakePackages);
+		});
+
+		it ('Should correctly match update versions for packages', () => {
+			const fakePackages = generateListOfFakeInstalledPackages();
+
+			const updates: NpmUpdatesAvailable = {
+				[fakePackages[0].packageName]: {
+					current: fakePackages[0].installedVersion,
+					wanted: fakePackages[0].installedVersion,
+					latest: '0.2.0',
+					location: fakePackages[0].packageName,
+				},
+				[fakePackages[1].packageName]: {
+					current: fakePackages[0].installedVersion,
+					wanted: fakePackages[0].installedVersion,
+					latest: '0.3.0',
+					location: fakePackages[0].packageName,
+				}
+			};
+
+			const crossedData = crossInformationPackages(fakePackages, updates);
+
+			// @ts-ignore
+			expect(crossedData[0].updateAvailable).toBe('0.2.0');
+			// @ts-ignore
+			expect(crossedData[1].updateAvailable).toBe('0.3.0');
+
+		});
+
+		it ('Should correctly match update versions for single package', () => {
+			const fakePackages = generateListOfFakeInstalledPackages();
+
+			const updates: NpmUpdatesAvailable = {
+				[fakePackages[1].packageName]: {
+					current: fakePackages[0].installedVersion,
+					wanted: fakePackages[0].installedVersion,
+					latest: '0.3.0',
+					location: fakePackages[0].packageName,
+				}
+			};
+
+			const crossedData = crossInformationPackages(fakePackages, updates);
+
+			// @ts-ignore
+			expect(crossedData[0].updateAvailable).toBeUndefined();
+			// @ts-ignore
+			expect(crossedData[1].updateAvailable).toBe('0.3.0');
+
+		});
+
+	});
 });
+
+/**
+ * Generates a list with 2 packages, one with a single node and
+ * another with 2 nodes
+ * @returns
+ */
+function generateListOfFakeInstalledPackages(): InstalledPackages[] {
+	const fakeInstalledPackage1 = new InstalledPackages();
+	Object.assign(fakeInstalledPackage1, installedPackagePayload());
+	const fakeInstalledNode1 = new InstalledNodes();
+	Object.assign(fakeInstalledNode1, installedNodePayload(fakeInstalledPackage1.packageName));
+	fakeInstalledPackage1.installedNodes = [fakeInstalledNode1];
+
+	const fakeInstalledPackage2 = new InstalledPackages();
+	Object.assign(fakeInstalledPackage2, installedPackagePayload());
+	const fakeInstalledNode2 = new InstalledNodes();
+	Object.assign(fakeInstalledNode2, installedNodePayload(fakeInstalledPackage2.packageName));
+	const fakeInstalledNode3 = new InstalledNodes();
+	Object.assign(fakeInstalledNode3, installedNodePayload(fakeInstalledPackage2.packageName));
+	fakeInstalledPackage2.installedNodes = [fakeInstalledNode2, fakeInstalledNode3];
+
+	return [fakeInstalledPackage1, fakeInstalledPackage2];
+}

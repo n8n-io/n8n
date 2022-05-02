@@ -15,7 +15,7 @@ export type SmtpTestAccount = {
 	};
 };
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'nodes';
 
 export type CredentialPayload = {
 	name: string;
@@ -28,3 +28,15 @@ export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
 	{ user }: { user: User },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
+
+export type InstalledPackagePayload = {
+	packageName: string;
+	installedVersion: string;
+}
+
+export type InstalledNodePayload = {
+	name: string;
+	type: string;
+	latestVersion: string;
+	package: string;
+}

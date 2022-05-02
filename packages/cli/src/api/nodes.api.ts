@@ -6,7 +6,7 @@ import { getLogger } from '../Logger';
 import { ResponseHelper, LoadNodesAndCredentials, Push } from '..';
 import { NodeRequest } from '../requests';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { executeCommand } from '../CommunityNodes/helpers';
+import { crossInformationPackages, executeCommand } from '../CommunityNodes/helpers';
 import {
 	getAllInstalledPackages,
 	removePackageFromDatabase,
@@ -14,6 +14,7 @@ import {
 } from '../CommunityNodes/packageModel';
 import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
 import config = require('../../config');
+import { NpmUpdatesAvailable } from '../Interfaces';
 
 export const nodesController = express.Router();
 
@@ -96,7 +97,13 @@ nodesController.post(
 nodesController.get(
 	'/',
 	ResponseHelper.send(async () => {
-		let pendingUpdates;
+		const packages = await getAllInstalledPackages();
+
+		if (packages.length === 0) {
+			return packages;
+		}
+
+		let pendingUpdates: NpmUpdatesAvailable | undefined;
 		try {
 			// Command succeeds when there are no updates.
 			// NPM handles this oddly. It exits with code 1 when there are updates.
@@ -110,20 +117,8 @@ nodesController.get(
 				pendingUpdates = JSON.parse(error.stdout);
 			}
 		}
-		const packages = await getAllInstalledPackages();
-
-		if (pendingUpdates !== undefined) {
-			for (let i = 0; i < packages.length; i++) {
-				const installedPackage = packages[i];
-				// eslint-disable-next-line no-prototype-builtins, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-				if (pendingUpdates.hasOwnProperty(installedPackage.packageName)) {
-					// @ts-ignore
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-					installedPackage.updateAvailable = pendingUpdates[installedPackage.packageName].latest;
-				}
-			}
-		}
-		return packages;
+		const hydratedPackages = crossInformationPackages(packages, pendingUpdates);
+		return hydratedPackages;
 	}),
 );
 

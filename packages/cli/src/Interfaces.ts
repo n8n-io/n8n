@@ -658,9 +658,22 @@ export interface IWorkflowExecuteProcess {
 
 export type WhereClause = Record<string, { id: string }>;
 
-export interface IParsedNpmPackageName {
+/** ********************************
+ * Commuinity nodes
+ ******************************** */
+
+export type ParsedNpmPackageName = {
 	packageName: string;
 	originalString: string;
 	scope?: string;
 	version?: string;
-}
+};
+
+export type NpmUpdatesAvailable = {
+	[packageName: string]: {
+		current: string;
+		wanted: string;
+		latest: string;
+		location: string;
+	};
+};

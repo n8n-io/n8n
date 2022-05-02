@@ -695,7 +695,7 @@ class App {
 		// ----------------------------------------
 		// Packages and nodes management
 		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/node`, nodesController);
+		this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
 
 		// ----------------------------------------
 		// Healthcheck
