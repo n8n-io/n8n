@@ -58,7 +58,6 @@ import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
 import CopyInput from '../components/CopyInput.vue';
-import {DELETE_API_KEY_MODAL_KEY} from "../constants";
 
 export default mixins(
 	showMessage,
