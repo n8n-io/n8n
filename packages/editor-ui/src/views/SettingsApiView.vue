@@ -9,13 +9,12 @@
 
 			<div v-if="apiKey">
 				<p class="mb-s">
-					<n8n-text color="text-base">
-						<font-awesome-icon icon="info-circle" />
+					<n8n-info-tip>
 						{{ $locale.baseText('settings.api.view.info') }}
-						<n8n-link to="https://docs.n8n.io/api/">
+						<n8n-link to="https://docs.n8n.io/api/" size="small" :bold="true">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
-					</n8n-text>
+					</n8n-info-tip>
 				</p>
 				<n8n-card :class="$style.card">
 					<span :class="$style.delete">
@@ -31,22 +30,14 @@
 					/>
 				</n8n-card>
 			</div>
-			<div :class="$style.placeholder" v-else-if="mounted">
-				<n8n-heading size="xlarge">
-					{{ $locale.baseText('settings.api.create.title') }}
-				</n8n-heading>
-				<p class="mt-2xs mb-l">
-					<n8n-text color="text-base">
-						{{$locale.baseText('settings.api.create.description')}}
-						<n8n-link to="https://docs.n8n.io/api/">
-							{{$locale.baseText('settings.api.create.description.link')}}
-						</n8n-link>
-					</n8n-text>
-				</p>
-				<n8n-button :loading="loading" size="large" class="mt-l" @click="createApiKey">
-					{{$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')}}
-				</n8n-button>
-			</div>
+			<n8n-action-box
+				v-else-if="mounted"
+				:heading="$locale.baseText('settings.api.create.title')"
+				:buttonText="$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')"
+				:description="$locale.baseText('settings.api.create.description')"
+				:loading="loading"
+				@click="createApiKey"
+			/>
 		</div>
 	</SettingsView>
 </template>
@@ -143,16 +134,6 @@ export default mixins(
 	*:first-child {
 		flex-grow: 1;
 	}
-}
-
-.placeholder {
-	border-radius: var(--border-radius-xlarge);
-	border: 2px dashed var(--color-foreground-light);
-	height: 245px;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	flex-direction: column;
 }
 
 .card {
