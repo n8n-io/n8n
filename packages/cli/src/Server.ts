@@ -35,15 +35,12 @@ import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
-	FindConditions,
 	FindManyOptions,
 	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
-	LessThan,
 	LessThanOrEqual,
-	MoreThan,
 	Not,
 	Raw,
 } from 'typeorm';
@@ -61,13 +58,7 @@ import { createHmac, randomBytes } from 'crypto';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
-import {
-	BinaryDataManager,
-	Credentials,
-	IBinaryDataConfig,
-	LoadNodeParameterOptions,
-	UserSettings,
-} from 'n8n-core';
+import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
 
 import {
 	ICredentialType,
@@ -154,7 +145,6 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type {
 	AuthenticatedRequest,
 	CredentialRequest,
@@ -169,7 +159,11 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
+import {
+	getInstanceBaseUrl,
+	isEmailSetUp,
+	isUserManagementEnabled,
+} from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 
 require('body-parser-xml')(bodyParser);
@@ -315,9 +309,7 @@ class App {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled:
-					config.getEnv('userManagement.disabled') === false ||
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+				enabled: isUserManagementEnabled(),
 				showSetupOnFirstLoad:
 					config.getEnv('userManagement.disabled') === false &&
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -353,9 +345,7 @@ class App {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled:
-				config.getEnv('userManagement.disabled') === false ||
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			enabled: isUserManagementEnabled(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -601,12 +591,14 @@ class App {
 						return;
 					}
 
-					try {
-						const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-						await resolveJwt(authCookie);
-					} catch (error) {
-						res.status(401).send('Unauthorized');
-						return;
+					if (isUserManagementEnabled()) {
+						try {
+							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
+							await resolveJwt(authCookie);
+						} catch (error) {
+							res.status(401).send('Unauthorized');
+							return;
+						}
 					}
 
 					this.push.add(req.query.sessionId as string, req, res);
@@ -790,7 +782,7 @@ class App {
 				const { tags: tagIds } = req.body;
 
 				if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-					newWorkflow.tags = await Db.collections.Tag!.findByIds(tagIds, {
+					newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
 						select: ['id', 'name'],
 					});
 				}
@@ -802,7 +794,7 @@ class App {
 				await getConnection().transaction(async (transactionManager) => {
 					savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-					const role = await Db.collections.Role!.findOneOrFail({
+					const role = await Db.collections.Role.findOneOrFail({
 						name: 'owner',
 						scope: 'workflow',
 					});
@@ -912,13 +904,13 @@ class App {
 				}
 
 				if (req.user.globalRole.name === 'owner') {
-					workflows = await Db.collections.Workflow!.find(
+					workflows = await Db.collections.Workflow.find(
 						Object.assign(query, {
 							where: filter,
 						}),
 					);
 				} else {
-					const shared = await Db.collections.SharedWorkflow!.find({
+					const shared = await Db.collections.SharedWorkflow.find({
 						relations: ['workflow'],
 						where: whereClause({
 							user: req.user,
@@ -928,7 +920,7 @@ class App {
 
 					if (!shared.length) return [];
 
-					workflows = await Db.collections.Workflow!.find(
+					workflows = await Db.collections.Workflow.find(
 						Object.assign(query, {
 							where: {
 								id: In(shared.map(({ workflow }) => workflow.id)),
@@ -971,7 +963,7 @@ class App {
 					relations = relations.filter((relation) => relation !== 'workflow.tags');
 				}
 
-				const shared = await Db.collections.SharedWorkflow!.findOne({
+				const shared = await Db.collections.SharedWorkflow.findOne({
 					relations,
 					where: whereClause({
 						user: req.user,
@@ -1013,7 +1005,7 @@ class App {
 				const { tags, ...rest } = req.body;
 				Object.assign(updateData, rest);
 
-				const shared = await Db.collections.SharedWorkflow!.findOne({
+				const shared = await Db.collections.SharedWorkflow.findOne({
 					relations: ['workflow'],
 					where: whereClause({
 						user: req.user,
@@ -1075,7 +1067,7 @@ class App {
 					await validateEntity(updateData);
 				}
 
-				await Db.collections.Workflow!.update(workflowId, updateData);
+				await Db.collections.Workflow.update(workflowId, updateData);
 
 				if (tags && !config.getEnv('workflowTagsDisabled')) {
 					const tablePrefix = config.getEnv('database.tablePrefix');
@@ -1096,7 +1088,7 @@ class App {
 
 				// We sadly get nothing back from "update". Neither if it updated a record
 				// nor the new value. So query now the hopefully updated entry.
-				const updatedWorkflow = await Db.collections.Workflow!.findOne(workflowId, options);
+				const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
 
 				if (updatedWorkflow === undefined) {
 					throw new ResponseHelper.ResponseError(
@@ -1113,7 +1105,6 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-				// @ts-ignore
 				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
 
 				if (updatedWorkflow.active) {
@@ -1127,8 +1118,7 @@ class App {
 					} catch (error) {
 						// If workflow could not be activated set it again to inactive
 						updateData.active = false;
-						// @ts-ignore
-						await Db.collections.Workflow!.update(workflowId, updateData);
+						await Db.collections.Workflow.update(workflowId, updateData);
 
 						// Also set it in the returned data
 						updatedWorkflow.active = false;
@@ -1155,7 +1145,7 @@ class App {
 
 				await this.externalHooks.run('workflow.delete', [workflowId]);
 
-				const shared = await Db.collections.SharedWorkflow!.findOne({
+				const shared = await Db.collections.SharedWorkflow.findOne({
 					relations: ['workflow'],
 					where: whereClause({
 						user: req.user,
@@ -1181,7 +1171,7 @@ class App {
 					await this.activeWorkflowRunner.remove(workflowId);
 				}
 
-				await Db.collections.Workflow!.delete(workflowId);
+				await Db.collections.Workflow.delete(workflowId);
 
 				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
@@ -1280,7 +1270,7 @@ class App {
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
-					return Db.collections.Tag!.find({ select: ['id', 'name'] });
+					return Db.collections.Tag.find({ select: ['id', 'name'] });
 				},
 			),
 		);
@@ -1299,7 +1289,7 @@ class App {
 					await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
 					await validateEntity(newTag);
-					const tag = await Db.collections.Tag!.save(newTag);
+					const tag = await Db.collections.Tag.save(newTag);
 
 					await this.externalHooks.run('tag.afterCreate', [tag]);
 
@@ -1328,7 +1318,7 @@ class App {
 					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
 					await validateEntity(newTag);
-					const tag = await Db.collections.Tag!.save(newTag);
+					const tag = await Db.collections.Tag.save(newTag);
 
 					await this.externalHooks.run('tag.afterUpdate', [tag]);
 
@@ -1360,7 +1350,7 @@ class App {
 
 					await this.externalHooks.run('tag.beforeDelete', [id]);
 
-					await Db.collections.Tag!.delete({ id });
+					await Db.collections.Tag.delete({ id });
 
 					await this.externalHooks.run('tag.afterDelete', [id]);
 
@@ -1625,7 +1615,7 @@ class App {
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
 				const { id: workflowId } = req.params;
 
-				const shared = await Db.collections.SharedWorkflow!.findOne({
+				const shared = await Db.collections.SharedWorkflow.findOne({
 					relations: ['workflow'],
 					where: whereClause({
 						user: req.user,
@@ -1828,7 +1818,7 @@ class App {
 				newCredentialsData.updatedAt = this.getCurrentDate();
 
 				// Update the credentials in DB
-				await Db.collections.Credentials!.update(credentialId, newCredentialsData);
+				await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
 				LoggerProxy.verbose('OAuth1 authorization successful for new credential', {
 					userId: req.user.id,
@@ -1945,7 +1935,7 @@ class App {
 					// Add special database related data
 					newCredentialsData.updatedAt = this.getCurrentDate();
 					// Save the credentials in DB
-					await Db.collections.Credentials!.update(credentialId, newCredentialsData);
+					await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
 					LoggerProxy.verbose('OAuth1 callback successful for new credential', {
 						userId: req.user?.id,
@@ -2060,7 +2050,7 @@ class App {
 				newCredentialsData.updatedAt = this.getCurrentDate();
 
 				// Update the credentials in DB
-				await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+				await Db.collections.Credentials.update(req.query.id as string, newCredentialsData);
 
 				const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 				let returnUri = oAuthObj.code.getUri();
@@ -2247,7 +2237,7 @@ class App {
 					// Add special database related data
 					newCredentialsData.updatedAt = this.getCurrentDate();
 					// Save the credentials in DB
-					await Db.collections.Credentials!.update(state.cid, newCredentialsData);
+					await Db.collections.Credentials.update(state.cid, newCredentialsData);
 					LoggerProxy.verbose('OAuth2 callback successful for new credential', {
 						userId: req.user?.id,
 						credentialId: state.cid,
@@ -2353,7 +2343,7 @@ class App {
 						});
 					}
 
-					const executions = await Db.collections.Execution!.find(findOptions);
+					const executions = await Db.collections.Execution.find(findOptions);
 
 					const { count, estimated } = await getExecutionsCount(countFilter, req.user);
 
@@ -2394,7 +2384,7 @@ class App {
 
 					if (!sharedWorkflowIds.length) return undefined;
 
-					const execution = await Db.collections.Execution!.findOne({
+					const execution = await Db.collections.Execution.findOne({
 						where: {
 							id: executionId,
 							workflowId: In(sharedWorkflowIds),
@@ -2437,7 +2427,7 @@ class App {
 
 				if (!sharedWorkflowIds.length) return false;
 
-				const execution = await Db.collections.Execution!.findOne({
+				const execution = await Db.collections.Execution.findOne({
 					where: {
 						id: executionId,
 						workflowId: In(sharedWorkflowIds),
@@ -2499,9 +2489,7 @@ class App {
 					// Loads the currently saved workflow to execute instead of the
 					// one saved at the time of the execution.
 					const workflowId = fullExecutionData.workflowData.id;
-					const workflowData = (await Db.collections.Workflow!.findOne(
-						workflowId,
-					)) as IWorkflowBase;
+					const workflowData = (await Db.collections.Workflow.findOne(workflowId)) as IWorkflowBase;
 
 					if (workflowData === undefined) {
 						throw new Error(
@@ -2583,7 +2571,7 @@ class App {
 						Object.assign(filters, requestFilters);
 					}
 
-					const executions = await Db.collections.Execution!.find({
+					const executions = await Db.collections.Execution.find({
 						where: {
 							workflowId: In(sharedWorkflowIds),
 							...filters,
@@ -2598,7 +2586,7 @@ class App {
 						idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
 					);
 
-					await Db.collections.Execution!.delete({ id: In(idsToDelete) });
+					await Db.collections.Execution.delete({ id: In(idsToDelete) });
 
 					return;
 				}
@@ -2606,7 +2594,7 @@ class App {
 				// delete executions by IDs, if user may access the underyling worfklows
 
 				if (ids) {
-					const executions = await Db.collections.Execution!.find({
+					const executions = await Db.collections.Execution.find({
 						where: {
 							id: In(ids),
 							workflowId: In(sharedWorkflowIds),
@@ -2627,7 +2615,7 @@ class App {
 						idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
 					);
 
-					await Db.collections.Execution!.delete(idsToDelete);
+					await Db.collections.Execution.delete(idsToDelete);
 				}
 			}),
 		);
@@ -2678,7 +2666,7 @@ class App {
 							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Db.collections.Execution!.find(findOptions);
+						const executions = await Db.collections.Execution.find(findOptions);
 
 						if (!executions.length) return [];
 
@@ -2739,7 +2727,7 @@ class App {
 					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
 				}
 
-				const execution = await Db.collections.Execution!.findOne({
+				const execution = await Db.collections.Execution.findOne({
 					where: {
 						id: executionId,
 						workflowId: In(sharedWorkflowIds),
@@ -2782,7 +2770,7 @@ class App {
 						await Queue.getInstance().stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution?.findOne(
+					const executionDb = (await Db.collections.Execution.findOne(
 						req.params.id,
 					)) as IExecutionFlattedDb;
 					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
@@ -3079,9 +3067,7 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
-			n8n_multi_user_allowed:
-				config.getEnv('userManagement.disabled') === false ||
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};
 
@@ -3117,7 +3103,7 @@ async function getExecutionsCount(
 	if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
 		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
-		const count = await Db.collections.Execution!.count({
+		const count = await Db.collections.Execution.count({
 			where: {
 				workflowId: In(sharedWorkflowIds),
 				...countFilter,
@@ -3131,7 +3117,7 @@ async function getExecutionsCount(
 		// Get an estimate of rows count.
 		const estimateRowsNumberSql =
 			"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
-		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution!.query(
+		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution.query(
 			estimateRowsNumberSql,
 		);
 
@@ -3148,7 +3134,7 @@ async function getExecutionsCount(
 
 	const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
-	const count = await Db.collections.Execution!.count({
+	const count = await Db.collections.Execution.count({
 		where: {
 			workflowId: In(sharedWorkflowIds),
 		},
