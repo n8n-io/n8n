@@ -514,14 +514,14 @@ $--main-panel-width: 350px;
 }
 
 .grid {
-	> div:first-child {
-		> div {
-			margin-bottom: 2px;
-		}
-	}
-
 	> div {
 		display: flex;
+
+		&:first-child {
+			> div {
+				margin-bottom: 2px;
+			}
+		}
 
 		> div {
 			height: 2px;
@@ -529,6 +529,10 @@ $--main-panel-width: 350px;
 			border-radius: 50%;
 			background-color: var(--color-foreground-xdark);
 			margin-right: 4px;
+
+			&:last-child {
+				margin-right: 0;
+			}
 		}
 	}
 }
