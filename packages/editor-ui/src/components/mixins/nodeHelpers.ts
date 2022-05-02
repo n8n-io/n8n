@@ -204,16 +204,22 @@ export const nodeHelpers = mixins(
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
 
+				const { authenticateWith, genericAuthType, nodeCredentialType } = node.parameters as {
+					authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
+					genericAuthType: string;
+					nodeCredentialType: string;
+				};
+
 				if (
 					node.type === HTTP_REQUEST_NODE_TYPE &&
 					node.typeVersion === 2 &&
-					node.parameters.authenticateWith === 'genericAuth' &&
-					node.credentials === undefined // @TODO Or if no currently selected generic auth cred
+					authenticateWith === 'genericAuth' &&
+					(
+						node.credentials === undefined ||
+						Object.keys(node.credentials).includes(genericAuthType) === false
+					)
 				) {
-					const { genericAuthType } = node.parameters as { genericAuthType: string };
 					const credentialType = this.getCredentialTypeByName(genericAuthType);
-
-					//
 
 					return {
 						credentials: {
@@ -225,13 +231,13 @@ export const nodeHelpers = mixins(
 				if (
 					node.type === HTTP_REQUEST_NODE_TYPE &&
 					node.typeVersion === 2 &&
-					node.parameters.authenticateWith === 'nodeCredential' &&
-					node.credentials === undefined // @TODO or if no currently selected service-specific cred
+					authenticateWith === 'nodeCredential' &&
+					nodeCredentialType !== '' &&
+					(
+						node.credentials === undefined ||
+						Object.keys(node.credentials).includes(nodeCredentialType) === false
+					)
 				) {
-					const { nodeCredentialType } = node.parameters as { nodeCredentialType?: string };
-
-					if (!nodeCredentialType) return null;
-
 					const credentialType = this.getCredentialTypeByName(nodeCredentialType);
 
 					return {
