@@ -448,7 +448,7 @@ export class Xata implements INodeType {
 				let itemsCount = 0 as number;
 				for (let i = 0; i < items.length; i++) {
 
-					const item = getItem.call(this, i, items[i].json, `${slug}/${database}:${branch}/${table}`);
+					const item = getItem.call(this, i, items[i].json);
 					records.push(item);
 					itemsCount++;
 
@@ -577,7 +577,7 @@ export class Xata implements INodeType {
 				try {
 
 					const id = this.getNodeParameter('id', i) as string;
-					const item = getItem.call(this, i, items[i].json, `${slug}/${database}:${branch}/${table}`);
+					const item = getItem.call(this, i, items[i].json);
 					const responseData = await xataApiRequest.call(this, apiKey, 'PATCH', slug, database, branch, table, `data/${id}`, item);
 					returnData.push(responseData);
 

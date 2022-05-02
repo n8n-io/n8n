@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 
 
-export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, location: string) {
+export function getItem(this: IExecuteFunctions, index: number, item: IDataObject) {
 
 	const sendAll = this.getNodeParameter('sendAll', index) as boolean;
 
@@ -19,7 +19,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 		const columns = (this.getNodeParameter('columns', index, []) as string[])?.map(el => typeof el === 'string' ? el.trim() : null) as string[];
 		const ignore = false;
-		const returnData = filterItemsColumns(item, columns, ignore, location);
+		const returnData = filterItemsColumns(item, columns, ignore);
 		return returnData;
 
 	} else {
@@ -30,7 +30,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 			const columns = additionalOptions['ignoreColumns'] as string[];
 			const ignore = true;
-			const returnData = filterItemsColumns(item, columns, ignore, location);
+			const returnData = filterItemsColumns(item, columns, ignore);
 			return returnData;
 
 		} else {
@@ -43,7 +43,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 }
 
-export function filterItemsColumns(item: IDataObject, filterColumns: string[], ignore: boolean, location: string) {
+export function filterItemsColumns(item: IDataObject, filterColumns: string[], ignore: boolean) {
 
 	const returnData = ignore ? item : {} as IDataObject;
 
