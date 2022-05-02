@@ -12,6 +12,7 @@ import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
+	isUserManagementDisabled,
 	sanitizeUser,
 	validatePassword,
 } from '../UserManagementHelper';
@@ -55,7 +56,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// TODO: this should be checked in the middleware rather than here
-			if (config.getEnv('userManagement.disabled')) {
+			if (isUserManagementDisabled()) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
