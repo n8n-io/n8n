@@ -839,7 +839,6 @@ export interface ISettingsState {
 	templatesEndpointHealthy: boolean;
 	api: {
 		enabled: boolean;
-		key: string | undefined;
 	};
 }
 

@@ -27,7 +27,6 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesEndpointHealthy: false,
 		api: {
 			enabled: false,
-			key: undefined,
 		},
 	},
 	getters: {
@@ -96,9 +95,6 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setTemplatesEndpointHealthy(state: ISettingsState) {
 			state.templatesEndpointHealthy = true;
-		},
-		setApiKey(state: ISettingsState, apiKey: string | undefined) {
-			state.api.key = apiKey;
 		},
 	},
 	actions: {
@@ -170,17 +166,14 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		async getApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
-			context.commit('setApiKey', '*****');
 			return apiKey;
 		},
 		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);
-			context.commit('setApiKey', '*****');
 			return apiKey;
 		},
 		async deleteApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			await deleteApiKey(context.rootGetters['getRestApiContext']);
-			context.commit('setApiKey', undefined);
 		},
 	},
 };
