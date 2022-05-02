@@ -166,18 +166,26 @@ export function generateNodesGraph(
 			const nodeItem: INodeGraphItem = {
 				type: node.type,
 				position: node.position,
-				// @TODO TBD if all or only HTTPRN
-				// credential_set: node.credentials ? Object.keys(node.credentials).length > 0 : false,
 			};
 
-			if (node.type === 'n8n-nodes-base.httpRequest') {
-				if (node.parameters.authenticateWith !== 'none') {
-					// @TODO TBD if all or only HTTPRN
-					// nodeItem.credential_type =
-					// 	node.parameters.authenticateWith === 'genericAuth'
-					// 		? (node.parameters.genericAuthType as string)
-					// 		: (node.parameters.nodeCredentialType as string);
+			if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
+				try {
+					nodeItem.domain = new URL(node.parameters.url as string).hostname;
+				} catch (_) {
+					nodeItem.domain = node.parameters.url as string;
 				}
+			} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 2) {
+				const { authenticateWith } = node.parameters as { authenticateWith: string };
+
+				nodeItem.credential_type = {
+					none: 'none',
+					genericAuth: node.parameters.genericAuthType as string,
+					nodeCredential: node.parameters.nodeCredentialType as string,
+				}[authenticateWith];
+
+				nodeItem.credential_set = node.credentials
+					? Object.keys(node.credentials).length > 0
+					: false;
 
 				const { url } = node.parameters as { url: string };
 
