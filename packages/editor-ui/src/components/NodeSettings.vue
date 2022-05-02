@@ -31,6 +31,21 @@
 					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+
+				<div v-if="customActionSelected" class="parameter-item parameter-notice">
+					<n8n-notice
+						:content="$locale.baseText(
+							'nodeSettings.youCanUseTheHttpRequestNode',
+							{
+								interpolate: {
+									nodeTypeDisplayName: nodeType.displayName
+								},
+							},
+						)"
+						:truncate="false"
+					/>
+				</div>
+
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
@@ -87,6 +102,18 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			customActionSelected (): boolean {
+				return (
+					this.nodeValues.parameters !== undefined &&
+					typeof this.nodeValues.parameters === 'object' &&
+					this.nodeValues.parameters !== null &&
+					!Array.isArray(this.nodeValues.parameters) &&
+					(
+						this.nodeValues.parameters.resource === 'customAction' ||
+						this.nodeValues.parameters.operation === 'customAction'
+					)
+				);
+			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);

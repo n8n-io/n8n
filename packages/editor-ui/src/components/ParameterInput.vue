@@ -132,6 +132,18 @@
 					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
+			<n8n-option
+				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
+				:key="'customAction'"
+				:value="'customAction'"
+				:label="'Custom Action'"
+			>
+				<div class="list-option">
+					<div class="option-headline">
+						{{ $locale.baseText('parameterInput.customAction') }}
+					</div>
+				</div>
+			</n8n-option>
 		</n8n-select>
 
 		<n8n-select
@@ -219,6 +231,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from "vuex";
 
 export default mixins(
 	externalHooks,
@@ -303,6 +316,7 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapGetters('credentials', ['allCredentialsByType', 'getCredentialTypeByName']),
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -486,6 +500,7 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
+						if (checkValue === 'customAction') continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
@@ -580,6 +595,25 @@ export default mixins(
 			},
 			workflow (): Workflow {
 				return this.getWorkflow();
+			},
+
+			/**
+			 * Whether the node's credential may be used to make a request with the HTTP Request node.
+			 */
+			isSupportedByHttpRequestNode(): boolean {
+				if (!this.node || !this.node.credentials) return false;
+
+				// @TODO Detect currently selected cred
+				const selectedCredentialTypeName = Object.keys(this.node.credentials);
+				if (!selectedCredentialTypeName.length) return false;
+				const name = selectedCredentialTypeName.pop()!;
+
+				const credentialType = this.getCredentialTypeByName(name);
+
+				return (
+					credentialType.name.slice(0, -4).endsWith('OAuth') ||
+					credentialType.authenticate !== undefined
+				);
 			},
 		},
 		methods: {
