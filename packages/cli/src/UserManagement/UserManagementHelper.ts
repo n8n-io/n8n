@@ -136,6 +136,10 @@ export async function checkPermissionsForExecution(
 	// Iterate over all nodes
 	nodeNames.forEach((nodeName) => {
 		const node = workflow.nodes[nodeName];
+		if (node.disabled === true) {
+			// If a node is disabled there is no need to check its credentials
+			return;
+		}
 		// And check if any of the nodes uses credentials.
 		if (node.credentials) {
 			const credentialNames = Object.keys(node.credentials);
@@ -146,9 +150,14 @@ export async function checkPermissionsForExecution(
 				// workflow. Nowaways it should not happen anymore.
 				// Migrations should handle the case where a credential does
 				// not have an id.
+				if (credentialDetail.id === null) {
+					throw new Error(
+						`The credential on node '${node.name}' is not valid. Please open the workflow and set it to a valid value.`,
+					);
+				}
 				if (!credentialDetail.id) {
 					throw new Error(
-						'Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error.',
+						`Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error. [Node: '${node.name}']`,
 					);
 				}
 				credentialIds.add(credentialDetail.id.toString());
