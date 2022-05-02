@@ -7,7 +7,7 @@
 				</n8n-heading>
 			</div>
 
-			<div v-if="hasApiKey">
+			<div v-if="apiKey">
 				<p class="mb-s">
 					<n8n-text color="text-base">
 						<font-awesome-icon icon="info-circle" />
@@ -31,7 +31,7 @@
 					/>
 				</n8n-card>
 			</div>
-			<div :class="$style.placeholder" v-else>
+			<div :class="$style.placeholder" v-else-if="mounted">
 				<n8n-heading size="xlarge">
 					{{ $locale.baseText('settings.api.create.title') }}
 				</n8n-heading>
@@ -72,6 +72,7 @@ export default mixins(
 		return {
 			loading: false,
 			mounted: false,
+			deleting: false,
 			apiKey: '',
 		};
 	},
@@ -82,13 +83,19 @@ export default mixins(
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
-		hasApiKey(): string {
-			return this.$store.getters['settings/apiKey'];
-		},
 	},
 	methods: {
-		showDeleteModal() {
-			this.$store.dispatch('ui/openModal', DELETE_API_KEY_MODAL_KEY);
+		async showDeleteModal() {
+			const confirmed = await this.confirmMessage(
+				this.$locale.baseText('settings.api.delete.description'),
+				this.$locale.baseText('settings.api.delete.title'),
+				null,
+				this.$locale.baseText('settings.api.delete.button'),
+				this.$locale.baseText('generic.cancel'),
+			);
+			if (confirmed) {
+				this.deleteApiKey();
+			}
 		},
 		async getApiKey() {
 			try {
@@ -108,6 +115,19 @@ export default mixins(
 				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
 				this.loading = false;
+			}
+		},
+		async deleteApiKey() {
+			this.deleting = true;
+
+			try {
+				await this.$store.dispatch('settings/deleteApiKey');
+				this.$showMessage({ title: this.$locale.baseText("settings.api.delete.toast"), type: 'success' });
+				this.apiKey = '';
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));
+			} finally {
+				this.deleting = false;
 			}
 		},
 	},
