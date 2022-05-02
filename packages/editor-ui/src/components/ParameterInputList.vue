@@ -1,5 +1,5 @@
 <template>
-	<div class="parameter-input-list-wrapper" :class="{ 'has-reordered-credentials-input': hasReorderedCredentialsInput }">
+	<div class="parameter-input-list-wrapper" :class="{ 'has-reordered-credentials-input': showCredentialsAfter }">
 		<slot />
 		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
 			<div
@@ -118,6 +118,7 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'showCredentialsAfter', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -125,11 +126,6 @@ export default mixins(
 			},
 			filteredParameterNames (): string[] {
 				return this.filteredParameters.map(parameter => parameter.name);
-			},
-			hasReorderedCredentialsInput(): boolean {
-				const node: INode = this.$store.getters.activeNode;
-
-				return ["n8n-nodes-base.httpRequest"].includes(node.type);
 			},
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
