@@ -111,6 +111,10 @@ export class Github implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'Organization',
+						value: 'organization',
+					},
 				],
 				default: 'issue',
 				description: 'The resource to operate on.',
@@ -121,6 +125,25 @@ export class Github implements INodeType {
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'organization',
+						],
+					},
+				},
+				options: [{
+					name: 'getOrgRepositories',
+					value: 'getOrgRepositories',
+					description: 'Get all repositories of an organization',}],
+				default: 'getOrgRepositories',
+				description: 'The operation to perform.',
+			},
+
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -1717,7 +1740,56 @@ export class Github implements INodeType {
 				},
 				default: 50,
 				description: 'How many results to return.',
+
+
 			},
+
+			// ----------------------------------
+			//       Org:getOrgRepositories
+			// ----------------------------------
+			{
+				displayName: 'get Org Repositories',
+				name: 'getOrgRepositories',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'organisation',
+						],
+						operation: [
+							'getOrgRepositories',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getOrgRepositories',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+
+			},
+
 			// ----------------------------------
 			//         user:invite
 			// ----------------------------------
@@ -2222,6 +2294,7 @@ export class Github implements INodeType {
 						if (returnAll === false) {
 							qs.per_page = this.getNodeParameter('limit', 0) as number;
 						}
+
 
 					} else if (operation === 'invite') {
 						// ----------------------------------
