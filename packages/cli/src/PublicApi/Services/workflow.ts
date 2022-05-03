@@ -1,6 +1,7 @@
 import { User } from '../../databases/entities/User';
 import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 import { Db } from '../..';
+import type { INode } from 'n8n-workflow';
 
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -39,4 +40,27 @@ export async function activeWorkflow(workflow: WorkflowEntity): Promise<void> {
 
 export async function desactiveWorkflow(workflow: WorkflowEntity): Promise<void> {
 	await Db.collections.Workflow.update(workflow.id, { active: false });
+}
+
+export async function updateWorkflow(
+	workflowId: number,
+	updateData: WorkflowEntity,
+): Promise<void> {
+	await Db.collections.Workflow.update(workflowId, updateData);
+}
+
+export function hasStartNode(workflow: WorkflowEntity): boolean {
+	return !(
+		!workflow.nodes.length || !workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start')
+	);
+}
+
+export function getStartNode(): INode {
+	return {
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.start',
+		typeVersion: 1,
+		position: [240, 300],
+	};
 }

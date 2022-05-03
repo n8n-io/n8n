@@ -14,6 +14,9 @@ import {
 	getWorkflowAccess,
 	activeWorkflow,
 	desactiveWorkflow,
+	updateWorkflow,
+	hasStartNode,
+	getStartNode,
 } from '../../Services/workflow';
 
 export = {
@@ -23,23 +26,11 @@ export = {
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			let workflow = req.body;
 
-			const startNode: INode = {
-				parameters: {},
-				name: 'Start',
-				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-				position: [240, 300],
-			};
-
 			workflow.active = false;
 
-			// add start node if nodes property empty or start node
-			// not found in the array
-			if (
-				!workflow.nodes.length ||
-				!workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start')
-			) {
-				workflow.nodes.push(startNode);
+			// if the workflow does not have a start node, add it.
+			if (!hasStartNode(workflow)) {
+				workflow.nodes.push(getStartNode());
 			}
 
 			const role = await getWorkflowOwnerRole();
@@ -66,7 +57,82 @@ export = {
 	deleteWorkflow: [],
 	getWorkflow: [],
 	getWorkflows: [],
-	updateWorkflow: [],
+	updateWorkflow: [
+		instanceOwnerSetup,
+		authorize(['owner', 'member']),
+		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
+			const { workflowId } = req.params;
+			const updateData = new WorkflowEntity();
+			Object.assign(updateData, req.body);
+
+			// if the workflow does not have a start node, add it.
+			if (!hasStartNode(updateData)) {
+				updateData.nodes.push(getStartNode());
+			}
+
+			const workflow = await getWorkflowById(workflowId);
+
+			if (workflow === undefined) {
+				return res.status(404).json();
+			}
+
+			// check credentials for old format
+			await replaceInvalidCredentials(updateData);
+
+			const workflowRunner = ActiveWorkflowRunner.getInstance();
+
+			if (isInstanceOwner(req.user)) {
+				if (workflow.active) {
+					await workflowRunner.remove(workflowId.toString());
+				}
+
+				await updateWorkflow(workflowId, updateData);
+
+				if (workflow.active) {
+					try {
+						await workflowRunner.add(workflowId.toString(), 'activate');
+					} catch (error) {
+						// todo
+						// remove the type assertion
+						const errorObject = error as unknown as { message: string };
+						return res.status(400).json({ error: errorObject.message });
+					}
+				}
+
+				const updatedWorkflow = await getWorkflowById(workflowId);
+
+				return res.json(updatedWorkflow);
+			}
+
+			const userHasAccessToWorkflow = await getWorkflowAccess(req.user, workflowId.toString());
+
+			if (userHasAccessToWorkflow) {
+				if (workflow.active) {
+					await workflowRunner.remove(workflowId.toString());
+				}
+
+				await updateWorkflow(workflowId, updateData);
+
+				if (workflow.active) {
+					try {
+						await workflowRunner.add(workflowId.toString(), 'activate');
+					} catch (error) {
+						// todo
+						// remove the type assertion
+						const errorObject = error as unknown as { message: string };
+						return res.status(400).json({ error: errorObject.message });
+					}
+				}
+
+				const updatedWorkflow = await getWorkflowById(workflowId);
+
+				return res.json(updatedWorkflow);
+			}
+
+			// user trying to access a workflow he does not own
+			return res.status(404).json();
+		},
+	],
 	activateWorkflow: [
 		instanceOwnerSetup,
 		authorize(['owner', 'member']),

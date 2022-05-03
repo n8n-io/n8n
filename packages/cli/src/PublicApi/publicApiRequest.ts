@@ -59,5 +59,6 @@ export declare namespace WorkflowRequest {
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
 	type Get = AuthenticatedRequest<{ workflowId: number }, {}, {}, {}>;
 	type Delete = Get;
+	type Update = AuthenticatedRequest<{ workflowId: number }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 }
