@@ -136,7 +136,7 @@
 				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
 				:key="'customAction'"
 				:value="'customAction'"
-				:label="'Custom Action'"
+				:label="$locale.baseText('parameterInput.customAction')"
 			>
 				<div class="list-option">
 					<div class="option-headline">
