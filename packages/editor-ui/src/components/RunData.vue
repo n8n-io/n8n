@@ -370,43 +370,6 @@ export default mixins(
 				}
 				return null;
 			},
-			runTaskData (): ITaskData | null {
-				if (!this.node || this.workflowExecution === null) {
-					return null;
-				}
-
-				const runData = this.workflowRunData;
-
-				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-					return null;
-				}
-
-				if (runData[this.node.name].length <= this.runIndex) {
-					return null;
-				}
-
-				return runData[this.node.name][this.runIndex];
-			},
-			runMetadata (): {executionTime: number, startTime: string} | null {
-				if (!this.runTaskData) {
-					return null;
-				}
-				return {
-					executionTime: this.runTaskData.executionTime,
-					startTime: new Date(this.runTaskData.startTime).toLocaleString(),
-				};
-			},
-			staleData(): boolean {
-				if (!this.node) {
-					return false;
-				}
-				const updatedAt = this.$store.getters.getParametersLastUpdated(this.node.name);
-				if (!updatedAt || !this.runTaskData) {
-					return false;
-				}
-				const runAt = this.runTaskData.startTime;
-				return updatedAt > runAt;
-			},
 			dataCount (): number {
 				return this.getDataCount(this.runIndex, this.outputIndex);
 			},
