@@ -35,7 +35,6 @@
 				:heading="$locale.baseText('settings.api.create.title')"
 				:buttonText="$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')"
 				:description="$locale.baseText('settings.api.create.description')"
-				:loading="loading"
 				@click="createApiKey"
 			/>
 		</div>
