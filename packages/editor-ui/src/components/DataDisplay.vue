@@ -333,6 +333,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
 			}
 		},
+		maxOutputRun(maxRun) {
+			this.runOutputIndex = maxRun;
+		},
+		maxInputRun(maxRun) {
+			this.runInputIndex = maxRun;
+		},
 	},
 	methods: {
 		onDragStart(e: MouseEvent) {
