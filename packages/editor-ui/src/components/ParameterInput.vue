@@ -601,14 +601,9 @@ export default mixins(
 			 * Whether the node's credential may be used to make a request with the HTTP Request node.
 			 */
 			isSupportedByHttpRequestNode(): boolean {
-				if (!this.node || !this.node.credentials) return false;
+				if (!this.node || !this.node.activeCredentialType || !this.node.credentials) return false;
 
-				// @TODO Detect currently selected cred
-				const selectedCredentialTypeName = Object.keys(this.node.credentials);
-				if (!selectedCredentialTypeName.length) return false;
-				const name = selectedCredentialTypeName.pop()!;
-
-				const credentialType = this.getCredentialTypeByName(name);
+				const credentialType = this.getCredentialTypeByName(this.node.activeCredentialType);
 
 				return (
 					credentialType.name.slice(0, -4).endsWith('OAuth') ||
