@@ -22,6 +22,8 @@
 
 			<n8n-icon-button v-if="canLinkRuns && linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
 			<n8n-icon-button v-else-if="canLinkRuns" icon="link" type="text" size="small" @click="linkRun" />
+
+			<slot name="run-info"></slot>
 		</div>
 
 		<div v-if="maxOutputIndex > 0 && overrideOutputIndex === undefined" :class="{[$style.tabs]: displayMode === 'table'}">
@@ -877,6 +879,10 @@ export default mixins(
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	display: flex;
+
+	> * {
+		margin-right: var(--spacing-4xs);
+	}
 }
 
 .copyButton {

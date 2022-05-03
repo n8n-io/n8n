@@ -16,18 +16,7 @@
 		<template v-slot:header>
 			<div :class="$style.titleSection">
 				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
-				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
-					<div>
-						<n8n-text :bold="true" size="small">{{
-							$locale.baseText('runData.startTime') + ':'
-						}}</n8n-text>
-						{{ runMetadata.startTime }}<br />
-						<n8n-text :bold="true" size="small">{{
-							$locale.baseText('runData.executionTime') + ':'
-						}}</n8n-text>
-						{{ runMetadata.executionTime }} {{ $locale.baseText('runData.ms') }}
-					</div>
-				</n8n-info-tip>
+				<RunInfo v-if="runsCount === 1" :taskData="runTaskData" />
 
 				<n8n-info-tip
 					theme="warning"
@@ -57,6 +46,10 @@
 				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
 			</n8n-text>
 		</template>
+
+		<template #run-info v-if="runsCount > 1">
+			<RunInfo :taskData="runTaskData" />
+		</template>
 	</RunData>
 </template>
 
@@ -65,10 +58,11 @@ import { IExecutionResponse, INodeUi } from '@/Interface';
 import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import Vue from 'vue';
 import RunData from './RunData.vue';
+import RunInfo from './RunInfo.vue';
 
 export default Vue.extend({
 	name: 'OutputPanel',
-	components: { RunData },
+	components: { RunData, RunInfo },
 	props: {
 		runIndex: {
 			type: Number,
@@ -138,14 +132,22 @@ export default Vue.extend({
 
 			return runData[this.node.name][this.runIndex];
 		},
-		runMetadata(): { executionTime: number; startTime: string } | null {
-			if (!this.runTaskData) {
-				return null;
+		runsCount(): number {
+			if (this.node === null) {
+				return 0;
 			}
-			return {
-				executionTime: this.runTaskData.executionTime,
-				startTime: new Date(this.runTaskData.startTime).toLocaleString(),
-			};
+
+			const runData: IRunData | null = this.workflowRunData;
+
+			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
+				return 0;
+			}
+
+			if (runData[this.node.name].length) {
+				return runData[this.node.name].length;
+			}
+
+			return 0;
 		},
 		staleData(): boolean {
 			if (!this.node) {
