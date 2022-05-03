@@ -22,6 +22,7 @@ export class Switch implements INodeType {
 			color: '#506000',
 		},
 		inputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
 		outputNames: ['0', '1', '2', '3'],
 		properties: [
@@ -143,7 +144,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -228,7 +228,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -313,7 +312,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -414,7 +412,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
@@ -518,6 +515,7 @@ export class Switch implements INodeType {
 			},
 
 
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Fallback Output',
 				name: 'fallbackOutput',

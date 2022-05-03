@@ -18,9 +18,6 @@ export async function disqusApiRequest(
 
 	const credentials = await this.getCredentials('disqusApi') as IDataObject;
 	qs.api_key = credentials.accessToken;
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	// Convert to query string into a format the API can read
 	const queryStringElements: string[] = [];

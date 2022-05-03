@@ -122,7 +122,7 @@ export const formFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Sort',
 				options: [
 					{

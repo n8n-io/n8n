@@ -143,7 +143,6 @@ export class Rocketchat implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						resource: [
@@ -336,7 +335,7 @@ export class Rocketchat implements INodeType {
 						typeOptions: {
 							multipleValues: true,
 						},
-						default: '',
+						default: {},
 						options: [
 							{
 								name: 'fieldsValues',
@@ -391,14 +390,13 @@ export class Rocketchat implements INodeType {
 				},
 				default: '',
 				required: false,
-				description: '',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		let responseData;
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;

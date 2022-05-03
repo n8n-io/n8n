@@ -111,7 +111,7 @@ export class MySql implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 			{
 				displayName: 'Options',
@@ -204,7 +204,7 @@ export class MySql implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
 			},
 
 		],
@@ -213,10 +213,6 @@ export class MySql implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		// Destructuring SSL configuration
 		const {

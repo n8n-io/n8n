@@ -289,7 +289,6 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Organization ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   organization:getAll                      */

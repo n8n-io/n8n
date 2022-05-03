@@ -81,7 +81,7 @@ export const metricFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Can only be the current or previous month. Format should be YYYY-MM',
+		description: 'Can only be the current or previous month. Format should be YYYY-MM.',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -215,7 +215,7 @@ export const metricFields: INodeProperties[] = [
 						description: `How much upgrades and plan length increases affect your MRR`,
 					},
 				],
-				default: '',
+				default: [],
 				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 			{
@@ -431,7 +431,7 @@ export const metricFields: INodeProperties[] = [
 						description: `Net change in revenue for this plan`,
 					},
 				],
-				default: '',
+				default: [],
 				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 		],

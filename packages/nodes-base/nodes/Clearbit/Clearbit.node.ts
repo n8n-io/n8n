@@ -57,8 +57,7 @@ export class Clearbit implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `The Person API lets you retrieve social information associated with an email address,
-						such as a person’s name, location and Twitter handle.`,
+						description: 'The Person API lets you retrieve social information associated with an email address, such as a person’s name, location and Twitter handle.',
 					},
 				],
 				default: 'company',
@@ -74,7 +73,7 @@ export class Clearbit implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

@@ -356,7 +356,6 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'Source ID.',
 			},
 		],
 	},

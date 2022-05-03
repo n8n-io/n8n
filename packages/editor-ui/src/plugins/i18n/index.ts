@@ -14,7 +14,7 @@ import {
 	locale,
 } from 'n8n-design-system';
 
-const englishBaseText = require('./locales/en');
+import englishBaseText from './locales/en.json';
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -62,8 +62,8 @@ export class I18nClass {
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
 	baseText(
-		key: string,
-		options?: { adjustToNumber: number; interpolate: { [key: string]: string } },
+		key: BaseTextKey,
+		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
 		if (options && options.adjustToNumber) {
 			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
@@ -107,7 +107,7 @@ export class I18nClass {
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
-						key: `reusableDynamicText.oauth2.${parameterName}`,
+						key: `_reusableDynamicText.oauth2.${parameterName}`,
 						fallback: displayName,
 					});
 				}
@@ -469,3 +469,23 @@ export function addHeaders(
 		Object.assign(i18nInstance.messages[language], { headers }),
 	);
 }
+
+// ----------------------------------
+//             typings
+// ----------------------------------
+
+declare module 'vue/types/vue' {
+	interface Vue {
+		$locale: I18nClass;
+	}
+}
+
+type GetBaseTextKey<T> = T extends `_${string}` ? never :  T;
+
+export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
+
+type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}`
+	? C
+	: never;
+
+export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;

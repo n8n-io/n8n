@@ -348,7 +348,7 @@ export class Vonage implements INodeType {
 						name: 'account-ref',
 						type: 'string',
 						default: '',
-						description: 'An optional string used to identify separate accounts using the SMS endpoint for billing purposes. To use this feature, please email support@nexmo.com',
+						description: 'An optional string used to identify separate accounts using the SMS endpoint for billing purposes. To use this feature, please email support@nexmo.com.',
 					},
 					{
 						displayName: 'Callback',
@@ -418,7 +418,7 @@ export class Vonage implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

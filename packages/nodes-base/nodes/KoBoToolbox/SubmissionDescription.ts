@@ -237,7 +237,7 @@ export const submissionFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved',
+				description: 'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved.',
 			},
 			{
 				displayName: 'File Size',
@@ -276,7 +276,7 @@ export const submissionFields: INodeProperties[] = [
 				name: 'selectMask',
 				type: 'string',
 				default: 'select_*',
-				description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays',
+				description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
 			},
 			{
 				displayName: 'Number Mask',

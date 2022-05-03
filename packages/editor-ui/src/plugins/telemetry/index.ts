@@ -169,6 +169,9 @@ class Telemetry {
 				case 'nodeView.addNodeButton':
 					this.telemetry.track('User added node to workflow canvas', properties);
 					break;
+				case 'nodeView.addSticky':
+					this.telemetry.track('User inserted workflow note', properties);
+					break;
 				default:
 					break;
 			}
