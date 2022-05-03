@@ -446,9 +446,11 @@ export class Xata implements INodeType {
 				const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
 				const bulkSize = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] : items.length as number;
 				let itemsCount = 0 as number;
+				const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
+
 				for (let i = 0; i < items.length; i++) {
 
-					const item = getItem.call(this, i, items[i].json);
+					const item = getItem.call(this, i, items[i].json, sendAll);
 					records.push(item);
 					itemsCount++;
 
@@ -572,15 +574,16 @@ export class Xata implements INodeType {
 			}
 		} else if (operation === 'update') {
 
+			const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
+
 			for (let i = 0; i < items.length; i++) {
 
 				try {
 
 					const id = this.getNodeParameter('id', i) as string;
-					const item = getItem.call(this, i, items[i].json);
+					const item = getItem.call(this, i, items[i].json, sendAll);
 					const responseData = await xataApiRequest.call(this, apiKey, 'PATCH', slug, database, branch, table, `data/${id}`, item);
 					returnData.push(responseData);
-
 
 				} catch (error) {
 

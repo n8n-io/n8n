@@ -41,9 +41,7 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 	return body;
 }
 
-export function getItem(this: IExecuteFunctions, index: number, item: IDataObject) {
-
-	const sendAll = this.getNodeParameter('sendAll', index) as boolean;
+export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, sendAll: boolean) {
 
 	if (!sendAll) {
 
@@ -143,7 +141,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 			do {
 
-				const response = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, resource, body);
+				const response = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
 				const crs = response.meta.page.cursor;
 				const recs = response.records;
 
@@ -180,11 +178,11 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 	} else {
 
 		const limit = this.getNodeParameter('limit', 0) as number;
+		Object.assign(body, { 'page': { 'size': limit } });
 
 		try {
 
-			Object.assign(body, { 'page': { 'size': limit } });
-			const response = await xataApiRequest.call(this,apiKey,'POST',slug,database,branch,table,resource,body);
+			const response = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
 			records = response.records;
 
 		} catch (error) {
