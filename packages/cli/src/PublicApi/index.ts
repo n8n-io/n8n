@@ -60,8 +60,7 @@ function createApiRouter(
 export const loadPublicApiVersions = async (): Promise<express.Router[]> => {
 	const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 	const folders = await fs.readdir(__dirname);
-	// const css = (await fs.readFile(swaggerThemePath)).toString();
-	const css = '';
+	const css = (await fs.readFile(swaggerThemePath)).toString();
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 	const apiRouters: express.Router[] = [];
 	for (const version of versions) {
