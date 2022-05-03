@@ -63,7 +63,6 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -186,6 +185,26 @@ export const attachmentFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Output Field',
+		name: 'outputField',
+		type: 'string',
+		default: 'data',
+		description: 'Field name where downloaded data will be placed',
+		displayOptions: {
+			show: {
+				resource: [
+					'attachment',
+				],
+				operation: [
+					'get',
+				],
+				download: [
+					true,
 				],
 			},
 		},

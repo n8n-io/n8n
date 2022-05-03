@@ -469,6 +469,7 @@ export class ServiceNow implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
+				// https://developer.servicenow.com/dev.do#!/reference/api/rome/rest/c_AttachmentAPI
 				if (resource === 'attachment') {
 					if (operation === 'get') {
 
@@ -483,15 +484,27 @@ export class ServiceNow implements INodeType {
 							json: fileMetadata,
 						};
 
-						// Cannot get this encoding to work correctly :(
 						if (download) {
+							const outputField = this.getNodeParameter('outputField', i) as string;
 							endpoint = `${endpoint}/file`;
-							const fileData = await serviceNowApiRequest.call(this, 'GET', endpoint, {}, {}, '', {json: false});
-							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(fileData), fileMetadata.file_name);
+							const fileData = await serviceNowApiRequest.call(
+								this,
+								'GET',
+								endpoint,
+								{},
+								{},
+								'',
+								{ json: false, encoding: null, resolveWithFullResponse: true },
+							);
+							const binaryData = await this.helpers.prepareBinaryData(
+								Buffer.from(fileData.body as string),
+								fileMetadata.file_name,
+								fileMetadata.content_type,
+							);
 							responseData = {
 								...responseData,
 								binary: {
-									data: binaryData,
+									[outputField]: binaryData,
 								},
 							};
 						}
@@ -549,7 +562,7 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 					} else if (operation === 'delete') {
 						const attachmentsSysId = this.getNodeParameter('attachments_sys_id', i) as string;
-						const response = await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
+						await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
 						responseData = {'success': true};
 					}
 				} else if (resource === 'businessService') {
