@@ -45,7 +45,6 @@
 
 		<template v-slot:no-output-data>
 			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
-			<n8n-text tag="div">{{ $locale.baseText('ndv.input.noOutputDataInNode') }}</n8n-text>
 		</template>
 	</RunData>
 </template>
