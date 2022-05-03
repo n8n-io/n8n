@@ -850,13 +850,13 @@ export const store = new Vuex.Store({
 			}, []);
 		},
 
-		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
 				const typeVersion = Array.isArray(typeData.version)
 					? typeData.version
 					: [typeData.version];
 
-				return typeData.name === nodeType && typeVersion.some(versions => [typeVersion, typeData.defaultVersion, DEFAULT_NODETYPE_VERSION].includes(versions));
+				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {
