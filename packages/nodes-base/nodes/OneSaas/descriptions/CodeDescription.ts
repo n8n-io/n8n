@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const codeOperations = [
 	{
@@ -9,21 +7,19 @@ export const codeOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'code',
-				],
+				resource: ['code'],
 			},
 		},
 		options: [
 			{
 				name: 'Javascript',
 				value: 'javascript',
-				description: 'Run Javascript via API',
+				description: 'Run Javascript via API.',
 			},
 			{
 				name: 'Python',
 				value: 'python',
-				description: 'Run Python via API',
+				description: 'Run Python via API.',
 			},
 		],
 		default: 'javascript',
@@ -39,16 +35,12 @@ export const codeFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'javascript',
-				],
-				resource: [
-					'code',
-				],
+				operation: ['javascript'],
+				resource: ['code'],
 			},
 		},
 		default: '',
-		description: 'Your javascript code',
+		description: 'Your javascript code.',
 	},
 	// code: javascript
 	{
@@ -56,17 +48,16 @@ export const codeFields = [
 		name: 'code',
 		type: 'string',
 		required: true,
+		typeOptions: {
+			rows: 4,
+		},
 		displayOptions: {
 			show: {
-				operation: [
-					'python',
-				],
-				resource: [
-					'code',
-				],
+				operation: ['python'],
+				resource: ['code'],
 			},
 		},
 		default: '',
-		description: 'Your python code',
+		description: 'Your python code.',
 	},
 ] as INodeProperties[];
