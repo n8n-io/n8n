@@ -55,7 +55,7 @@
 				/>
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
-				<div v-if="!isTriggerNode" :class="{[$style.dragButton]: true, [$style.visible]: isDragging}" @mousedown="onDragStart">
+				<div v-if="!isTriggerNode" :class="{[$style.dragButton]: true, [$style.dragging]: isDragging}" @mousedown="onDragStart">
 					<span v-if="canMoveLeft" :class="{[$style.leftArrow]: true, [$style.visible]: isDragging}">
 						<font-awesome-icon icon="arrow-left" />
 					</span>
@@ -524,7 +524,7 @@ $--main-panel-width: 350px;
 	border-top-left-radius: var(--border-radius-large);
 	border-top-right-radius: var(--border-radius-large);
 	position: absolute;
-	cursor: pointer;
+	cursor: grab;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -540,6 +540,11 @@ $--main-panel-width: 350px;
 
 .visible {
 	visibility: visible !important;
+}
+
+.dragging {
+	visibility: visible;
+	cursor: grabbing;
 }
 
 .grid {
