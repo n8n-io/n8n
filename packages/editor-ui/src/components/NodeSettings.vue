@@ -23,12 +23,23 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
-				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-				<node-webhooks :node="node" :nodeType="nodeType" />
-				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<node-webhooks
+					:node="node"
+					:nodeType="nodeType"
+				/>
+				<parameter-input-list
+					:parameters="parametersNoneSetting"
+					:hideDelete="true"
+					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+				>
+					<node-credentials
+						:node="node"
+						@credentialSelected="credentialSelected"
+					/>
+				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
 
@@ -84,6 +95,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+
+import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	externalHooks,
