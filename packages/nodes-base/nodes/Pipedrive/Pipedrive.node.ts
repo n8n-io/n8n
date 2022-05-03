@@ -3632,8 +3632,8 @@ export class Pipedrive implements INodeType {
 			//         organization:getAll
 			// ----------------------------------
 			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Filters',
+				name: 'filters',
 				type: 'collection',
 				placeholder: 'Add Field',
 				displayOptions: {
@@ -3649,6 +3649,13 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'First Char',
+						name: 'firstChar',
+						type: 'string',
+						default: '',
+						description: 'If supplied, only organizations whose name starts with the specified letter will be returned',
+					},
+					{
 						displayName: 'Predefined Filter',
 						name: 'filterId',
 						type: 'options',
@@ -3657,13 +3664,6 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description: 'ID of the filter to use.',
-					},
-					{
-						displayName: 'First Char',
-						name: 'firstChar',
-						type: 'string',
-						default: '',
-						description: 'If supplied, only organizations whose name starts with the specified letter will be returned',
 					},
 				],
 			},
@@ -4906,14 +4906,14 @@ export class Pipedrive implements INodeType {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-						if (additionalFields.filterId) {
-							qs.filter_id = additionalFields.filterId as string;
+						if (filters.filterId) {
+							qs.filter_id = filters.filterId as string;
 						}
 
-						if (additionalFields.firstChar) {
-							qs.first_char = additionalFields.firstChar as string;
+						if (filters.firstChar) {
+							qs.first_char = filters.firstChar as string;
 							qs.first_char = qs.first_char.substring(0, 1);
 						}
 
