@@ -81,6 +81,7 @@
 				</div>
 				<NodeSettings
 					:eventBus="settingsEventBus"
+					:dragging="isDragging"
 					@valueChanged="valueChanged"
 					@execute="onNodeExecute"
 				/>
@@ -136,6 +137,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		};
 	},
 	mounted() {
+		this.setTotalWidth();
 		window.addEventListener('resize', this.setTotalWidth);
 	},
 	destroyed() {
@@ -505,7 +507,6 @@ $--main-panel-width: 350px;
 .mainPanel {
 	composes: panel;
 	height: 100%;
-	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.06);
 
 	&:hover {
 		.dragButton {

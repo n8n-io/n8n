@@ -1,5 +1,5 @@
 <template>
-	<div class="node-settings" @keydown.stop>
+	<div :class="{'node-settings': true, 'dragging': dragging}" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
@@ -150,6 +150,9 @@ export default mixins(
 		},
 		props: {
 			eventBus: {
+			},
+			dragging: {
+				type: Boolean,
 			},
 		},
 		data () {
@@ -548,6 +551,7 @@ export default mixins(
 	height: 100%;
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
+	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.06);
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
@@ -572,6 +576,11 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+	}
+
+	&.dragging {
+		border-color: var(--color-primary);
+		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
 
