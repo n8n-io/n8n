@@ -86,6 +86,7 @@ import {
 import {
 	validateCredentials
 } from './GenericFunctions';
+import { options } from 'rhea';
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
@@ -949,7 +950,6 @@ export class Hubspot implements INodeType {
 				}];
 				const endpoint = '/crm/v3/schemas';
 				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				console.log('param', this.getNodeParameter('resource', 0));
 				for (const customObjectType of properties.results) {
 					const objectLabel = customObjectType.labels.singular;
 					const objectTypeId = customObjectType.objectTypeId;
@@ -1026,10 +1026,11 @@ export class Hubspot implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined;
+		// const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined;
 		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
 		if (resource === 'customObject' && operation.includes('batch')) {
+			const customObjectType = this.getNodeParameter('customObjectType', 0, '') as string;
 			if (!this.continueOnFail()) {
 				throw new Error('Batch operations only work with continue on fail set to true.');
 			}
@@ -2279,6 +2280,8 @@ export class Hubspot implements INodeType {
 					}
 					//https://developers.hubspot.com/docs/api/crm/crm-custom-objects
 					if (resource === 'customObject') {
+						const customObjectType = this.getNodeParameter('customObjectType', i, '') as string;
+
 						if (operation === 'create') {
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 							const properties: Record<string, unknown> = {};
@@ -2300,11 +2303,11 @@ export class Hubspot implements INodeType {
 						if (operation === 'update') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-							const properties: Record<string, unknown> = {};
-							if (additionalFields.customPropertiesUi) {
-								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+							const properties: IDataObject = {};
+							if (updateFields.customPropertiesUi) {
+								const customProperties = (updateFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
 
 								if (customProperties) {
 									for (const customProperty of customProperties) {
@@ -2312,8 +2315,6 @@ export class Hubspot implements INodeType {
 									}
 								}
 							}
-
-
 
 							const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
 							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
@@ -2410,12 +2411,37 @@ export class Hubspot implements INodeType {
 
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body);
-								console.log(responseData);
 							} else {
 								const response = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 								responseData = response.results;
 							}
 
+						}
+						if (operation === 'define') {
+							const name = this.getNodeParameter('name', i) as string;
+							const labels = this.getNodeParameter('labels', i) as IDataObject;
+							const properties = (this.getNodeParameter('properties.values', i, []) as IDataObject[]).map(property => {
+								if (!options) return property;
+								return {
+									name: property.name,
+									label: property.label,
+									...property.options as IDataObject,
+								};
+							});
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const primaryDisplayProperty = this.getNodeParameter('primaryDisplayProperty', i) as string;
+
+							const body: IDataObject = {
+								name,
+								primaryDisplayProperty,
+								...labels,
+								properties,
+							};
+
+							Object.keys(additionalFields).forEach(key => body[key] = (additionalFields[key] as string).split(','));
+
+							const endpoint = `/crm/v3/schemas`;
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 						}
 						if (operation === 'delete') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
