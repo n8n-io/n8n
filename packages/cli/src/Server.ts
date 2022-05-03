@@ -164,7 +164,7 @@ import {
 	isEmailSetUp,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
-import { loadPublicApiVersions } from './PublicApi';
+// import { loadPublicApiVersions } from './PublicApi';
 
 require('body-parser-xml')(bodyParser);
 
@@ -577,7 +577,7 @@ class App {
 		});
 
 		if (!config.getEnv('publicApi.disabled')) {
-			this.app.use(`/${this.publicApiEndpoint}`, ...(await loadPublicApiVersions()));
+			// this.app.use(`/${this.publicApiEndpoint}`, ...(await loadPublicApiVersions()));
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
