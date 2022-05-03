@@ -314,8 +314,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	watch: {
 		activeNode(node, oldNode) {
 			if (node && !oldNode && !this.isActiveStickyNode) {
-				this.runInputIndex = 0;
-				this.runOutputIndex = 0;
+				this.runInputIndex = this.maxInputRun;
+				this.runOutputIndex = this.maxOutputRun;
 				this.linkedRuns = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
