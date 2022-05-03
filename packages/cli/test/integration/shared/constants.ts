@@ -62,3 +62,8 @@ export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
  * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
  */
 export const SMTP_TEST_TIMEOUT = 30_000;
+
+/**
+ * Timeout (in milliseconds) to account for `LoadNodesAndCredentials()` being slow to run on CI/CD server.
+ */
+export const LOAD_NODES_AND_CREDS_TEST_TIMEOUT = 30_000;

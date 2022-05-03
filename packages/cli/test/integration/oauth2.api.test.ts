@@ -6,6 +6,7 @@ import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 import type { Role } from '../../src/databases/entities/Role';
 import { CredentialTypes, LoadNodesAndCredentials } from '../../src';
+import { LOAD_NODES_AND_CREDS_TEST_TIMEOUT } from './shared/constants';
 
 const SCOPES_ENDPOINT = '/oauth2-credential/scopes';
 
@@ -14,7 +15,10 @@ let testDbName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['oauth2-credential'], applyAuth: true });
+	app = utils.initTestServer({
+		endpointGroups: ['oauth2-credential'],
+		applyAuth: true,
+	});
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -28,7 +32,7 @@ beforeAll(async () => {
 
 	const credentialTypes = CredentialTypes();
 	await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
-});
+}, LOAD_NODES_AND_CREDS_TEST_TIMEOUT);
 
 afterAll(async () => {
 	await testDb.terminate(testDbName);
