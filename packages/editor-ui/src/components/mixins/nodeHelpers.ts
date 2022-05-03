@@ -40,7 +40,7 @@ export const nodeHelpers = mixins(
 )
 	.extend({
 		computed: {
-			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
+			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
 
@@ -210,78 +210,37 @@ export const nodeHelpers = mixins(
 					nodeCredentialType: string;
 				};
 
-				/**
-				 * For HTTP Request node, report missing credential if no selected credential
-				 * or if no selected credentials of the chosen generic auth type.
-				 */
 				if (
-					node.type === HTTP_REQUEST_NODE_TYPE &&
-					node.typeVersion === 2 &&
+					isHttpRequestNodeV2(node) &&
 					authenticateWith === 'genericAuth' &&
-					(
-						node.credentials === undefined ||
-						Object.keys(node.credentials).includes(genericAuthType) === false
-					)
+					selectedCredsAreUnusable(node, genericAuthType)
 				) {
-					const credentialType = this.getCredentialTypeByName(genericAuthType);
-
-					return {
-						credentials: {
-							[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
-						},
-					};
+					const credential = this.getCredentialTypeByName(genericAuthType);
+					return reportUnsetCredential(credential);
 				}
 
-				/**
-				 * For HTTP Request node, report missing credential if no selected credential
-				 * and if ID of chosen credential ID does not match ID in DB, so it was deleted.
-				 */
 				if (
-					node.type === HTTP_REQUEST_NODE_TYPE &&
-					node.typeVersion === 2 &&
+					isHttpRequestNodeV2(node) &&
 					authenticateWith === 'nodeCredential' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
-					const credentialType = this.getCredentialTypeByName(nodeCredentialType);
+					const stored = this.getCredentialsByType(nodeCredentialType);
 
-					const dbCredentialsForType: ICredentialsResponse[] | null = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType);
-
-					const selectedCredentials = node.credentials[nodeCredentialType];
-
-					if (dbCredentialsForType !== null) {
-						const idMatch = dbCredentialsForType.find((c) => c.id === selectedCredentials.id);
-						if (!idMatch) {
-							return {
-								credentials: {
-									[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
-								},
-							};
-						}
+					if (selectedCredsWereDeleted(node, nodeCredentialType, stored)) {
+						const credential = this.getCredentialTypeByName(nodeCredentialType);
+						return reportUnsetCredential(credential);
 					}
 				}
 
-				/**
-				 * For HTTP Request node, report missing credential if no selected credential
-				 * or if no selected credentials of the chosen node credential type.
-				 */
 				if (
-					node.type === HTTP_REQUEST_NODE_TYPE &&
-					node.typeVersion === 2 &&
+					isHttpRequestNodeV2(node) &&
 					authenticateWith === 'nodeCredential' &&
 					nodeCredentialType !== '' &&
-					(
-						node.credentials === undefined ||
-						Object.keys(node.credentials).includes(nodeCredentialType) === false
-					)
+					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
-					const credentialType = this.getCredentialTypeByName(nodeCredentialType);
-
-					return {
-						credentials: {
-							[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
-						},
-					};
+					const credential = this.getCredentialTypeByName(nodeCredentialType);
+					return reportUnsetCredential(credential);
 				}
 
 				for (const credentialTypeDescription of nodeType!.credentials!) {
@@ -480,3 +439,41 @@ export const nodeHelpers = mixins(
 			},
 		},
 	});
+
+function isHttpRequestNodeV2(node: INodeUi) {
+	return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+}
+
+/**
+ * Whether the node has no selected credentials, or none of the node's
+ * selected credentials are of the specified type.
+ */
+function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
+	return node.credentials === undefined || Object.keys(node.credentials).includes(credentialType) === false;
+}
+
+/**
+ * Whether the node's selected credentials of the specified type
+ * can no longer be found in the database.
+ */
+function selectedCredsWereDeleted(
+	node: INodeUi,
+	nodeCredentialType: string,
+	storedCredsByType: ICredentialsResponse[] | null,
+) {
+	if (!node.credentials || !storedCredsByType) return false;
+
+	const selectedCredsByType = node.credentials[nodeCredentialType];
+
+	if (!selectedCredsByType) return false;
+
+	return !storedCredsByType.find((c) => c.id === selectedCredsByType.id);
+}
+
+function reportUnsetCredential(credentialType: ICredentialType) {
+	return {
+		credentials: {
+			[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
+		},
+	};
+}
