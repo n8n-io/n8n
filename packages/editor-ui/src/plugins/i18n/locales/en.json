@@ -297,6 +297,7 @@
 	"ndv.execute.executing": "Executing",
 	"ndv.execute.fetchEvent": "Fetch Event",
 	"ndv.execute.listenForEvent": "Listen For Event",
+	"ndv.featureRequest": "I wish this node would...",
 	"ndv.input": "Input",
 	"ndv.input.immediate": "Immediate",
 	"ndv.input.emptyOutput": "This input item is empty.",

@@ -24,6 +24,11 @@
 			</div>
 		</n8n-tooltip>
 
+		<a v-if="featureRequestUrl" @click="onFeatureRequestClick" :class="$style.featureRequest" target="_blank">
+			<font-awesome-icon icon="lightbulb" />
+			{{ $locale.baseText('ndv.featureRequest') }}
+		</a>
+
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
 			<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
@@ -310,6 +315,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				width: `${width}px`,
 			};
 		},
+		featureRequestUrl(): string {
+			if (!this.activeNodeType) {
+				return '';
+			}
+			return `https://n8n-community.typeform.com/to/BvmzxqYv#nodename=${this.activeNodeType.name}`;
+		},
 	},
 	watch: {
 		activeNode(node, oldNode) {
@@ -341,6 +352,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onFeatureRequestClick() {
+			window.open(this.featureRequestUrl, '_blank');
+		},
 		onDragStart(e: MouseEvent) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -616,6 +630,18 @@ $--main-panel-width: 350px;
 	.backToCanvas {
 		top: var(--spacing-xs);
 		left: var(--spacing-m);
+	}
+}
+
+.featureRequest {
+	position: absolute;
+	bottom: 0;
+	right: var(--spacing-l);
+	color: var(--color-text-xlight);
+	font-size: var(--font-size-2xs);
+
+	* {
+		margin-right: var(--spacing-3xs);
 	}
 }
 </style>

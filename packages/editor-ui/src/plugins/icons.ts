@@ -57,6 +57,7 @@ import {
 	faInfoCircle,
 	faKey,
 	faLink,
+	faLightbulb,
 	faMapSigns,
 	faNetworkWired,
 	faPause,
@@ -161,6 +162,7 @@ addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
 addIcon(faLink);
+addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faNetworkWired);
 addIcon(faPause);
