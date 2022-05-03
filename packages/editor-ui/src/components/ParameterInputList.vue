@@ -1,7 +1,8 @@
 <template>
-	<div class="parameter-input-list-wrapper" :class="{ 'has-reordered-credentials-input': showCredentialsAfter }">
-		<slot />
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -103,6 +104,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -120,7 +122,6 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
-			'showCredentialsAfter', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -131,6 +132,13 @@ export default mixins(
 			},
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
+			},
+			indexToShowSlotAt (): number {
+				if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
+					return 2;
+				}
+
+				return 0;
 			},
 		},
 		methods: {
@@ -267,16 +275,6 @@ export default mixins(
 	display: flex;
 	flex-direction: column;
 	padding-top: var(--spacing-xs);
-
-	&.has-reordered-credentials-input {
-		.node-credentials + div {
-			order: -2;
-		}
-
-		.node-credentials + div + div {
-			order: -1;
-		}
-	}
 
 	.delete-option {
 		display: none;
