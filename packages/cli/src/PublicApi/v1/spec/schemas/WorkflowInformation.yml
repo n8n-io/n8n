@@ -1,4 +1,9 @@
 type: object
+required:
+  - name
+  - nodes
+  - connections
+  - settings
 properties:
   id:
     type: number

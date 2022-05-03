@@ -1,7 +1,6 @@
 import { User } from '../../databases/entities/User';
 import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 import { Db } from '../..';
-import { Workflow } from 'n8n-workflow';
 
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -35,5 +34,9 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
 }
 
 export async function activeWorkflow(workflow: WorkflowEntity): Promise<void> {
-	await Db.collections.Workflow.update(workflow, { active: true });
+	await Db.collections.Workflow.update(workflow.id, { active: true });
+}
+
+export async function desactiveWorkflow(workflow: WorkflowEntity): Promise<void> {
+	await Db.collections.Workflow.update(workflow.id, { active: false });
 }

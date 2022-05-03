@@ -3,6 +3,8 @@ import express from 'express';
 
 import type { User } from '../databases/entities/User';
 
+import type { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+
 export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
 export type Role = 'owner' | 'member';
@@ -54,6 +56,7 @@ export declare namespace ExecutionRequest {
 }
 
 export declare namespace WorkflowRequest {
+	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
 	type Get = AuthenticatedRequest<{ workflowId: number }, {}, {}, {}>;
 	type Delete = Get;
 	type Activate = Get;
