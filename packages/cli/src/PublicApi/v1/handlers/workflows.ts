@@ -142,7 +142,7 @@ export = {
 			return res.json(sharedWorkflow.workflow);
 		},
 	],
-	desactivateWorkflow: [
+	deactivateWorkflow: [
 		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
