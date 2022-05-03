@@ -28,19 +28,6 @@ export async function getSharedWorkflow(
 	return sharedWorkflows;
 }
 
-export async function getWorkflowAccess(
-	user: User,
-	workflowId: string | undefined,
-): Promise<boolean> {
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: {
-			user,
-			workflow: { id: workflowId },
-		},
-	});
-	return !!sharedWorkflows.length;
-}
-
 export async function getWorkflowById(id: number): Promise<WorkflowEntity | undefined> {
 	const workflow = await Db.collections.Workflow.findOne({
 		where: {

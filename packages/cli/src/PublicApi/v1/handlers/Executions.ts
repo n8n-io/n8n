@@ -1,15 +1,16 @@
 import express = require('express');
 
+import { BinaryDataManager } from 'n8n-core';
 import { ExecutionRequest } from '../../publicApiRequest';
 import { encodeNextCursor } from '../../helpers';
 import { authorize, instanceOwnerSetup, validCursor } from '../../middlewares';
 import {
 	getExecutions,
-	getExecution,
+	getExecutionInWorkflows,
 	deleteExecution,
 	getExecutionsCount,
 } from '../../Services/execution';
-import { getSharedWorkflowIds, getWorkflowAccess } from '../../Services/workflow';
+import { getSharedWorkflowIds } from '../../Services/workflow';
 
 export = {
 	deleteExecution: [
@@ -18,28 +19,29 @@ export = {
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { executionId } = req.params;
 
-			const execution = await getExecution(executionId);
-			if (execution === undefined) {
-				return res.status(404).json({
-					message: 'Execution not found.',
-				});
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+
+			// user does not have workflows hence no executions
+			// or the execution he is trying to access belongs to a workflow he does not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json();
 			}
 
-			if (req.user.globalRole.name === 'owner') {
-				await deleteExecution(execution);
-				return res.json(execution);
+			// look for the execution on the workflow the user owns
+			const execution = await getExecutionInWorkflows(executionId, sharedWorkflowsIds);
+
+			// execution was not found
+			if (!execution) {
+				return res.status(404).json();
 			}
 
-			const userHasAccessToWorkflow = await getWorkflowAccess(req.user, execution.workflowId);
+			const binaryDataManager = BinaryDataManager.getInstance();
 
-			if (userHasAccessToWorkflow) {
-				await deleteExecution(execution);
-				return res.json(execution);
-			}
+			await binaryDataManager.deleteBinaryDataByExecutionId(execution.id.toString());
 
-			return res.status(404).json({
-				message: 'Execution not found.',
-			});
+			await deleteExecution(execution);
+
+			return res.json(execution);
 		},
 	],
 	getExecution: [
@@ -48,25 +50,23 @@ export = {
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { executionId } = req.params;
 
-			const execution = await getExecution(executionId);
-			if (execution === undefined) {
-				return res.status(404).json({
-					message: 'Execution not found.',
-				});
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+
+			// user does not have workflows hence no executions
+			// or the execution he is trying to access belongs to a workflow he does not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json();
 			}
 
-			if (req.user.globalRole.name === 'owner') {
-				return res.json(execution);
+			// look for the execution on the workflow the user owns
+			const execution = await getExecutionInWorkflows(executionId, sharedWorkflowsIds);
+
+			// execution was not found
+			if (!execution) {
+				return res.status(404).json();
 			}
 
-			const userHasAccessToWorkflow = await getWorkflowAccess(req.user, execution.workflowId);
-
-			if (userHasAccessToWorkflow) {
-				return res.json(execution);
-			}
-			return res.status(404).json({
-				message: 'Execution not found.',
-			});
+			return res.json(execution);
 		},
 	],
 	getExecutions: [
@@ -81,36 +81,20 @@ export = {
 				workflowId = undefined,
 			} = req.query;
 
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+
+			// user does not have workflows hence no executions
+			// or the execution he is trying to access belongs to a workflow he does not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json();
+			}
+
 			const filters = {
 				status,
 				limit,
 				lastId,
 				...(workflowId && { workflowIds: [workflowId] }),
 			};
-
-			if (req.user.globalRole.name === 'owner') {
-				const executions = await getExecutions(filters);
-
-				filters.lastId = executions.slice(-1)[0].id as number;
-
-				const count = await getExecutionsCount(filters);
-
-				return res.json({
-					data: executions,
-					nextCursor: encodeNextCursor({
-						lastId: filters.lastId,
-						limit,
-						numberOfNextRecords: count,
-					}),
-				});
-			}
-
-			const sharedWorkflowsIds = [];
-
-			if (!workflowId) {
-				const sharedWorkflows = await getSharedWorkflowIds(req.user);
-				sharedWorkflowsIds.push(...sharedWorkflows);
-			}
 
 			const executions = await getExecutions(filters);
 

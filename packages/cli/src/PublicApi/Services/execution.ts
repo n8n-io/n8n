@@ -17,6 +17,20 @@ function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 	return condition;
 }
 
+function getExecutionSelectableProperties(): Array<keyof IExecutionFlattedDb> {
+	return [
+		'id',
+		'data',
+		'mode',
+		'retryOf',
+		'retrySuccessId',
+		'startedAt',
+		'stoppedAt',
+		'workflowId',
+		'waitTill',
+	];
+}
+
 export async function getExecutions(data: {
 	limit: number;
 	lastId?: number;
@@ -24,6 +38,7 @@ export async function getExecutions(data: {
 	status?: ExecutionStatus;
 }): Promise<IExecutionFlattedDb[]> {
 	const executions = await Db.collections.Execution.find({
+		select: getExecutionSelectableProperties(),
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),
 			...(data.status && { ...getStatusCondition(data.status) }),
@@ -52,10 +67,14 @@ export async function getExecutionsCount(data: {
 	return executions;
 }
 
-export async function getExecution(id: number): Promise<IExecutionFlattedDb | undefined> {
+export async function getExecutionInWorkflows(
+	id: number,
+	workflows: number[],
+): Promise<IExecutionFlattedDb | undefined> {
 	const execution = await Db.collections.Execution.findOne({
 		where: {
 			id,
+			workflowId: In(workflows),
 		},
 	});
 	return execution;
