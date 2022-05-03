@@ -456,8 +456,10 @@ export class SendGrid implements INodeType {
 
 								const binaryProperty = items[i].binary![property];
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
+
 								attachmentsToSend.push({
-									content: binaryProperty.data,
+									content: dataBuffer.toString('base64'),
 									filename: binaryProperty.fileName || 'unknown',
 									type: binaryProperty.mimeType,
 								});

@@ -1002,7 +1002,7 @@ export const contactFields: INodeProperties[] = [
 												value: 'CONTAINS_TOKEN',
 											},
 											{
-												name: 'Doesn\'t Contain Exactly',
+												name: `Doesn't Contain Exactly`,
 												value: 'NOT_CONTAINS_TOKEN',
 											},
 										],

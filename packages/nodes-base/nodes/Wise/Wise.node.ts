@@ -281,7 +281,7 @@ export class Wise implements INodeType {
 						if (range !== undefined && time === undefined) {
 							qs.from = moment.tz(range.rangeProperties.from, timezone).utc().format();
 							qs.to = moment.tz(range.rangeProperties.to, timezone).utc().format();
-						} else {
+						} else if (time === undefined) {
 							qs.from = moment().subtract(1, 'months').utc().format();
 							qs.to = moment().format();
 						}
