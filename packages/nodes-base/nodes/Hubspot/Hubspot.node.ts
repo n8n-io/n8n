@@ -86,7 +86,7 @@ import {
 import {
 	validateCredentials
 } from './GenericFunctions';
-import { options } from 'rhea';
+
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
@@ -2421,7 +2421,7 @@ export class Hubspot implements INodeType {
 							const name = this.getNodeParameter('name', i) as string;
 							const labels = this.getNodeParameter('labels', i) as IDataObject;
 							const properties = (this.getNodeParameter('properties.values', i, []) as IDataObject[]).map(property => {
-								if (!options) return property;
+								if (!property.options) return property;
 								return {
 									name: property.name,
 									label: property.label,
