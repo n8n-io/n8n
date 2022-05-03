@@ -484,7 +484,7 @@ $--main-panel-width: 350px;
 
 .dataPanel {
 	composes: panel;
-	height: calc(100% - 2 * var(--spacing-s));
+	height: calc(100% - 2 * var(--spacing-l));
 	position: absolute;
 	top: var(--spacing-l);
 	> * {
