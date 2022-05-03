@@ -5,6 +5,7 @@ export const customObjectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
@@ -12,42 +13,47 @@ export const customObjectOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Update or create a custom object.',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a custom Object.',
+				description: 'Create a custom Object',
+			},
+			{
+				name: 'Define',
+				value: 'define',
+				description: 'Define new schema for a custom Object',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Archive a custom Object.',
+				description: 'Archive a custom Object',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a custom Object.',
+				description: 'Get a custom Object',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search custom Objects.',
+				description: 'Search custom Objects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a custom Object.',
+				description: 'Update a custom Object',
 			},
 			{
-				name: 'Batched get',
+				name: 'Batched Get',
 				value: 'batchGet',
 				description: 'Like get, but this has fewer options and costs only one request per 100 objects. Requires continueOnFail.',
 			},
 			{
-				name: 'Batched delete',
+				name: 'Batched Delete',
 				value: 'batchDelete',
 				description: 'Like delete, but this costs only up to two requests per 100 objects. Requires continueOnFail.',
 			},
@@ -57,8 +63,7 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Like upsert, but this costs only up to three requests per 100 objects. Requires continueOnFail.',
 			},
 		],
-		default: 'upsert',
-		description: 'The operation to perform.',
+		default: 'create',
 	},
 	{
 		displayName: 'Custom Object Type',
@@ -67,6 +72,9 @@ export const customObjectOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
+			},
+			hide: {
+				operation: ['define'],
 			},
 		},
 		typeOptions: {
@@ -115,14 +123,14 @@ export const customObjectFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the property.',
+								description: 'Value of the property',
 							},
 						],
 					},
@@ -131,10 +139,247 @@ export const customObjectFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
+	/*                              customObject:define                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'A unique name for this object. For internal use only.',
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Primary Display Property',
+		name: 'primaryDisplayProperty',
+		type: 'string',
+		default: '',
+		hint: 'Property with such name must be defined in properties',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Labels',
+		name: 'labels',
+		default: {},
+		type: 'fixedCollection',
+		placeholder: 'Add Labels',
+		required: true,
+		typeOptions: {
+			multipleValues: false,
+
+		},
+		options: [
+			{
+				displayName: 'Labels',
+				name: 'labels',
+				values: [
+					{
+						displayName: 'Singular',
+						name: 'singular',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+					{
+						displayName: 'Plural',
+						name: 'plural',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Properties',
+		name: 'properties',
+		default: [],
+		type: 'fixedCollection',
+		required: true,
+		placeholder: 'Add Property',
+		typeOptions: {
+			multipleValues: true,
+		},
+		options: [
+			{
+				displayName: 'Properties',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						required: true,
+						description: 'The internal property name, which must be used when referencing the property from the API',
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'string',
+						default: '',
+						required: true,
+						description: 'A human-readable property label that will be shown in HubSpot',
+					},
+					{
+						displayName: 'Options',
+						name: 'options',
+						type: 'collection',
+						placeholder: 'Add Option',
+						default: {},
+						options: [
+							{
+								displayName: 'Description',
+								name: 'description',
+								type: 'string',
+								default: '',
+								description: 'A description of the property that will be shown as help text in HubSpot',
+							},
+							{
+								displayName: 'Display Order',
+								name: 'displayOrder',
+								type: 'number',
+								default: 0,
+								description: 'The order that this property should be displayed in the HubSpot UI',
+							},
+							{
+								displayName: 'Group Name',
+								name: 'groupName',
+								type: 'string',
+								default: '',
+								description: 'The name of the group this property belongs to',
+							},
+							{
+								displayName: 'Has Unique Value',
+								name: 'hasUniqueValue',
+								type: 'boolean',
+								default: false,
+								description: 'Whether or not the property\'s value must be unique',
+							},
+							{
+								displayName: 'Hidden',
+								name: 'hidden',
+								type: 'boolean',
+								default: false,
+								description: 'Whether or not the property is hidden',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								default: 'string',
+								description: 'The data type of the property',
+								options: [
+									{
+										name: 'Boolean',
+										value: 'bool',
+									},
+									{
+										name: 'Date',
+										value: 'date',
+									},
+									{
+										name: 'Datetime',
+										value: 'datetime',
+									},
+									{
+										name: 'Enumeration',
+										value: 'enumeration',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+									},
+									{
+										name: 'String',
+										value: 'string',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['define'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Associated Objects',
+				name: 'associatedObjects',
+				type: 'string',
+				default: '',
+				description: 'Associations defined for this object type',
+				hint: 'Comma separeted values',
+			},
+			{
+				displayName: 'Required Properties',
+				name: 'requiredProperties',
+				type: 'string',
+				default: '',
+				description: 'The names of properties that should be required when creating an object of this type',
+				hint: 'Comma separeted values',
+			},
+			{
+				displayName: 'Searchable Properties',
+				name: 'searchableProperties',
+				type: 'string',
+				default: '',
+				description: 'TNames of properties that will be indexed for this object type in by HubSpot\'s product search',
+				hint: 'Comma separeted values',
+			},
+			{
+				displayName: 'Secondary Display Properties',
+				name: 'secondaryDisplayProperties',
+				type: 'string',
+				default: '',
+				description: 'The names of secondary properties for this object. These will be displayed as secondary on the HubSpot record page for this object type.',
+				hint: 'Comma separeted values',
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
 	/*                              customObject:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID property',
+		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
@@ -162,11 +407,11 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -199,14 +444,14 @@ export const customObjectFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the property.',
+								description: 'Value of the property',
 							},
 						],
 					},
@@ -218,7 +463,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                              customObject:upsert                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID property',
+		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
@@ -247,7 +492,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -284,14 +529,14 @@ export const customObjectFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
-								description: 'Name of the property.',
+								description: 'Name of the property',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the property.',
+								description: 'Value of the property',
 							},
 						],
 					},
@@ -303,7 +548,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                             customObject:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID property',
+		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
@@ -331,7 +576,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -354,17 +599,17 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned in the response.',
+				description: 'A list of the properties to be returned in the response',
 			},
 			{
-				displayName: 'Properties with history',
+				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned along with their history of previous values.',
+				description: 'A list of the properties to be returned along with their history of previous values',
 			},
 			// {
 			//     displayName: 'Associations',
@@ -381,7 +626,7 @@ export const customObjectFields: INodeProperties[] = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return only results that have been archived.',
+				description: 'Whether to return only results that have been archived',
 			},
 		],
 	},
@@ -389,7 +634,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                          customObject:batchGet                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID property',
+		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
@@ -417,7 +662,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -440,17 +685,17 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned in the response.',
+				description: 'A list of the properties to be returned in the response',
 			},
 			{
-				displayName: 'Properties with history',
+				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned along with their history of previous values.',
+				description: 'A list of the properties to be returned along with their history of previous values',
 			},
 		],
 	},
@@ -472,7 +717,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -495,8 +740,8 @@ export const customObjectFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 250,
 		},
-		default: 100,
-		description: 'Limit the number of results.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -519,7 +764,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned in the response.',
+				description: 'A list of the properties to be returned in the response',
 			},
 			{
 				displayName: 'Filter Groups',
@@ -594,11 +839,11 @@ export const customObjectFields: INodeProperties[] = [
 														value: 'BETWEEN',
 													},
 													{
-														name: 'In a set',
+														name: 'In a Set',
 														value: 'IN',
 													},
 													{
-														name: 'Not in a set',
+														name: 'Not In a Set',
 														value: 'NOT_IN',
 													},
 													{
@@ -614,7 +859,7 @@ export const customObjectFields: INodeProperties[] = [
 														value: 'CONTAINS_TOKEN',
 													},
 													{
-														name: 'Doesn\'t Contain Exactly',
+														name: 'Does Not Contain Exactly',
 														value: 'NOT_CONTAINS_TOKEN',
 													},
 
@@ -639,7 +884,7 @@ export const customObjectFields: INodeProperties[] = [
 												default: '',
 											},
 											{
-												displayName: 'Low value',
+												displayName: 'Low Value',
 												name: 'value',
 												displayOptions: {
 													show: {
@@ -650,10 +895,10 @@ export const customObjectFields: INodeProperties[] = [
 												},
 												type: 'string',
 												default: '',
-												description: 'The lower bound for a between filter.',
+												description: 'The lower bound for a between filter',
 											},
 											{
-												displayName: 'High value',
+												displayName: 'High Value',
 												name: 'highValue',
 												displayOptions: {
 													show: {
@@ -664,7 +909,7 @@ export const customObjectFields: INodeProperties[] = [
 												},
 												type: 'string',
 												default: '',
-												description: 'The upper bound for a between filter.',
+												description: 'The upper bound for a between filter',
 											},
 											{
 												displayName: 'Values',
@@ -708,7 +953,7 @@ export const customObjectFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Search all searchable properties for this string.',
+				description: 'Search all searchable properties for this string',
 			},
 		],
 	},
@@ -716,7 +961,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                              customObject:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID property',
+		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
@@ -744,6 +989,6 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 ];
