@@ -23,7 +23,7 @@ export class RenameKeys implements INodeType {
 		name: 'renameKeys',
 		icon: 'fa:edit',
 		group: ['transform'],
-		version: 1.1,
+		version: 1,
 		description: 'Renames keys',
 		defaults: {
 			name: 'Rename Keys',
@@ -37,13 +37,13 @@ export class RenameKeys implements INodeType {
 				name: 'keepOnlyRenamed',
 				type: 'boolean',
 				default: false,
-				description: 'If only the values renamed on this node should be kept and all others removed.',
+				description: 'Whether only the values renamed on this node should be kept and all others removed',
 			},
 			{
 				displayName: 'Keys',
 				name: 'keys',
 				placeholder: 'Add new key',
-				description: 'Adds a key which should be renamed.',
+				description: 'Adds a key which should be renamed',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -69,7 +69,7 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'newKey',
-								description: 'the name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
+								description: 'The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 							},
 						],
 					},
@@ -87,50 +87,59 @@ export class RenameKeys implements INodeType {
 
 		let item: INodeExecutionData;
 		let newItem: INodeExecutionData;
-		let keepOnlyRenamed: boolean;
 		let renameKeys: IRenameKey[];
 		let value: any; // tslint:disable-line:no-any
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			keepOnlyRenamed = this.getNodeParameter('keepOnlyRenamed', itemIndex, false) as boolean;
-			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
-			item = items[itemIndex];
-			
-			newItem = {
-				json: {},
-			};
-			
-			if (keepOnlyRenamed !== true) {
+			try {
+				const keepOnlyRenamed = this.getNodeParameter('keepOnlyRenamed', itemIndex, false) as boolean;
+				renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
+				item = items[itemIndex];
+
+				newItem = {
+					json: {},
+				};
+
+				if (keepOnlyRenamed !== true) {
+					// Copy the whole JSON data as data on any level can be renamed
+					newItem = {
+						json: JSON.parse(JSON.stringify(item.json)),
+					};
+				}
+
 				if (item.binary !== undefined) {
 					// Reference binary data if any exists. We can reference it
 					// as this nodes does not change it
 					newItem.binary = item.binary;
 				}
-				
-				// Copy the whole JSON data as data on any level can be renamed
-				newItem = {
-					json: JSON.parse(JSON.stringify(item.json)),
-				};
-			};
 
-			renameKeys.forEach((renameKey) => {
-				if (renameKey.currentKey === '' || renameKey.newKey === '' || renameKey.currentKey === renameKey.newKey) {
-					// Ignore all which do not have all the values set or if the new key is equal to the current key
-					return;
-				}
-				value = get(item.json, renameKey.currentKey as string);
-				if (value === undefined) {
-					return;
-				}
-				set(newItem.json, renameKey.newKey, value);
-				
-				if (keepOnlyRenamed !== true) {
-					unset(newItem.json, renameKey.currentKey as string);
-				};
-			});
+				renameKeys.forEach((renameKey) => {
 
-			returnData.push(newItem);
+					if (renameKey.currentKey === '' || renameKey.newKey === '' || renameKey.currentKey === renameKey.newKey) {
+						// Ignore all which do not have all the values set or if the new key is equal to the current key
+						return;
+					}
+					value = get(item.json, renameKey.currentKey as string);
+					if (value === undefined) {
+						return;
+					}
+					set(newItem.json, renameKey.newKey, value);
+
+					if (keepOnlyRenamed !== true) {
+						unset(newItem.json, renameKey.currentKey as string);
+					}
+				});
+
+				returnData.push(newItem);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
+			}
 		}
-
 		return [returnData];
 	}
 }
