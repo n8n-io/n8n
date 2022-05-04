@@ -222,8 +222,6 @@ export default mixins(
 				},
 			};
 
-			delete this.node.activeCredentialType;
-
 			this.$emit('credentialSelected', updateInformation);
 		},
 
@@ -279,8 +277,6 @@ export default mixins(
 					credentials,
 				},
 			};
-
-			this.node.activeCredentialType = credentialType;
 
 			this.$emit('credentialSelected', updateInformation);
 		},

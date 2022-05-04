@@ -145,7 +145,6 @@ export interface INodeUi extends INode {
 	notes?: string;
 	issues?: INodeIssues;
 	name: string;
-	activeCredentialType?: string;
 }
 
 export interface INodeTypesMaxCount {
