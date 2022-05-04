@@ -23,7 +23,7 @@
 				<i :class="$style.icon">
 					<font-awesome-icon icon="plug" />
 				</i>
-				<span slot="title">{{ $locale.baseText('settings.api') }}</span>
+				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">

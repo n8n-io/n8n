@@ -10,10 +10,7 @@
 			<div v-if="apiKey">
 				<p class="mb-s">
 					<n8n-info-tip :bold="false">
-						{{ $locale.baseText('settings.api.view.info') }}
-						<n8n-link to="https://docs.n8n.io/api/" size="small">
-							{{ $locale.baseText('generic.learnMore') }}
-						</n8n-link>
+						<span v-html="$locale.baseText('settings.api.view.info')"></span>
 					</n8n-info-tip>
 				</p>
 				<n8n-card :class="$style.card">
@@ -32,7 +29,6 @@
 			</div>
 			<n8n-action-box
 				v-else-if="mounted"
-				:heading="$locale.baseText('settings.api.create.title')"
 				:buttonText="$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')"
 				:description="$locale.baseText('settings.api.create.description')"
 				@click="createApiKey"
