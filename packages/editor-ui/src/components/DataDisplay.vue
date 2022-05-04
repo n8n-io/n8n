@@ -60,30 +60,14 @@
 				/>
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
-				<div v-if="!isTriggerNode" :class="{[$style.dragButton]: true, [$style.dragging]: isDragging}" @mousedown="onDragStart">
-					<span v-if="canMoveLeft" :class="{[$style.leftArrow]: true, [$style.visible]: isDragging}">
-						<font-awesome-icon icon="arrow-left" />
-					</span>
-					<span v-if="canMoveRight" :class="{[$style.rightArrow]: true, [$style.visible]: isDragging}">
-						<font-awesome-icon icon="arrow-right" />
-					</span>
-					<div :class="$style.grid">
-						<div>
-							<div></div>
-							<div></div>
-							<div></div>
-							<div></div>
-							<div></div>
-						</div>
-						<div>
-							<div></div>
-							<div></div>
-							<div></div>
-							<div></div>
-							<div></div>
-						</div>
-					</div>
-				</div>
+				<PanelDragButton
+					:class="$style.draggable"
+					v-if="!isTriggerNode"
+					:isDragging="isDragging"
+					:canMoveLeft="canMoveLeft"
+					:canMoveRight="canMoveRight"
+					@mousedown="onDragStart"
+				/>
 				<NodeSettings
 					:eventBus="settingsEventBus"
 					:dragging="isDragging"
@@ -113,6 +97,7 @@ import { mapGetters } from 'vuex';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { isNumber } from './helpers';
 import { editor } from 'monaco-editor';
+import PanelDragButton from './PanelDragButton.vue';
 
 const MAIN_PANEL_WIDTH = 350;
 const SIDE_MARGIN = 24;
@@ -123,6 +108,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		NodeSettings,
 		InputPanel,
 		OutputPanel,
+		PanelDragButton,
 	},
 	props: {
 		renaming: {
@@ -489,21 +475,11 @@ $--main-panel-width: 350px;
 	width: 100%;
 }
 
-.panel {
-	position: absolute;
-	> * {
-		overflow: hidden;
-	}
-}
-
 .dataPanel {
-	composes: panel;
+	position: absolute;
 	height: calc(100% - 2 * var(--spacing-l));
 	position: absolute;
 	top: var(--spacing-l);
-	> * {
-		overflow: hidden;
-	}
 }
 
 .inputPanel {
@@ -525,71 +501,21 @@ $--main-panel-width: 350px;
 }
 
 .mainPanel {
-	composes: panel;
+	position: absolute;
 	height: 100%;
 
 	&:hover {
-		.dragButton {
+		.draggable {
 			visibility: visible;
 		}
 	}
 }
 
-.dragButton {
-	background-color: var(--color-background-base);
-	width: 64px;
-	height: 21px;
-	top: -20px;
-	left: 40%;
-	border-top-left-radius: var(--border-radius-large);
-	border-top-right-radius: var(--border-radius-large);
-	position: absolute;
-	cursor: grab;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: visible;
-	visibility: hidden;
-
-	&:hover {
-		.leftArrow, .rightArrow {
-			visibility: visible;
-		}
-	}
-}
 
 .visible {
 	visibility: visible !important;
 }
 
-.dragging {
-	visibility: visible;
-	cursor: grabbing;
-}
-
-.grid {
-	> div {
-		display: flex;
-
-		&:first-child {
-			> div {
-				margin-bottom: 2px;
-			}
-		}
-
-		> div {
-			height: 2px;
-			width: 2px;
-			border-radius: 50%;
-			background-color: var(--color-foreground-xdark);
-			margin-right: 4px;
-
-			&:last-child {
-				margin-right: 0;
-			}
-		}
-	}
-}
 
 .triggerWarning {
 	max-width: 180px;
@@ -609,23 +535,6 @@ $--main-panel-width: 350px;
 	}
 }
 
-.arrow {
-	position: absolute;
-	color: var(--color-background-xlight);
-	font-size: var(--font-size-3xs);
-	visibility: hidden;
-}
-
-.leftArrow {
-	composes: arrow;
-	left: -16px;
-}
-
-.rightArrow {
-	composes: arrow;
-	right: -16px;
-}
-
 @media (min-width: $--breakpoint-lg) {
 	.backToCanvas {
 		top: var(--spacing-xs);
@@ -643,5 +552,12 @@ $--main-panel-width: 350px;
 	* {
 		margin-right: var(--spacing-3xs);
 	}
+}
+
+.draggable {
+	top: -20px;
+	left: 40%;
+	position: absolute;
+	visibility: hidden;
 }
 </style>
