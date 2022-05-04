@@ -480,6 +480,7 @@ $--main-panel-width: 350px;
 	height: calc(100% - 2 * var(--spacing-l));
 	position: absolute;
 	top: var(--spacing-l);
+	z-index: 0;
 }
 
 .inputPanel {
