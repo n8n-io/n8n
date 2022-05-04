@@ -384,6 +384,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
+			loadOptionsDependsOn: ['customObjectType'],
 		},
 		displayOptions: {
 			show: {
@@ -553,6 +554,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
+			loadOptionsDependsOn: ['customObjectType'],
 		},
 		displayOptions: {
 			show: {
@@ -639,6 +641,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
+			loadOptionsDependsOn: ['customObjectType'],
 		},
 		displayOptions: {
 			show: {
@@ -966,6 +969,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
+			loadOptionsDependsOn: ['customObjectType'],
 		},
 		required: true,
 		displayOptions: {
