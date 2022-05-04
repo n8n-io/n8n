@@ -192,6 +192,7 @@ export default Vue.extend({
 	color: var(--color-text-light);
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-s);
 }
 
 </style>
