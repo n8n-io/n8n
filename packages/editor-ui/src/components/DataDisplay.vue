@@ -118,8 +118,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	data() {
 		return {
 			settingsEventBus: new Vue(),
-			runInputIndex: 0,
-			runOutputIndex: 0,
+			runInputIndex: -1,
+			runOutputIndex: -1,
 			linkedRuns: true,
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
@@ -229,6 +229,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return 0;
 		},
 		outputRun(): number {
+			if (this.runOutputIndex === -1) {
+				return this.maxOutputRun;
+			}
+
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
@@ -249,6 +253,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return 0;
 		},
 		inputRun(): number {
+			if (this.linkedRuns && this.maxOutputRun === this.maxInputRun) {
+				return this.outputRun;
+			}
+			if (this.runInputIndex === -1) {
+				return this.maxInputRun;
+			}
+
 			return Math.min(this.runInputIndex, this.maxInputRun);
 		},
 		canLinkRuns(): boolean {
@@ -311,8 +322,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	watch: {
 		activeNode(node, oldNode) {
 			if (node && !oldNode && !this.isActiveStickyNode) {
-				this.runInputIndex = this.maxInputRun;
-				this.runOutputIndex = this.maxOutputRun;
+				this.runInputIndex = -1;
+				this.runOutputIndex = -1;
 				this.linkedRuns = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
@@ -330,11 +341,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
 			}
 		},
-		maxOutputRun(maxRun) {
-			this.runOutputIndex = maxRun;
+		maxOutputRun() {
+			this.runOutputIndex = -1;
 		},
-		maxInputRun(maxRun) {
-			this.runInputIndex = maxRun;
+		maxInputRun() {
+			this.runInputIndex = -1;
 		},
 	},
 	methods: {
@@ -372,14 +383,14 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.windowWidth = window.innerWidth;
 		},
 		onLinkRunToInput() {
-			this.linkedRuns = true;
 			this.runOutputIndex = this.runInputIndex;
+			this.linkedRuns = true;
 		},
 		onLinkRunToOutput() {
 			this.linkedRuns = true;
-			this.runInputIndex = this.runOutputIndex;
 		},
 		onUnlinkRun() {
+			this.runInputIndex = this.runOutputIndex;
 			this.linkedRuns = false;
 		},
 		onNodeExecute() {
@@ -409,9 +420,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
-			if (this.linked) {
-				this.runInputIndex = run;
-			}
 		},
 		onRunInputIndexChange(run: number) {
 			this.runInputIndex = run;
@@ -420,7 +428,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			}
 		},
 		onInputSelect(value: string) {
-			this.runInputIndex = this.runOutputIndex;
+			this.runInputIndex = -1;
 			this.linkedRuns = true;
 			this.selectedInput = value;
 		},
