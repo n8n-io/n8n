@@ -1354,7 +1354,9 @@ export default mixins(
 				const newNodeData: INodeUi = {
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
-					typeVersion: nodeTypeData.version,
+					typeVersion: Array.isArray(nodeTypeData.version)
+						? nodeTypeData.version.slice(-1)[0]
+						: nodeTypeData.version,
 					position: [0, 0],
 					parameters: {},
 				};
@@ -2443,7 +2445,7 @@ export default mixins(
 					if (nodeType !== null) {
 						let nodeParameters = null;
 						try {
-							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false);
+							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false, node);
 						} catch (e) {
 							console.error(this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') + `: "${node.name}"`); // eslint-disable-line no-console
 							console.error(e); // eslint-disable-line no-console
@@ -2751,10 +2753,13 @@ export default mixins(
 
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
-					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+					const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
+					if(!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
 						nodesToBeFetched.push({
 							name: node.name,
-							version: node.version,
+							version: Array.isArray(node.version)
+								? node.version.slice(-1)[0]
+								: node.version,
 						});
 					}
 				});

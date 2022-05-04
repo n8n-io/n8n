@@ -468,7 +468,7 @@ export default mixins(
 				const newPath = this.shortPath.split('.');
 				newPath.pop();
 
-				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'));
+				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'), this.node);
 
 				if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
 					// Check if the value resolves to a valid option
