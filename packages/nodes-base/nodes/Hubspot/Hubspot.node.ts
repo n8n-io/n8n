@@ -2481,12 +2481,21 @@ export class Hubspot implements INodeType {
 									properties: [idProperty],
 								};
 								const getEndpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
-								const idResponseData = await hubspotApiRequest.call(this, 'GET', getEndpoint, {}, qs);
+								const idResponseData = await hubspotApiRequest
+									.call(this, 'GET', getEndpoint, {}, qs)
+									.catch((e) => {
+										if ((e as NodeApiError).httpCode !== '404') {
+											throw e;
+										}
+										return { id: undefined };
+									});
 								realObjectId = idResponseData.id;
 							}
 
 							const endpoint = `/crm/v3/objects/${customObjectType}/${realObjectId}`;
-							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+							if (realObjectId) await hubspotApiRequest.call(this, 'DELETE', endpoint);
+
+							responseData = { success: true };
 						}
 					}
 					//https://developers.hubspot.com/docs/methods/deals/deals_overview
