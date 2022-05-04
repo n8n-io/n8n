@@ -134,8 +134,16 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
+				// edge cases: credential with two dependencies
+				if (
+					(this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) ||
+					this.node.type === 'n8n-nodes-base.sentryIo'
+				) {
 					return 2;
+				}
+
+				if (this.nodeValues.parameters.authentication !== undefined) {
+					return 1;
 				}
 
 				return 0;
