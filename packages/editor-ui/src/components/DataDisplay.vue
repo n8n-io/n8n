@@ -61,7 +61,7 @@
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
 				<PanelDragButton
-					:class="$style.draggable"
+					:class="{[$style.draggable]: true, [$style.visible]: isDragging}"
 					v-if="!isTriggerNode"
 					:isDragging="isDragging"
 					:canMoveLeft="canMoveLeft"
@@ -511,12 +511,6 @@ $--main-panel-width: 350px;
 	}
 }
 
-
-.visible {
-	visibility: visible !important;
-}
-
-
 .triggerWarning {
 	max-width: 180px;
 }
@@ -560,4 +554,9 @@ $--main-panel-width: 350px;
 	position: absolute;
 	visibility: hidden;
 }
+
+.visible {
+	visibility: visible;
+}
+
 </style>
