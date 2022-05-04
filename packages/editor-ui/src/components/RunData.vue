@@ -970,9 +970,9 @@ export default mixins(
 }
 
 .displayModes {
-	position: absolute;
-	top: var(--spacing-xs);
-	right: var(--spacing-xs);
+	display: flex;
+	justify-content: flex-end;
+	flex-grow: 1;
 }
 
 .spinner {
