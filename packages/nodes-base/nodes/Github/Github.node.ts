@@ -2278,6 +2278,7 @@ export class Github implements INodeType {
 						requestMethod = 'GET';
 
 						endpoint = `/orgs/${owner}/repos`;
+						returnAll = true;
 
 						}
 
