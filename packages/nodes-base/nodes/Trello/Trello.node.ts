@@ -90,8 +90,8 @@ export class Trello implements INodeType {
 						value: 'board',
 					},
 					{
-						name: 'Board Members',
-						value: 'boardMembers',
+						name: 'Board Member',
+						value: 'boardMember',
 					},
 					{
 						name: 'Card',
@@ -227,10 +227,10 @@ export class Trello implements INodeType {
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
-				}	else if (resource === 'boardMembers') {
-					if (operation === 'getMembers') {
+				}	else if (resource === 'boardMember') {
+					if (operation === 'getAll') {
 						// ----------------------------------
-						//         getMembers
+						//         getAll
 						// ----------------------------------
 
 						requestMethod = 'GET';
@@ -243,9 +243,9 @@ export class Trello implements INodeType {
 
 						endpoint = `boards/${id}/members`;
 
-					} else if (operation === 'addMember') {
+					} else if (operation === 'add') {
 						// ----------------------------------
-						//         addMember
+						//               add
 						// ----------------------------------
 
 						requestMethod = 'PUT';
@@ -258,9 +258,25 @@ export class Trello implements INodeType {
 						qs.type = this.getNodeParameter('type', i) as string;
 						qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
 
-					} else if (operation === 'removeMember') {
+					} else if (operation === 'invite') {
 						// ----------------------------------
-						//         removeMember
+						//              invite
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `boards/${id}/members`;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						qs.email = this.getNodeParameter('email', i) as string;
+						qs.type = additionalFields.type as string;
+						body.fullName = additionalFields.fullName as string;
+					} else if (operation === 'remove') {
+						// ----------------------------------
+						//              remove
 						// ----------------------------------
 
 						requestMethod = 'DELETE';
@@ -270,22 +286,6 @@ export class Trello implements INodeType {
 
 							endpoint = `boards/${id}/members/${idMember}`;
 
-					} else if (operation === 'inviteMemberViaEmail') {
-						// ----------------------------------
-						//         inviteMemberViaEmail
-						// ----------------------------------
-
-						requestMethod = 'PUT';
-
-						const id = this.getNodeParameter('id', i) as string;
-
-						endpoint = `boards/${id}/members`;
-
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						qs.email = this.getNodeParameter('email', i) as string;
-						qs.type = additionalFields.type as string;
-						body.fullName = additionalFields.fullName as string;
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
