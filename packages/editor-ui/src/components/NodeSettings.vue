@@ -316,8 +316,8 @@ export default mixins(
 			/**
 			 * Check if the node's currently active credential type may be used to make a request with the HTTP Request node v2.
 			 */
-			checkIfSupportedByHttpRequestNode(activeCredentialType: string) {
-				const credentialType = this.getCredentialTypeByName(activeCredentialType);
+			checkIfSupportedByHttpRequestNode(activeCredentialTypeName: string) {
+				const credentialType = this.getCredentialTypeByName(activeCredentialTypeName);
 
 				this.isSupportedByHttpRequestNode = (
 					credentialType.name.slice(0, -4).endsWith('OAuth') ||
