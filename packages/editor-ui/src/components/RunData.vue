@@ -971,7 +971,8 @@ export default mixins(
 
 .displayModes {
 	position: absolute;
-	right: var(--spacing-s);
+	top: var(--spacing-xs);
+	right: var(--spacing-xs);
 }
 
 .spinner {
