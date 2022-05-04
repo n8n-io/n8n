@@ -125,24 +125,29 @@ export class Github implements INodeType {
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
-			{
+
+		{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				displayOptions: {
-					show: {
-						resource: [
-							'organization',
-						],
-					},
+						show: {
+								resource: [
+										'organization',
+								],
+
+						},
 				},
-				options: [{
-					name: 'getOrgRepositories',
-					value: 'getOrgRepositories',
-					description: 'Get all repositories of an organization',}],
-				default: 'getOrgRepositories',
+				options: [
+						{
+								name: 'Get all Repositories',
+								value: 'getAll',
+								description: 'Returns all repositories of an organization',
+						},
+				],
+				default: 'getAll',
 				description: 'The operation to perform.',
-			},
+		},
 
 			{
 				displayName: 'Operation',
@@ -389,7 +394,7 @@ export class Github implements INodeType {
 				name: 'owner',
 				type: 'string',
 				default: '',
-				required: true,
+				required: false,
 				displayOptions: {
 					hide: {
 						operation: [
@@ -405,7 +410,7 @@ export class Github implements INodeType {
 				name: 'repository',
 				type: 'string',
 				default: '',
-				required: true,
+				required: false,
 				displayOptions: {
 					hide: {
 						resource: [
@@ -1745,52 +1750,6 @@ export class Github implements INodeType {
 			},
 
 			// ----------------------------------
-			//       Org:getOrgRepositories
-			// ----------------------------------
-			{
-				displayName: 'get Org Repositories',
-				name: 'getOrgRepositories',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						resource: [
-							'organisation',
-						],
-						operation: [
-							'getOrgRepositories',
-						],
-					},
-				},
-				default: true,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'getOrgRepositories',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 100,
-				},
-				default: 50,
-				description: 'How many results to return.',
-
-			},
-
-			// ----------------------------------
 			//         user:invite
 			// ----------------------------------
 			{
@@ -1910,6 +1869,7 @@ export class Github implements INodeType {
 			'user:getRepositories',
 			'release:getAll',
 			'review:getAll',
+			'organization:getAll',
 		];
 
 
@@ -1940,7 +1900,7 @@ export class Github implements INodeType {
 				}
 
 				let repository = '';
-				if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite') {
+				if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite' && fullOperation !== 'organization:getAll') {
 					repository = this.getNodeParameter('repository', i) as string;
 				}
 
@@ -1997,6 +1957,7 @@ export class Github implements INodeType {
 						}
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -2301,12 +2262,36 @@ export class Github implements INodeType {
 						//            invite
 						// ----------------------------------
 
+
 						requestMethod = 'POST';
 						const org = this.getNodeParameter('organization', i) as string;
 						endpoint = `/orgs/${org}/invitations`;
 						body.email = this.getNodeParameter('email', i) as string;
 
 					}
+				} else if (resource === 'organization') {
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         getRepositories
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/orgs/${owner}/repos`;
+
+						}
+
+					} else if (operation === 'invite') {
+						// ----------------------------------
+						//            invite
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						const org = this.getNodeParameter('organization', i) as string;
+						endpoint = `/orgs/${org}/invitations`;
+						body.email = this.getNodeParameter('email', i) as string;
+
+
 
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
