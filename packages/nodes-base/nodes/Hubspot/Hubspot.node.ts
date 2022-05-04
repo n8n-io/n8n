@@ -944,10 +944,84 @@ export class Hubspot implements INodeType {
 
 			// Get all the custom object types to display them to user so that he can select them
 			async getCustomObjectTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [{
-					name: 'Contact',
-					value: '0-1',
-				}];
+				const returnData: INodePropertyOptions[] = [
+					{
+						name: 'Contact',
+						value: '0-1',
+					},
+					{
+						name: 'Company',
+						value: '0-2',
+					},
+					{
+						name: 'Deal',
+						value: '0-3',
+					},
+					{
+						name: 'Engagement',
+						value: '0-4',
+					},
+					{
+						name: 'Ticket',
+						value: '0-5',
+					},
+					{
+						name: 'Product',
+						value: '0-7',
+					},
+					{
+						name: 'Line item',
+						value: '0-8',
+					},
+					{
+						name: 'Quote',
+						value: '0-14',
+					},
+					{
+						name: 'Feedback submission',
+						value: '0-19',
+					},
+					{
+						name: 'Task',
+						value: '0-27',
+					},
+					{
+						name: 'Note',
+						value: '0-46',
+					},
+					{
+						name: 'Meeting',
+						value: '0-47',
+					},
+					{
+						name: 'Call',
+						value: '0-48',
+					},
+					{
+						name: 'Email',
+						value: '0-49',
+					},
+					{
+						name: 'Quote template',
+						value: '0-64',
+					},
+					{
+						name: 'Discount',
+						value: '0-84',
+					},
+					{
+						name: 'Fee',
+						value: '0-85',
+					},
+					{
+						name: 'Tax',
+						value: '0-86',
+					},
+					{
+						name: 'Payment',
+						value: '0-101',
+					},
+				];
 				const endpoint = '/crm/v3/schemas';
 				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				for (const customObjectType of properties.results) {
