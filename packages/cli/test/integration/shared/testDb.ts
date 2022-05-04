@@ -210,7 +210,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
-		apiKey: apiKey?? randomApiKey(),
+		apiKey: apiKey ?? randomApiKey(),
 		...rest,
 	};
 
@@ -229,6 +229,11 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	}
 
 	return Db.collections.User!.save(shell);
+}
+
+export function addApiKey(user: User): Promise<User> {
+	user.apiKey = randomApiKey();
+	return Db.collections.User!.save(user);
 }
 
 // ----------------------------------

@@ -71,7 +71,7 @@ export async function initTestServer({
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {
-				testServer.app.use(`/${testServer.publicApiEndpoint}`, ...map[group] as express.Router[]);
+				testServer.app.use(`/${testServer.publicApiEndpoint}`, ...(map[group] as express.Router[]));
 			} else {
 				testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
 			}
@@ -153,7 +153,7 @@ export function initConfigFile() {
  */
 export function createAgent(
 	app: express.Application,
-	options?: { apiPath?: ApiPath; auth: boolean; user: User },
+	options?: { apiPath?: ApiPath; version?: string | number; auth: boolean; user: User },
 ) {
 	const agent = request.agent(app);
 
@@ -166,7 +166,7 @@ export function createAgent(
 	}
 
 	if (options?.apiPath === 'public') {
-		agent.use(prefix(PUBLIC_API_REST_PATH_SEGMENT));
+		agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
 		// console.log(agent.app._events.request._router.stack.slice(-1)[0].handle);
 
 		if (options?.auth && options?.user.apiKey) {

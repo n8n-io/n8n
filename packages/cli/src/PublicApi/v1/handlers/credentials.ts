@@ -24,22 +24,27 @@ export = {
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
 			delete req.body.id; // delete if sent
 
-			const newCredential = await createCredential(req.body as Partial<CredentialsEntity>);
+			try {
+				const newCredential = await createCredential(req.body as Partial<CredentialsEntity>);
 
-			const encryptedData = await encryptCredential(newCredential);
+				const encryptedData = await encryptCredential(newCredential);
 
-			Object.assign(newCredential, encryptedData);
+				Object.assign(newCredential, encryptedData);
 
-			await externalHooks.run('credentials.create', [encryptedData]);
+				await externalHooks.run('credentials.create', [encryptedData]);
 
-			const savedCredential = await saveCredential(newCredential, req.user);
+				const savedCredential = await saveCredential(newCredential, req.user);
 
-			// LoggerProxy.verbose('New credential created', {
-			// 	credentialId: newCredential.id,
-			// 	ownerId: req.user.id,
-			// });
+				// LoggerProxy.verbose('New credential created', {
+				// 	credentialId: newCredential.id,
+				// 	ownerId: req.user.id,
+				// });
 
-			return res.json(sanitizeCredentials(savedCredential));
+				return res.json(sanitizeCredentials(savedCredential));
+			} catch ({ message, httpStatusCode }) {
+				httpStatusCode ? res.status(httpStatusCode) : res.status(500);
+				return res.json({ message });
+			}
 		},
 	],
 	deleteCredential: [

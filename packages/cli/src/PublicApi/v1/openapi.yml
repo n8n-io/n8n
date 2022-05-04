@@ -84,6 +84,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Credential not found
+        '415':
+          description: Unsupported media type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /users:
     get:
       x-eov-operation-id: getUsers
@@ -287,6 +293,7 @@ components:
       required:
         - name
         - type
+        - data
       type: object
       properties:
         name:
@@ -299,9 +306,6 @@ components:
           type: object
           example: { token: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' }
     CredentialDeleteResponse:
-      required:
-        - name
-        - type
       type: object
       properties:
         name:
