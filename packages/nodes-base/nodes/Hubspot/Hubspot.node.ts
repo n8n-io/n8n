@@ -1097,9 +1097,7 @@ export class Hubspot implements INodeType {
 						const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
 						errors.push(...(response ? getErrorsFromBatchResponse(response) : []));
 
-						const results = response?.results || [];
-
-						return [...results, ...errors];
+						return [...(errors.length ? errors : [{ success: true }])];
 					}
 					if (operation === 'batchUpsert') {
 						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
