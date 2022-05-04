@@ -1041,7 +1041,6 @@ export class Hubspot implements INodeType {
 				try {
 					const batchStart = batchNumber * maxBatchSize;
 					const batchSize = Math.min(length - batchStart, maxBatchSize);
-					const batchEnd = batchStart + batchSize;
 
 					if (operation === 'batchGet') {
 						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
