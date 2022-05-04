@@ -106,7 +106,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the account. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the account. Otherwise create a new one.',
 	},
 	{
 		displayName: 'Name',
@@ -145,6 +145,13 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
 			{
 				displayName: 'Account Source',
 				name: 'accountSource',
@@ -272,7 +279,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees',
 			},
 			{
 				displayName: 'Owner',
@@ -332,7 +338,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. City maximum size is 40 characters',
+				description: 'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Shipping Country',
@@ -410,6 +416,13 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
 			{
 				displayName: 'Account Source',
 				name: 'accountSource',
@@ -580,7 +593,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees',
 			},
 			{
 				displayName: 'Parent ID',
@@ -604,7 +616,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. City maximum size is 40 characters',
+				description: 'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Shipping Country',

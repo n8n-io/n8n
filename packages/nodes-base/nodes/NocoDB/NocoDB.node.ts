@@ -33,7 +33,6 @@ export class NocoDB implements INodeType {
 		description: 'Read, update, write and delete data from NocoDB',
 		defaults: {
 			name: 'NocoDB',
-			color: '#0989ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

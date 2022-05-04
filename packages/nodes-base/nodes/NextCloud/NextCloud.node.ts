@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -32,7 +29,6 @@ export class NextCloud implements INodeType {
 		description: 'Access data on Nextcloud',
 		defaults: {
 			name: 'Nextcloud',
-			color: '#1cafff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -266,7 +262,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy. The path should start with "/"',
+				description: 'The path of file or folder to copy. The path should start with "/".',
 			},
 			{
 				displayName: 'To Path',
@@ -286,7 +282,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder. The path should start with "/"',
+				description: 'The destination path of file or folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -334,7 +330,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move. The path should start with "/"',
+				description: 'The path of file or folder to move. The path should start with "/".',
 			},
 			{
 				displayName: 'To Path',
@@ -354,7 +350,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder. The path should start with "/"',
+				description: 'The new path of file or folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -436,7 +432,6 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				description: '',
 			},
 			{
 				displayName: 'File Content',
@@ -748,7 +743,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019/',
-				description: 'The path of which to list the content. The path should start with "/"',
+				description: 'The path of which to list the content. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -1018,10 +1013,6 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -1067,7 +1058,7 @@ export class NextCloud implements INodeType {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
-							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 						} else {
 							// Is text file
 							body = this.getNodeParameter('fileContent', i) as string;

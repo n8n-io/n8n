@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio';
+import cheerio from 'cheerio';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
@@ -114,7 +114,6 @@ export class HtmlExtract implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The extraction values.',
 				default: {},
 				options: [
 					{
@@ -240,7 +239,9 @@ export class HtmlExtract implements INodeType {
 					if (item.binary[dataPropertyName] === undefined) {
 						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
 					}
-					htmlArray = Buffer.from(item.binary[dataPropertyName].data, 'base64').toString('utf8');
+
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+					htmlArray = binaryDataBuffer.toString('utf-8');
 				}
 
 				// Convert it always to array that it works with a string or an array of strings

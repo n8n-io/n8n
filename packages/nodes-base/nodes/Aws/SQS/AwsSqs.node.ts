@@ -37,7 +37,6 @@ export class AwsSqs implements INodeType {
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

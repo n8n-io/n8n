@@ -25,7 +25,6 @@ export class CopperTrigger implements INodeType {
 		description: 'Handle Copper events via webhooks',
 		defaults: {
 			name: 'Copper Trigger',
-			color: '#ff2564',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -135,7 +134,7 @@ export class CopperTrigger implements INodeType {
 
 				const credentials = await this.getCredentials('copperApi');
 				body.secret = {
-					secret: getAutomaticSecret(credentials!),
+					secret: getAutomaticSecret(credentials),
 				};
 
 				const { id } = await copperApiRequest.call(this, 'POST', endpoint, body);
@@ -161,7 +160,7 @@ export class CopperTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		// Check if the supplied secret matches. If not ignore request.
-		if (req.body.secret !== getAutomaticSecret(credentials!)) {
+		if (req.body.secret !== getAutomaticSecret(credentials)) {
 			return {};
 		}
 

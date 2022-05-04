@@ -28,7 +28,7 @@ import {
 	messageOperations,
 } from './descriptions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,7 +41,6 @@ export class CiscoWebex implements INodeType {
 		description: 'Consume the Cisco Webex API',
 		defaults: {
 			name: 'Webex',
-			color: '#29b6f6',
 		},
 		credentials: [
 			{

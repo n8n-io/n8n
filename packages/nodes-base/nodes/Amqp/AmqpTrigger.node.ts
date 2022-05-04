@@ -26,7 +26,6 @@ export class AmqpTrigger implements INodeType {
 		description: 'Listens to AMQP 1.0 Messages',
 		defaults: {
 			name: 'AMQP Trigger',
-			color: '#00FF00',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -133,9 +132,6 @@ export class AmqpTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 
 		const credentials = await this.getCredentials('amqp');
-		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
-		}
 
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;

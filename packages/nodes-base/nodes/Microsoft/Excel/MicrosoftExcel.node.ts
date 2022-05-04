@@ -45,7 +45,6 @@ export class MicrosoftExcel implements INodeType {
 		description: 'Consume Microsoft Excel API',
 		defaults: {
 			name: 'Microsoft Excel',
-			color: '#1c6d40',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -154,7 +153,7 @@ export class MicrosoftExcel implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
 		let responseData;

@@ -28,7 +28,6 @@ export class AwsRekognition implements INodeType {
 		description: 'Sends data to AWS Rekognition',
 		defaults: {
 			name: 'AWS Rekognition',
-			color: '#305b94',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -206,7 +205,7 @@ export class AwsRekognition implements INodeType {
 						displayName: 'Regions of Interest',
 						name: 'regionsOfInterestUi',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						placeholder: 'Add Region of Interest',
 						displayOptions: {
 							show: {
@@ -273,7 +272,7 @@ export class AwsRekognition implements INodeType {
 						displayName: 'Word Filter',
 						name: 'wordFilterUi',
 						type: 'collection',
-						default: '',
+						default: {},
 						placeholder: 'Add Word Filter',
 						displayOptions: {
 							show: {

@@ -60,7 +60,6 @@ export const noteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',

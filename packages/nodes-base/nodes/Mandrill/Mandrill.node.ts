@@ -21,9 +21,9 @@ import {
 	validateJSON
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 
 interface Attachments {
 	type: string;
@@ -108,7 +108,6 @@ export class Mandrill implements INodeType {
 		description: 'Consume Mandrill API',
 		defaults: {
 			name: 'Mandrill',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -217,7 +216,6 @@ export class Mandrill implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						operation: [
@@ -459,7 +457,7 @@ export class Mandrill implements INodeType {
 				name: 'mergeVarsUi',
 				placeholder: 'Add Merge Vars',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -497,7 +495,7 @@ export class Mandrill implements INodeType {
 				name: 'metadataUi',
 				placeholder: 'Add Metadata',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -635,7 +633,7 @@ export class Mandrill implements INodeType {
 						],
 					},
 				],
-				default: '',
+				default: {},
 				description: 'Array of supported attachments to add to the message.',
 			},
 			{
@@ -663,7 +661,7 @@ export class Mandrill implements INodeType {
 				name: 'headersUi',
 				placeholder: 'Add Headers',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -684,14 +682,12 @@ export class Mandrill implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 						],
 					},

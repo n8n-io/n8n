@@ -29,7 +29,6 @@ export class GetResponseTrigger implements INodeType {
 		description: 'Starts the workflow when GetResponse events occur',
 		defaults: {
 			name: 'GetResponse Trigger',
-			color: '#00afec',
 		},
 		inputs: [],
 		outputs: ['main'],

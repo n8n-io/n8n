@@ -16,7 +16,7 @@ import {
 	execute,
 } from './GenericFunctions';
 
-import * as snowflake from 'snowflake-sdk';
+import snowflake from 'snowflake-sdk';
 
 export class Snowflake implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +28,6 @@ export class Snowflake implements INodeType {
 		description: 'Get, add and update data in Snowflake',
 		defaults: {
 			name: 'Snowflake',
-			color: '#5ebbeb',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -119,7 +118,7 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 
 
@@ -169,7 +168,7 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
 			},
 
 		],

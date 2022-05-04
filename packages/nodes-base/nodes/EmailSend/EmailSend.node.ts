@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -11,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
-import SMTPTransport = require('nodemailer/lib/smtp-transport');
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 export class EmailSend implements INodeType {
 	description: INodeTypeDescription = {
@@ -103,7 +100,7 @@ export class EmailSend implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma separated.',
+				description: 'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
 			},
 			{
 				displayName: 'Options',
@@ -129,7 +126,7 @@ export class EmailSend implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
@@ -148,10 +145,6 @@ export class EmailSend implements INodeType {
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
 				const credentials = await this.getCredentials('smtp');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				const connectionOptions: SMTPTransport.Options = {
 					host: credentials.host as string,
@@ -198,7 +191,7 @@ export class EmailSend implements INodeType {
 						}
 						attachments.push({
 							filename: item.binary[propertyName].fileName || 'unknown',
-							content: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+							content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 						});
 					}
 

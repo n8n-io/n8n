@@ -37,7 +37,6 @@ export class Netlify implements INodeType {
 		description: 'Consume Netlify API',
 		defaults: {
 			name: 'Netlify',
-			color: '#1A82e2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,7 +94,7 @@ export class Netlify implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
@@ -117,7 +116,7 @@ export class Netlify implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						Object.assign(body, additionalFields);
-						
+
 						if (body.title) {
 							qs.title = body.title;
 							delete body.title;

@@ -19,7 +19,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 enum Status {
 	subscribe = 'subscribe',
@@ -63,7 +63,6 @@ export class Mailchimp implements INodeType {
 		description: 'Consume Mailchimp API',
 		defaults: {
 			name: 'Mailchimp',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1210,8 +1209,7 @@ export class Mailchimp implements INodeType {
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
-						description: `If skip_merge_validation is true, member data will be accepted without merge field values,
-						even if the merge field is usually required`,
+						description: 'If skip_merge_validation is true, member data will be accepted without merge field values, even if the merge field is usually required',
 					},
 					{
 						displayName: 'Status',
@@ -1855,7 +1853,7 @@ export class Mailchimp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

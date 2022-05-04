@@ -26,7 +26,6 @@ export class Gitlab implements INodeType {
 		description: 'Retrieve data from GitLab API',
 		defaults: {
 			name: 'Gitlab',
-			color: '#FC6D27',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1102,16 +1101,8 @@ export class Gitlab implements INodeType {
 		try {
 			if (authenticationMethod === 'accessToken') {
 				credentials = await this.getCredentials('gitlabApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 			} else {
 				credentials = await this.getCredentials('gitlabOAuth2Api');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {

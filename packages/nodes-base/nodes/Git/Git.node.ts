@@ -39,7 +39,6 @@ export class Git implements INodeType {
 		description: 'Control git.',
 		defaults: {
 			name: 'Git',
-			color: '#808080',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -210,7 +209,7 @@ export class Git implements INodeType {
 			const authentication = this.getNodeParameter('authentication', 0) as string;
 
 			if (authentication === 'gitPassword') {
-				const gitCredentials = await this.getCredentials('gitPassword') as IDataObject;
+				const gitCredentials = await this.getCredentials('gitPassword');
 
 				const url = new URL(repositoryPath);
 				url.username = gitCredentials.username as string;

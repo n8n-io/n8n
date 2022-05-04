@@ -1,8 +1,9 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import TelemetryClient = require('@rudderstack/rudder-sdk-node');
+import TelemetryClient from '@rudderstack/rudder-sdk-node';
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
-import config = require('../../config');
+import * as config from '../../config';
 import { getLogger } from '../Logger';
 
 type CountBufferItemKey =
@@ -57,9 +58,10 @@ export class Telemetry {
 		this.instanceId = instanceId;
 		this.versionCli = versionCli;
 
-		const enabled = config.get('diagnostics.enabled') as boolean;
+		const enabled = config.getEnv('diagnostics.enabled');
+		const logLevel = config.getEnv('logs.level');
 		if (enabled) {
-			const conf = config.get('diagnostics.config.backend') as string;
+			const conf = config.getEnv('diagnostics.config.backend');
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
@@ -69,7 +71,7 @@ export class Telemetry {
 				return;
 			}
 
-			this.client = new TelemetryClient(key, url);
+			this.client = new TelemetryClient(key, url, { logLevel });
 
 			this.pulseIntervalReference = setInterval(async () => {
 				void this.pulse();
@@ -183,12 +185,17 @@ export class Telemetry {
 		});
 	}
 
-	async track(eventName: string, properties?: IDataObject): Promise<void> {
+	async track(
+		eventName: string,
+		properties: { [key: string]: unknown; user_id?: string } = {},
+	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
+				const { user_id } = properties;
+				Object.assign(properties, { instance_id: this.instanceId });
 				this.client.track(
 					{
-						userId: this.instanceId,
+						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
 						anonymousId: '000000000000',
 						event: eventName,
 						properties,

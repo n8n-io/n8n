@@ -17,6 +17,7 @@ export class WorkflowTrigger implements INodeType {
 		version: 1,
 		description: 'Triggers based on various lifecycle events, like when a workflow is activated',
 		eventTriggerDescription: '',
+		activationMessage: 'Your workflow will now trigger executions on the event you have defined.',
 		defaults: {
 			name: 'Workflow Trigger',
 			color: '#ff6d5a',

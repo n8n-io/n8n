@@ -24,7 +24,7 @@ import {
 	beeminderApiRequest,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +36,6 @@ export class Beeminder implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Beeminder',
-			color: '#FFCB06',
 		},
 		icon: 'file:beeminder.png',
 		inputs: ['main'],
@@ -175,7 +174,6 @@ export class Beeminder implements INodeType {
 				name: 'datapointId',
 				type: 'string',
 				default: '',
-				description: 'Datapoint id',
 				displayOptions: {
 					show: {
 						operation: [
@@ -208,7 +206,6 @@ export class Beeminder implements INodeType {
 						name: 'comment',
 						type: 'string',
 						default: '',
-						description: 'Comment',
 					},
 					{
 						displayName: 'Timestamp',
@@ -285,7 +282,6 @@ export class Beeminder implements INodeType {
 						name: 'comment',
 						type: 'string',
 						default: '',
-						description: 'Comment',
 					},
 					{
 						displayName: 'Timestamp',
@@ -308,10 +304,6 @@ export class Beeminder implements INodeType {
 
 				const credentials = await this.getCredentials('beeminderApi');
 
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
-
 				const endpoint = `/users/${credentials.user}/goals.json`;
 
 				const returnData: INodePropertyOptions[] = [];
@@ -331,7 +323,7 @@ export class Beeminder implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const timezone = this.getTimezone();
 
 		const resource = this.getNodeParameter('resource', 0) as string;

@@ -33,7 +33,6 @@ export class Vero implements INodeType {
 		description: 'Consume Vero API',
 		defaults: {
 			name: 'Vero',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -73,7 +72,7 @@ export class Vero implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {

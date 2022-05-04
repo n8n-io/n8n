@@ -21,13 +21,13 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
-			default: 'https://api.meethue.com/oauth2/auth',
+			default: 'https://api.meethue.com/v2/oauth2/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: 'https://api.meethue.com/oauth2/token',
+			default: 'https://api.meethue.com/v2/oauth2/token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -46,7 +46,6 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'header',
-			description: 'Method of authentication.',
 		},
 	];
 }

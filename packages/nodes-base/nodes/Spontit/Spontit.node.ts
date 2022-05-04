@@ -17,7 +17,7 @@ import {
 	pushOperations,
 } from './PushDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Spontit implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,7 +30,6 @@ export class Spontit implements INodeType {
 		description: 'Consume Spontit API',
 		defaults: {
 			name: 'Spontit',
-			color: '#00deff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

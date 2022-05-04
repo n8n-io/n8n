@@ -7,12 +7,12 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 	JsonObject,
 	NodeApiError,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -34,7 +34,6 @@ export class TypeformTrigger implements INodeType {
 		description: 'Starts the workflow on a Typeform form submission',
 		defaults: {
 			name: 'Typeform Trigger',
-			color: '#404040',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -123,7 +122,7 @@ export class TypeformTrigger implements INodeType {
 			getForms,
 		},
 		credentialTest: {
-			async testTypeformTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async testTypeformTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
 				const options = {

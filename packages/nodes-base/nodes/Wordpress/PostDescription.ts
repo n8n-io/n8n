@@ -609,6 +609,40 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'After',
+				name: 'after',
+				type: 'dateTime',
+				default: '',
+				description: 'Limit response to posts published after a given ISO8601 compliant date.',
+			},
+			{
+				displayName: 'Author',
+				name: 'author',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				description: 'Limit result set to posts assigned to specific authors.',
+			},
+			{
+				displayName: 'Before',
+				name: 'before',
+				type: 'dateTime',
+				default: '',
+				description: 'Limit response to posts published before a given ISO8601 compliant date.',
+			},
+			{
+				displayName: 'Categories',
+				name: 'categories',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCategories',
+				},
+				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy.',
+			},
+			{
 				displayName: 'Context',
 				name: 'context',
 				type: 'options',
@@ -628,6 +662,43 @@ export const postFields: INodeProperties[] = [
 				],
 				default: 'view',
 				description: 'Scope under which the request is made; determines fields present in response.',
+			},
+			{
+				displayName: 'Exclude Categories',
+				name: 'excludedCategories',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCategories',
+				},
+				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy.',
+			},
+			{
+				displayName: 'Exclude Tags',
+				name: 'excludedTags',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy.',
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'asc',
+					},
+					{
+						name: 'DESC',
+						value: 'desc',
+					},
+				],
+				default: 'desc',
+				description: 'Order sort attribute ascending or descending.',
 			},
 			{
 				displayName: 'Order By',
@@ -679,23 +750,6 @@ export const postFields: INodeProperties[] = [
 				description: 'Sort collection by object attribute.',
 			},
 			{
-				displayName: 'Order',
-				name: 'order',
-				type: 'options',
-				options: [
-					{
-						name: 'ASC',
-						value: 'asc',
-					},
-					{
-						name: 'DESC',
-						value: 'desc',
-					},
-				],
-				default: 'desc',
-				description: 'Order sort attribute ascending or descending.',
-			},
-			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
@@ -703,48 +757,40 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit results to those matching a string.',
 			},
 			{
-				displayName: 'After',
-				name: 'after',
-				type: 'dateTime',
-				default: '',
-				description: 'Limit response to posts published after a given ISO8601 compliant date.',
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Future',
+						value: 'future',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
+					},
+				],
+				default: 'publish',
+				description: 'The status of the post.',
 			},
 			{
-				displayName: 'Before',
-				name: 'before',
-				type: 'dateTime',
-				default: '',
-				description: 'Limit response to posts published before a given ISO8601 compliant date.',
-			},
-			{
-				displayName: 'Author',
-				name: 'author',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getAuthors',
-				},
-				description: 'Limit result set to posts assigned to specific authors.',
-			},
-			{
-				displayName: 'Categories',
-				name: 'categories',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy.',
-			},
-			{
-				displayName: 'Exclude Categories',
-				name: 'excludedCategories',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy.',
+				displayName: 'Sticky',
+				name: 'sticky',
+				type: 'boolean',
+				default: false,
+				description: 'Limit result set to items that are sticky.',
 			},
 			{
 				displayName: 'Tags',
@@ -756,24 +802,6 @@ export const postFields: INodeProperties[] = [
 				},
 				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy.',
 			},
-			{
-				displayName: 'Exclude Tags',
-				name: 'excludedTags',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy.',
-			},
-			{
-				displayName: 'Sticky',
-				name: 'sticky',
-				type: 'boolean',
-				default: false,
-				description: 'Limit result set to items that are sticky.',
-			},
-
 		],
 	},
 /* -------------------------------------------------------------------------- */

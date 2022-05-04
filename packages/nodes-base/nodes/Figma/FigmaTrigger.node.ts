@@ -33,7 +33,6 @@ export class FigmaTrigger implements INodeType {
 		description: 'Starts the workflow when Figma events occur',
 		defaults: {
 			name: 'Figma Trigger (Beta)',
-			color: '#29b6f6',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -58,7 +57,7 @@ export class FigmaTrigger implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: 'Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/',
+				description: 'Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/.',
 			},
 			{
 				displayName: 'Trigger On',
@@ -73,12 +72,12 @@ export class FigmaTrigger implements INodeType {
 					{
 						name: 'File Deleted',
 						value: 'fileDelete',
-						description: 'Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted',
+						description: 'Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted.',
 					},
 					{
 						name: 'File Updated',
 						value: 'fileUpdate',
-						description: 'Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made',
+						description: 'Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made.',
 					},
 					{
 						name: 'File Version Updated',

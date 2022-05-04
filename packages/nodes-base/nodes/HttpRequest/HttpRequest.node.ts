@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -161,6 +160,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'HEAD',
 						value: 'HEAD',
+					},
+					{
+						name: 'OPTIONS',
+						value: 'OPTIONS',
 					},
 					{
 						name: 'PATCH',
@@ -471,6 +474,7 @@ export class HttpRequest implements INodeType {
 							'PATCH',
 							'POST',
 							'PUT',
+							'DELETE',
 						],
 					},
 				},
@@ -494,6 +498,7 @@ export class HttpRequest implements INodeType {
 							'PATCH',
 							'POST',
 							'PUT',
+							'DELETE',
 						],
 					},
 				},
@@ -653,12 +658,43 @@ export class HttpRequest implements INodeType {
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
-		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		const httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		const oAuth1Api = await this.getCredentials('oAuth1Api');
-		const oAuth2Api = await this.getCredentials('oAuth2Api');
+		let httpBasicAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+
+		try {
+			httpBasicAuth = await this.getCredentials('httpBasicAuth');
+		} catch (error) {
+			// Do nothing
+		}
+		try {
+			httpDigestAuth = await this.getCredentials('httpDigestAuth');
+		} catch (error) {
+			// Do nothing
+		}
+		try {
+			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		} catch (error) {
+			// Do nothing
+		}
+		try {
+			httpQueryAuth = await this.getCredentials('httpQueryAuth');
+		} catch (error) {
+			// Do nothing
+		}
+		try {
+			oAuth1Api = await this.getCredentials('oAuth1Api');
+		} catch (error) {
+			// Do nothing
+		}
+		try {
+			oAuth2Api = await this.getCredentials('oAuth2Api');
+		} catch (error) {
+			// Do nothing
+		}
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -771,8 +807,9 @@ export class HttpRequest implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
-								const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
-								requestOptions.body = Buffer.from(binaryProperty.data, BINARY_ENCODING);
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+								requestOptions.body = binaryDataBuffer;
 							} else if (options.bodyContentType === 'multipart-form-data') {
 								requestOptions.body = {};
 								const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
@@ -794,9 +831,10 @@ export class HttpRequest implements INodeType {
 									}
 
 									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
 									requestOptions.body[propertyName] = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,
@@ -850,6 +888,9 @@ export class HttpRequest implements INodeType {
 									}
 								};
 								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else if (optionName === 'headers') {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
 							} else {
 								// @ts-ignore
 								requestOptions[optionName][parameterDataName] = newValue;

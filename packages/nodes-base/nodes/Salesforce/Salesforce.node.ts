@@ -132,7 +132,6 @@ export class Salesforce implements INodeType {
 		description: 'Consume Salesforce API',
 		defaults: {
 			name: 'Salesforce',
-			color: '#429fd9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1957,6 +1956,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.shippingCity !== undefined) {
 							body.ShippingCity = additionalFields.shippingCity as string;
 						}
+						if (additionalFields.accountNumber !== undefined) {
+							body.AccountNumber = additionalFields.accountNumber as string;
+						}
 						if (additionalFields.accountSource !== undefined) {
 							body.AccountSource = additionalFields.accountSource as string;
 						}
@@ -2064,6 +2066,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.shippingCity !== undefined) {
 							body.ShippingCity = updateFields.shippingCity as string;
+						}
+						if (updateFields.accountNumber !== undefined) {
+							body.AccountNumber = updateFields.accountNumber as string;
 						}
 						if (updateFields.accountSource !== undefined) {
 							body.AccountSource = updateFields.accountSource as string;
@@ -2179,6 +2184,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.reason !== undefined) {
 							body.Reason = additionalFields.reason as string;
 						}
+						if (additionalFields.status !== undefined) {
+							body.Status = additionalFields.status as string;
+						}
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
 						}
@@ -2242,6 +2250,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.reason !== undefined) {
 							body.Reason = updateFields.reason as string;
+						}
+						if (updateFields.status !== undefined) {
+							body.Status = updateFields.status as string;
 						}
 						if (updateFields.owner !== undefined) {
 							body.OwnerId = updateFields.owner as string;

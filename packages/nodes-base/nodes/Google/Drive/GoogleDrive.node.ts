@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -29,7 +26,6 @@ export class GoogleDrive implements INodeType {
 		description: 'Access data on Google Drive',
 		defaults: {
 			name: 'Google Drive',
-			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -239,7 +235,7 @@ export class GoogleDrive implements INodeType {
 			//         file:download
 			// ----------------------------------
 			{
-				displayName: 'File Id',
+				displayName: 'File ID',
 				name: 'fileId',
 				type: 'string',
 				default: '',
@@ -292,11 +288,129 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Google File Conversion',
+						name: 'googleFileConversion',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: false,
+						},
+						default: {},
+						placeholder: 'Add Conversion',
+						options: [
+							{
+								displayName: 'Conversion',
+								name: 'conversion',
+								values: [
+									{
+										displayName: 'Google Docs',
+										name: 'docsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS Word',
+												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To OpenOffice Doc',
+												value: 'application/vnd.oasis.opendocument.text',
+											},
+											{
+												name: 'To HTML',
+												value: 'text/html',
+											},
+											{
+												name: 'To Rich Text',
+												value: 'application/rtf',
+											},
+										],
+										default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+										description: 'Format used to export when downloading Google Docs files',
+									},
+									{
+										displayName: 'Google Drawings',
+										name: 'drawingsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To JPEG',
+												value: 'image/jpeg',
+											},
+											{
+												name: 'To PNG',
+												value: 'image/png',
+											},
+											{
+												name: 'To SVG',
+												value: 'image/svg+xml',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+										],
+										default: 'image/jpeg',
+										description: 'Format used to export when downloading Google Drawings files',
+									},
+									{
+										displayName: 'Google Slides',
+										name: 'slidesToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS PowerPoint',
+												value: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To OpenOffice Presentation',
+												value: 'application/vnd.oasis.opendocument.presentation',
+											},
+											{
+												name: 'To Plain Text',
+												value: 'text/plain',
+											},
+										],
+										default: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+										description: 'Format used to export when downloading Google Slides files',
+									},
+									{
+										displayName: 'Google Sheets',
+										name: 'sheetsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS Excel',
+												value: 'application/x-vnd.oasis.opendocument.spreadsheet',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To CSV',
+												value: 'text/csv',
+											},
+										],
+										default: 'application/x-vnd.oasis.opendocument.spreadsheet',
+										description: 'Format used to export when downloading Google Spreadsheets files',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'File name. Ex: data.pdf',
+						description: 'File name. Ex: data.pdf.',
 					},
 				],
 			},
@@ -518,7 +632,6 @@ export class GoogleDrive implements INodeType {
 										],
 									},
 								},
-								description: 'Custom Mime Type',
 							},
 						],
 					},
@@ -1161,7 +1274,7 @@ export class GoogleDrive implements INodeType {
 								],
 							},
 						},
-						default: '',
+						default: false,
 						description: `<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>`,
 					},
 					{
@@ -1234,7 +1347,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: `Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically`,
+						description: 'Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
 					},
 
 					{
@@ -1627,27 +1740,21 @@ export class GoogleDrive implements INodeType {
 								name: 'adminManagedRestrictions',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Copy Requires Writer Permission',
 								name: 'copyRequiresWriterPermission',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Domain Users Only',
 								name: 'domainUsersOnly',
 								type: 'boolean',
 								default: false,
-								description: `Whether access to this shared drive and items inside this shared drive
-								is restricted to users of the domain to which this shared drive belongs. This restriction
-								may be overridden by other sharing policies controlled outside of this shared drive.`,
+								description: 'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 							},
 							{
 								displayName: 'Drive Members Only',
@@ -1724,7 +1831,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false)',
+						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -1801,7 +1908,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false)',
+						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -1869,27 +1976,21 @@ export class GoogleDrive implements INodeType {
 								name: 'adminManagedRestrictions',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Copy Requires Writer Permission',
 								name: 'copyRequiresWriterPermission',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Domain Users Only',
 								name: 'domainUsersOnly',
 								type: 'boolean',
 								default: false,
-								description: `Whether access to this shared drive and items inside this shared drive
-								is restricted to users of the domain to which this shared drive belongs. This restriction
-								may be overridden by other sharing policies controlled outside of this shared drive.`,
+								description: 'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 							},
 							{
 								displayName: 'Drive Members Only',
@@ -1924,7 +2025,7 @@ export class GoogleDrive implements INodeType {
 						name: 'appPropertiesUi',
 						placeholder: 'Add Property',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1957,7 +2058,7 @@ export class GoogleDrive implements INodeType {
 						name: 'propertiesUi',
 						placeholder: 'Add Property',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -2136,7 +2237,26 @@ export class GoogleDrive implements INodeType {
 							json: false,
 						};
 
-						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
+						const file = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { fields: 'mimeType' });
+						let response;
+
+						if (file.mimeType.includes('vnd.google-apps')) {
+							const parameterKey = 'options.googleFileConversion.conversion';
+							const type = file.mimeType.split('.')[2];
+							let mime;
+							if (type === 'document') {
+								mime = this.getNodeParameter(`${parameterKey}.docsToFormat`, i, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') as string;
+							} else if (type === 'presentation') {
+								mime = this.getNodeParameter(`${parameterKey}.slidesToFormat`, i, 'application/vnd.openxmlformats-officedocument.presentationml.presentation') as string;
+							} else if (type === 'spreadsheet') {
+								mime = this.getNodeParameter(`${parameterKey}.sheetsToFormat`, i, 'application/x-vnd.oasis.opendocument.spreadsheet') as string;
+							} else {
+								mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
+							}
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}/export`, {}, { mimeType: mime }, undefined, requestOptions);
+						} else {
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
+						}
 
 						let mimeType: string | undefined;
 						let fileName: string | undefined = undefined;
@@ -2287,7 +2407,7 @@ export class GoogleDrive implements INodeType {
 								originalFilename = item.binary[propertyNameUpload].fileName;
 							}
 
-							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
@@ -2321,7 +2441,7 @@ export class GoogleDrive implements INodeType {
 						const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );
+							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) });
 						}
 
 						const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];

@@ -14,7 +14,7 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 import * as losslessJSON from 'lossless-json';
 

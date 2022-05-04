@@ -72,7 +72,6 @@ export class QuickBooks implements INodeType {
 		description: 'Consume the QuickBooks Online API',
 		defaults: {
 			name: 'QuickBooks Online',
-			color: '#2CA01C',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

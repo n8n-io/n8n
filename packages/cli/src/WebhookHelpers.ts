@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
@@ -12,11 +13,11 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
-import * as express from 'express';
+import express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
-import { BINARY_ENCODING, NodeExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 
 import {
 	createDeferredPromise,
@@ -37,6 +38,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	GenericHelpers,
@@ -52,8 +54,13 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
+import { User } from './databases/entities/User';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 const activeExecutions = ActiveExecutions.getInstance();
+
+export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 /**
  * Returns all the webhooks which should be created for the give workflow
@@ -126,26 +133,6 @@ export function encodeWebhookResponse(
 }
 
 /**
- * Returns all the webhooks which should be created for the give workflow
- *
- * @export
- * @param {string} workflowId
- * @param {Workflow} workflow
- * @returns {IWebhookData[]}
- */
-export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
-	// Check all the nodes in the workflow if they have webhooks
-
-	const returnData: IWebhookData[] = [];
-
-	for (const node of Object.values(workflow.nodes)) {
-		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooksBasic(workflow, node));
-	}
-
-	return returnData;
-}
-
-/**
  * Executes a webhook
  *
  * @export
@@ -187,11 +174,29 @@ export async function executeWebhook(
 		$executionId: executionId,
 	};
 
+	let user: User;
+	if (
+		(workflowData as WorkflowEntity).shared?.length &&
+		(workflowData as WorkflowEntity).shared[0].user
+	) {
+		user = (workflowData as WorkflowEntity).shared[0].user;
+	} else {
+		try {
+			user = await getWorkflowOwner(workflowData.id.toString());
+		} catch (error) {
+			throw new ResponseHelper.ResponseError('Cannot find workflow', undefined, 404);
+		}
+	}
+
+	// Prepare everything that is needed to run the workflow
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseMode,
 		executionMode,
+		additionalData.timezone,
 		additionalKeys,
 		'onReceived',
 	);
@@ -199,9 +204,19 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode,
 		executionMode,
+		additionalData.timezone,
 		additionalKeys,
 		200,
 	) as number;
+
+	const responseData = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseData,
+		executionMode,
+		additionalData.timezone,
+		additionalKeys,
+		'firstEntryJson',
+	);
 
 	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -211,9 +226,6 @@ export async function executeWebhook(
 		responseCallback(new Error(errorMessage), {});
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
-
-	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -273,6 +285,7 @@ export async function executeWebhook(
 				workflowStartNode,
 				webhookData.webhookDescription.responseHeaders,
 				executionMode,
+				additionalData.timezone,
 				additionalKeys,
 				undefined,
 			) as {
@@ -330,7 +343,12 @@ export async function executeWebhook(
 		// directly if responseMode it set to "onReceived" and a respone should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
 			// Return response directly and do not wait for the workflow to finish
-			if (webhookResultData.webhookResponse !== undefined) {
+			if (responseData === 'noData') {
+				// Return without data
+				responseCallback(null, {
+					responseCode,
+				});
+			} else if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
 				responseCallback(null, {
 					data: webhookResultData.webhookResponse,
@@ -388,6 +406,7 @@ export async function executeWebhook(
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			userId: user.id,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -447,7 +466,7 @@ export async function executeWebhook(
 			IExecutionDb | undefined
 		>;
 		executePromise
-			.then((data) => {
+			.then(async (data) => {
 				if (data === undefined) {
 					if (!didSendResponse) {
 						responseCallback(null, {
@@ -507,16 +526,8 @@ export async function executeWebhook(
 					$executionId: executionId,
 				};
 
-				const responseData = workflow.expression.getSimpleParameterValue(
-					workflowStartNode,
-					webhookData.webhookDescription.responseData,
-					executionMode,
-					additionalKeys,
-					'firstEntryJson',
-				);
-
 				if (!didSendResponse) {
-					let data: IDataObject | IDataObject[];
+					let data: IDataObject | IDataObject[] | undefined;
 
 					if (responseData === 'firstEntryJson') {
 						// Return the JSON data of the first entry
@@ -524,6 +535,7 @@ export async function executeWebhook(
 						if (returnData.data!.main[0]![0] === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						data = returnData.data!.main[0]![0].json;
@@ -532,6 +544,7 @@ export async function executeWebhook(
 							workflowStartNode,
 							webhookData.webhookDescription.responsePropertyName,
 							executionMode,
+							additionalData.timezone,
 							additionalKeys,
 							undefined,
 						);
@@ -544,6 +557,7 @@ export async function executeWebhook(
 							workflowStartNode,
 							webhookData.webhookDescription.responseContentType,
 							executionMode,
+							additionalData.timezone,
 							additionalKeys,
 							undefined,
 						);
@@ -575,17 +589,20 @@ export async function executeWebhook(
 						if (data === undefined) {
 							responseCallback(new Error('No item to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						if (data.binary === undefined) {
 							responseCallback(new Error('No binary data to return got found.'), {});
 							didSendResponse = true;
+							return undefined;
 						}
 
 						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
 							workflowStartNode,
 							webhookData.webhookDescription.responseBinaryPropertyName,
 							executionMode,
+							additionalData.timezone,
 							additionalKeys,
 							'data',
 						);
@@ -611,12 +628,18 @@ export async function executeWebhook(
 						if (!didSendResponse) {
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
-							res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+							const binaryDataBuffer = await BinaryDataManager.getInstance().retrieveBinaryData(
+								binaryData,
+							);
+							res.end(binaryDataBuffer);
 
 							responseCallback(null, {
 								noWebhookResponse: true,
 							});
 						}
+					} else if (responseData === 'noData') {
+						// Return without data
+						data = undefined;
 					} else {
 						// Return the JSON data of all the entries
 						data = [];

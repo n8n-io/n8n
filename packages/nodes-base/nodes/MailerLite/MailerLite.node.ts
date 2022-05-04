@@ -32,7 +32,6 @@ export class MailerLite implements INodeType {
 		description: 'Consume Mailer Lite API',
 		defaults: {
 			name: 'MailerLite',
-			color: '#58be72',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -82,7 +81,7 @@ export class MailerLite implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

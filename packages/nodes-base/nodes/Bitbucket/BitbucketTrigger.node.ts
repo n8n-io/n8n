@@ -10,11 +10,11 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -32,7 +32,6 @@ export class BitbucketTrigger implements INodeType {
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
-			color: '#0052cc',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -154,7 +153,7 @@ export class BitbucketTrigger implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
 				const options: OptionsWithUri = {

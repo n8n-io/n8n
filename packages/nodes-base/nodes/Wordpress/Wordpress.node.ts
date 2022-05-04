@@ -39,7 +39,6 @@ export class Wordpress implements INodeType {
 		description: 'Consume Wordpress API',
 		defaults: {
 			name: 'Wordpress',
-			color: '#016087',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -58,12 +57,10 @@ export class Wordpress implements INodeType {
 					{
 						name: 'Post',
 						value: 'post',
-						description: '',
 					},
 					{
 						name: 'User',
 						value: 'user',
-						description: '',
 					},
 				],
 				default: 'post',
@@ -132,7 +129,7 @@ export class Wordpress implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -276,6 +273,9 @@ export class Wordpress implements INodeType {
 						}
 						if (options.sticky) {
 							qs.sticky = options.sticky as boolean;
+						}
+						if (options.status) {
+							qs.status = options.status as string;
 						}
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);

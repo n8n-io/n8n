@@ -26,7 +26,6 @@ export class Stackby implements INodeType {
 		description: 'Read, write, and delete data in Stackby',
 		defaults: {
 			name: 'Stackby',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -182,7 +181,7 @@ export class Stackby implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 		],
 	};
@@ -190,7 +189,7 @@ export class Stackby implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const operation = this.getNodeParameter('operation', 0) as string;

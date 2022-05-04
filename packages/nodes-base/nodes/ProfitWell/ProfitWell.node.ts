@@ -37,7 +37,6 @@ export class ProfitWell implements INodeType {
 		description: 'Consume ProfitWell API',
 		defaults: {
 			name: 'ProfitWell',
-			color: '#1e333d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -98,7 +97,7 @@ export class ProfitWell implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

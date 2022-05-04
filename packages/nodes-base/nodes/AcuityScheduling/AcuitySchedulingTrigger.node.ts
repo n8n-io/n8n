@@ -24,7 +24,6 @@ export class AcuitySchedulingTrigger implements INodeType {
 		description: 'Handle Acuity Scheduling events via webhooks',
 		defaults: {
 			name: 'Acuity Scheduling Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],

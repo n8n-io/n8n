@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -22,6 +22,8 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import config from '../config';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -45,6 +47,8 @@ export class Execute extends Command {
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
@@ -93,8 +97,9 @@ export class Execute extends Command {
 				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			workflowId = workflowData.id!.toString();
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
@@ -103,8 +108,7 @@ export class Execute extends Command {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			workflowData = await Db.collections.Workflow!.findOne(workflowId);
+			workflowData = await Db.collections.Workflow.findOne(workflowId);
 			if (workflowData === undefined) {
 				console.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);
@@ -125,15 +129,15 @@ export class Execute extends Command {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
-
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;
@@ -160,11 +164,13 @@ export class Execute extends Command {
 		}
 
 		try {
+			const user = await getInstanceOwner();
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				workflowData: workflowData!,
+				userId: user.id,
 			};
 
 			const workflowRunner = new WorkflowRunner();

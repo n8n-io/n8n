@@ -37,7 +37,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 		description: 'Consume Microsoft Dynamics CRM API',
 		defaults: {
 			name: 'Microsoft Dynamics CRM',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -123,7 +122,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

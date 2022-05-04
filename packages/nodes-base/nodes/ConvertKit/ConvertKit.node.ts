@@ -51,7 +51,6 @@ export class ConvertKit implements INodeType {
 		description: 'Consume ConvertKit API',
 		defaults: {
 			name: 'ConvertKit',
-			color: '#fb6970',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

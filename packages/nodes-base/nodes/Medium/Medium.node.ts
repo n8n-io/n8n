@@ -27,7 +27,6 @@ export class Medium implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Medium',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -172,7 +171,7 @@ export class Medium implements INodeType {
 						],
 					},
 				},
-				description: 'Title of the post. Max Length : 100 characters',
+				description: 'Title of the post. Max Length : 100 characters.',
 			},
 			{
 				displayName: 'Content Format',

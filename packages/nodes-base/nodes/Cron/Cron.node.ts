@@ -22,14 +22,16 @@ export class Cron implements INodeType {
 		displayName: 'Cron',
 		name: 'cron',
 		icon: 'fa:calendar',
-		group: ['trigger'],
+		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow at a specific time',
 		eventTriggerDescription: '',
+		activationMessage: 'Your cron trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Cron',
 			color: '#00FF00',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		properties: [
@@ -201,7 +203,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: '* * * * * *',
-								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>.',
 							},
 							{
 								displayName: 'Value',

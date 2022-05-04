@@ -234,6 +234,7 @@ export class Xml implements INodeType {
 
 
 		let item: INodeExecutionData;
+		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 
@@ -253,15 +254,15 @@ export class Xml implements INodeType {
 
 					// @ts-ignore
 					const json = await parser.parseStringPromise(item.json[dataPropertyName]);
-					items[itemIndex] = { json };
+					returnData.push({ json });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
 
-					items[itemIndex] = {
+					returnData.push({
 						json: {
 							[dataPropertyName]: builder.buildObject(items[itemIndex].json),
 						},
-					};
+					});
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 				}
@@ -274,7 +275,7 @@ export class Xml implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return this.prepareOutputData(returnData);
 
 	}
 }

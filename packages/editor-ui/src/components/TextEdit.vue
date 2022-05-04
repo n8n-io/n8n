@@ -1,11 +1,11 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Edit ${parameter.displayName}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('textEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`" :before-close="closeDialog">
 
 			<div class="ignore-key-press">
-				<n8n-input-label :label="parameter.displayName">
-					<div @keydown.stop @keydown.esc="closeDialog()">
-						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
+				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
+					<div @keydown.stop @keydown.esc="onKeyDownEsc()">
+						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$locale.nodeText().placeholder(parameter, path)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
 					</div>
 				</n8n-input-label>
 			</div>
@@ -18,11 +18,11 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-
 	name: 'TextEdit',
 	props: [
 		'dialogVisible',
 		'parameter',
+		'path',
 		'value',
 	],
 	data () {
@@ -33,6 +33,13 @@ export default Vue.extend({
 	methods: {
 		valueChanged (value: string) {
 			this.$emit('valueChanged', value);
+		},
+
+		onKeyDownEsc () {
+			// Resetting input value when closing the dialog, required when closing it using the `Esc` key
+			this.tempValue = this.value;
+
+			this.closeDialog();
 		},
 
 		closeDialog () {

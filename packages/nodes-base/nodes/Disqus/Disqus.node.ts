@@ -23,7 +23,6 @@ export class Disqus implements INodeType {
 		description: 'Access data on Disqus',
 		defaults: {
 			name: 'Disqus',
-			color: '#22BB44',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -50,7 +50,6 @@ export class Intercom implements INodeType {
 		description: 'Consume Intercom API',
 		defaults: {
 			name: 'Intercom',
-			color: '#0575f3',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -123,7 +122,7 @@ export class Intercom implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 		for (let i = 0; i < length; i++) {

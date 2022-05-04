@@ -32,7 +32,6 @@ export class HumanticAi implements INodeType {
 		description: 'Consume Humantic AI API',
 		defaults: {
 			name: 'Humantic AI',
-			color: '#f8ce59',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,7 +64,7 @@ export class HumanticAi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

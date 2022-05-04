@@ -26,7 +26,6 @@ export class HackerNews implements INodeType {
 		description: 'Consume Hacker News API',
 		defaults: {
 			name: 'Hacker News',
-			color: '#ff6600',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -285,7 +284,7 @@ export class HackerNews implements INodeType {
 								description: 'Returns query results filtered by Front Page tag',
 							},
 						],
-						default: '',
+						default: [],
 						description: 'Tags for filtering the results of the query.',
 					},
 				],

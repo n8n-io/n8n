@@ -43,7 +43,6 @@ export class Lemlist implements INodeType {
 		description: 'Consume the Lemlist API',
 		defaults: {
 			name: 'Lemlist',
-			color: '#4d19ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

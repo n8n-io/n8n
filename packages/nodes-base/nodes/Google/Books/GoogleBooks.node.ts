@@ -31,7 +31,6 @@ export class GoogleBooks implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Books',
-			color: '#4198e6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -377,7 +376,7 @@ export class GoogleBooks implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

@@ -14,7 +14,6 @@ export const nodeDescription: INodeTypeDescription = {
 	description: 'Find, insert and update documents in MongoDB',
 	defaults: {
 		name: 'MongoDB',
-		color: '#13AA52',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
@@ -30,6 +29,11 @@ export const nodeDescription: INodeTypeDescription = {
 			name: 'operation',
 			type: 'options',
 			options: [
+				{
+					name: 'Aggregate',
+					value: 'aggregate',
+					description: 'Aggregate documents.',
+				},
 				{
 					name: 'Delete',
 					value: 'delete',
@@ -62,6 +66,30 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			default: '',
 			description: 'MongoDB Collection',
+		},
+
+		// ----------------------------------
+		//         aggregate
+		// ----------------------------------
+		{
+			displayName: 'Query',
+			name: 'query',
+			type: 'json',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+			displayOptions: {
+				show: {
+					operation: [
+						'aggregate',
+					],
+				},
+			},
+			default: '',
+			placeholder: `[{ "$match": { "$gt": "1950-01-01" }, ... }]`,
+			hint: 'Learn more about aggregation pipeline <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/">here</a>',
+			required: true,
+			description: 'MongoDB aggregation pipeline query in JSON format',
 		},
 
 		// ----------------------------------
@@ -150,6 +178,7 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			description: 'MongoDB Find query.',
 		},
+
 		// ----------------------------------
 		//         insert
 		// ----------------------------------
@@ -166,8 +195,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: `Comma-separated list of the fields to be included into the new document.`,
 		},
 
 		// ----------------------------------
@@ -202,8 +230,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: `Comma-separated list of the fields to be included into the new document.`,
 		},
 		{
 			displayName: 'Upsert',
@@ -237,7 +264,14 @@ export const nodeDescription: INodeTypeDescription = {
 					name: 'dateFields',
 					type: 'string',
 					default: '',
-					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
+					description: 'Comma separeted list of fields that will be parse as Mongo Date type',
+				},
+				{
+					displayName:'Use Dot Notation',
+					name: 'useDotNotation',
+					type: 'boolean',
+					default: false,
+					description: 'Wheather to use dot notation to access date fields',
 				},
 			],
 		},

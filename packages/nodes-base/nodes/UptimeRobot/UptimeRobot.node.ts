@@ -33,7 +33,7 @@ import {
 	publicStatusPageOperations,
 } from './PublicStatusPageDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,7 +46,6 @@ export class UptimeRobot implements INodeType {
 		description: 'Consume UptimeRobot API',
 		defaults: {
 			name: 'UptimeRobot',
-			color: '#3bd671',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -11,7 +10,9 @@ import {
 } from 'request';
 
 import {
-	IBinaryData, IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 // Interface in n8n
@@ -146,10 +147,6 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('telegramApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	query = query || {};
 
 	const options: OptionsWithUri = {
@@ -186,6 +183,7 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 		'small': 0,
 		'medium': 1,
 		'large': 2,
+		'extraLarge': 3,
 	} as IDataObject;
 
 	const index = sizes[size] as number;

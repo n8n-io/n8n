@@ -24,7 +24,6 @@ export class Brandfetch implements INodeType {
 		description: 'Consume Brandfetch API',
 		defaults: {
 			name: 'Brandfetch',
-			color: '#1f1f1f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -162,7 +161,7 @@ export class Brandfetch implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];

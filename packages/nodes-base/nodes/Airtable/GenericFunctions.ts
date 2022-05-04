@@ -42,10 +42,6 @@ export interface IRecord {
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('airtableApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	query = query || {};
 
 	// For some reason for some endpoints the bearer auth does not work
@@ -126,11 +122,7 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 			if (record.fields[fieldName] !== undefined) {
 				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, { json: false, encoding: null });
-					element.binary![`${fieldName}_${index}`] = {
-						data: Buffer.from(file).toString('base64'),
-						fileName: attachment.filename,
-						mimeType: attachment.type,
-					};
+					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(Buffer.from(file), attachment.filename, attachment.type);
 				}
 			}
 		}

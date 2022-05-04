@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -27,7 +24,6 @@ export class Signl4 implements INodeType {
 		description: 'Consume SIGNL4 API',
 		defaults: {
 			name: 'SIGNL4',
-			color: '#53afe8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -171,7 +167,7 @@ export class Signl4 implements INodeType {
 						displayName: 'Filtering',
 						name: 'filtering',
 						type: 'boolean',
-						default: 'false',
+						default: false,
 						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)`,
 					},
 					{
@@ -238,8 +234,7 @@ export class Signl4 implements INodeType {
 						],
 					},
 				},
-				description: `If the event originates from a record in a 3rd party system, use this parameter to pass
-				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.`,
+				description: 'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.',
 			},
 		],
 	};
@@ -247,7 +242,7 @@ export class Signl4 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -313,8 +308,9 @@ export class Signl4 implements INodeType {
 										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
 									}
 
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
 									data.attachment = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,

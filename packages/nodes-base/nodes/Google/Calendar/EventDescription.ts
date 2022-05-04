@@ -143,7 +143,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'All Day',
 				name: 'allday',
-				type: 'boolean',
+				type: 'options',
 				options: [
 					{
 						name: 'Yes',
@@ -258,7 +258,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
+				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -324,7 +324,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'None',
 						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case',
+						description: 'No notifications are sent. This value should only be used for migration use case.',
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
@@ -355,16 +355,6 @@ export const eventFields: INodeProperties[] = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.',
 			},
 			{
 				displayName: 'Visibility',
@@ -401,7 +391,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Reminders',
 		name: 'remindersUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Reminder',
 		typeOptions: {
 			multipleValues: true,
@@ -512,7 +502,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'None',
 						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case',
+						description: 'No notifications are sent. This value should only be used for migration use case.',
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
@@ -562,7 +552,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
+				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Timezone',
@@ -650,7 +640,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
+				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Order By',
@@ -790,7 +780,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'All Day',
 				name: 'allday',
-				type: 'boolean',
+				type: 'options',
 				options: [
 					{
 						name: 'Yes',
@@ -881,7 +871,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
+				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -954,7 +944,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'None',
 						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case',
+						description: 'No notifications are sent. This value should only be used for migration use case.',
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
@@ -985,16 +975,6 @@ export const eventFields: INodeProperties[] = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on n8n timezone',
 			},
 			{
 				displayName: 'Visibility',
@@ -1031,7 +1011,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Reminders',
 		name: 'remindersUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Reminder',
 		typeOptions: {
 			multipleValues: true,
