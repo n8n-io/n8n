@@ -108,6 +108,7 @@ export class Pushover implements INodeType {
 				default: '',
 				description: `Your message`,
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Priority',
 				name: 'priority',
@@ -237,7 +238,7 @@ export class Pushover implements INodeType {
 								],
 							},
 						],
-						default: '',
+						default: {},
 					},
 					{
 						displayName: 'Device',
@@ -308,7 +309,7 @@ export class Pushover implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

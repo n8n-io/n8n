@@ -5,7 +5,7 @@ import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { MessageType } from 'element-ui/types/message';
+import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
@@ -90,6 +90,10 @@ export const showMessage = mixins(externalHooks).extend({
 			});
 
 			return notification;
+		},
+
+		$showAlert(config: ElMessageOptions): ElMessageComponent {
+			return this.$message(config);
 		},
 
 		$getExecutionError(error?: ExecutionError) {

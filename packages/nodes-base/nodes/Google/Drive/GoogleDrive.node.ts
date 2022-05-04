@@ -410,7 +410,7 @@ export class GoogleDrive implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'File name. Ex: data.pdf',
+						description: 'File name. Ex: data.pdf.',
 					},
 				],
 			},
@@ -632,7 +632,6 @@ export class GoogleDrive implements INodeType {
 										],
 									},
 								},
-								description: 'Custom Mime Type',
 							},
 						],
 					},
@@ -1275,7 +1274,7 @@ export class GoogleDrive implements INodeType {
 								],
 							},
 						},
-						default: '',
+						default: false,
 						description: `<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>`,
 					},
 					{
@@ -1348,7 +1347,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: `Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically`,
+						description: 'Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
 					},
 
 					{
@@ -1741,27 +1740,21 @@ export class GoogleDrive implements INodeType {
 								name: 'adminManagedRestrictions',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Copy Requires Writer Permission',
 								name: 'copyRequiresWriterPermission',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Domain Users Only',
 								name: 'domainUsersOnly',
 								type: 'boolean',
 								default: false,
-								description: `Whether access to this shared drive and items inside this shared drive
-								is restricted to users of the domain to which this shared drive belongs. This restriction
-								may be overridden by other sharing policies controlled outside of this shared drive.`,
+								description: 'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 							},
 							{
 								displayName: 'Drive Members Only',
@@ -1838,7 +1831,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false)',
+						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -1915,7 +1908,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false)',
+						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -1983,27 +1976,21 @@ export class GoogleDrive implements INodeType {
 								name: 'adminManagedRestrictions',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Copy Requires Writer Permission',
 								name: 'copyRequiresWriterPermission',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,
-								should be disabled for readers and commenters. When this restriction is set to true, it will
-								override the similarly named field to true for any file inside this shared drive.`,
+								description: 'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 							},
 							{
 								displayName: 'Domain Users Only',
 								name: 'domainUsersOnly',
 								type: 'boolean',
 								default: false,
-								description: `Whether access to this shared drive and items inside this shared drive
-								is restricted to users of the domain to which this shared drive belongs. This restriction
-								may be overridden by other sharing policies controlled outside of this shared drive.`,
+								description: 'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 							},
 							{
 								displayName: 'Drive Members Only',
@@ -2038,7 +2025,7 @@ export class GoogleDrive implements INodeType {
 						name: 'appPropertiesUi',
 						placeholder: 'Add Property',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -2071,7 +2058,7 @@ export class GoogleDrive implements INodeType {
 						name: 'propertiesUi',
 						placeholder: 'Add Property',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},

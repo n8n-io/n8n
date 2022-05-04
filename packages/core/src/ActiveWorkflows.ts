@@ -255,7 +255,17 @@ export class ActiveWorkflows {
 		if (workflowData.triggerResponses) {
 			for (const triggerResponse of workflowData.triggerResponses) {
 				if (triggerResponse.closeFunction) {
-					await triggerResponse.closeFunction();
+					try {
+						await triggerResponse.closeFunction();
+					} catch (error) {
+						Logger.error(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,
+							{
+								workflowId: id,
+							},
+						);
+					}
 				}
 			}
 		}
@@ -263,7 +273,17 @@ export class ActiveWorkflows {
 		if (workflowData.pollResponses) {
 			for (const pollResponse of workflowData.pollResponses) {
 				if (pollResponse.closeFunction) {
-					await pollResponse.closeFunction();
+					try {
+						await pollResponse.closeFunction();
+					} catch (error) {
+						Logger.error(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+							`There was a problem deactivating polling trigger of workflow "${id}": "${error.message}"`,
+							{
+								workflowId: id,
+							},
+						);
+					}
 				}
 			}
 		}

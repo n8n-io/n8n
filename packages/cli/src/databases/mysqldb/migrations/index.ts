@@ -11,6 +11,8 @@ import { CertifyCorrectCollation1623936588000 } from './1623936588000-CertifyCor
 import { AddWaitColumnId1626183952959 } from './1626183952959-AddWaitColumn';
 import { UpdateWorkflowCredentials1630451444017 } from './1630451444017-UpdateWorkflowCredentials';
 import { AddExecutionEntityIndexes1644424784709 } from './1644424784709-AddExecutionEntityIndexes';
+import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
+import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -26,4 +28,6 @@ export const mysqlMigrations = [
 	AddWaitColumnId1626183952959,
 	UpdateWorkflowCredentials1630451444017,
 	AddExecutionEntityIndexes1644424784709,
+	CreateUserManagement1646992772331,
+	LowerCaseUserEmail1648740597343,
 ];

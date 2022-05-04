@@ -121,14 +121,12 @@ export const contactFields: INodeProperties[] = [
 								name: 'city',
 								type: 'string',
 								default: '',
-								description: 'City',
 							},
 							{
 								displayName: 'Region',
 								name: 'region',
 								type: 'string',
 								default: '',
-								description: 'Region',
 							},
 							{
 								displayName: 'Country Code',
@@ -141,7 +139,6 @@ export const contactFields: INodeProperties[] = [
 								name: 'postalCode',
 								type: 'string',
 								default: '',
-								description: 'Postal code',
 							},
 							{
 								displayName: 'Type',
@@ -177,7 +174,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Company',
 				name: 'companyUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Company',
 				typeOptions: {
 					multipleValues: true,
@@ -219,7 +216,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -251,7 +248,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Emails',
 				name: 'emailsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Email',
 				typeOptions: {
 					multipleValues: true,
@@ -280,7 +277,7 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: `The type of the email address. The type can be custom or one of these predefined values`,
+								description: 'The type of the email address. The type can be custom or one of these predefined values.',
 							},
 							{
 								displayName: 'Value',
@@ -297,7 +294,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Events',
 				name: 'eventsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Event',
 				description: 'An event related to the person.',
 				typeOptions: {
@@ -330,7 +327,7 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: `The type of the event. The type can be custom or one of these predefined values`,
+								description: 'The type of the event. The type can be custom or one of these predefined values.',
 							},
 						],
 					},
@@ -383,7 +380,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Phone',
 				name: 'phoneUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				typeOptions: {
 					multipleValues: true,
@@ -464,7 +461,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Relations',
 				name: 'relationsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Relation',
 				typeOptions: {
 					multipleValues: true,
@@ -540,7 +537,7 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: `The person's relation to the other person. The type can be custom or one of these predefined values`,
+								description: 'The person\'s relation to the other person. The type can be custom or one of these predefined values.',
 							},
 						],
 					},
@@ -704,7 +701,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
@@ -884,7 +881,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
@@ -1128,7 +1125,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
@@ -1189,14 +1186,12 @@ export const contactFields: INodeProperties[] = [
 								name: 'city',
 								type: 'string',
 								default: '',
-								description: 'City',
 							},
 							{
 								displayName: 'Region',
 								name: 'region',
 								type: 'string',
 								default: '',
-								description: 'Region',
 							},
 							{
 								displayName: 'Country Code',
@@ -1209,7 +1204,6 @@ export const contactFields: INodeProperties[] = [
 								name: 'postalCode',
 								type: 'string',
 								default: '',
-								description: 'Postal code',
 							},
 							{
 								displayName: 'Type',
@@ -1245,7 +1239,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Company',
 				name: 'companyUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Company',
 				typeOptions: {
 					multipleValues: true,
@@ -1287,7 +1281,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -1319,7 +1313,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Emails',
 				name: 'emailsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Email',
 				typeOptions: {
 					multipleValues: true,
@@ -1348,7 +1342,7 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: `The type of the email address. The type can be custom or one of these predefined values`,
+								description: 'The type of the email address. The type can be custom or one of these predefined values.',
 							},
 							{
 								displayName: 'Value',
@@ -1365,7 +1359,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Events',
 				name: 'eventsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Event',
 				description: 'An event related to the person.',
 				typeOptions: {
@@ -1398,7 +1392,7 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: `The type of the event. The type can be custom or one of these predefined values`,
+								description: 'The type of the event. The type can be custom or one of these predefined values.',
 							},
 						],
 					},
@@ -1451,7 +1445,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Phone',
 				name: 'phoneUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				typeOptions: {
 					multipleValues: true,
@@ -1532,7 +1526,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Relations',
 				name: 'relationsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Relation',
 				typeOptions: {
 					multipleValues: true,
@@ -1608,7 +1602,7 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: `The person's relation to the other person. The type can be custom or one of these predefined values`,
+								description: 'The person\'s relation to the other person. The type can be custom or one of these predefined values.',
 							},
 						],
 					},

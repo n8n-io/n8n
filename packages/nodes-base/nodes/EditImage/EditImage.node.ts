@@ -12,7 +12,7 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import * as gm from 'gm';
+import gm from 'gm';
 import { file } from 'tmp-promise';
 import {
 	parse as pathParse,
@@ -1089,7 +1089,7 @@ export class EditImage implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {

@@ -17,10 +17,6 @@ import {
 export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
 	const credentials = await this.getCredentials('homeAssistantApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	let options: OptionsWithUri = {
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,

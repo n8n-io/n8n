@@ -173,7 +173,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'all',
-				description: 'If using idCardSource you can specify which properties to copy over. all or comma-separated list of: attachments, checklists, comments, due, labels, members, stickers',
+				description: 'If using idCardSource you can specify which properties to copy over. all or comma-separated list of: attachments, checklists, comments, due, labels, members, stickers.',
 			},
 		],
 	},
@@ -243,7 +243,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url',
+				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url.',
 			},
 			{
 				displayName: 'Board',
@@ -257,7 +257,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'board_fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs',
+				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs.',
 			},
 			{
 				displayName: 'Custom Field Items',
@@ -278,7 +278,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'member_fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: avatarHash, fullName, initials, username',
+				description: 'Fields to return. Either "all" or a comma-separated list: avatarHash, fullName, initials, username.',
 			},
 			{
 				displayName: 'Plugin Data',

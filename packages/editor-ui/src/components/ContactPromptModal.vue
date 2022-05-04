@@ -76,10 +76,12 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		closeDialog(): void {
-			this.$telemetry.track('User closed email modal', {
-				instance_id: this.$store.getters.instanceId,
-				email: null,
-			});
+			if (!this.isEmailValid) {
+				this.$telemetry.track('User closed email modal', {
+					instance_id: this.$store.getters.instanceId,
+					email: null,
+				});
+			}
 		},
 		async send() {
 			if (this.isEmailValid) {

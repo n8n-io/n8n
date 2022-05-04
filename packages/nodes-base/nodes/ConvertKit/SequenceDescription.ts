@@ -57,7 +57,6 @@ export const sequenceFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Sequence ID.',
 	},
 	{
 		displayName: 'Email',

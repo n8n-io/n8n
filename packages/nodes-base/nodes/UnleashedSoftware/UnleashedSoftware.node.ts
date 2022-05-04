@@ -25,7 +25,7 @@ import {
 	stockOnHandOperations,
 } from './StockOnHandDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class UnleashedSoftware implements INodeType {
 	description: INodeTypeDescription = {

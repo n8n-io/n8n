@@ -123,7 +123,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the issue is blocked. Requires "Is Blocked" toggle to be enabled',
+				description: 'Reason why the issue is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -563,7 +563,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the issue is blocked. Requires "Is Blocked" toggle to be enabled',
+				description: 'Reason why the issue is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',

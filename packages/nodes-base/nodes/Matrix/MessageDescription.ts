@@ -188,7 +188,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
+		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API.',
 		required: true,
 	},
 	{
@@ -248,7 +248,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		description: 'Other options',
 		placeholder: 'Add options',
 		options: [
 			{

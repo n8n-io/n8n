@@ -126,7 +126,6 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: 'defineBelow',
-		description: '',
 	},
 	{
 		displayName: 'Inputs to Ignore',
@@ -228,7 +227,7 @@ export const rowFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Select Conditions',
-		name: 'primaryKey',
+		name: 'filters',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -243,7 +242,7 @@ export const rowFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Condition',
 		options: [
 			{

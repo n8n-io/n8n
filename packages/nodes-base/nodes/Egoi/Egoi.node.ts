@@ -22,7 +22,7 @@ import {
 	ICreateMemberBody,
 } from './Interfaces';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
@@ -588,7 +588,7 @@ export class Egoi implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		for (let i = 0; i < length; i++) {
