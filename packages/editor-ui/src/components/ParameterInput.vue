@@ -231,7 +231,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from "vuex";
 
 export default mixins(
 	externalHooks,
