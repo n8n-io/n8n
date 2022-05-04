@@ -31,10 +31,12 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
+						@newActiveCredentialType="checkIfSupportedByHttpRequestNode"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -209,6 +211,7 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
+				isSupportedByHttpRequestNode: false,
 
 				nodeSettings: [
 					{
@@ -310,6 +313,17 @@ export default mixins(
 			},
 		},
 		methods: {
+			/**
+			 * Check if the node's currently active credential type may be used to make a request with the HTTP Request node v2.
+			 */
+			checkIfSupportedByHttpRequestNode(activeCredentialType: string) {
+				const credentialType = this.getCredentialTypeByName(activeCredentialType);
+
+				this.isSupportedByHttpRequestNode = (
+					credentialType.name.slice(0, -4).endsWith('OAuth') ||
+					credentialType.authenticate !== undefined
+				);
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},

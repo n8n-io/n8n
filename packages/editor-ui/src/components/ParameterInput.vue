@@ -258,6 +258,7 @@ export default mixins(
 			'hideIssues', // boolean
 			'errorHighlight',
 			'isForCredential', // boolean
+			'isSupportedByHttpRequestNode', // boolean
 		],
 		data () {
 			return {
@@ -597,19 +598,6 @@ export default mixins(
 				return this.getWorkflow();
 			},
 
-			/**
-			 * Whether the node's credential may be used to make a request with the HTTP Request node.
-			 */
-			isSupportedByHttpRequestNode(): boolean {
-				if (!this.node || !this.node.activeCredentialType || !this.node.credentials) return false;
-
-				const credentialType = this.getCredentialTypeByName(this.node.activeCredentialType);
-
-				return (
-					credentialType.name.slice(0, -4).endsWith('OAuth') ||
-					credentialType.authenticate !== undefined
-				);
-			},
 		},
 		methods: {
 			getPlaceholder(): string {
