@@ -16,9 +16,7 @@ export async function pushoverApiRequest(this: IExecuteFunctions | IExecuteSingl
 
 	const credentials = await this.getCredentials('pushoverApi');
 
-	if (method === 'GET') {
-		qs.token = credentials.apiKey;
-	} else {
+	if (method !== 'GET') {
 		body.token = credentials.apiKey as string;
 	}
 
@@ -29,12 +27,13 @@ export async function pushoverApiRequest(this: IExecuteFunctions | IExecuteSingl
 		uri: `https://api.pushover.net/1${path}`,
 		json: true,
 	};
+
 	try {
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+
+		return await this.helpers.requestWithAuthentication.call(this, 'pushoverApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

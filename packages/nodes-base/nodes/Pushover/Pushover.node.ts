@@ -5,18 +5,14 @@ import {
 import {
 	IBinaryData,
 	IBinaryKeyData,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
 
 import {
 	pushoverApiRequest,
@@ -26,7 +22,7 @@ export class Pushover implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushover',
 		name: 'pushover',
-		icon: 'file:pushover.png',
+		icon: 'file:pushover.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -40,7 +36,6 @@ export class Pushover implements INodeType {
 			{
 				name: 'pushoverApi',
 				required: true,
-				testedBy: 'pushoverCredentialTest',
 			},
 		],
 		properties: [
@@ -48,6 +43,7 @@ export class Pushover implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -55,12 +51,13 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -75,7 +72,7 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'User Key',
@@ -93,7 +90,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: '',
-				description: `The user/group key (not e-mail address) of your user (or you), viewable when logged into the <a href="https://pushover.net/">dashboard</a> (often referred to as <code>USER_KEY</code> in the <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries">libraries</a> and code examples)`,
+				description: 'The user/group key (not e-mail address) of your user (or you), viewable when logged into the <a href="https://pushover.net/">dashboard</a> (often referred to as <code>USER_KEY</code> in the <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries">libraries</a> and code examples)',
 			},
 			{
 				displayName: 'Message',
@@ -111,7 +108,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: '',
-				description: `Your message`,
+				description: 'Your message',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
@@ -151,10 +148,10 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: -2,
-				description: `Send as -2 to generate no notification/alert, -1 to always send as a quiet notification, 1 to display as high-priority and bypass the user's quiet hours, or 2 to also require confirmation from the user`,
+				description: 'Send as -2 to generate no notification/alert, -1 to always send as a quiet notification, 1 to display as high-priority and bypass the user\'s quiet hours, or 2 to also require confirmation from the user',
 			},
 			{
-				displayName: 'Retry (seconds)',
+				displayName: 'Retry (Seconds)',
 				name: 'retry',
 				type: 'number',
 				typeOptions: {
@@ -175,10 +172,10 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: 30,
-				description: `Specifies how often (in seconds) the Pushover servers will send the same notification to the user. This parameter must have a value of at least 30 seconds between retries.`,
+				description: 'Specifies how often (in seconds) the Pushover servers will send the same notification to the user. This parameter must have a value of at least 30 seconds between retries.',
 			},
 			{
-				displayName: 'Expire (seconds)',
+				displayName: 'Expire (Seconds)',
 				name: 'expire',
 				type: 'number',
 				typeOptions: {
@@ -200,7 +197,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: 30,
-				description: `Specifies how many seconds your notification will continue to be retried for (every retry seconds)`,
+				description: 'Specifies how many seconds your notification will continue to be retried for (every retry seconds)',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -250,7 +247,14 @@ export class Pushover implements INodeType {
 						name: 'device',
 						type: 'string',
 						default: '',
-						description: `Your user's device name to send the message directly to that device, rather than all of the user's devices (multiple devices may be separated by a comma)`,
+						description: 'Your user\'s device name to send the message directly to that device, rather than all of the user\'s devices (multiple devices may be separated by a comma)',
+					},
+					{
+						displayName: 'HTML Formatting',
+						name: 'html',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to enable messages formatting with HTML tags',
 					},
 					{
 						displayName: 'Sound',
@@ -260,42 +264,35 @@ export class Pushover implements INodeType {
 							loadOptionsMethod: 'getSounds',
 						},
 						default: '',
-						description: `The name of one of the sounds supported by device clients to override the user's default sound choice`,
-					},
-					{
-						displayName: 'Title',
-						name: 'title',
-						type: 'string',
-						default: '',
-						description: `Your message's title, otherwise your app's name is used`,
+						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice',
 					},
 					{
 						displayName: 'Timestamp',
 						name: 'timestamp',
 						type: 'dateTime',
 						default: '',
-						description: `A Unix timestamp of your message's date and time to display to the user, rather than the time your message is received by our API`,
+						description: 'A Unix timestamp of your message\'s date and time to display to the user, rather than the time your message is received by our API',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'Your message\'s title, otherwise your app\'s name is used',
 					},
 					{
 						displayName: 'URL',
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: `a supplementary URL to show with your message`,
+						description: 'A supplementary URL to show with your message',
 					},
 					{
 						displayName: 'URL Title',
 						name: 'url_title',
 						type: 'string',
 						default: '',
-						description: `A title for your supplementary URL, otherwise just the URL is shown`,
-					},
-					{
-						displayName: 'HTML Formatting',
-						name: 'html',
-						type: 'boolean',
-						default: false,
-						description: `Enable messages formatting with HTML tags`,
+						description: 'A title for your supplementary URL, otherwise just the URL is shown',
 					},
 				],
 			},
@@ -303,28 +300,6 @@ export class Pushover implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async pushoverCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					const token = credential?.data?.apiKey as string;
-					const options: OptionsWithUri = {
-						method: 'GET',
-						uri: `https://api.pushover.net/1/licenses.json?token=${token}`,
-						json: true,
-					};
-					await this.helpers.request.call(this, options);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The API Key included in the request is invalid',
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 		loadOptions: {
 			async getSounds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { sounds } = await pushoverApiRequest.call(this, 'GET', '/sounds.json', {});
