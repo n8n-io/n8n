@@ -317,7 +317,6 @@ export default mixins(
 			},
 		},
 		computed: {
-			...mapGetters('credentials', ['allCredentialsByType', 'getCredentialTypeByName']),
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -597,7 +596,6 @@ export default mixins(
 			workflow (): Workflow {
 				return this.getWorkflow();
 			},
-
 		},
 		methods: {
 			getPlaceholder(): string {
