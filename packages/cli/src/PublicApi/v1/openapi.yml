@@ -53,6 +53,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          description: Unsupported media type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /credentials/{id}:
     delete:
       x-eov-operation-id: deleteCredential
@@ -90,12 +96,6 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Credential not found
-        '415':
-          description: Unsupported media type.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /users:
     $ref: './spec/paths/Users.yml'
   /users/{identifier}:
@@ -115,6 +115,84 @@ paths:
 components:
   schemas:
     $ref: './spec/schemas/_index.yml'
+    Error:
+      required:
+        - code
+        - description
+        - message
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        description:
+          type: string
+    Credential:
+      required:
+        - name
+        - type
+      type: object
+      properties:
+        id:
+          type: number
+          readOnly: true
+          example: 42
+        name:
+          type: string
+          example: Joe's Github Credentials
+        type:
+          type: string
+          example: github
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
+    createCredentialRequest:
+      required:
+        - name
+        - type
+        - data
+      type: object
+      properties:
+        name:
+          type: string
+          example: Joe's Github Credentials
+        type:
+          type: string
+          example: github
+        data:
+          type: object
+          example: { token: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' }
+    CredentialDeleteResponse:
+      required:
+        - name
+        - type
+      type: object
+      properties:
+        name:
+          type: string
+          example: Joe's Github Credentials
+        type:
+          type: string
+          readOnly: true
+          example: github
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-04-29T11:02:29.842Z'
   responses:
     $ref: './spec/responses/_index.yml'
   parameters:

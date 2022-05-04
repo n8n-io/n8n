@@ -5,7 +5,7 @@ import { WorkflowEntity } from '../../../databases/entities/WorkflowEntity';
 import { replaceInvalidCredentials } from '../../../WorkflowHelpers';
 import { authorize, instanceOwnerSetup } from '../../middlewares';
 import { WorkflowRequest } from '../../publicApiRequest';
-import { getWorkflowOwnerRole } from '../../Services/role';
+import { getWorkflowOwnerRole } from '../../services/role';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -14,7 +14,7 @@ import {
 	updateWorkflow,
 	hasStartNode,
 	getStartNode,
-} from '../../Services/workflow';
+} from '../../services/workflow';
 
 export = {
 	createWorkflow: [

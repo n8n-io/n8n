@@ -9,8 +9,8 @@ import {
 	getExecutionInWorkflows,
 	deleteExecution,
 	getExecutionsCount,
-} from '../../Services/execution';
-import { getSharedWorkflowIds } from '../../Services/workflow';
+} from '../../services/execution';
+import { getSharedWorkflowIds } from '../../services/workflow';
 
 export = {
 	deleteExecution: [
