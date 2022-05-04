@@ -1,0 +1,23 @@
+Error:
+  $ref: './Error.yml'
+ExecutionInformation:
+  $ref: './ExecutionInformation.yml'
+NodeInformation:
+  $ref: './NodeInformation.yml'
+RoleInformation:
+  $ref: './RoleInformation.yml'
+TagInformation:
+  $ref: './TagInformation.yml'
+UserInformation:
+  $ref: './UserInformation.yml'
+WorkflowInformation:
+  $ref: './WorkflowInformation.yml'
+WorkflowSettingInformation:
+  $ref: './WorkflowSettingInformation.yml'
+UserDetailsResponse:
+  $ref: './UserDetailsResponse.yml'
+ExecutionDetailsResponse:
+  $ref: './ExecutionDetailsResponse.yml'
+WorkflowDetailsResponse:
+  $ref: './WorkflowDetailsResponse.yml'
+

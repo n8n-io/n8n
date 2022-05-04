@@ -1,0 +1,33 @@
+type: object
+properties:
+  id:
+    type: number
+    example: 1000
+  data:
+    type: string
+  finished:
+    type: boolean
+    example: true
+  mode:
+    type: string
+    enum: ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook']
+  retryOf:
+    type: string
+    nullable: true
+  retrySuccessId:
+    type: string
+    nullable: true
+    example: 2
+  startedAt:
+    type: string
+    format: date-time
+  stoppedAt:
+    type: string
+    format: date-time
+  workflowId:
+    type: string
+    example: 1000
+  waitTill:
+    type: string
+    nullable: true
+    format: date-time

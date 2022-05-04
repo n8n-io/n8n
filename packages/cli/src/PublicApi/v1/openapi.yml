@@ -18,6 +18,12 @@ servers:
 tags:
   - name: User
     description: Operations about user
+  - name: Execution
+    description: Operations about execution
+  - name: Workflow
+    description: Operations about workflow
+  - name: Credentials
+    description: Operations about credentials
 paths:
   /credentials:
     post:
@@ -91,337 +97,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   /users:
-    get:
-      x-eov-operation-id: getUsers
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-        - User
-      summary: Retrieve all users
-      description: Retrieve all users from your instance. Only available for the instance owner.
-      parameters:
-        - name: limit
-          in: query
-          description: The maximum number of items to return.
-          required: false
-          schema:
-            type: number
-            example: 100
-            default: 100
-        - name: cursor
-          in: query
-          description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response. Default value fetches the first "page" of the collection. See pagination for more detail.
-          required: false
-          style: form
-          schema:
-            type: string
-            example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
-        - name: includeRole
-          in: query
-          required: false
-          style: form
-          description: Whether to include the role information the user object.
-          schema:
-            type: boolean
-            example: false
-            default: false
-      responses:
-        '200':
-          description: Operation successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDetailsResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      x-eov-operation-id: createUsers
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-        - User
-      summary: Invite a user
-      description: Invites a user to your instance. Only available for the instance owner.
-      operationId: createUser
-      requestBody:
-        description: Created user object.
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/UserInformation'
-        required: true
-      responses:
-        '200':
-          description: A User object
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserInformation'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+    $ref: './spec/paths/Users.yml'
   /users/{identifier}:
-    get:
-      x-eov-operation-id: getUser
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-        - User
-      summary: Get user by ID/Email
-      description: Retrieve a user from your instance. Only available for the instance owner.
-      operationId: getUser
-      parameters:
-        - name: identifier
-          in: path
-          description: The ID or email of the user.
-          required: true
-          schema:
-            type: string
-            format: identifier
-        - name: includeRole
-          in: query
-          required: false
-          schema:
-            type: boolean
-            example: true
-      responses:
-        '200':
-          description: Operation successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserInformation'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    delete:
-      x-eov-operation-id: deleteUser
-      x-eov-operation-handler: v1/handlers/Users
-      tags:
-        - User
-      summary: Delete user by ID/Email
-      description: Deletes a user from your instance. Only available for the instance owner.
-      operationId: deleteUser
-      parameters:
-        - name: identifier
-          in: path
-          description: The ID if the user to be deleted.
-          required: true
-          schema:
-            type: string
-            format: identifier
-        - name: transferId
-          in: query
-          description: ID of the user to transfer workflows and credentials to. Must not be equal to the to-be-deleted user.
-          required: false
-          schema:
-            type: string
-        - name: includeRole
-          in: query
-          required: false
-          schema:
-            type: boolean
-            example: true
-      responses:
-        '200':
-          description: Operation successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserInformation'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
+    $ref: './spec/paths/UserById.yml'
+  /executions:
+    $ref: './spec/paths/Executions.yml'
+  /executions/{executionId}:
+    $ref: './spec/paths/ExecutionById.yml'
+  /workflows:
+    $ref: './spec/paths/Workflows.yml'
+  /workflows/{workflowId}:
+    $ref: './spec/paths/WorkflowById.yml'
+  /workflows/{workflowId}/activate:
+    $ref: './spec/paths/WorkflowByIdActivate.yml'
+  /workflows/{workflowId}/deactivate:
+    $ref: './spec/paths/WorkflowByIdDeactivate.yml'
 components:
   schemas:
-    Error:
-      required:
-        - code
-        - description
-        - message
-      type: object
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-        description:
-          type: string
-    Credential:
-      required:
-        - name
-        - type
-      type: object
-      properties:
-        id:
-          type: number
-          readOnly: true
-          example: 42
-        name:
-          type: string
-          example: Joe's Github Credentials
-        type:
-          type: string
-          example: github
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-    createCredentialRequest:
-      required:
-        - name
-        - type
-        - data
-      type: object
-      properties:
-        name:
-          type: string
-          example: Joe's Github Credentials
-        type:
-          type: string
-          example: github
-        data:
-          type: object
-          example: { token: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' }
-    CredentialDeleteResponse:
-      type: object
-      properties:
-        name:
-          type: string
-          example: Joe's Github Credentials
-        type:
-          type: string
-          readOnly: true
-          example: github
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-    UserInformation:
-      required:
-        - email
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-          example: 123e4567-e89b-12d3-a456-426614174000
-        email:
-          type: string
-          format: email
-          example: john.doe@company.com
-        firstName:
-          maxLength: 32
-          type: string
-          description: User's first name
-          readOnly: true
-          example: john
-        lastName:
-          maxLength: 32
-          type: string
-          description: User's last name
-          readOnly: true
-          example: Doe
-        isPending:
-          type: boolean
-          description: Whether the user finished setting up their account in response to the invitation (true) or not (false).
-          readOnly: true
-        createdAt:
-          type: string
-          description: Time the user was created.
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          description: Last time the user was updated.
-          format: date-time
-          readOnly: true
-        globalRole:
-          $ref: '#/components/schemas/RoleInformation'
-    UserDetailsResponse:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/UserInformation'
-        nextCursor:
-          type: string
-          description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
-          nullable: true
-          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
-    RoleInformation:
-      type: object
-      properties:
-        id:
-          type: number
-          readOnly: true
-          example: 1
-        name:
-          type: string
-          example: owner
-          readOnly: true
-        scope:
-          type: string
-          readOnly: true
-          example: global
-        createdAt:
-          type: string
-          description: Time the role was created.
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          description: Last time the role was updaded.
-          format: date-time
-          readOnly: true
+    $ref: './spec/schemas/_index.yml'
   responses:
-    NotFound:
-      description: The specified resource was not found.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Forbidden:
-      description: Forbidden
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+    $ref: './spec/responses/_index.yml'
+  parameters:
+    $ref: './spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

@@ -135,7 +135,11 @@ export = {
 
 			return res.json({
 				data: clean(users, { includeRole }),
-				nextCursor: encodeNextCursor(offset, limit, count),
+				nextCursor: encodeNextCursor({
+					offset,
+					limit,
+					numberOfTotalRecords: count,
+				}),
 			});
 		},
 	],

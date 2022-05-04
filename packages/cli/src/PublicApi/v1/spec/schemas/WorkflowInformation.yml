@@ -1,0 +1,44 @@
+type: object
+required:
+  - name
+  - nodes
+  - connections
+  - settings
+properties:
+  id:
+    type: number
+    readOnly: true
+    example: 1
+  name:
+    type: string
+    example: Workflow 1
+  active:
+    type: boolean
+    readOnly: true
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true
+  nodes:
+    type: array
+    items:
+      $ref: './NodeInformation.yml'
+  connections:
+    type: object
+    example: { main: [{node: "Jira", type: "main", index: 0}] }
+  settings:
+    $ref: './WorkflowSettingInformation.yml'
+  staticData:
+    type: string
+    nullable: true
+    readOnly: true
+    example: "{ iterationId: 2 }"
+  tags:
+    type: array
+    items:
+      $ref: './TagInformation.yml'
+    readOnly: true

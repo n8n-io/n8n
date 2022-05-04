@@ -5,6 +5,7 @@ import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
+import { randomBytes } from 'crypto';
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
@@ -12,8 +13,6 @@ import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../Us
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
-import { randomBytes } from 'crypto';
-import { userInfo } from 'os';
 
 export function meNamespace(this: N8nApp): void {
 	/**
