@@ -296,6 +296,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 	getScopes(type: string): string[] {
 		const scopeProperty = this.getCredentialsProperties(type).find(({ name }) => name === 'scope');
 
+		// edge case: scope property exists but is required to be empty string, e.g. GoToWebinar
+		if (scopeProperty?.default === '') return [];
+
 		if (!scopeProperty?.default || typeof scopeProperty.default !== 'string') {
 			const errorMessage = `No \`scope\` property found for credential type: ${type}`;
 
