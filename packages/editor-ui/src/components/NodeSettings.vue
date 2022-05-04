@@ -545,8 +545,8 @@ export default mixins(
 <style lang="scss">
 .node-settings {
 	overflow: hidden;
-	min-width: 350px;
-	max-width: 350px;
+	min-width: 360px;
+	max-width: 360px;
 	background-color: var(--color-background-xlight);
 	height: 100%;
 	border: var(--border-base);

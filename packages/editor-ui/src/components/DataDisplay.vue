@@ -99,7 +99,7 @@ import { isNumber } from './helpers';
 import { editor } from 'monaco-editor';
 import PanelDragButton from './PanelDragButton.vue';
 
-const MAIN_PANEL_WIDTH = 350;
+const MAIN_PANEL_WIDTH = 360;
 const SIDE_MARGIN = 24;
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
@@ -468,7 +468,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 </style>
 
 <style lang="scss" module>
-$--main-panel-width: 350px;
+$--main-panel-width: 360px;
 
 .modalBackground {
 	height: 100%;
@@ -495,6 +495,7 @@ $--main-panel-width: 350px;
 .outputPanel {
 	composes: dataPanel;
 	right: var(--spacing-l);
+	width: $--main-panel-width;
 
 	> * {
 		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
