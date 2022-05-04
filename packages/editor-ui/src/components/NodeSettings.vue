@@ -23,7 +23,25 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
-				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+				<n8n-notice
+					v-if="isHttpRequestNodeV2 && scopes.length > 0"
+					:truncate="true"
+					:content="$locale.baseText(
+						'nodeSettings.scopes',
+						{
+							adjustToNumber: scopes.length,
+							interpolate: {
+								activeCredential,
+								scopes: scopes.join(' '),
+							},
+						},
+					)"
+				/>
+				<node-credentials
+					:node="node"
+					@credentialSelected="credentialSelected"
+					@newHttpRequestNodeCredentialType="loadScopesNoticeData"
+				/>
 				<node-webhooks :node="node" :nodeType="nodeType" />
 				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -69,6 +87,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { mapGetters } from 'vuex';
+import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -87,6 +107,10 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
+			isHttpRequestNodeV2(): boolean {
+				return this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2;
+			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -169,6 +193,8 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
+				activeCredential: '',
+				scopes: [] as string[],
 
 				nodeSettings: [
 					{
@@ -270,6 +296,21 @@ export default mixins(
 			},
 		},
 		methods: {
+			async loadScopesNoticeData(activeCredentialType: string) {
+				if (!this.isHttpRequestNodeV2) return;
+
+				if (
+					!activeCredentialType ||
+					!activeCredentialType.endsWith('OAuth2Api')
+				) {
+					this.scopes = [];
+					return;
+				}
+
+				this.activeCredential = this.getCredentialTypeByName(activeCredentialType).displayName;
+
+				this.scopes = await this.restApi().getScopes(activeCredentialType);
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},

@@ -72,6 +72,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
+import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -105,6 +106,10 @@ export default mixins(
 		},
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
+
+			if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
+				this.$emit('newHttpRequestNodeCredentialType', this.node.parameters.nodeCredentialType);
+			}
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
