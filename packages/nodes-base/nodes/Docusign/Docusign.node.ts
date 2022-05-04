@@ -147,9 +147,29 @@ export class Docusign implements INodeType {
 				name: 'docusignOAuth2Api',
 				testedBy: 'docusignApiTest',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+				description: 'Authentication method to use.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

@@ -400,6 +400,7 @@
       "dist/nodes/Discourse/Discourse.node.js",
       "dist/nodes/Disqus/Disqus.node.js",
       "dist/nodes/Docusign/Docusign.node.js",
+      "dist/nodes/Docusign/DocusignTrigger.node.js",
       "dist/nodes/Drift/Drift.node.js",
       "dist/nodes/Dropbox/Dropbox.node.js",
       "dist/nodes/Dropcontact/Dropcontact.node.js",
