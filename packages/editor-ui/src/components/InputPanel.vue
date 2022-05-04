@@ -123,7 +123,8 @@ export default mixins(
 				return [];
 			}
 			const nodes: INodeUi[] = (this.workflow as Workflow).getParentNodes(this.activeNode.name)
-				.map((nodeName: string) => this.$store.getters.getNodeByName(nodeName));
+				.map((nodeName: string) => this.$store.getters.getNodeByName(nodeName))
+				.reverse();
 			return nodes.filter((node) => this.activeNode && (node.name !== this.activeNode.name));
 		},
 	},
