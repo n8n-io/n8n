@@ -52,7 +52,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authenticateWith: [
-							'basicAuth',
+							'httpBasicAuth',
 						],
 						'@version': [
 							2,
@@ -66,7 +66,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authenticateWith: [
-							'digestAuth',
+							'httpDigestAuth',
 						],
 						'@version': [
 							2,
@@ -80,7 +80,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authenticateWith: [
-							'headerAuth',
+							'httpHeaderAuth',
 						],
 						'@version': [
 							2,
@@ -94,7 +94,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authenticateWith: [
-							'queryAuth',
+							'httpQueryAuth',
 						],
 						'@version': [
 							2,
@@ -108,7 +108,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authenticateWith: [
-							'oAuth1',
+							'oAuth1Api',
 						],
 						'@version': [
 							2,
@@ -122,7 +122,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authenticateWith: [
-							'oAuth2',
+							'oAuth2Api',
 						],
 						'@version': [
 							2,
@@ -279,30 +279,30 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'Basic Auth',
-						value: 'basicAuth',
+						value: 'httpBasicAuth',
 					},
 					{
 						name: 'Digest Auth',
-						value: 'digestAuth',
+						value: 'httpDigestAuth',
 					},
 					{
 						name: 'Header Auth',
-						value: 'headerAuth',
+						value: 'httpHeaderAuth',
 					},
 					{
 						name: 'Query Auth',
-						value: 'queryAuth',
+						value: 'httpQueryAuth',
 					},
 					{
 						name: 'OAuth1',
-						value: 'oAuth1',
+						value: 'oAuth1Api',
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2',
+						value: 'oAuth2Api',
 					},
 				],
-				default: 'basicAuth',
+				default: 'httpBasicAuth',
 				displayOptions: {
 					show: {
 						authenticateWith: [

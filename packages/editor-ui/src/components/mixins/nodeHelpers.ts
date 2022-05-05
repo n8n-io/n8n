@@ -1,4 +1,5 @@
 import {
+	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 
@@ -32,12 +33,19 @@ import { restApi } from '@/components/mixins/restApi';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from 'vuex';
 
 export const nodeHelpers = mixins(
 	restApi,
 )
 	.extend({
+		computed: {
+			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
+		},
 		methods: {
+			isHttpRequestNodeV2 (node: INodeUi): boolean {
+				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+			},
 
 			// Returns the parameter value
 			getParameterValue (nodeValues: INodeParameters, parameterName: string, path: string) {
@@ -114,6 +122,23 @@ export const nodeHelpers = mixins(
 				}
 
 				return false;
+			},
+
+			reportUnsetCredential(credentialType: ICredentialType) {
+				return {
+					credentials: {
+						[credentialType.name]: [
+							this.$locale.baseText(
+								'nodeHelpers.credentialsUnset',
+								{
+									interpolate: {
+										credentialType: credentialType.displayName,
+									},
+								},
+							),
+						],
+					},
+				};
 			},
 
 			// Updates the execution issues.
@@ -198,6 +223,46 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
+
+				const {
+					authenticateWith,
+					genericAuthType,
+					nodeCredentialType,
+				} = node.parameters as HttpRequestNode.V2.AuthParams;
+
+				if (
+					this.isHttpRequestNodeV2(node) &&
+					authenticateWith === 'genericAuth' &&
+					selectedCredsAreUnusable(node, genericAuthType)
+				) {
+					const credential = this.getCredentialTypeByName(genericAuthType);
+					return this.reportUnsetCredential(credential);
+				}
+
+				if (
+					this.isHttpRequestNodeV2(node) &&
+					authenticateWith === 'nodeCredential' &&
+					nodeCredentialType !== '' &&
+					node.credentials !== undefined
+				) {
+					const stored = this.getCredentialsByType(nodeCredentialType);
+
+					if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
+						const credential = this.getCredentialTypeByName(nodeCredentialType);
+						return this.reportUnsetCredential(credential);
+					}
+				}
+
+				if (
+					this.isHttpRequestNodeV2(node) &&
+					authenticateWith === 'nodeCredential' &&
+					nodeCredentialType !== '' &&
+					selectedCredsAreUnusable(node, nodeCredentialType)
+				) {
+					const credential = this.getCredentialTypeByName(nodeCredentialType);
+					return this.reportUnsetCredential(credential);
+				}
+
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
 					if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) !== true) {
@@ -394,3 +459,39 @@ export const nodeHelpers = mixins(
 			},
 		},
 	});
+
+/**
+ * Whether the node has no selected credentials, or none of the node's
+ * selected credentials are of the specified type.
+ */
+function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
+	return node.credentials === undefined || Object.keys(node.credentials).includes(credentialType) === false;
+}
+
+/**
+ * Whether the node's selected credentials of the specified type
+ * can no longer be found in the database.
+ */
+function selectedCredsDoNotExist(
+	node: INodeUi,
+	nodeCredentialType: string,
+	storedCredsByType: ICredentialsResponse[] | null,
+) {
+	if (!node.credentials || !storedCredsByType) return false;
+
+	const selectedCredsByType = node.credentials[nodeCredentialType];
+
+	if (!selectedCredsByType) return false;
+
+	return !storedCredsByType.find((c) => c.id === selectedCredsByType.id);
+}
+
+declare namespace HttpRequestNode {
+	namespace V2 {
+		type AuthParams = {
+			authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
+			genericAuthType: string;
+			nodeCredentialType: string;
+		};
+	}
+}
