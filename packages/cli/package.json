@@ -137,6 +137,7 @@
     "passport-cookie": "^1.0.9",
     "passport-jwt": "^4.0.0",
     "pg": "^8.3.0",
+    "pkce-challenge": "^3.0.0",
     "prom-client": "^13.1.0",
     "request-promise-native": "^1.0.7",
     "sqlite3": "^5.0.2",
