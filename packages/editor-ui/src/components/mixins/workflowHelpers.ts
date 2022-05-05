@@ -5,7 +5,6 @@ import {
 	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
-	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
 
 import {
