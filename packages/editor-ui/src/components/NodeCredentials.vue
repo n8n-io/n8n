@@ -141,6 +141,10 @@ export default mixins(
 				if (nodeCredentialType) return [this.getCredentialTypeByName(nodeCredentialType)];
 			}
 
+			if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
+				this.$emit('newHttpRequestNodeCredentialType', this.node.parameters.nodeCredentialType);
+			}
+
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;

@@ -195,6 +195,11 @@ export const restApi = Vue.extend({
 				getBinaryBufferString: (dataPath: string): Promise<string> => {
 					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
 				},
+
+				// Returns scopes for OAuth credential types
+				getScopes: (credentialType: string): Promise<string[]> => {
+					return self.restApi().makeRestApiRequest('GET', '/oauth2-credential/scopes', { credentialType });
+				},
 			};
 		},
 	},
