@@ -172,7 +172,7 @@ export function generateNodesGraph(
 				try {
 					nodeItem.domain = new URL(node.parameters.url as string).hostname;
 				} catch (_) {
-					nodeItem.domain = node.parameters.url as string;
+					nodeItem.domain = getDomainBase(node.parameters.url as string);
 				}
 			} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 2) {
 				const { authenticateWith } = node.parameters as { authenticateWith: string };
