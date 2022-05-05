@@ -40,9 +40,12 @@ export const nodeHelpers = mixins(
 )
 	.extend({
 		computed: {
-			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
+			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
+			isHttpRequestNodeV2 (node: INodeUi): boolean {
+				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+			},
 
 			// Returns the parameter value
 			getParameterValue (nodeValues: INodeParameters, parameterName: string, path: string) {
@@ -119,6 +122,23 @@ export const nodeHelpers = mixins(
 				}
 
 				return false;
+			},
+
+			reportUnsetCredential(credentialType: ICredentialType) {
+				return {
+					credentials: {
+						[credentialType.name]: [
+							this.$locale.baseText(
+								'nodeHelpers.credentialsUnset',
+								{
+									interpolate: {
+										credentialType: credentialType.displayName,
+									},
+								},
+							),
+						],
+					},
+				};
 			},
 
 			// Updates the execution issues.
@@ -204,41 +224,43 @@ export const nodeHelpers = mixins(
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
 
+				const {
+					authenticateWith,
+					genericAuthType,
+					nodeCredentialType,
+				} = node.parameters as HttpRequestNode.V2.AuthParams;
+
 				if (
-					node.type === HTTP_REQUEST_NODE_TYPE &&
-					node.typeVersion === 2 &&
-					node.parameters.authenticateWith === 'genericAuth' &&
-					node.credentials === undefined // @TODO Or if no currently selected generic auth cred
+					this.isHttpRequestNodeV2(node) &&
+					authenticateWith === 'genericAuth' &&
+					selectedCredsAreUnusable(node, genericAuthType)
 				) {
-					const { genericAuthType } = node.parameters as { genericAuthType: string };
-					const credentialType = this.getCredentialTypeByName(genericAuthType);
-
-					//
-
-					return {
-						credentials: {
-							[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
-						},
-					};
+					const credential = this.getCredentialTypeByName(genericAuthType);
+					return this.reportUnsetCredential(credential);
 				}
 
 				if (
-					node.type === HTTP_REQUEST_NODE_TYPE &&
-					node.typeVersion === 2 &&
-					node.parameters.authenticateWith === 'nodeCredential' &&
-					node.credentials === undefined // @TODO or if no currently selected service-specific cred
+					this.isHttpRequestNodeV2(node) &&
+					authenticateWith === 'nodeCredential' &&
+					nodeCredentialType !== '' &&
+					node.credentials !== undefined
 				) {
-					const { nodeCredentialType } = node.parameters as { nodeCredentialType?: string };
+					const stored = this.getCredentialsByType(nodeCredentialType);
 
-					if (!nodeCredentialType) return null;
+					if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
+						const credential = this.getCredentialTypeByName(nodeCredentialType);
+						return this.reportUnsetCredential(credential);
+					}
+				}
 
-					const credentialType = this.getCredentialTypeByName(nodeCredentialType);
-
-					return {
-						credentials: {
-							[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
-						},
-					};
+				if (
+					this.isHttpRequestNodeV2(node) &&
+					authenticateWith === 'nodeCredential' &&
+					nodeCredentialType !== '' &&
+					selectedCredsAreUnusable(node, nodeCredentialType)
+				) {
+					const credential = this.getCredentialTypeByName(nodeCredentialType);
+					return this.reportUnsetCredential(credential);
 				}
 
 				for (const credentialTypeDescription of nodeType!.credentials!) {
@@ -437,3 +459,39 @@ export const nodeHelpers = mixins(
 			},
 		},
 	});
+
+/**
+ * Whether the node has no selected credentials, or none of the node's
+ * selected credentials are of the specified type.
+ */
+function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
+	return node.credentials === undefined || Object.keys(node.credentials).includes(credentialType) === false;
+}
+
+/**
+ * Whether the node's selected credentials of the specified type
+ * can no longer be found in the database.
+ */
+function selectedCredsDoNotExist(
+	node: INodeUi,
+	nodeCredentialType: string,
+	storedCredsByType: ICredentialsResponse[] | null,
+) {
+	if (!node.credentials || !storedCredsByType) return false;
+
+	const selectedCredsByType = node.credentials[nodeCredentialType];
+
+	if (!selectedCredsByType) return false;
+
+	return !storedCredsByType.find((c) => c.id === selectedCredsByType.id);
+}
+
+declare namespace HttpRequestNode {
+	namespace V2 {
+		type AuthParams = {
+			authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
+			genericAuthType: string;
+			nodeCredentialType: string;
+		};
+	}
+}

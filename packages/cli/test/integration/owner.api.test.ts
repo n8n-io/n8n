@@ -81,7 +81,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
 
-	const storedOwner = await Db.collections.User!.findOneOrFail(id);
+	const storedOwner = await Db.collections.User.findOneOrFail(id);
 	expect(storedOwner.password).not.toBe(newOwnerData.password);
 	expect(storedOwner.email).toBe(newOwnerData.email);
 	expect(storedOwner.firstName).toBe(newOwnerData.firstName);
@@ -113,7 +113,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 
 	expect(email).toBe(newOwnerData.email.toLowerCase());
 
-	const storedOwner = await Db.collections.User!.findOneOrFail(id);
+	const storedOwner = await Db.collections.User.findOneOrFail(id);
 	expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 });
 
@@ -140,7 +140,7 @@ test('POST /owner/skip-setup should persist skipping setup to the DB', async () 
 	const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
 	expect(skipConfig).toBe(true);
 
-	const { value } = await Db.collections.Settings!.findOneOrFail({
+	const { value } = await Db.collections.Settings.findOneOrFail({
 		key: 'userManagement.skipInstanceOwnerSetup',
 	});
 	expect(value).toBe('true');

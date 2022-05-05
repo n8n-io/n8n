@@ -1,7 +1,8 @@
 <template>
-	<div class="parameter-input-list-wrapper" :class="{ 'has-reordered-credentials-input': showCredentialsAfter }">
-		<slot />
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -15,11 +16,13 @@
 				/>
 			</div>
 
-			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
-				<n8n-text size="small">
-					<span v-html="$locale.nodeText().inputLabelDisplayName(parameter, path)"></span>
-				</n8n-text>
-			</div>
+			<n8n-notice
+				v-else-if="parameter.type === 'notice'"
+				class="parameter-item"
+				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
+				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
+			/>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -85,7 +88,6 @@
 <script lang="ts">
 
 import {
-	INode,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -118,7 +120,6 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
-			'showCredentialsAfter', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -129,6 +130,11 @@ export default mixins(
 			},
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
+			},
+			indexToShowSlotAt (): number {
+				if (this.isHttpRequestNodeV2(this.node)) return 2;
+
+				return 0;
 			},
 		},
 		methods: {
@@ -262,18 +268,9 @@ export default mixins(
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	display: flex;
-	flex-direction: column;
-	padding-top: var(--spacing-xs);
 
-	&.has-reordered-credentials-input {
-		.node-credentials + div {
-			order: -2;
-		}
-
-		.node-credentials + div + div {
-			order: -1;
-		}
+	div:first-child > .node-credentials {
+		padding-top: var(--spacing-xs);
 	}
 
 	.delete-option {
@@ -308,7 +305,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
-		margin: 0 0 var(--spacing-xs);
+		margin: var(--spacing-xs) 0;
 
 		>.delete-option {
 			top: var(--spacing-5xs);

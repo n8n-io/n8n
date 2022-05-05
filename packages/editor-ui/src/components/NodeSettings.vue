@@ -31,7 +31,6 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
-					:showCredentialsAfter="showCredentialsAfter"
 				>
 					<node-credentials
 						:node="node"
@@ -81,8 +80,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -160,9 +157,6 @@ export default mixins(
 				}
 
 				return this.nodeType.properties;
-			},
-			showCredentialsAfter (): boolean {
-				return this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2;
 			},
 		},
 		props: {
