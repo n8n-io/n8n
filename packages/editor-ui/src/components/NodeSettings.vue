@@ -658,6 +658,10 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+
+		> div > .notice[role=alert] {
+			margin-top: var(--spacing-s);
+		}
 	}
 }
 
