@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.175.1
+
+### What changed?
+
+The RabbitMQTrigger node options has been split into Trigger Options and Queue Options.
+
+### When is action necessary?
+
+If you are using the RabbitMQTrigger node.
+
+### How to upgrade:
+
+Go to the workflows that use the RabbitMQTrigger node and select nessery options.
+
 ## 0.171.0
 
 ### What changed?
