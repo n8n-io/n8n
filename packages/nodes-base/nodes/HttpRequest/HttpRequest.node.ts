@@ -1418,6 +1418,8 @@ function isGenericAuth(cred: Credential) {
 function isSupportedNodeCredentialType(cred: Credential) {
 	if (isGenericAuth(cred)) return false;
 
+	if (cred.name === 'notionOAuth2Api') return false; // exists but currently commented out
+
 	if (cred.name.slice(0, -4).endsWith('OAuth')) return true;
 
 	return cred.authenticate !== undefined;
