@@ -207,11 +207,11 @@ export const nodeHelpers = mixins(
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
 
-				const { authenticateWith, genericAuthType, nodeCredentialType } = node.parameters as {
-					authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
-					genericAuthType: string;
-					nodeCredentialType: string;
-				};
+				const {
+					authenticateWith,
+					genericAuthType,
+					nodeCredentialType,
+				} = node.parameters as HttpRequestNode.V2.AuthParams;
 
 				if (
 					this.isHttpRequestNodeV2(node) &&
@@ -475,4 +475,14 @@ function reportUnsetCredential(credentialType: ICredentialType) {
 			[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
 		},
 	};
+}
+
+declare namespace HttpRequestNode {
+	namespace V2 {
+		type AuthParams = {
+			authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
+			genericAuthType: string;
+			nodeCredentialType: string;
+		};
+	}
 }
