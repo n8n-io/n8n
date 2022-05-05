@@ -79,6 +79,7 @@
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
+					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				/>
 			</div>
 		</div>
@@ -122,6 +123,7 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'isSupportedByHttpRequestNode', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {

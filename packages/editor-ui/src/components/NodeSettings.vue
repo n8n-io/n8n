@@ -31,10 +31,12 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
+						@newActiveCredentialType="checkIfSupportedByHttpRequestNode"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -42,6 +44,21 @@
 						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+
+				<div v-if="customActionSelected" class="parameter-item parameter-notice">
+					<n8n-notice
+						:content="$locale.baseText(
+							'nodeSettings.youCanUseTheHttpRequestNode',
+							{
+								interpolate: {
+									nodeTypeDisplayName: nodeType.displayName
+								},
+							},
+						)"
+						:truncate="false"
+					/>
+				</div>
+
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
@@ -81,8 +98,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
-
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -100,6 +115,18 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			customActionSelected (): boolean {
+				return (
+					this.nodeValues.parameters !== undefined &&
+					typeof this.nodeValues.parameters === 'object' &&
+					this.nodeValues.parameters !== null &&
+					!Array.isArray(this.nodeValues.parameters) &&
+					(
+						this.nodeValues.parameters.resource === 'customAction' ||
+						this.nodeValues.parameters.operation === 'customAction'
+					)
+				);
+			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -182,6 +209,7 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
+				isSupportedByHttpRequestNode: false,
 
 				nodeSettings: [
 					{
@@ -283,6 +311,17 @@ export default mixins(
 			},
 		},
 		methods: {
+			/**
+			 * Check if the node's currently active credential type may be used to make a request with the HTTP Request node v2.
+			 */
+			checkIfSupportedByHttpRequestNode(activeCredentialTypeName: string) {
+				const credentialType = this.getCredentialTypeByName(activeCredentialTypeName);
+
+				this.isSupportedByHttpRequestNode = (
+					credentialType.name.slice(0, -4).endsWith('OAuth') ||
+					credentialType.authenticate !== undefined
+				);
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},

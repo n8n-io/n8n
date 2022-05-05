@@ -336,7 +336,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	methods: {
 		setSubtitle() {
-			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+
+			this.nodeSubtitle = nodeSubtitle.includes('customAction')
+				? ''
+				: nodeSubtitle;
 		},
 		disableNode () {
 			this.disableNodes([this.data]);

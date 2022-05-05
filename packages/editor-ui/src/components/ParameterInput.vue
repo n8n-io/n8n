@@ -132,6 +132,18 @@
 					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
+			<n8n-option
+				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
+				:key="'customAction'"
+				:value="'customAction'"
+				:label="$locale.baseText('parameterInput.customAction')"
+			>
+				<div class="list-option">
+					<div class="option-headline">
+						{{ $locale.baseText('parameterInput.customAction') }}
+					</div>
+				</div>
+			</n8n-option>
 		</n8n-select>
 
 		<n8n-select
@@ -245,6 +257,7 @@ export default mixins(
 			'hideIssues', // boolean
 			'errorHighlight',
 			'isForCredential', // boolean
+			'isSupportedByHttpRequestNode', // boolean
 		],
 		data () {
 			return {
@@ -486,6 +499,7 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
+						if (checkValue === 'customAction') continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};

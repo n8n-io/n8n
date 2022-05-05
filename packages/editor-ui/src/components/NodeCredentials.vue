@@ -115,10 +115,16 @@ export default mixins(
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
 		},
 		credentialTypesNodeDescriptionDisplayed (): INodeCredentialDescription[] {
-			return this.credentialTypesNodeDescription
+			const descriptions = this.credentialTypesNodeDescription
 				.filter((credentialTypeDescription) => {
 					return this.displayCredentials(credentialTypeDescription);
 				});
+
+			if (descriptions.length === 1) {
+				this.$emit('newActiveCredentialType', descriptions[0].name);
+			}
+
+			return descriptions;
 		},
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
