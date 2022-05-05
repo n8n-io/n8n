@@ -5,18 +5,17 @@ import {
 import {
 	IBinaryData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
 	NodeOperationError,
-	ILoadOptionsFunctions
 } from 'n8n-workflow';
 
 import {
 	apiRequest,
 	apiRequestAllItems,
-	apiRequestAllItemsV2,
 	downloadRecordAttachments,
 } from './GenericFunctions';
 
@@ -30,7 +29,7 @@ export class NocoDB implements INodeType {
 		name: 'nocoDb',
 		icon: 'file:nocodb.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Read, update, write and delete data from NocoDB',
 		defaults: {
@@ -48,19 +47,28 @@ export class NocoDB implements INodeType {
 			{
 				displayName: 'Version',
 				name: 'version',
-				type: 'options',
-				options: [
-					{
-						name: '>=v0.90',
-						value: '2',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
 					},
-					{
-						name: '<v0.90',
-						value: '1',
+				},
+				default: 1,
+			},
+			{
+				displayName: 'Version',
+				name: 'version',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
 					},
-				],
-				default: '2',
-				description: 'NocoDB version',
+				},
+				default: 2,
 			},
 			{
 				displayName: 'Resource',
@@ -162,7 +170,7 @@ export class NocoDB implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const version = this.getNodeParameter('version', 0) as string;
+		const version = this.getNode().typeVersion as number;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -172,7 +180,7 @@ export class NocoDB implements INodeType {
 
 		let qs: IDataObject = {};
 
-		if (version == '1') {
+		if (version === 1) {
 
 			const projectId = this.getNodeParameter('projectId', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
@@ -435,7 +443,7 @@ export class NocoDB implements INodeType {
 					}
 				}
 			}
-		} else if (version == '2') {
+		} else if (version === 2) {
 			const project = JSON.parse(this.getNodeParameter('project', 0) as string || 'null') as IDataObject;
 			const table = JSON.parse(this.getNodeParameter('table', 0) as string || 'null') as IDataObject;
 
@@ -546,7 +554,7 @@ export class NocoDB implements INodeType {
 								}
 
 								if (returnAll === true) {
-									responseData = await apiRequestAllItemsV2.call(this, requestMethod, endpoint, {}, qs);
+									responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, qs);
 								} else {
 									qs.limit = this.getNodeParameter('limit', 0) as number;
 									responseData = (await apiRequest.call(this, requestMethod, endpoint, {}, qs)).list;

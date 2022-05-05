@@ -13,9 +13,9 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [
-					'1',
-				]
+				'@version': [
+					1,
+				],
 			},
 		},
 		required: true,
@@ -28,9 +28,9 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [
-					'2',
-				]
+				'@version': [
+					2,
+				],
 			},
 		},
 		required: true,
@@ -46,9 +46,9 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [
-					'2',
-				]
+				'@version': [
+					2,
+				],
 			},
 		},
 		required: true,
@@ -67,9 +67,9 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [
-					'1',
-				]
+				'@version': [
+					1,
+				],
 			},
 		},
 		required: true,

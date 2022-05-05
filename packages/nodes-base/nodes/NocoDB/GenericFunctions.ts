@@ -14,7 +14,6 @@ import {
 	INodeExecutionData,
 	IPollFunctions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -38,7 +37,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const credentials = await this.getCredentials('nocoDb');
 	query = query || {};
 
-	const tokenType = (credentials.apiToken.toString().length > 40)?'xc-auth':'xc-token';
+	const tokenType = (credentials.apiToken.toString().length > 40) ? 'xc-auth' : 'xc-token';
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -81,6 +80,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const version = this.getNode().typeVersion as number;
 
 	if (query === undefined) {
 		query = {};
@@ -93,36 +93,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push(...responseData);
+		version === 1 ? returnData.push(...responseData) : returnData.push(...responseData.list);
 
 		query.offset += query.limit;
 
 	} while (
-		responseData.length !== 0
-	);
-
-	return returnData;
-}
-
-export async function apiRequestAllItemsV2(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-
-	if (query === undefined) {
-		query = {};
-	}
-	query.limit = 100;
-	query.offset = query?.offset ? query.offset as number : 0;
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-
-	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push(...responseData.list);
-
-		query.offset += query.limit;
-
-	} while (
-		responseData.pageInfo.isLastPage !== true
+		version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true
 	);
 
 	return returnData;
