@@ -81,8 +81,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
-
 export default mixins(
 	externalHooks,
 	genericHelpers,
