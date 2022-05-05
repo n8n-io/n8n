@@ -230,7 +230,7 @@ export const nodeHelpers = mixins(
 				) {
 					const stored = this.getCredentialsByType(nodeCredentialType);
 
-					if (selectedCredsWereDeleted(node, nodeCredentialType, stored)) {
+					if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
 						const credential = this.getCredentialTypeByName(nodeCredentialType);
 						return reportUnsetCredential(credential);
 					}
@@ -455,7 +455,7 @@ function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
  * Whether the node's selected credentials of the specified type
  * can no longer be found in the database.
  */
-function selectedCredsWereDeleted(
+function selectedCredsDoNotExist(
 	node: INodeUi,
 	nodeCredentialType: string,
 	storedCredsByType: ICredentialsResponse[] | null,
