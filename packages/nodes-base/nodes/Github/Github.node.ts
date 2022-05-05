@@ -394,7 +394,7 @@ export class Github implements INodeType {
 				name: 'owner',
 				type: 'string',
 				default: '',
-				required: false,
+				required: true,
 				displayOptions: {
 					hide: {
 						operation: [
@@ -410,7 +410,7 @@ export class Github implements INodeType {
 				name: 'repository',
 				type: 'string',
 				default: '',
-				required: false,
+				required: true,
 				displayOptions: {
 					hide: {
 						resource: [
