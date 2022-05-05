@@ -268,9 +268,10 @@ export default mixins(
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	display: flex;
-	flex-direction: column;
-	padding-top: var(--spacing-xs);
+
+	div:first-child > .node-credentials {
+		padding-top: var(--spacing-xs);
+	}
 
 	.delete-option {
 		display: none;
@@ -304,7 +305,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
-		margin: 0 0 var(--spacing-xs);
+		margin: var(--spacing-xs) 0;
 
 		>.delete-option {
 			top: var(--spacing-5xs);
