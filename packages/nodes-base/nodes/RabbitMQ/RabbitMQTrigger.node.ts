@@ -113,6 +113,13 @@ export class RabbitMQTrigger implements INodeType {
 						description: 'Whether to parse the body to an object',
 					},
 					{
+						displayName: 'Nack On Error',
+						name: 'nack',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to instruct the server to throw away message',
+					},
+					{
 						displayName: 'Only Content',
 						name: 'onlyContent',
 						type: 'boolean',
@@ -167,7 +174,9 @@ export class RabbitMQTrigger implements INodeType {
 						console.error(`Error consuming RabbitMQ message: ${error.message || error}`);
 						// TODO should we nack it? It probably won't succeed on a reattempt, but it wasn't successful either
 						// FIXME how do we report a failure to the ux?
-						// channel.nack(message);
+						if(options?.nack) {
+							channel.nack(message, false, false);
+						}
 					});
 			}
 		};
