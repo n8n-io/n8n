@@ -920,7 +920,9 @@ export async function requestOAuth2(
 			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 				const body: IDataObject = {
 					client_id: credentials.clientId as string,
-					client_secret: credentials.clientSecret as string,
+					...(credentials.grantType === 'authorizationCode' && {
+						client_secret: credentials.clientSecret as string,
+					}),
 				};
 				tokenRefreshOptions.body = body;
 				// Override authorization property so the credentails are not included in it
@@ -933,6 +935,7 @@ export async function requestOAuth2(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 			);
 
+			// modify to allow disabling it the authorization header
 			const newToken = await token.refresh(tokenRefreshOptions);
 
 			Logger.debug(

@@ -88,6 +88,7 @@ import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
 import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
+import pkceChallenge from 'pkce-challenge';
 import * as Queue from './Queue';
 import {
 	ActiveExecutions,
@@ -223,6 +224,8 @@ class App {
 	presetCredentialsLoaded: boolean;
 
 	webhookMethods: WebhookHttpMethod[];
+
+	codeVerifier: string;
 
 	constructor() {
 		this.app = express();
@@ -2019,7 +2022,7 @@ class App {
 				const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 				let returnUri = oAuthObj.code.getUri();
 
-				// if scope uses comma, change it as the library always return then with spaces
+				// if scope uses comma, change it as the library always return them with spaces
 				if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
 					const data = querystring.parse(returnUri.split('?')[1]);
 					data.scope = _.get(oauthCredentials, 'scope') as string;
@@ -2028,6 +2031,14 @@ class App {
 
 				if (authQueryParameters) {
 					returnUri += `&${authQueryParameters}`;
+				}
+
+				if (oauthCredentials.grantType === 'pkce') {
+					// only support code_challenge_method S256
+					// TODO add plain code_challenge_method
+					const { code_verifier: codeVerifier, code_challenge: codeChallenge } = pkceChallenge();
+					returnUri += `&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+					this.codeVerifier = codeVerifier;
 				}
 
 				LoggerProxy.verbose('OAuth2 authentication successful for new credential', {
@@ -2145,10 +2156,14 @@ class App {
 					if ((_.get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 						options = {
 							body: {
-								client_id: _.get(oauthCredentials, 'clientId') as string,
-								client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
+								...(oauthCredentials.grantType === 'pkce' && { code_verifier: this.codeVerifier }),
+								...(oauthCredentials.grantType === 'authorizationCode' && {
+									client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
+								}),
 							},
 						};
+						// Remove the client secret so the library does not include the client id and secret
+						// in the authorization header
 						delete oAuth2Parameters.clientSecret;
 					}
 

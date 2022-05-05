@@ -10,6 +10,22 @@ export class OAuth2Api implements ICredentialType {
 	documentationUrl = 'httpRequest';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Authorization Code with PKCE',
+					value: 'pkce',
+				},
+			],
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'string',
@@ -34,6 +50,13 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			displayOptions: {
+				show: {
+					grantType: [
+						'authorizationCode',
+					],
+				}
+			},
 			typeOptions: {
 				password: true,
 			},

@@ -13,6 +13,22 @@ export class GithubOAuth2Api implements ICredentialType {
 	documentationUrl = 'github';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Authorization Code with PKCE',
+					value: 'pkce',
+				},
+			],
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Github Server',
 			name: 'server',
 			type: 'string',

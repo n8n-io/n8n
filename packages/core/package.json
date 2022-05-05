@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "client-oauth2": "^4.2.5",
+    "client-oauth2": "github:RicardoE105/js-client-oauth2-extended",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
     "file-type": "^14.6.2",

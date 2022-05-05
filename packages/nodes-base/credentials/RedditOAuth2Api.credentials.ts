@@ -24,6 +24,22 @@ export class RedditOAuth2Api implements ICredentialType {
 	documentationUrl = 'reddit';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Authorization Code with PKCE',
+					value: 'pkce',
+				},
+			],
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
