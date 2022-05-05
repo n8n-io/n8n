@@ -237,7 +237,15 @@ export default mixins(
 				return;
 			}
 
-			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track(
+				'User selected credential from node modal',
+				{
+					credential_type: credentialType,
+					node_type: this.node.type,
+					...(this.isProxyAuth ? { is_service_specific: true } : {}),
+					workflow_id: this.$store.getters.workflowId,
+				},
+			);
 
 			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
