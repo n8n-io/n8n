@@ -1378,7 +1378,7 @@ const NODES_BASE_ROOT: Readonly<string> = path.resolve(__dirname, '..', '..', '.
 const CREDENTIAL_TYPES = getCredPaths().reduce<INodePropertyOptions[]>((acc, credPath) => {
 	const credential = new (getCredClass(credPath))();
 
-	if (!isSupportedByHttpRequestNode(credential)) return acc;
+	if (!isSupportedNodeCredentialType(credential)) return acc;
 
 	return [
 		...acc,
@@ -1411,7 +1411,13 @@ function getCredClass(credPath: string, root = NODES_BASE_ROOT): { new(): Creden
 	return require(fullCredPath)[match.groups.credClassName];
 }
 
-function isSupportedByHttpRequestNode(cred: Credential) {
+function isGenericAuth(cred: Credential) {
+	return cred.name.startsWith('http') || cred.name.startsWith('oAuth');
+}
+
+function isSupportedNodeCredentialType(cred: Credential) {
+	if (isGenericAuth(cred)) return false;
+
 	if (cred.name.slice(0, -4).endsWith('OAuth')) return true;
 
 	return cred.authenticate !== undefined;
