@@ -129,6 +129,10 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
+			if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
+				this.$emit('newHttpRequestNodeCredentialType', this.node.parameters.nodeCredentialType);
+			}
+
 			if (this.isGenericAuth) {
 				const { genericAuthType } = this.node.parameters as { genericAuthType: string };
 
@@ -139,10 +143,6 @@ export default mixins(
 				const { nodeCredentialType } = this.node.parameters as { nodeCredentialType?: string };
 
 				if (nodeCredentialType) return [this.getCredentialTypeByName(nodeCredentialType)];
-			}
-
-			if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
-				this.$emit('newHttpRequestNodeCredentialType', this.node.parameters.nodeCredentialType);
 			}
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
