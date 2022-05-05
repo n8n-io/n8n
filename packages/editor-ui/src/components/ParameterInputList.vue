@@ -1,6 +1,6 @@
 <template>
 	<div class="parameter-input-list-wrapper">
-		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name">
 			<slot v-if="indexToShowSlotAt === index" />
 
 			<div
@@ -89,7 +89,6 @@
 <script lang="ts">
 
 import {
-	INode,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -105,7 +104,6 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -136,9 +134,7 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
-					return 2;
-				}
+				if (this.isHttpRequestNodeV2(this.node)) return 2;
 
 				return 0;
 			},
@@ -274,9 +270,10 @@ export default mixins(
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	display: flex;
-	flex-direction: column;
-	padding-top: var(--spacing-xs);
+
+	div:first-child > .node-credentials {
+		padding-top: var(--spacing-xs);
+	}
 
 	.delete-option {
 		display: none;
@@ -310,7 +307,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
-		margin: 0 0 var(--spacing-xs);
+		margin: var(--spacing-xs) 0;
 
 		>.delete-option {
 			top: var(--spacing-5xs);
