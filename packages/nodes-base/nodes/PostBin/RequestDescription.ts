@@ -5,7 +5,9 @@ import {
 import {
 	RESOURCES,
 	REQUEST_OPERATIONS,
-	REQUEST_FIELDS
+	REQUEST_FIELDS,
+	NODE_SETTINGS,
+	BIN_FIELDS
 } from './NodeConstants'
 
 
@@ -27,11 +29,23 @@ export const requestOperations: INodeProperties[] = [
 				name: REQUEST_OPERATIONS.GET.name,
 				value: REQUEST_OPERATIONS.GET.value,
 				description: REQUEST_OPERATIONS.GET.description,
+				routing: {
+					request: {
+						method: 'GET',
+						url: `=${NODE_SETTINGS.API_URL}/{{$parameter["${BIN_FIELDS.BIN_ID.name}"]}}/req/{{$parameter["${REQUEST_FIELDS.REQ_ID.name}"]}}`
+					},
+				},
 			},
 			{
 				name: REQUEST_OPERATIONS.SHIFT.name,
 				value: REQUEST_OPERATIONS.SHIFT.value,
-				description: REQUEST_OPERATIONS.SHIFT.description
+				description: REQUEST_OPERATIONS.SHIFT.description,
+				routing: {
+					request: {
+						method: 'GET',
+						url: `=${NODE_SETTINGS.API_URL}/{{$parameter["${BIN_FIELDS.BIN_ID.name}"]}}/req/shift`
+					},
+				}
 			}
 		],
 		default: REQUEST_OPERATIONS.GET.value,

@@ -1,10 +1,8 @@
 export const NODE_SETTINGS = Object.freeze({
 	DESCRIPTION: 'Consume PostBin API',
 	BASE_URL: 'https://www.toptal.com',
-	TEST_BIN_URL: '/developers/postbin/',
-	CREATE_BIN_URL: '/developers/postbin/api/bin',
-	GET_BIN_URL: '/developers/postbin/api/bin/',
-	DELETE_BIN_URL: '/developers/postbin/api/bin/'
+	BIN_URL: 'developers/postbin',
+	API_URL: 'developers/postbin/api/bin',
 });
 
 export const POSTBIN_VALUES = Object.freeze({
