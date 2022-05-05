@@ -7,17 +7,16 @@ import {
 import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
-	IDataObject,
+	IDataObject, ILoadOptionsFunctions,
 	INodeCredentialTestResult,
-	INodeExecutionData, INodeProperties,
+	INodeExecutionData, INodeProperties, INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError
 } from 'n8n-workflow';
 
 import {
-	docusignApiRequest,
-	docusignApiRequestAllItems,
+	docusignApiRequest
 } from './GenericFunctions';
 
 /**
@@ -135,7 +134,7 @@ export class Docusign implements INodeType {
 		icon: 'file:docusign.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume DocuSign API',
 		defaults: {
 			name: 'DocuSign',
@@ -209,7 +208,6 @@ export class Docusign implements INodeType {
 				description: 'The operation to perform.',
 			},
 
-
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
@@ -237,9 +235,12 @@ export class Docusign implements INodeType {
 			{
 				displayName: 'Template Id',
 				name: 'templateId',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
 				required: true,
+				typeOptions: {
+					loadOptionsMethod: 'getTemplates',
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -340,8 +341,8 @@ export class Docusign implements INodeType {
 								displayName: 'Display in Envelope?',
 								name: 'show',
 								type: 'boolean',
-								default: false,
-								description: 'Should the customField be displayed in the Envelope?',
+								default: true,
+								description: 'Should the customField be displayed in the Envelope and Admin UI or only via API?',
 							},
 							{
 								displayName: 'Required?',
@@ -392,6 +393,21 @@ export class Docusign implements INodeType {
 				};
 			},
 		},
+		loadOptions: {
+			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const templates = await docusignApiRequest.call(this, 'GET', '/templates', {});
+
+				if (!templates.envelopeTemplates) {
+					return [];
+				}
+
+				return templates.envelopeTemplates.map(({ templateId, name }: { templateId: string, name: string }) => ({
+					name,
+					value: templateId,
+				}));
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -436,9 +452,12 @@ export class Docusign implements INodeType {
 					}
 
 					// Add Prefill Tabs
-					// TODO: This currently does not seem to be implemented correctly at DocuSign
-					const prefillTabs = this.getNodeParameter('prefillTabs', itemIndex, {}) as {};
-					body.prefillTabs = prefillTabs;
+					// TODO: This currently does not seem to be implemented correctly at DocuSign.
+					// The current DS impl expects you to add the prefill Tabs to the specific Document of the envelope.
+					// This doesn't really make sense for Templates where you don't know about that information...
+					//
+					// const prefillTabs = this.getNodeParameter('prefillTabs', itemIndex, {}) as {};
+					// body.prefillTabs = prefillTabs;
 
 					// Add Custom Fields
 					const customFields = this.getNodeParameter('customFields', itemIndex, {}) as {};
@@ -460,12 +479,7 @@ export class Docusign implements INodeType {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 
-				// @ts-ignore
-				if (returnAll === true) {
-					responseData = await docusignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-				} else {
-					responseData = await docusignApiRequest.call(this, requestMethod, endpoint, body, qs);
-				}
+				responseData = await docusignApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 				returnData.push(responseData);
 

@@ -1,4 +1,4 @@
-import { OptionsWithUri, OptionsWithUrl } from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions, IExecuteSingleFunctions,
@@ -6,23 +6,26 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, INodeParameters, NodeApiError, NodeOperationError, NodeParameterValue
+	IDataObject, NodeApiError, NodeOperationError, NodeParameterValue
 } from 'n8n-workflow';
 
 import { DSAccount, DSMetadataObject } from './types';
 
 async function getMetadata(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, oauthTokenData: IDataObject) {
 	const credentials = await this.getCredentials('docusignOAuth2Api');
-	const options: OptionsWithUrl = {
-		headers: {
-			'Accept': 'application/json',
-			'Authorization': `Bearer ${oauthTokenData.access_token}`,
-		},
+
+	const options: OptionsWithUri = {
 		method: 'GET',
-		url: credentials.metadataUrl as string,
+		headers: {
+			'User-Agent': 'n8n',
+			'Authorization': `Bearer ${credentials.accessToken}`,
+		},
+		uri: credentials.metadataUrl as string,
 		json: true,
 	};
-	return this.helpers.request!(options);
+
+	return await this.helpers.requestOAuth2!.call(this, 'docusignOAuth2Api', options);
+
 }
 
 /**
@@ -34,7 +37,7 @@ async function getMetadata(this: IHookFunctions | IExecuteFunctions | IExecuteSi
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function docusignApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function docusignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		method,
@@ -91,11 +94,9 @@ export async function docusignApiRequest(this: IHookFunctions | IExecuteFunction
 		}
 
 		const baseUrl = `${account.base_uri}/restapi/v2.1/accounts/${account.account_id}`;
-		//const baseUrl = `https://webhook.site/cdb4524d-e52b-45ac-a310-1f3a6e08c990/${account.base_uri}/restapi/v2.1/accounts/${account.account_id}`;
 		options.uri = `${baseUrl}${endpoint}`;
 
-		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'docusignOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(this, 'docusignOAuth2Api', options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
