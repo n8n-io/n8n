@@ -24,7 +24,7 @@
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
 				<n8n-notice
-					v-if="isHttpRequestNodeV2 && scopes.length > 0"
+					v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
 					:truncate="true"
 					:content="$locale.baseText(
 						'nodeSettings.scopes',
@@ -45,11 +45,11 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
-					@newHttpRequestNodeCredentialType="loadScopesNoticeData"
 				>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
+						@newHttpRequestNodeCredentialType="loadScopesNoticeData"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -96,7 +96,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { mapGetters } from 'vuex';
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -116,9 +115,6 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
-			isHttpRequestNodeV2(): boolean {
-				return this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2;
-			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -305,7 +301,7 @@ export default mixins(
 		},
 		methods: {
 			async loadScopesNoticeData(activeCredentialType: string) {
-				if (!this.isHttpRequestNodeV2) return;
+				if (!this.isHttpRequestNodeV2(this.node)) return;
 
 				if (
 					!activeCredentialType ||
@@ -617,6 +613,11 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+
+		// @TODO Revisit
+		> div > .notice[role=alert] {
+			margin-top: var(--spacing-s);
+		}
 	}
 }
 

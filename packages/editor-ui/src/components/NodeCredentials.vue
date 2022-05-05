@@ -121,7 +121,7 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
+			if (this.isHttpRequestNodeV2(this.node)) {
 				this.$emit('newHttpRequestNodeCredentialType', this.node.parameters.nodeCredentialType);
 			}
 
