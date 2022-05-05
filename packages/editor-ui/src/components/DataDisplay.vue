@@ -125,6 +125,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			triggerWaitingWarningEnabled: false,
 			windowWidth: 0,
 			isDragging: false,
+			sessionId: '',
 		};
 	},
 	mounted() {
@@ -329,6 +330,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.triggerWaitingWarningEnabled = false;
 				this.setTotalWidth();
 
+				this.resetSessionId();
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
 				});
@@ -349,6 +351,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		resetSessionId() {
+			this.sessionId = `ndv-${Date.now()}`;
+		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
 		},
@@ -415,6 +420,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return;
 			}
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			this.$telemetry.track('User closed node modal', { node_type: this.activeNodeType ? this.activeNodeType.name : '', session_id: this.sessionId });
 			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
 		},
