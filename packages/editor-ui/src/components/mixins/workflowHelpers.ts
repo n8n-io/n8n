@@ -330,6 +330,11 @@ export const workflowHelpers = mixins(
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+							if (this.isHttpRequestNodeV2(node)) {
+								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								continue;
+							}
+
 							const credentialTypeDescription = nodeType.credentials
 								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
 

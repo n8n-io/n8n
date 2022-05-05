@@ -37,16 +37,24 @@
 						},
 					)"
 				/>
-				<node-credentials
+				<node-webhooks
 					:node="node"
-					@credentialSelected="credentialSelected"
-					@newHttpRequestNodeCredentialType="loadScopesNoticeData"
+					:nodeType="nodeType"
 				/>
-				<node-webhooks :node="node" :nodeType="nodeType" />
-				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<parameter-input-list
+					:parameters="parametersNoneSetting"
+					:hideDelete="true"
+					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					@newHttpRequestNodeCredentialType="loadScopesNoticeData"
+				>
+					<node-credentials
+						:node="node"
+						@credentialSelected="credentialSelected"
+					/>
+				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
 			</div>
