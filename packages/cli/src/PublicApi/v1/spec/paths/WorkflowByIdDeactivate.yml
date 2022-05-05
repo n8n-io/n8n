@@ -1,10 +1,10 @@
 post:
-  x-eov-operation-id: desactivateWorkflow
+  x-eov-operation-id: deactivateWorkflow
   x-eov-operation-handler: v1/handlers/workflows
   tags:
   - Workflow
-  summary: Desactivate a workflow
-  description: Desactivate a workflow.
+  summary: Deactivate a workflow
+  description: Deactivate a workflow.
   parameters:
     - $ref: '../parameters/WorkflowId.yml'
   responses:

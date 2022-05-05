@@ -1,6 +1,9 @@
+import type { INode } from 'n8n-workflow';
 import { User } from '../../databases/entities/User';
 import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 import { Db } from '../..';
+import { isInstanceOwner } from './user';
+import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -11,17 +14,18 @@ export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	return sharedWorkflows.map((workflow) => workflow.workflowId);
 }
 
-export async function getWorkflowAccess(
+export async function getSharedWorkflow(
 	user: User,
 	workflowId: string | undefined,
-): Promise<boolean> {
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+): Promise<SharedWorkflow | undefined> {
+	const sharedWorkflows = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user,
+			...(!isInstanceOwner(user) && { user }),
 			workflow: { id: workflowId },
 		},
+		relations: ['workflow'],
 	});
-	return !!sharedWorkflows.length;
+	return sharedWorkflows;
 }
 
 export async function getWorkflowById(id: number): Promise<WorkflowEntity | undefined> {
@@ -34,9 +38,32 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
 }
 
 export async function activeWorkflow(workflow: WorkflowEntity): Promise<void> {
-	await Db.collections.Workflow.update(workflow.id, { active: true });
+	await Db.collections.Workflow.update(workflow.id, { active: true, updatedAt: new Date() });
 }
 
 export async function desactiveWorkflow(workflow: WorkflowEntity): Promise<void> {
-	await Db.collections.Workflow.update(workflow.id, { active: false });
+	await Db.collections.Workflow.update(workflow.id, { active: false, updatedAt: new Date() });
+}
+
+export async function updateWorkflow(
+	workflowId: number,
+	updateData: WorkflowEntity,
+): Promise<void> {
+	await Db.collections.Workflow.update(workflowId, updateData);
+}
+
+export function hasStartNode(workflow: WorkflowEntity): boolean {
+	return !(
+		!workflow.nodes.length || !workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start')
+	);
+}
+
+export function getStartNode(): INode {
+	return {
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.start',
+		typeVersion: 1,
+		position: [240, 300],
+	};
 }
