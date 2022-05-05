@@ -1,7 +1,6 @@
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerFunctions,
@@ -10,7 +9,7 @@ import {
 
 import { ConsumeMessage } from 'amqplib';
 
-import * as nodeProperties from './nodeProperties';
+import { queueOptions } from './RabbitMQDescription';
 
 import {
 	fixAssertOptions,
@@ -22,7 +21,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
-		icon: 'file:rabbitmq.png',
+		icon: 'file:rabbitmq.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to RabbitMQ messages',
@@ -44,14 +43,15 @@ export class RabbitMQTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'queue-name',
-				description: 'Name of the queue to publish to.',
+				description: 'Name of the queue to publish to',
 			},
-			nodeProperties.queueOptions,
+			queueOptions,
 			{
 				displayName: 'Subscriptions',
 				name: 'subscriptions',
 				placeholder: 'Bind to Exchange',
-				description: 'Bind the queue to an exchange or subscribe to a topic. (IMPORTANT: bindings are not removed when deactivated)',
+				description:
+					'Bind the queue to an exchange or subscribe to a topic. (IMPORTANT: bindings are not removed when deactivated).',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -87,18 +87,18 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'Add Trigger Option',
 				options: [
 					{
-						displayName: 'Prefetch count',
+						displayName: 'Prefetch Count',
 						name: 'prefetch',
 						type: 'number',
 						default: 100,
 						description: 'Number of messages to fetch at a time',
 					},
 					{
-						displayName: 'Content is Binary',
+						displayName: 'Content Is Binary',
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
-						description: 'Saves the content as binary.',
+						description: 'Whether to save the content as binary',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -106,13 +106,11 @@ export class RabbitMQTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								contentIsBinary: [
-									true,
-								],
+								contentIsBinary: [true],
 							},
 						},
 						default: false,
-						description: 'Parse the body to an object.',
+						description: 'Whether to parse the body to an object',
 					},
 					{
 						displayName: 'Only Content',
@@ -120,13 +118,11 @@ export class RabbitMQTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								contentIsBinary: [
-									true,
-								],
+								contentIsBinary: [true],
 							},
 						},
 						default: false,
-						description: 'Returns only the content property.',
+						description: 'Whether to return only the content property',
 					},
 				],
 			},
@@ -135,9 +131,7 @@ export class RabbitMQTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = String(this.getNodeParameter('queue'));
-		const queueOptions = fixAssertOptions(
-			this.getNodeParameter('queueOptions', {}),
-		);
+		const queueOptions = fixAssertOptions(this.getNodeParameter('queueOptions', {}));
 
 		const options = this.getNodeParameter('options', {});
 		if (!isDataObject(options)) {
@@ -165,17 +159,16 @@ export class RabbitMQTrigger implements INodeType {
 		const handler = async (message: ConsumeMessage) => {
 			if (message !== null) {
 				messageToItem(this, message, options)
-					.then(item => {
-						this.emit([ [ item ] ]);
+					.then((item) => {
+						this.emit([[item]]);
 						channel.ack(message);
 					})
-					.catch(error => {
+					.catch((error) => {
 						console.error(`Error consuming RabbitMQ message: ${error.message || error}`);
 						// TODO should we nack it? It probably won't succeed on a reattempt, but it wasn't successful either
 						// FIXME how do we report a failure to the ux?
 						// channel.nack(message);
-					})
-				;
+					});
 			}
 		};
 
@@ -210,7 +203,9 @@ async function messageToItem(
 	message: ConsumeMessage,
 	options: IDataObject,
 ): Promise<INodeExecutionData> {
-	const contentType: string[] | undefined = message?.properties?.contentType?.toLowerCase()?.split(/; ?/);
+	const contentType: string[] | undefined = message?.properties?.contentType
+		?.toLowerCase()
+		?.split(/; ?/);
 	const mimeType = contentType?.[0];
 
 	if (options.contentIsBinary === true) {
@@ -222,9 +217,7 @@ async function messageToItem(
 		};
 	}
 
-	let content = message.content instanceof Buffer
-		? String(message.content)
-		: message.content;
+	let content = message.content instanceof Buffer ? String(message.content) : message.content;
 	if (typeof content === 'string') {
 		if (isJsonMimeType(mimeType) || options.jsonParseBody === true) {
 			content = JSON.parse(content);
@@ -232,12 +225,13 @@ async function messageToItem(
 	}
 
 	return {
-		json: (options.onlyContent === true && isDataObject(content))
-			? content
-			: { ...message, content },
+		json: options.onlyContent === true && isDataObject(content) ? content : { ...message, content },
 	};
 }
 
 function isJsonMimeType(mimeType: string | undefined): boolean {
-	return !!mimeType && (['application/json', 'text/json'].includes(mimeType) || mimeType.endsWith('+json'));
+	return (
+		!!mimeType &&
+		(['application/json', 'text/json'].includes(mimeType) || mimeType.endsWith('+json'))
+	);
 }

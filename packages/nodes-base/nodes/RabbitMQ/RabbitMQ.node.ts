@@ -1,25 +1,24 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as amqplib from 'amqplib';
 
-import * as nodeProperties from './nodeProperties';
+import {
+	exchangeOptions,
+	messageOptions,
+	queueOptions,
+} from './RabbitMQDescription';
 
 import {
 	fixAssertOptions,
 	fixMessageOptions,
-	isDataObject,
 	rabbitmqConnect,
 } from './GenericFunctions';
 
@@ -29,7 +28,7 @@ export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
-		icon: 'file:rabbitmq.png',
+		icon: 'file:rabbitmq.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Sends messages to a RabbitMQ topic',
@@ -53,16 +52,16 @@ export class RabbitMQ implements INodeType {
 					{
 						name: 'Queue',
 						value: 'queue',
-						description: 'Publish data to queue.',
+						description: 'Publish data to queue',
 					},
 					{
 						name: 'Exchange',
 						value: 'exchange',
-						description: 'Publish data to exchange.',
+						description: 'Publish data to exchange',
 					},
 				],
 				default: 'queue',
-				description: 'To where data should be moved.',
+				description: 'To where data should be moved',
 			},
 
 			// ----------------------------------
@@ -74,24 +73,12 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'queue',
-						],
+						mode: ['queue'],
 					},
 				},
 				default: '',
 				placeholder: 'queue-name',
-				description: 'Name of the queue to publish to.',
-			},
-			{
-				...nodeProperties.queueOptions,
-				displayOptions: {
-					show: {
-						mode: [
-							'queue',
-						],
-					},
-				},
+				description: 'Name of the queue to publish to',
 			},
 
 			// ----------------------------------
@@ -104,14 +91,12 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
 				placeholder: 'exchange-name',
-				description: 'Name of the exchange to publish to.',
+				description: 'Name of the exchange to publish to',
 			},
 			{
 				displayName: 'Type',
@@ -119,60 +104,46 @@ export class RabbitMQ implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				options: [
 					{
 						name: 'Direct',
 						value: 'direct',
-						description: 'Direct exchange type.',
+						description: 'Direct exchange type',
 					},
 					{
 						name: 'Topic',
 						value: 'topic',
-						description: 'Topic exchange type.',
+						description: 'Topic exchange type',
 					},
 					{
 						name: 'Headers',
 						value: 'headers',
-						description: 'Headers exchange type.',
+						description: 'Headers exchange type',
 					},
 					{
 						name: 'Fanout',
 						value: 'fanout',
-						description: 'Fanout exchange type.',
+						description: 'Fanout exchange type',
 					},
 				],
 				default: 'fanout',
-				description: 'Type of exchange.',
+				description: 'Type of exchange',
 			},
 			{
-				displayName: 'Routing key',
+				displayName: 'Routing Key',
 				name: 'routingKey',
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
 				placeholder: 'routing-key',
-				description: 'The routing key for the message.',
-			},
-			{
-				...nodeProperties.exchangeOptions,
-				displayOptions: {
-					show: {
-						mode: [
-							'exchange',
-						],
-					},
-				},
+				description: 'The routing key for the message',
 			},
 
 			// ----------------------------------
@@ -184,7 +155,7 @@ export class RabbitMQ implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the data the node receives.',
+				description: 'Whether to send the data the node receives',
 			},
 			{
 				displayName: 'Message',
@@ -192,15 +163,38 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						sendInputData: [
-							false,
-						],
+						sendInputData: [false],
 					},
 				},
 				default: '',
-				description: 'The message to be sent.',
+				description: 'The message to be sent',
 			},
-			nodeProperties.messageOptions,
+
+			// ----------------------------------
+			//         Exchange Options
+			// ----------------------------------
+			{
+				...exchangeOptions,
+				displayOptions: {
+					show: {
+						mode: ['exchange'],
+					},
+				},
+			},
+
+			// ----------------------------------
+			//         Queue Options
+			// ----------------------------------
+			{
+				...queueOptions,
+				displayOptions: {
+					show: {
+						mode: ['queue'],
+					},
+				},
+			},
+
+			messageOptions,
 		],
 	};
 
@@ -218,9 +212,7 @@ export class RabbitMQ implements INodeType {
 		const mode = this.getNodeParameter('mode', 0);
 		if (mode === 'queue') {
 			const queue = this.getNodeParameter('queue', 0) as string;
-			const queueOptions = fixAssertOptions(
-				this.getNodeParameter('queueOptions', 0, {}),
-			);
+			const queueOptions = fixAssertOptions(this.getNodeParameter('queueOptions', 0, {}));
 
 			setup = async (channel) => {
 				await channel.assertQueue(queue, queueOptions);
@@ -231,9 +223,7 @@ export class RabbitMQ implements INodeType {
 		} else if (mode === 'exchange') {
 			const exchange = this.getNodeParameter('exchange', 0) as string;
 			const type = this.getNodeParameter('exchangeType', 0) as string;
-			const exchangeOptions = fixAssertOptions(
-				this.getNodeParameter('exchangeOptions', 0, {}),
-			);
+			const exchangeOptions = fixAssertOptions(this.getNodeParameter('exchangeOptions', 0, {}));
 
 			setup = async (channel) => {
 				await channel.assertExchange(exchange, type, exchangeOptions);
@@ -248,12 +238,12 @@ export class RabbitMQ implements INodeType {
 
 		// open the channel and send all messages
 		const channel = await rabbitmqConnect(this, setup);
-		let responses: Array<{ status: 'fulfilled', value: boolean } | { status: 'rejected', reason: Error }>;
+		let responses: Array<
+			{ status: 'fulfilled'; value: boolean } | { status: 'rejected'; reason: Error }
+		>;
 		try {
 			const sendPromises = items.map((item, i) => {
-				const options = fixMessageOptions(
-					this.getNodeParameter('options', i, {}),
-				);
+				const options = fixMessageOptions(this.getNodeParameter('options', i, {}));
 
 				let message: string;
 				if (this.getNodeParameter('sendInputData', i)) {

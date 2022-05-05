@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-base.rabbitmqTrigger",
-	"nodeVersion": "2.0",
+	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
 		"Development"

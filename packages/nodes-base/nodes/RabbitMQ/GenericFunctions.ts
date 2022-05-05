@@ -6,7 +6,9 @@ import {
 	ITriggerFunctions,
 	NodeParameterValue,
 } from 'n8n-workflow';
+
 import * as amqplib from 'amqplib';
+
 import amqp, { AmqpConnectionManager, ChannelWrapper } from 'amqp-connection-manager';
 
 // maintain and auto-reconnect one connection per set of credentials
@@ -33,10 +35,7 @@ export async function rabbitmqConnect(
 }
 
 /** If the channel doesn't connect successfully, close the channel and error out. */
-async function waitForConnectOrFail(
-	channel: ChannelWrapper,
-	timeout = 20000,
-): Promise<void> {
+async function waitForConnectOrFail(channel: ChannelWrapper, timeout = 20000): Promise<void> {
 	const failPromise = new Promise((resolve, reject) => {
 		setTimeout(reject, 20000, new Error('Timeout while waiting for RabbitMQ channel'));
 		channel.once('error', reject);
@@ -67,13 +66,12 @@ function getConnection(
 }
 
 /** Create connection manager with the default options (5-second heartbeat and retry) */
-function createConnection(
-	credentials: ICredentialDataDecryptedObject,
-): AmqpConnectionManager {
+function createConnection(credentials: ICredentialDataDecryptedObject): AmqpConnectionManager {
 	const [creds, connectionOptions] = getConnectArgs(credentials);
 	const name = `${creds.hostname}:${creds.port}`;
 
-	const connection = amqp.connect(creds, { connectionOptions })
+	const connection = amqp
+		.connect(creds, { connectionOptions })
 		.on('error', (err) => {
 			console.warn(`RabbitMQ: Connection error for ${name}: ${err.message}`);
 		})
@@ -89,16 +87,10 @@ function createConnection(
 }
 
 function getConnectArgs(credentials: IDataObject) {
-	const credentialKeys = [
-		'hostname',
-		'port',
-		'username',
-		'password',
-		'vhost',
-	];
+	const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
 
 	const credentialData: IDataObject = {};
-	credentialKeys.forEach(key => {
+	credentialKeys.forEach((key) => {
 		credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
 	});
 
