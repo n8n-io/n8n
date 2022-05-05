@@ -227,18 +227,18 @@ export class HttpRequest implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'Node Credential',
-						value: 'nodeCredential',
-						description: 'Easiest. Use a credential from another node, like Google Sheets.',
-					},
-					{
-						name: 'Generic Auth',
-						value: 'genericAuth',
-						description: 'Fully customizable. Choose between Basic, Header, OAuth2 and more.',
-					},
-					{
 						name: 'None',
 						value: 'none',
+					},
+					{
+						name: 'Existing Credential Type',
+						value: 'nodeCredential',
+						description: 'We\'ve already implemented auth for many services so that you don\'t have to set it up manually',
+					},
+					{
+						name: 'Generic Credential Type',
+						value: 'genericAuth',
+						description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
 					},
 				],
 				default: 'none',
