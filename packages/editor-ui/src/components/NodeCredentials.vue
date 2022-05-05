@@ -77,7 +77,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -101,14 +100,12 @@ export default mixins(
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
 		isProxyAuth(): boolean {
-			return this.node.type === HTTP_REQUEST_NODE_TYPE
-				&& this.node.typeVersion === 2
-				&& this.node.parameters.authenticateWith === 'nodeCredential';
+			return this.isHttpRequestNodeV2(this.node) &&
+				this.node.parameters.authenticateWith === 'nodeCredential';
 		},
 		isGenericAuth(): boolean {
-			return this.node.type === HTTP_REQUEST_NODE_TYPE
-				&& this.node.typeVersion === 2
-				&& this.node.parameters.authenticateWith === 'genericAuth';
+			return this.isHttpRequestNodeV2(this.node) &&
+				this.node.parameters.authenticateWith === 'genericAuth';
 		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription

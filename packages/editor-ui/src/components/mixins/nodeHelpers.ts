@@ -43,6 +43,9 @@ export const nodeHelpers = mixins(
 			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
+			isHttpRequestNodeV2 (node: INodeUi): boolean {
+				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+			},
 
 			// Returns the parameter value
 			getParameterValue (nodeValues: INodeParameters, parameterName: string, path: string) {
@@ -211,7 +214,7 @@ export const nodeHelpers = mixins(
 				};
 
 				if (
-					isHttpRequestNodeV2(node) &&
+					this.isHttpRequestNodeV2(node) &&
 					authenticateWith === 'genericAuth' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
@@ -220,7 +223,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					isHttpRequestNodeV2(node) &&
+					this.isHttpRequestNodeV2(node) &&
 					authenticateWith === 'nodeCredential' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
@@ -234,7 +237,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					isHttpRequestNodeV2(node) &&
+					this.isHttpRequestNodeV2(node) &&
 					authenticateWith === 'nodeCredential' &&
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
@@ -439,10 +442,6 @@ export const nodeHelpers = mixins(
 			},
 		},
 	});
-
-function isHttpRequestNodeV2(node: INodeUi) {
-	return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
-}
 
 /**
  * Whether the node has no selected credentials, or none of the node's

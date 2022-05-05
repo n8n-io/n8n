@@ -134,9 +134,7 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === HTTP_REQUEST_NODE_TYPE && this.node.typeVersion === 2) {
-					return 2;
-				}
+				if (this.isHttpRequestNodeV2(this.node)) return 2;
 
 				return 0;
 			},
