@@ -23,20 +23,6 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
-				<n8n-notice
-					v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
-					:truncate="true"
-					:content="$locale.baseText(
-						'nodeSettings.scopes',
-						{
-							adjustToNumber: scopes.length,
-							interpolate: {
-								activeCredential,
-								scopes: scopes.join(' '),
-							},
-						},
-					)"
-				/>
 				<node-webhooks
 					:node="node"
 					:nodeType="nodeType"
@@ -47,6 +33,20 @@
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				>
+					<n8n-notice
+						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
+						:truncate="true"
+						:content="$locale.baseText(
+							'nodeSettings.scopes',
+							{
+								adjustToNumber: scopes.length,
+								interpolate: {
+									activeCredential,
+									scopes: scopes.join(' '),
+								},
+							},
+						)"
+					/>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
@@ -655,9 +655,8 @@ export default mixins(
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
 
-		// @TODO Revisit
-		> div > .notice[role=alert] {
-			margin-top: var(--spacing-s);
+		.notice[role=alert] {
+			margin: var(--spacing-s) 0;
 		}
 	}
 }
