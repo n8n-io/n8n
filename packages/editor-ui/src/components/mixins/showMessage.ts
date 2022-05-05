@@ -217,7 +217,7 @@ export const showMessage = mixins(externalHooks).extend({
 		},
 
 		/**
-		 * Whether an execute error was caused by a credential issue,
+		 * Whether a workflow execution error was caused by a credential issue,
 		 * as reflected by the error message.
 		 */
 		causedByCredential(message: string | undefined) {
