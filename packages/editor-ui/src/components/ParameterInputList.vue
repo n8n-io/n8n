@@ -88,7 +88,6 @@
 <script lang="ts">
 
 import {
-	INode,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
