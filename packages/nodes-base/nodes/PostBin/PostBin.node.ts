@@ -4,12 +4,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	NODE_SETTINGS,
-	POSTBIN_VALUES,
-	RESOURCES,
-} from './NodeConstants'
-
-import {
 	binOperations,
 	binFields,
 } from './BinDescription';
@@ -21,7 +15,7 @@ import {
 
 export class PostBin implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: POSTBIN_VALUES.DISPLAY_NAME,
+		displayName: 'PostBin',
 		name: 'postBin',
 		icon: 'file:postbin.svg',
 		group: ['transform'],
@@ -29,14 +23,14 @@ export class PostBin implements INodeType {
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Consume PostBin API',
 		defaults: {
-			name: POSTBIN_VALUES.DISPLAY_NAME,
-			color: POSTBIN_VALUES.BRAND_COLOR
+			name: 'PostBin',
+			color: '#4dc0b5'
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [],
 		requestDefaults: {
-			baseURL: NODE_SETTINGS.BASE_URL
+			baseURL: 'https://www.toptal.com',
 		},
 		properties: [
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
@@ -46,15 +40,15 @@ export class PostBin implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: RESOURCES.BIN.name,
-						value: RESOURCES.BIN.value
+						name: 'Bin',
+						value: 'bin'
 					},
 					{
-						name: RESOURCES.REQUEST.name,
-						value: RESOURCES.REQUEST.value
+						name: 'Request',
+						value: 'request'
 					}
 				],
-				default: RESOURCES.BIN.value,
+				default: 'bin',
 				required: true,
 				description: 'Bin to work with'
 			},

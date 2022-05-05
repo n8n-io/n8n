@@ -1,18 +1,13 @@
 import {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	INodeProperties
 } from 'n8n-workflow';
-import { parseBinId } from './GenericFunctions';
-
-import {
-	RESOURCES,
-	BIN_OPERATIONS,
-	BIN_FIELDS,
-	REQUEST_OPERATIONS,
-	NODE_SETTINGS
-} from './NodeConstants';
 
 export const binOperations: INodeProperties[] = [
-	// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -20,92 +15,97 @@ export const binOperations: INodeProperties[] = [
 		displayOptions: {
 				show: {
 						resource: [
-							RESOURCES.BIN.value,
+							'bin',
 						],
 				},
 		},
 		options: [
 			{
-					name: BIN_OPERATIONS.CREATE.name,
-					value: BIN_OPERATIONS.CREATE.value,
-					description: BIN_OPERATIONS.CREATE.description,
+					name: 'Create',
+					value: 'create',
+					description: 'Create new bin',
 					routing: {
 						request: {
 							method: 'POST',
-							url: NODE_SETTINGS.API_URL
+							url: '/developers/postbin/api/bin',
 						},
 					}
 			},
 			{
-				name: BIN_OPERATIONS.GET.name,
-				value: BIN_OPERATIONS.GET.value,
-				description: BIN_OPERATIONS.GET.description,
+				name: 'Get',
+				value: 'get',
+				description: 'Returns information based on the binId you provide.',
 				routing: {
 					request: {
 						method: 'GET',
-						url: `=${NODE_SETTINGS.API_URL}/{{$parameter["${BIN_FIELDS.BIN_ID.name}"]}}`
+						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}',
 					},
 				}
 			},
 			{
-				name: BIN_OPERATIONS.DELETE.name,
-				value: BIN_OPERATIONS.DELETE.value,
-				description: BIN_OPERATIONS.DELETE.description,
+				name: 'Delete',
+				value: 'delete',
+				description: 'Deletes this bin and all of it\'s posts.',
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: `=${NODE_SETTINGS.API_URL}/{{$parameter["${BIN_FIELDS.BIN_ID.name}"]}}`
+						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}'
 					},
 				}
 			},
 			{
-				name: BIN_OPERATIONS.TEST.name,
-				value: BIN_OPERATIONS.TEST.value,
-				description: BIN_OPERATIONS.TEST.description,
+				name: 'Test',
+				value: 'test',
+				description: 'Test your API by sending a request to the bin.',
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=${NODE_SETTINGS.BIN_URL}/{{$parameter["${BIN_FIELDS.BIN_ID.name}"]}}`
+						url: '=/developers/postbin/{{$parameter["binId"]}}'
 					},
-					send: {
-						type: 'body',
-						property: 'content',
-						value: `={{$parameter["${BIN_FIELDS.BIN_CONTENT.name}"]}}`
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "status": "Sent" } }}',
+								},
+							}
+						]
 					}
 				}
 			},
 		],
-		default: BIN_OPERATIONS.CREATE.value,
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ]
 
 export const binFields: INodeProperties[] = [
 	{
-		name: BIN_FIELDS.BIN_ID.name,
-		displayName: BIN_FIELDS.BIN_ID.displayName,
+		name: 'binId',
+		displayName: 'Bin ID',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					RESOURCES.BIN.value,
-					RESOURCES.REQUEST.value
+					'bin',
+					'request'
 				],
 				operation: [
-					BIN_OPERATIONS.GET.value,
-					BIN_OPERATIONS.DELETE.value,
-					BIN_OPERATIONS.TEST.value,
-					REQUEST_OPERATIONS.SHIFT.value,
+					'get',
+					'delete',
+					'test',
+					'shift',
 				]
 			},
 		},
 		description: 'Unique identifier for each bin.',
 	},
 	{
-	 name: BIN_FIELDS.BIN_CONTENT.name,
-	 displayName: BIN_FIELDS.BIN_CONTENT.displayName,
+	 name: 'binContent',
+	 displayName: 'Bin Content',
 	 type: 'string',
 	 default: '',
 	 typeOptions: {
@@ -114,12 +114,18 @@ export const binFields: INodeProperties[] = [
 	 displayOptions: {
 	     show: {
 	         resource: [
-	             RESOURCES.BIN.value,
+	             'bin',
 	         ],
 	         operation: [
-	             BIN_OPERATIONS.TEST.value,
+	             'test',
 	         ]
 	     }
+	 },
+	 routing: {
+		send: {
+			property: 'content',
+			type: 'body'
+		}
 	 }
 	},
 ]
