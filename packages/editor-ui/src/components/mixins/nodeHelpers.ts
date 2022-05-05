@@ -124,6 +124,23 @@ export const nodeHelpers = mixins(
 				return false;
 			},
 
+			reportUnsetCredential(credentialType: ICredentialType) {
+				return {
+					credentials: {
+						[credentialType.name]: [
+							this.$locale.baseText(
+								'nodeHelpers.credentialsUnset',
+								{
+									interpolate: {
+										credentialType: credentialType.displayName,
+									},
+								},
+							),
+						],
+					},
+				};
+			},
+
 			// Updates the execution issues.
 			updateNodesExecutionIssues () {
 				const nodes = this.$store.getters.allNodes;
@@ -219,7 +236,7 @@ export const nodeHelpers = mixins(
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
 					const credential = this.getCredentialTypeByName(genericAuthType);
-					return reportUnsetCredential(credential);
+					return this.reportUnsetCredential(credential);
 				}
 
 				if (
@@ -232,7 +249,7 @@ export const nodeHelpers = mixins(
 
 					if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
 						const credential = this.getCredentialTypeByName(nodeCredentialType);
-						return reportUnsetCredential(credential);
+						return this.reportUnsetCredential(credential);
 					}
 				}
 
@@ -243,7 +260,7 @@ export const nodeHelpers = mixins(
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
 					const credential = this.getCredentialTypeByName(nodeCredentialType);
-					return reportUnsetCredential(credential);
+					return this.reportUnsetCredential(credential);
 				}
 
 				for (const credentialTypeDescription of nodeType!.credentials!) {
@@ -467,14 +484,6 @@ function selectedCredsDoNotExist(
 	if (!selectedCredsByType) return false;
 
 	return !storedCredsByType.find((c) => c.id === selectedCredsByType.id);
-}
-
-function reportUnsetCredential(credentialType: ICredentialType) {
-	return {
-		credentials: {
-			[credentialType.name]: [`Credentials for "${credentialType.displayName}" are not set.`],
-		},
-	};
 }
 
 declare namespace HttpRequestNode {
