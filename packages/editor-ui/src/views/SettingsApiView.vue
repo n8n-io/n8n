@@ -13,7 +13,7 @@
 						<span v-html="$locale.baseText('settings.api.view.info')"></span>
 					</n8n-info-tip>
 				</p>
-				<n8n-card :class="$style.card">
+				<n8n-card class="mb-4xs" :class="$style.card">
 					<span :class="$style.delete">
 						<n8n-link @click="showDeleteModal" :bold="true">
 							{{ $locale.baseText('generic.delete') }}
@@ -26,6 +26,14 @@
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 					/>
 				</n8n-card>
+				<div :class="$style.hint">
+					<n8n-text size="small">
+						{{ $locale.baseText('settings.api.view.tryapi') }}
+					</n8n-text>
+					<n8n-link to="/playground" :newWindow="true" size="small">
+						{{ $locale.baseText('settings.api.view.apiPlayground') }}
+					</n8n-link>
+				</div>
 			</div>
 			<n8n-action-box
 				v-else-if="mounted"
@@ -140,6 +148,10 @@ export default mixins(
 	display: inline-block;
 	top: var(--spacing-s);
 	right: var(--spacing-s);
+}
+
+.hint {
+	text-align: center;
 }
 </style>
 
