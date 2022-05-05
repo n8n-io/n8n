@@ -141,11 +141,11 @@ export class Github implements INodeType {
 				options: [
 						{
 								name: 'Get all Repositories',
-								value: 'getAll',
+								value: 'getRepositories',
 								description: 'Returns all repositories of an organization',
 						},
 				],
-				default: 'getAll',
+				default: 'getRepositories',
 				description: 'The operation to perform.',
 		},
 
@@ -415,6 +415,7 @@ export class Github implements INodeType {
 					hide: {
 						resource: [
 							'user',
+							'organization',
 						],
 						operation: [
 							'getRepositories',
@@ -1869,7 +1870,7 @@ export class Github implements INodeType {
 			'user:getRepositories',
 			'release:getAll',
 			'review:getAll',
-			'organization:getAll',
+			'organization:getRepositories',
 		];
 
 
@@ -1900,7 +1901,7 @@ export class Github implements INodeType {
 				}
 
 				let repository = '';
-				if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite' && fullOperation !== 'organization:getAll') {
+				if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite' && fullOperation !== 'organization:getRepositories') {
 					repository = this.getNodeParameter('repository', i) as string;
 				}
 
@@ -2270,7 +2271,7 @@ export class Github implements INodeType {
 
 					}
 				} else if (resource === 'organization') {
-					if (operation === 'getAll') {
+					if (operation === 'getRepositories') {
 						// ----------------------------------
 						//         getRepositories
 						// ----------------------------------
