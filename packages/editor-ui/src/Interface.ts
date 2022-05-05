@@ -184,6 +184,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryBufferString(dataPath: string): Promise<string>;
+	getScopes: (credentialType: string) => Promise<string[]>;
 }
 
 export interface INodeTranslationHeaders {

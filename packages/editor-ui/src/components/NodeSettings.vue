@@ -23,6 +23,20 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
+				<n8n-notice
+					v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
+					:truncate="true"
+					:content="$locale.baseText(
+						'nodeSettings.scopes',
+						{
+							adjustToNumber: scopes.length,
+							interpolate: {
+								activeCredential,
+								scopes: scopes.join(' '),
+							},
+						},
+					)"
+				/>
 				<node-webhooks
 					:node="node"
 					:nodeType="nodeType"
@@ -37,6 +51,7 @@
 						:node="node"
 						@credentialSelected="credentialSelected"
 						@newActiveCredentialType="checkIfSupportedByHttpRequestNode"
+						@newHttpRequestNodeCredentialType="loadScopesNoticeData"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -97,6 +112,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -115,6 +131,7 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
 			customActionSelected (): boolean {
 				return (
 					this.nodeValues.parameters !== undefined &&
@@ -210,6 +227,8 @@ export default mixins(
 					parameters: {},
 				} as INodeParameters,
 				isSupportedByHttpRequestNode: false,
+				activeCredential: '',
+				scopes: [] as string[],
 
 				nodeSettings: [
 					{
@@ -321,6 +340,21 @@ export default mixins(
 					credentialType.name.slice(0, -4).endsWith('OAuth') ||
 					credentialType.authenticate !== undefined
 				);
+			},
+			async loadScopesNoticeData(activeCredentialType: string) {
+				if (!this.isHttpRequestNodeV2(this.node)) return;
+
+				if (
+					!activeCredentialType ||
+					!activeCredentialType.endsWith('OAuth2Api')
+				) {
+					this.scopes = [];
+					return;
+				}
+
+				this.activeCredential = this.getCredentialTypeByName(activeCredentialType).displayName;
+
+				this.scopes = await this.restApi().getScopes(activeCredentialType);
 			},
 			onNodeExecute () {
 				this.$emit('execute');
@@ -620,6 +654,11 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+
+		// @TODO Revisit
+		> div > .notice[role=alert] {
+			margin-top: var(--spacing-s);
+		}
 	}
 }
 
