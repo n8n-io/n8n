@@ -274,7 +274,7 @@ export const entryFields: INodeProperties[] = [
 				},
 				default: '',
 				placeholder: 'name:asc',
-				description: `Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.`,
+				description: 'Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.',
 			},
 			{
 				displayName: 'Where (JSON)',

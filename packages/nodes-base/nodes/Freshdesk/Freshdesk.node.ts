@@ -178,32 +178,32 @@ export class Freshdesk implements INodeType {
 					{
 						name: 'Email',
 						value: 'email',
-						description: `Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.`,
+						description: 'Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.',
 					},
 					{
 						name: 'Facebook Id',
 						value: 'facebookId',
-						description: `Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.`,
+						description: 'Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.',
 					},
 					{
 						name: 'Phone',
 						value: 'phone',
-						description: `Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.`,
+						description: 'Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.',
 					},
 					{
 						name: 'Requester Id',
 						value: 'requesterId',
-						description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
+						description: 'User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester\'s email.',
 					},
 					{
 						name: 'Twitter Id',
 						value: 'twitterId',
-						description: `Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.`,
+						description: 'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 					},
 					{
 						name: 'Unique External Id',
 						value: 'uniqueExternalId',
-						description: `External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.`,
+						description: 'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
 					},
 				],
 				default: 'requesterId',
@@ -224,7 +224,7 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: `Value of the identification selected `,
+				description: 'Value of the identification selected ',
 			},
 			{
 				displayName: 'Status',
@@ -394,7 +394,7 @@ export class Freshdesk implements INodeType {
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
+						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
 						displayName: 'Company',
@@ -422,7 +422,7 @@ export class Freshdesk implements INodeType {
 						name: 'dueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the ticket is due to be resolved`,
+						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
 						displayName: 'Email config Id',
@@ -436,7 +436,7 @@ export class Freshdesk implements INodeType {
 						name: 'frDueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the first response is due`,
+						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
 						displayName: 'Group',
@@ -479,7 +479,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by a comma (,) tags that have been associated with the ticket`,
+						description: 'separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
@@ -635,7 +635,7 @@ export class Freshdesk implements INodeType {
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
+						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
 						displayName: 'Company',
@@ -652,7 +652,7 @@ export class Freshdesk implements INodeType {
 						name: 'dueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the ticket is due to be resolved`,
+						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
 						displayName: 'Email config Id',
@@ -666,7 +666,7 @@ export class Freshdesk implements INodeType {
 						name: 'frDueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the first response is due`,
+						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
 						displayName: 'Group',
@@ -729,32 +729,32 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Email',
 								value: 'email',
-								description: `Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.`,
+								description: 'Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.',
 							},
 							{
 								name: 'Facebook Id',
 								value: 'facebookId',
-								description: `Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.`,
+								description: 'Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.',
 							},
 							{
 								name: 'Phone',
 								value: 'phone',
-								description: `Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.`,
+								description: 'Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.',
 							},
 							{
 								name: 'Requester Id',
 								value: 'requesterId',
-								description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
+								description: 'User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester\'s email.',
 							},
 							{
 								name: 'Twitter Id',
 								value: 'twitterId',
-								description: `Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.`,
+								description: 'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 							},
 							{
 								name: 'Unique External Id',
 								value: 'uniqueExternalId',
-								description: `External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.`,
+								description: 'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
 							},
 						],
 						default: 'requesterId',
@@ -764,7 +764,7 @@ export class Freshdesk implements INodeType {
 						name: 'requesterIdentificationValue',
 						type: 'string',
 						default: '',
-						description: `Value of the identification selected `,
+						description: 'Value of the identification selected ',
 					},
 					{
 						displayName: 'Status',
@@ -835,7 +835,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by a comma (,) tags that have been associated with the ticket`,
+						description: 'separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',

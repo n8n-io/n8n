@@ -30,17 +30,17 @@ export const invoiceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an invoice`,
+				description: 'Create an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an invoice`,
+				description: 'Update an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an invoice`,
+				description: 'Delete an invoice',
 			},
 		],
 		default: 'getAll',

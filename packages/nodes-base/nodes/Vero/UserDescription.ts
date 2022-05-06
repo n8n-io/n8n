@@ -16,7 +16,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'create',
-				description: `Create or update a user profile`,
+				description: 'Create or update a user profile',
 			},
 			{
 				name: 'Alias',

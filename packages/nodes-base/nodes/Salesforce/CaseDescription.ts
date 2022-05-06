@@ -36,7 +36,7 @@ export const caseOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of case's metadata`,
+				description: 'Returns an overview of case\'s metadata',
 			},
 			{
 				name: 'Delete',
@@ -239,14 +239,14 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
-				description: `The company name that was entered when the case was created. This field can't be updated after the case has been created..`,
+				description: 'The company name that was entered when the case was created. This field can\'t be updated after the case has been created..',
 			},
 			{
 				displayName: 'Supplied Email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
-				description: `The email address that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The email address that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Supplied Name',
@@ -260,7 +260,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
-				description: `The phone number that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 		],
 	},
@@ -445,14 +445,14 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
-				description: `The company name that was entered when the case was created. This field can't be updated after the case has been created..`,
+				description: 'The company name that was entered when the case was created. This field can\'t be updated after the case has been created..',
 			},
 			{
 				displayName: 'Supplied Email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
-				description: `The email address that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The email address that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Supplied Name',
@@ -466,7 +466,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
-				description: `The phone number that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Type',

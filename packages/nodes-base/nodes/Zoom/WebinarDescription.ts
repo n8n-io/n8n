@@ -232,7 +232,7 @@ export const webinarFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
 			},
 			{
 				displayName: 'Webinar Topic',
@@ -560,7 +560,7 @@ export const webinarFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: `Webinar occurrence ID.`,
+				description: 'Webinar occurrence ID.',
 			},
 			{
 				displayName: 'Password',
@@ -619,7 +619,7 @@ export const webinarFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
 			},
 			{
 				displayName: 'Webinar Topic',

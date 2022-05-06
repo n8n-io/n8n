@@ -90,14 +90,14 @@ export const customerFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description: 'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',
@@ -763,14 +763,14 @@ export const customerFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description: 'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',

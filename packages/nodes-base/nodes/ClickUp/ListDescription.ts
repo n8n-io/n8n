@@ -23,7 +23,7 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Custom Fields',
 				value: 'customFields',
-				description: `Retrieve list's custom fields`,
+				description: 'Retrieve list\'s custom fields',
 			},
 			{
 				name: 'Delete',

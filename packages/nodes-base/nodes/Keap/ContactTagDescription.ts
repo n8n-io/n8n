@@ -23,12 +23,12 @@ export const contactTagOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a contact's tag`,
+				description: 'Delete a contact\'s tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Retrieve all contact's tags`,
+				description: 'Retrieve all contact\'s tags',
 			},
 		],
 		default: 'create',

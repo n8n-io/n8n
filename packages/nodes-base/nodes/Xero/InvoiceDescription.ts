@@ -914,7 +914,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
-				description: `When set to true you'll only retrieve Invoices created by your app`,
+				description: 'When set to true you\'ll only retrieve Invoices created by your app',
 			},
 			{
 				displayName: 'Order By',

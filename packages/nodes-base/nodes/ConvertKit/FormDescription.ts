@@ -74,7 +74,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The subscriber's email address.`,
+		description: 'The subscriber\'s email address.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -114,7 +114,7 @@ export const formFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: `The field's key.`,
+								description: 'The field\'s key.',
 							},
 							{
 								displayName: 'Field Value',
@@ -133,7 +133,7 @@ export const formFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `The subscriber's first name.`,
+				description: 'The subscriber\'s first name.',
 			},
 		],
 	},
