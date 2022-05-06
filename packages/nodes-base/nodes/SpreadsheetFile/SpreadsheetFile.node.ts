@@ -206,7 +206,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
+						description: 'File name to set in binary data. By default will "spreadsheet.&lt;fileFormat&gt;" be used.',
 					},
 					{
 						displayName: 'Header Row',
