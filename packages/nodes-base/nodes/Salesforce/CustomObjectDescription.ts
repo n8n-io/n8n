@@ -221,7 +221,7 @@ export const customObjectFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		description: 'Filter by custom fields ',
+		description: 'Filter by custom fields',
 		default: {},
 		displayOptions: {
 			show: {

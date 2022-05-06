@@ -96,12 +96,12 @@ export class HubspotTrigger implements INodeType {
 									{
 										name: 'Contact Privacy Deleted',
 										value: 'contact.privacyDeletion',
-										description: 'To get notified if a contact is deleted for privacy compliance reasons. ',
+										description: 'To get notified if a contact is deleted for privacy compliance reasons.',
 									},
 									{
 										name: 'Contact Property Changed',
 										value: 'contact.propertyChange',
-										description: 'to get notified if a specified property is changed for any contact in a customer\'s account. ',
+										description: 'To get notified if a specified property is changed for any contact in a customer\'s account.',
 									},
 									{
 										name: 'Company Created',

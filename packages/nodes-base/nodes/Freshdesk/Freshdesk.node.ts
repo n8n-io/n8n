@@ -224,7 +224,7 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Value of the identification selected ',
+				description: 'Value of the identification selected',
 			},
 			{
 				displayName: 'Status',
@@ -764,7 +764,7 @@ export class Freshdesk implements INodeType {
 						name: 'requesterIdentificationValue',
 						type: 'string',
 						default: '',
-						description: 'Value of the identification selected ',
+						description: 'Value of the identification selected',
 					},
 					{
 						displayName: 'Status',

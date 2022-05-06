@@ -180,7 +180,7 @@ export const fields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: ' Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
+				description: 'Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
 			},
 			{
 				displayName: 'RAW Data',

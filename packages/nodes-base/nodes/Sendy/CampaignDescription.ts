@@ -192,7 +192,7 @@ export const campaignFields: INodeProperties[] = [
 				name: 'excludeListIds',
 				type: 'string',
 				default: '',
-				description: ' Lists to exclude from your campaign. List IDs should be single or comma-separated',
+				description: 'Lists to exclude from your campaign. List IDs should be single or comma-separated',
 			},
 			{
 				displayName: 'Exclude Segment IDs',
@@ -234,7 +234,7 @@ export const campaignFields: INodeProperties[] = [
 				name: 'trackClicks',
 				type: 'boolean',
 				default: true,
-				description: ' Set to false if you want to disable clicks tracking. Default is true.',
+				description: 'Set to false if you want to disable clicks tracking. Default is true.',
 			},
 			{
 				displayName: 'Track Opens',

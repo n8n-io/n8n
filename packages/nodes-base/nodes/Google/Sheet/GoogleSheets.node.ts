@@ -677,7 +677,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description: '	Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 							},
 							{
 								name: 'Unformatted Value',
@@ -836,7 +836,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Hour',
 								value: 'HOUR',
-								description: '	Volatile functions are updated on every change and hourly.',
+								description: 'Volatile functions are updated on every change and hourly.',
 							},
 						],
 						default: '',

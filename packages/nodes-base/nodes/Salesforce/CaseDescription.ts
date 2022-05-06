@@ -119,7 +119,7 @@ export const caseFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -325,7 +325,7 @@ export const caseFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -712,7 +712,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false). ',
+				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false).',
 			},
 		],
 	},

@@ -3663,7 +3663,7 @@ export class Pipedrive implements INodeType {
 						name: 'firstChar',
 						type: 'string',
 						default: '',
-						description: 'If supplied, only persons whose name starts with the specified letter will be returned ',
+						description: 'If supplied, only persons whose name starts with the specified letter will be returned',
 					},
 				],
 			},

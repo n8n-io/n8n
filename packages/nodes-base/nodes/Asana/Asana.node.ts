@@ -1616,7 +1616,7 @@ export class Asana implements INodeType {
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
-						description: 'The day on which this project is due. This takes a date with format YYYY-MM-DD.\n',
+						description: 'The day on which this project is due. This takes a date with format YYYY-MM-DD.',
 					},
 					{
 						displayName: 'Notes',

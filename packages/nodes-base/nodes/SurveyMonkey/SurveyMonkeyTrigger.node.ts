@@ -164,7 +164,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified ',
+						description: 'A survey response is disqualified',
 					},
 					{
 						name: 'Response Overquota',
@@ -235,7 +235,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified ',
+						description: 'A survey response is disqualified',
 					},
 					{
 						name: 'Response Overquota',
