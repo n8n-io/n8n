@@ -232,7 +232,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -373,7 +373,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -604,7 +604,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:getAll                                */

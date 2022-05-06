@@ -18,17 +18,17 @@ export const affiliateMetadataOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: `Add metadata to affiliate`,
+				description: 'Add metadata to affiliate',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: `Remove metadata from affiliate`,
+				description: 'Remove metadata from affiliate',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update affiliate's metadata`,
+				description: 'Update affiliate\'s metadata',
 			},
 		],
 		default: 'add',

@@ -346,7 +346,7 @@ export const couponFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -608,7 +608,7 @@ export const couponFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form.',
 	},
 	{
 		displayName: 'Additional Fields',

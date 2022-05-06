@@ -348,7 +348,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 					},
 				],
 				default: 'approved',
-				description: `Registrant Status.`,
+				description: 'Registrant Status.',
 			},
 
 		],
@@ -403,7 +403,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: `Registrant Status.`,
+		description: 'Registrant Status.',
 	},
 	{
 		displayName: 'Additional Fields',

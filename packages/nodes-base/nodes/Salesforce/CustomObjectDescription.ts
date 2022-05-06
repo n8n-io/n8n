@@ -100,7 +100,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the object already exists`,
+		description: 'The field to check to see if the object already exists',
 	},
 	{
 		displayName: 'Value to Match',

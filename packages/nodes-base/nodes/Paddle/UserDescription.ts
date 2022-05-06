@@ -109,7 +109,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form.',
 	},
 	{
 		displayName: 'Additional Fields',

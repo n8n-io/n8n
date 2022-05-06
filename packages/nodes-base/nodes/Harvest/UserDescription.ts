@@ -20,12 +20,12 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a user`,
+				description: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a user`,
+				description: 'Delete a user',
 			},
 			{
 				name: 'Get',
@@ -46,7 +46,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a user`,
+				description: 'Update a user',
 			},
 		],
 		default: 'me',

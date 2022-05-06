@@ -160,7 +160,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'owner',
 						type: 'string',
 						default: '',
-						description: `User who owns the case. This is automatically set to current user when status is set to InProgress.`,
+						description: 'User who owns the case. This is automatically set to current user when status is set to InProgress.',
 					},
 					{
 						displayName: 'Flag',

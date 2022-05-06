@@ -371,7 +371,7 @@ export const companyFields: INodeProperties[] = [
 								name: 'field',
 								type: 'string',
 								default: '',
-								description: `The sorting field`,
+								description: 'The sorting field',
 							},
 						],
 					},
