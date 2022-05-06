@@ -6,8 +6,10 @@ import {
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
+
 
 export function getAdditionalOptions(additionalOptions: IDataObject) {
 
@@ -93,6 +95,18 @@ export function filterItemsColumns(item: IDataObject, filterColumns: string[], i
 
 }
 
+export function getRecordsBulk(this: IExecuteFunctions, index: number, items: INodeExecutionData[], sendAll: boolean, startIndex: number, endIndex: number) {
+
+	const records = [];
+
+	for (let i = startIndex; i < endIndex && i < items.length; i++) {
+
+		const item = getItem.call(this, i, items[i].json, sendAll);
+		records.push(item);
+
+	}
+	return records;
+}
 
 
 export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, option: IDataObject = {}, url?: string): Promise<any> { // tslint:disable-line:no-any
@@ -118,8 +132,8 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 	try {
 
-		const response = await this.helpers.httpRequest(options);
-		return response;
+		const responseData = await this.helpers.httpRequest(options);
+		return responseData;
 
 	} catch (error) {
 
@@ -137,13 +151,13 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 		try {
 
-			let arrayLength = 0 as number;
+			let arrayLength = 0;
 
 			do {
 
-				const response = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
-				const crs = response.meta.page.cursor;
-				const recs = response.records;
+				const responseData = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
+				const crs = responseData.meta.page.cursor;
+				const recs = responseData.records;
 
 				for (const rec of recs) {
 
@@ -164,7 +178,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 				}
 
-				arrayLength = recs.length as number;
+				arrayLength = recs.length;
 
 			} while (arrayLength !== 0);
 
@@ -182,8 +196,8 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 		try {
 
-			const response = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
-			records = response.records;
+			const responseData = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
+			records = responseData.records;
 
 		} catch (error) {
 

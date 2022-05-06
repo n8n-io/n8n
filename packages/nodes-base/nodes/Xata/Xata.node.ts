@@ -9,12 +9,15 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { start } from 'repl';
 
 import {
 	getAdditionalOptions,
 	getItem,
+	getRecordsBulk,
 	xataApiList,
-	xataApiRequest
+	xataApiRequest,
+
 } from './GenericFunctions';
 
 export class Xata implements INodeType {
@@ -442,31 +445,16 @@ export class Xata implements INodeType {
 
 			try {
 
-				let records = [];
 				const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
-				const bulkSize = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] : items.length as number;
-				let itemsCount = 0 as number;
+				const bulkSize: number = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] as number : items.length;
 				const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
+				const bulkNumbers = Math.ceil(items.length / bulkSize);
 
-				for (let i = 0; i < items.length; i++) {
+				for (let i = 0; i < bulkNumbers; i++) {
 
-					const item = getItem.call(this, i, items[i].json, sendAll);
-					records.push(item);
-					itemsCount++;
-
-					if (itemsCount === bulkSize) {
-
-						const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
-						responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
-						itemsCount = 0;
-						records = [];
-
-					}
-
-				}
-
-				if (itemsCount !== 0) {
-
+					const startIndex = i * bulkSize;
+					const endIndex = (1 + i) * bulkSize;
+					const records = getRecordsBulk.call(this, i, items, sendAll, startIndex, endIndex);
 					const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
 					responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
 
