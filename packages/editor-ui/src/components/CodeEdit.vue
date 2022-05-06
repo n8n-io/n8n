@@ -34,6 +34,7 @@ import {
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	genericHelpers,
@@ -54,6 +55,11 @@ export default mixins(
 		if (this.monacoLibrary) {
 			this.monacoLibrary.dispose();
 		}
+	},
+	computed: {
+		...mapGetters('ui', [
+			'editorTheme',
+		]),
 	},
 	methods: {
 		closeDialog() {
@@ -108,15 +114,20 @@ export default mixins(
 				}
 			});
 
-			monaco.editor.defineTheme('n8nCustomTheme', {
-				base: 'vs',
-				inherit: true,
-				rules: [],
-				colors: {
-					'editor.background': '#f5f2f0',
-				},
-			});
-			monaco.editor.setTheme('n8nCustomTheme');
+			if (this.editorTheme === 'light') {
+				monaco.editor.defineTheme('n8nCustomTheme', {
+					base: 'vs',
+					inherit: true,
+					rules: [],
+					colors: {
+						'editor.background': '#f5f2f0',
+					},
+				});
+				monaco.editor.setTheme('n8nCustomTheme');
+			}
+			else {
+				monaco.editor.setTheme('vs-dark');
+			}
 
 			if (this.type === 'code') {
 				// As wordBasedSuggestions: false does not have any effect does it however seem
