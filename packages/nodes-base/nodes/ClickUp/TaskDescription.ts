@@ -758,39 +758,39 @@ export const taskFields: INodeProperties[] = [
 								name: 'operator',
 								type: 'options',
 								options: [
-									{
-										name: 'Equal',
-										value: 'equal',
-									},
-									{
-										name: '<',
-										value: '<',
-									},
-									{
-										name: '<=',
-										value: '<=',
-									},
-									{
-										name: '>',
-										value: '>',
-									},
-									{
-										name: '>=',
-										value: '>=',
-									},
-									{
-										name: '!=',
-										value: '!=',
-									},
-									{
-										name: 'Is Null',
-										value: 'IS NULL',
-									},
-									{
-										name: 'Is Not Null',
-										value: 'IS NOT NULL',
-									},
-								],
+							{
+								name: '!=',
+								value: '!=',
+							},
+							{
+								name: '<',
+								value: '<',
+							},
+							{
+								name: '<=',
+								value: '<=',
+							},
+							{
+								name: '>',
+								value: '>',
+							},
+							{
+								name: '>=',
+								value: '>=',
+							},
+							{
+								name: 'Equal',
+								value: 'equal',
+							},
+							{
+								name: 'Is Not Null',
+								value: 'IS NOT NULL',
+							},
+							{
+								name: 'Is Null',
+								value: 'IS NULL',
+							},
+						],
 								default: 'equal',
 								description: 'The value to set on custom field.',
 							},

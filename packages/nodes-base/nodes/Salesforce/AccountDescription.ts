@@ -31,6 +31,11 @@ export const accountOperations: INodeProperties[] = [
 				description: 'Create a new account, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an account',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
@@ -46,16 +51,11 @@ export const accountOperations: INodeProperties[] = [
 				description: 'Returns an overview of account\'s metadata.',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an account',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an account',
 			},
-		],
+			],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
@@ -798,27 +798,27 @@ export const accountFields: INodeProperties[] = [
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: '=',
-										value: 'equal',
-									},
-									{
-										name: '>',
-										value: '>',
-									},
-									{
-										name: '<',
-										value: '<',
-									},
-									{
-										name: '>=',
-										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
-									},
-								],
+							{
+								name: '<',
+								value: '<',
+							},
+							{
+								name: '<=',
+								value: '<=',
+							},
+							{
+								name: '=',
+								value: 'equal',
+							},
+							{
+								name: '>',
+								value: '>',
+							},
+							{
+								name: '>=',
+								value: '>=',
+							},
+						],
 								default: 'equal',
 							},
 							{

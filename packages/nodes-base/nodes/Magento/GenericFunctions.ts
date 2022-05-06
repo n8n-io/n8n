@@ -437,17 +437,17 @@ function getConditionTypeFields(): INodeProperties {
 				description: 'The value can contain a comma-separated list of values',
 			},
 			{
-				name: 'Like',
-				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified',
-			},
-			{
 				name: 'Less Than',
 				value: 'lt',
 			},
 			{
 				name: 'Less Than or Equal',
 				value: 'lte',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
 			},
 			{
 				name: 'More or Equal',
@@ -470,7 +470,7 @@ function getConditionTypeFields(): INodeProperties {
 				name: 'Null',
 				value: 'null',
 			},
-		],
+			],
 		default: 'eq',
 	};
 }

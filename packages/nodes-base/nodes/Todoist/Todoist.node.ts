@@ -117,14 +117,14 @@ export class Todoist implements INodeType {
 				},
 				options: [
 					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a new task',
-					},
-					{
 						name: 'Close',
 						value: 'close',
 						description: 'Close a task',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new task',
 					},
 					{
 						name: 'Delete',

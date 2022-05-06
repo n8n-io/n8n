@@ -395,55 +395,55 @@ export const contactFields: INodeProperties[] = [
 								name: 'type',
 								type: 'options',
 								options: [
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
-									},
-									{
-										name: 'Home Fax',
-										value: 'homeFax',
-									},
-									{
-										name: 'Work Fax',
-										value: 'workFax',
-									},
-									{
-										name: 'Other Fax',
-										value: 'otherFax',
-									},
-									{
-										name: 'Pager',
-										value: 'pager',
-									},
-									{
-										name: 'Work Mobile',
-										value: 'workMobile',
-									},
-									{
-										name: 'Work Pager',
-										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-								],
+							{
+								name: 'Google Voice',
+								value: 'googleVoice',
+							},
+							{
+								name: 'Home',
+								value: 'home',
+							},
+							{
+								name: 'Home Fax',
+								value: 'homeFax',
+							},
+							{
+								name: 'Main',
+								value: 'main',
+							},
+							{
+								name: 'Mobile',
+								value: 'mobile',
+							},
+							{
+								name: 'Other',
+								value: 'other',
+							},
+							{
+								name: 'Other Fax',
+								value: 'otherFax',
+							},
+							{
+								name: 'Pager',
+								value: 'pager',
+							},
+							{
+								name: 'Work',
+								value: 'work',
+							},
+							{
+								name: 'Work Fax',
+								value: 'workFax',
+							},
+							{
+								name: 'Work Mobile',
+								value: 'workMobile',
+							},
+							{
+								name: 'Work Pager',
+								value: 'workPager',
+							},
+						],
 								default: '',
 							},
 							{
@@ -1460,55 +1460,55 @@ export const contactFields: INodeProperties[] = [
 								name: 'type',
 								type: 'options',
 								options: [
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
-									},
-									{
-										name: 'Home Fax',
-										value: 'homeFax',
-									},
-									{
-										name: 'Work Fax',
-										value: 'workFax',
-									},
-									{
-										name: 'Other Fax',
-										value: 'otherFax',
-									},
-									{
-										name: 'Pager',
-										value: 'pager',
-									},
-									{
-										name: 'Work Mobile',
-										value: 'workMobile',
-									},
-									{
-										name: 'Work Pager',
-										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-								],
+							{
+								name: 'Google Voice',
+								value: 'googleVoice',
+							},
+							{
+								name: 'Home',
+								value: 'home',
+							},
+							{
+								name: 'Home Fax',
+								value: 'homeFax',
+							},
+							{
+								name: 'Main',
+								value: 'main',
+							},
+							{
+								name: 'Mobile',
+								value: 'mobile',
+							},
+							{
+								name: 'Other',
+								value: 'other',
+							},
+							{
+								name: 'Other Fax',
+								value: 'otherFax',
+							},
+							{
+								name: 'Pager',
+								value: 'pager',
+							},
+							{
+								name: 'Work',
+								value: 'work',
+							},
+							{
+								name: 'Work Fax',
+								value: 'workFax',
+							},
+							{
+								name: 'Work Mobile',
+								value: 'workMobile',
+							},
+							{
+								name: 'Work Pager',
+								value: 'workPager',
+							},
+						],
 								default: '',
 							},
 							{

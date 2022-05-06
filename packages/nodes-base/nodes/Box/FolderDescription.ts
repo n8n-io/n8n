@@ -21,14 +21,14 @@ export const folderOperations: INodeProperties[] = [
 				description: 'Create a folder',
 			},
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a folder',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a folder',
 			},
 			{
 				name: 'Search',
@@ -45,7 +45,7 @@ export const folderOperations: INodeProperties[] = [
 				value: 'update',
 				description: 'Update folder',
 			},
-		],
+			],
 		default: 'create',
 		description: 'The operation to perform.',
 	},

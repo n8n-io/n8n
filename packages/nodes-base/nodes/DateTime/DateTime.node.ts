@@ -131,39 +131,39 @@ export class DateTime implements INodeType {
 				},
 				options: [
 					{
-						name: 'MM/DD/YYYY',
-						value: 'MM/DD/YYYY',
-						description: 'Example: 09/04/1986',
+						name: 'MM-DD-YYYY',
+						value: 'MM-DD-YYYY',
+						description: 'Example:	09-04-1986',
 					},
 					{
-						name: 'YYYY/MM/DD',
-						value: 'YYYY/MM/DD',
-						description: 'Example: 1986/04/09',
+						name: 'MM/DD/YYYY',
+						value: 'MM/DD/YYYY',
+						description: 'Example:	09/04/1986',
 					},
 					{
 						name: 'MMMM DD YYYY',
 						value: 'MMMM DD YYYY',
-						description: 'Example: April 09 1986',
-					},
-					{
-						name: 'MM-DD-YYYY',
-						value: 'MM-DD-YYYY',
-						description: 'Example: 09-04-1986',
-					},
-					{
-						name: 'YYYY-MM-DD',
-						value: 'YYYY-MM-DD',
-						description: 'Example: 1986-04-09',
-					},
-					{
-						name: 'Unix Timestamp',
-						value: 'X',
-						description: 'Example: 513388800.879',
+						description: 'Example:	April 09 1986',
 					},
 					{
 						name: 'Unix Ms Timestamp',
 						value: 'x',
-						description: 'Example: 513388800',
+						description: 'Example:	513388800',
+					},
+					{
+						name: 'Unix Timestamp',
+						value: 'X',
+						description: 'Example:	513388800.879',
+					},
+					{
+						name: 'YYYY-MM-DD',
+						value: 'YYYY-MM-DD',
+						description: 'Example:	1986-04-09',
+					},
+					{
+						name: 'YYYY/MM/DD',
+						value: 'YYYY/MM/DD',
+						description: 'Example:	1986/04/09',
 					},
 				],
 				default: 'MM/DD/YYYY',
@@ -285,22 +285,6 @@ export class DateTime implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Quarters',
-						value: 'quarters',
-					},
-					{
-						name: 'Years',
-						value: 'years',
-					},
-					{
-						name: 'Months',
-						value: 'months',
-					},
-					{
-						name: 'Weeks',
-						value: 'weeks',
-					},
-					{
 						name: 'Days',
 						value: 'days',
 					},
@@ -309,16 +293,32 @@ export class DateTime implements INodeType {
 						value: 'hours',
 					},
 					{
+						name: 'Milliseconds',
+						value: 'milliseconds',
+					},
+					{
 						name: 'Minutes',
 						value: 'minutes',
+					},
+					{
+						name: 'Months',
+						value: 'months',
+					},
+					{
+						name: 'Quarters',
+						value: 'quarters',
 					},
 					{
 						name: 'Seconds',
 						value: 'seconds',
 					},
 					{
-						name: 'Milliseconds',
-						value: 'milliseconds',
+						name: 'Weeks',
+						value: 'weeks',
+					},
+					{
+						name: 'Years',
+						value: 'years',
 					},
 				],
 				default: 'days',

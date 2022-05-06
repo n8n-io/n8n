@@ -214,39 +214,39 @@ export const reportFields: INodeProperties[] = [
 								default: 'EXACT',
 								description: 'Operator to use in combination with value.',
 								options: [
-									{
-										name: 'Begins With',
-										value: 'BEGINS_WITH',
-									},
-									{
-										name: 'Ends With',
-										value: 'ENDS_WITH',
-									},
-									{
-										name: 'Exact',
-										value: 'EXACT',
-									},
-									{
-										name: 'Greater Than (number)',
-										value: 'NUMERIC_GREATER_THAN',
-									},
-									{
-										name: 'Partial',
-										value: 'PARTIAL',
-									},
-									{
-										name: 'Regular Expression',
-										value: 'REGEXP',
-									},
-									{
-										name: 'Equal (number)',
-										value: 'NUMERIC_EQUAL',
-									},
-									{
-										name: 'Less Than (number)',
-										value: 'NUMERIC_LESS_THAN',
-									},
-								],
+							{
+								name: 'Begins With',
+								value: 'BEGINS_WITH',
+							},
+							{
+								name: 'Ends With',
+								value: 'ENDS_WITH',
+							},
+							{
+								name: 'Equal (number)',
+								value: 'NUMERIC_EQUAL',
+							},
+							{
+								name: 'Exact',
+								value: 'EXACT',
+							},
+							{
+								name: 'Greater Than (number)',
+								value: 'NUMERIC_GREATER_THAN',
+							},
+							{
+								name: 'Less Than (number)',
+								value: 'NUMERIC_LESS_THAN',
+							},
+							{
+								name: 'Partial',
+								value: 'PARTIAL',
+							},
+							{
+								name: 'Regular Expression',
+								value: 'REGEXP',
+							},
+						],
 							},
 							{
 								displayName: 'Value',

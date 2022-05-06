@@ -24,6 +24,11 @@ export const caseOperations: INodeProperties[] = [
 				description: 'Create a case',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a case',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a case',
@@ -39,16 +44,11 @@ export const caseOperations: INodeProperties[] = [
 				description: 'Returns an overview of case\'s metadata',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a case',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a case',
 			},
-		],
+			],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
@@ -616,27 +616,27 @@ export const caseFields: INodeProperties[] = [
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: '=',
-										value: 'equal',
-									},
-									{
-										name: '>',
-										value: '>',
-									},
-									{
-										name: '<',
-										value: '<',
-									},
-									{
-										name: '>=',
-										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
-									},
-								],
+							{
+								name: '<',
+								value: '<',
+							},
+							{
+								name: '<=',
+								value: '<=',
+							},
+							{
+								name: '=',
+								value: 'equal',
+							},
+							{
+								name: '>',
+								value: '>',
+							},
+							{
+								name: '>=',
+								value: '>=',
+							},
+						],
 								default: 'equal',
 							},
 							{

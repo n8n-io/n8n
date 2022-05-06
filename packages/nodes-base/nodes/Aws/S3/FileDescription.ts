@@ -288,16 +288,16 @@ export const fileFields: INodeProperties[] = [
 						value: 'deepArchive',
 					},
 					{
+						name: 'Glacier',
+						value: 'glacier',
+					},
+					{
 						name: 'Intelligent Tiering',
 						value: 'intelligentTiering',
 					},
 					{
 						name: 'One Zone IA',
 						value: 'onezoneIA',
-					},
-					{
-						name: 'Glacier',
-						value: 'glacier',
 					},
 					{
 						name: 'Standard',
@@ -641,16 +641,16 @@ export const fileFields: INodeProperties[] = [
 						value: 'deepArchive',
 					},
 					{
+						name: 'Glacier',
+						value: 'glacier',
+					},
+					{
 						name: 'Intelligent Tiering',
 						value: 'intelligentTiering',
 					},
 					{
 						name: 'One Zone IA',
 						value: 'onezoneIA',
-					},
-					{
-						name: 'Glacier',
-						value: 'glacier',
 					},
 					{
 						name: 'Standard',

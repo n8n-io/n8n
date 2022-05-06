@@ -146,27 +146,27 @@ export const userFields: INodeProperties[] = [
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: '=',
-										value: 'equal',
-									},
-									{
-										name: '>',
-										value: '>',
-									},
-									{
-										name: '<',
-										value: '<',
-									},
-									{
-										name: '>=',
-										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
-									},
-								],
+							{
+								name: '<',
+								value: '<',
+							},
+							{
+								name: '<=',
+								value: '<=',
+							},
+							{
+								name: '=',
+								value: 'equal',
+							},
+							{
+								name: '>',
+								value: '>',
+							},
+							{
+								name: '>=',
+								value: '>=',
+							},
+						],
 								default: 'equal',
 							},
 							{

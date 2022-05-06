@@ -1623,12 +1623,12 @@ export const orderFields: INodeProperties[] = [
 						value: 'any',
 					},
 					{
-						name: 'completed',
-						value: 'completed',
-					},
-					{
 						name: 'cancelled',
 						value: 'cancelled',
+					},
+					{
+						name: 'completed',
+						value: 'completed',
 					},
 					{
 						name: 'failed',

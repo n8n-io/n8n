@@ -208,20 +208,8 @@ export const agentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Starting',
-						value: 'starting',
-					},
-					{
-						name: 'Running',
-						value: 'running',
-					},
-					{
 						name: 'Finished',
 						value: 'finished',
-					},
-					{
-						name: 'Unknown',
-						value: 'unknown',
 					},
 					{
 						name: 'Launch Error',
@@ -230,6 +218,18 @@ export const agentFields: INodeProperties[] = [
 					{
 						name: 'Never Launched',
 						value: 'never launched',
+					},
+					{
+						name: 'Running',
+						value: 'running',
+					},
+					{
+						name: 'Starting',
+						value: 'starting',
+					},
+					{
+						name: 'Unknown',
+						value: 'unknown',
 					},
 				],
 				default: '',

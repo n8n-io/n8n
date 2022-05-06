@@ -16,11 +16,6 @@ export const messageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an email',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
@@ -40,7 +35,12 @@ export const messageOperations: INodeProperties[] = [
 				value: 'reply',
 				description: 'Reply to an email',
 			},
-		],
+			{
+				name: 'Send',
+				value: 'send',
+				description: 'Send an email',
+			},
+			],
 		default: 'send',
 		description: 'The operation to perform.',
 	},

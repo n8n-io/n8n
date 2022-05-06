@@ -187,10 +187,6 @@ export class ClickUp implements INodeType {
 						name: 'Goal Key Result',
 						value: 'goalKeyResult',
 					},
-					// {
-					// 	name: 'Guest',
-					// 	value: 'guest',
-					// },
 					{
 						name: 'List',
 						value: 'list',
@@ -204,16 +200,16 @@ export class ClickUp implements INodeType {
 						value: 'task',
 					},
 					{
+						name: 'Task Dependency',
+						value: 'taskDependency',
+					},
+					{
 						name: 'Task List',
 						value: 'taskList',
 					},
 					{
 						name: 'Task Tag',
 						value: 'taskTag',
-					},
-					{
-						name: 'Task Dependency',
-						value: 'taskDependency',
 					},
 					{
 						name: 'Time Entry',

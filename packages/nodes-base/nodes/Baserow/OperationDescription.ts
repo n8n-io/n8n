@@ -274,112 +274,112 @@ export const operationFields: INodeProperties[] = [
 								description: 'Operator to compare field and value with',
 								type: 'options',
 								options: [
-									{
-										name: 'Equal',
-										value: 'equal',
-										description: 'Field is equal to value',
-									},
-									{
-										name: 'Not Equal',
-										value: 'not_equal',
-										description: 'Field is not equal to value',
-									},
-									{
-										name: 'Contains',
-										value: 'contains',
-										description: 'Field contains value',
-									},
-									{
-										name: 'Contains Not',
-										value: 'contains_not',
-										description: 'Field does not contain value',
-									},
-									{
-										name: 'Date Equal',
-										value: 'date_equal',
-										description: 'Field is date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date Not Equal',
-										value: 'date_not_equal',
-										description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date Equals Today',
-										value: 'date_equals_today',
-										description: 'Field is today. Format: string.',
-									},
-									{
-										name: 'Date Equals Month',
-										value: 'date_equals_month',
-										description: 'Field in this month. Format: string.',
-									},
-									{
-										name: 'Date Equals Year',
-										value: 'date_equals_year',
-										description: 'Field in this year. Format: string.',
-									},
-									{
-										name: 'Date Before Date',
-										value: 'date_before',
-										description: 'Field before this date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date After Date',
-										value: 'date_after',
-										description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Filename Contains',
-										value: 'filename_contains',
-										description: 'Field filename contains value',
-									},
-									{
-										name: 'Higher Than',
-										value: 'higher_than',
-										description: 'Field is higher than value',
-									},
-									{
-										name: 'Lower Than',
-										value: 'lower_than',
-										description: 'Field is lower than value',
-									},
-									{
-										name: 'Is Empty',
-										value: 'empty',
-										description: 'Field is empty',
-									},
-									{
-										name: 'Is Not Empty',
-										value: 'not_empty',
-										description: 'Field is not empty',
-									},
-									{
-										name: 'Is True',
-										value: 'boolean',
-										description: 'Boolean field is true',
-									},
-									{
-										name: 'Link Row Has',
-										value: 'link_row_has',
-										description: 'Field has link ID',
-									},
-									{
-										name: 'Link Row Does Not Have',
-										value: 'link_row_has_not',
-										description: 'Field does not have link ID',
-									},
-									{
-										name: 'Single Select Equal',
-										value: 'single_select_equal',
-										description: 'Field selected option is value',
-									},
-									{
-										name: 'Single Select Not Equal',
-										value: 'single_select_not_equal',
-										description: 'Field selected option is not value',
-									},
-								],
+							{
+								name: 'Contains',
+								value: 'contains',
+								description: 'Field contains value',
+							},
+							{
+								name: 'Contains Not',
+								value: 'contains_not',
+								description: 'Field does not contain value',
+							},
+							{
+								name: 'Date After Date',
+								value: 'date_after',
+								description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
+							},
+							{
+								name: 'Date Before Date',
+								value: 'date_before',
+								description: 'Field before this date. Format: \'YYYY-MM-DD\'.',
+							},
+							{
+								name: 'Date Equal',
+								value: 'date_equal',
+								description: 'Field is date. Format: \'YYYY-MM-DD\'.',
+							},
+							{
+								name: 'Date Equals Month',
+								value: 'date_equals_month',
+								description: 'Field in this month. Format:	string.',
+							},
+							{
+								name: 'Date Equals Today',
+								value: 'date_equals_today',
+								description: 'Field is today. Format:	string.',
+							},
+							{
+								name: 'Date Equals Year',
+								value: 'date_equals_year',
+								description: 'Field in this year. Format:	string.',
+							},
+							{
+								name: 'Date Not Equal',
+								value: 'date_not_equal',
+								description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
+							},
+							{
+								name: 'Equal',
+								value: 'equal',
+								description: 'Field is equal to value',
+							},
+							{
+								name: 'Filename Contains',
+								value: 'filename_contains',
+								description: 'Field filename contains value',
+							},
+							{
+								name: 'Higher Than',
+								value: 'higher_than',
+								description: 'Field is higher than value',
+							},
+							{
+								name: 'Is Empty',
+								value: 'empty',
+								description: 'Field is empty',
+							},
+							{
+								name: 'Is Not Empty',
+								value: 'not_empty',
+								description: 'Field is not empty',
+							},
+							{
+								name: 'Is True',
+								value: 'boolean',
+								description: 'Boolean field is true',
+							},
+							{
+								name: 'Link Row Does Not Have',
+								value: 'link_row_has_not',
+								description: 'Field does not have link ID',
+							},
+							{
+								name: 'Link Row Has',
+								value: 'link_row_has',
+								description: 'Field has link ID',
+							},
+							{
+								name: 'Lower Than',
+								value: 'lower_than',
+								description: 'Field is lower than value',
+							},
+							{
+								name: 'Not Equal',
+								value: 'not_equal',
+								description: 'Field is not equal to value',
+							},
+							{
+								name: 'Single Select Equal',
+								value: 'single_select_equal',
+								description: 'Field selected option is value',
+							},
+							{
+								name: 'Single Select Not Equal',
+								value: 'single_select_not_equal',
+								description: 'Field selected option is not value',
+							},
+						],
 								default: 'equal',
 							},
 							{

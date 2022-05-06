@@ -77,47 +77,33 @@ export const alertContactFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'Boxcar',
-				value: 4,
+				value: 4
 			},
 			{
 				name: 'E-mail',
-				value: 2,
-			},
-			{
-				name: 'SMS',
-				value: 1,
-			},
-			{
-				name: 'Twitter DM',
-				value: 3,
+				value: 2
 			},
 			{
 				name: 'Pushbullet',
-				value: 6,
+				value: 6
 			},
 			{
 				name: 'Pushover',
-				value: 9,
+				value: 9
+			},
+			{
+				name: 'SMS',
+				value: 1
+			},
+			{
+				name: 'Twitter DM',
+				value: 3
 			},
 			{
 				name: 'Webhook',
-				value: 5,
+				value: 5
 			},
-			// the commented option are not supported yet
-			// {
-			// 	name:'HipChat',
-			// 	value:10,
-			// },
-			// {
-			// 	name:'Slack',
-			// 	value:11
-			// },
-			// {
-			// 	name:'Zapier',
-			// 	value:7,
-			// },
-
-		],
+			],
 		displayOptions: {
 			show: {
 				resource: [

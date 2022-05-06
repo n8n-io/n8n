@@ -319,31 +319,31 @@ export class Chargebee implements INodeType {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: 'Is',
-										value: 'is',
-									},
-									{
-										name: 'Is Not',
-										value: 'is_not',
-									},
-									{
-										name: 'Greater than',
-										value: 'gt',
-									},
-									{
-										name: 'Greater equal than',
-										value: 'gte',
-									},
-									{
-										name: 'Less than',
-										value: 'lt',
-									},
-									{
-										name: 'Less equal than',
-										value: 'lte',
-									},
-								],
+							{
+								name: 'Greater equal than',
+								value: 'gte',
+							},
+							{
+								name: 'Greater than',
+								value: 'gt',
+							},
+							{
+								name: 'Is',
+								value: 'is',
+							},
+							{
+								name: 'Is Not',
+								value: 'is_not',
+							},
+							{
+								name: 'Less equal than',
+								value: 'lte',
+							},
+							{
+								name: 'Less than',
+								value: 'lt',
+							},
+						],
 								default: 'gt',
 								description: 'Operation to decide where the the data should be mapped to.',
 							},

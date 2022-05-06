@@ -965,47 +965,43 @@ export const contactFields: INodeProperties[] = [
 										name: 'operator',
 										type: 'options',
 										options: [
-											{
-												name: 'Equal',
-												value: 'EQ',
-											},
-											{
-												name: 'Not Equal',
-												value: 'NEQ',
-											},
-											{
-												name: 'Less Than',
-												value: 'LT',
-											},
-											{
-												name: 'Less Than Or Equal',
-												value: 'LTE',
-											},
-											{
-												name: 'Greater Than',
-												value: 'GT',
-											},
-											{
-												name: 'Greater Than Or Equal',
-												value: 'GTE',
-											},
-											{
-												name: 'Is Known',
-												value: 'HAS_PROPERTY',
-											},
-											{
-												name: 'Is Unknown',
-												value: 'NOT_HAS_PROPERTY',
-											},
-											{
-												name: 'Contains Exactly',
-												value: 'CONTAINS_TOKEN',
-											},
-											{
-												name: `Doesn't Contain Exactly`,
-												value: 'NOT_CONTAINS_TOKEN',
-											},
-										],
+									{
+										name: 'Contains Exactly',
+										value: 'CONTAINS_TOKEN',
+									},
+									{
+										name: 'Equal',
+										value: 'EQ',
+									},
+									{
+										name: 'Greater Than',
+										value: 'GT',
+									},
+									{
+										name: 'Greater Than Or Equal',
+										value: 'GTE',
+									},
+									{
+										name: 'Is Known',
+										value: 'HAS_PROPERTY',
+									},
+									{
+										name: 'Is Unknown',
+										value: 'NOT_HAS_PROPERTY',
+									},
+									{
+										name: 'Less Than',
+										value: 'LT',
+									},
+									{
+										name: 'Less Than Or Equal',
+										value: 'LTE',
+									},
+									{
+										name: 'Not Equal',
+										value: 'NEQ',
+									},
+								],
 										default: 'EQ',
 									},
 									{

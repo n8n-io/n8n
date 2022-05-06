@@ -319,20 +319,8 @@ export const fileFields: INodeProperties[] = [
 						value: 'application',
 					},
 					{
-						name: 'Image',
-						value: 'image',
-					},
-					{
-						name: 'Fax',
-						value: 'fax',
-					},
-					{
 						name: 'Attachment',
 						value: 'attachment',
-					},
-					{
-						name: 'Ticket',
-						value: 'ticket',
 					},
 					{
 						name: 'Contact',
@@ -343,36 +331,48 @@ export const fileFields: INodeProperties[] = [
 						value: 'digitalProduct',
 					},
 					{
-						name: 'Import',
-						value: 'import',
-					},
-					{
-						name: 'Hidden',
-						value: 'hidden',
-					},
-					{
-						name: 'Webform',
-						value: 'webform',
-					},
-					{
-						name: 'Style Cart',
-						value: 'styleCart',
-					},
-					{
-						name: 'Re Sampled Image',
-						value: 'reSampledImage',
-					},
-					{
-						name: 'Template Thumnail',
-						value: 'templateThumnail',
+						name: 'Fax',
+						value: 'fax',
 					},
 					{
 						name: 'Funnel',
 						value: 'funnel',
 					},
 					{
+						name: 'Hidden',
+						value: 'hidden',
+					},
+					{
+						name: 'Image',
+						value: 'image',
+					},
+					{
+						name: 'Import',
+						value: 'import',
+					},
+					{
 						name: 'Logo Thumnail',
 						value: 'logoThumnail',
+					},
+					{
+						name: 'Re Sampled Image',
+						value: 'reSampledImage',
+					},
+					{
+						name: 'Style Cart',
+						value: 'styleCart',
+					},
+					{
+						name: 'Template Thumnail',
+						value: 'templateThumnail',
+					},
+					{
+						name: 'Ticket',
+						value: 'ticket',
+					},
+					{
+						name: 'Webform',
+						value: 'webform',
 					},
 				],
 				default: '',

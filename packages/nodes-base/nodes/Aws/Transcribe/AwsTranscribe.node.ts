@@ -144,24 +144,24 @@ export class AwsTranscribe implements INodeType {
 						value: 'en-GB',
 					},
 					{
-						name: 'Irish English',
-						value: 'en-IE',
+						name: 'German',
+						value: 'de-DE',
 					},
 					{
 						name: 'Indian English',
 						value: 'en-IN',
 					},
 					{
-						name: 'Spanish',
-						value: 'es-ES',
-					},
-					{
-						name: 'German',
-						value: 'de-DE',
+						name: 'Irish English',
+						value: 'en-IE',
 					},
 					{
 						name: 'Russian',
 						value: 'ru-RU',
+					},
+					{
+						name: 'Spanish',
+						value: 'es-ES',
 					},
 				],
 				displayOptions: {

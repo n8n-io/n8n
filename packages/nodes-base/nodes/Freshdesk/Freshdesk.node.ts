@@ -325,21 +325,20 @@ export class Freshdesk implements INodeType {
 						value: 'feedbackWidget',
 					},
 					{
+						name: 'Mobihelp',
+						value: 'mobileHelp',
+					},
+					{
+						name: 'Outbound Email',
+						value: 'OutboundEmail',
+					},
+					{
 						name: 'Phone',
 						value: 'phone',
 					},
 					{
 						name: 'Portal',
 						value: 'portal',
-					},
-					{
-						name: 'Mobihelp',
-						value: 'mobileHelp',
-					},
-
-					{
-						name: 'Outbound Email',
-						value: 'OutboundEmail',
 					},
 				],
 				default: 'portal',

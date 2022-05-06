@@ -306,27 +306,27 @@ export class GoogleDrive implements INodeType {
 										name: 'docsToFormat',
 										type: 'options',
 										options: [
-											{
-												name: 'To MS Word',
-												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-											},
-											{
-												name: 'To PDF',
-												value: 'application/pdf',
-											},
-											{
-												name: 'To OpenOffice Doc',
-												value: 'application/vnd.oasis.opendocument.text',
-											},
-											{
-												name: 'To HTML',
-												value: 'text/html',
-											},
-											{
-												name: 'To Rich Text',
-												value: 'application/rtf',
-											},
-										],
+									{
+										name: 'To HTML',
+										value: 'text/html',
+									},
+									{
+										name: 'To MS Word',
+										value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+									},
+									{
+										name: 'To OpenOffice Doc',
+										value: 'application/vnd.oasis.opendocument.text',
+									},
+									{
+										name: 'To PDF',
+										value: 'application/pdf',
+									},
+									{
+										name: 'To Rich Text',
+										value: 'application/rtf',
+									},
+								],
 										default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 										description: 'Format used to export when downloading Google Docs files',
 									},
@@ -546,77 +546,75 @@ export class GoogleDrive implements INodeType {
 								name: 'mimeType',
 								type: 'options',
 								options: [
-
-									{
-										name: 'Custom Mime Type',
-										value: 'custom',
-									},
-									{
-										name: '	3rd party shortcut',
-										value: 'application/vnd.google-apps.drive-sdk',
-									},
-									{
-										name: 'Audio',
-										value: 'application/vnd.google-apps.audio',
-									},
-									{
-										name: 'Google Apps Scripts',
-										value: 'application/vnd.google-apps.script',
-									},
-									{
-										name: 'Google Docs',
-										value: 'application/vnd.google-apps.document',
-									},
-									{
-										name: 'Google Drawing',
-										value: 'application/vnd.google-apps.drawing',
-									},
-									{
-										name: 'Google Drive file',
-										value: 'application/vnd.google-apps.file',
-									},
-									{
-										name: 'Google Drive folder',
-										value: 'application/vnd.google-apps.folder',
-									},
-									{
-										name: 'Google Forms',
-										value: 'application/vnd.google-apps.form',
-									},
-									{
-										name: 'Google Fusion Tables',
-										value: 'application/vnd.google-apps.fusiontable',
-									},
-									{
-										name: 'Google My Maps',
-										value: 'application/vnd.google-apps.map',
-									},
-									{
-										name: 'Google Sheets',
-										value: 'application/vnd.google-apps.spreadsheet',
-									},
-									{
-										name: 'Google Sites',
-										value: 'application/vnd.google-apps.site',
-									},
-									{
-										name: 'Google Slides',
-										value: 'application/vnd.google-apps.presentation',
-									},
-									{
-										name: 'Photo',
-										value: 'application/vnd.google-apps.photo',
-									},
-									{
-										name: 'Unknown',
-										value: 'application/vnd.google-apps.unknown',
-									},
-									{
-										name: 'Video',
-										value: 'application/vnd.google-apps.video',
-									},
-
-								],
+							{
+								name: '\t3rd party shortcut',
+								value: 'application/vnd.google-apps.drive-sdk',
+							},
+							{
+								name: 'Audio',
+								value: 'application/vnd.google-apps.audio',
+							},
+							{
+								name: 'Custom Mime Type',
+								value: 'custom',
+							},
+							{
+								name: 'Google Apps Scripts',
+								value: 'application/vnd.google-apps.script',
+							},
+							{
+								name: 'Google Docs',
+								value: 'application/vnd.google-apps.document',
+							},
+							{
+								name: 'Google Drawing',
+								value: 'application/vnd.google-apps.drawing',
+							},
+							{
+								name: 'Google Drive file',
+								value: 'application/vnd.google-apps.file',
+							},
+							{
+								name: 'Google Drive folder',
+								value: 'application/vnd.google-apps.folder',
+							},
+							{
+								name: 'Google Forms',
+								value: 'application/vnd.google-apps.form',
+							},
+							{
+								name: 'Google Fusion Tables',
+								value: 'application/vnd.google-apps.fusiontable',
+							},
+							{
+								name: 'Google My Maps',
+								value: 'application/vnd.google-apps.map',
+							},
+							{
+								name: 'Google Sheets',
+								value: 'application/vnd.google-apps.spreadsheet',
+							},
+							{
+								name: 'Google Sites',
+								value: 'application/vnd.google-apps.site',
+							},
+							{
+								name: 'Google Slides',
+								value: 'application/vnd.google-apps.presentation',
+							},
+							{
+								name: 'Photo',
+								value: 'application/vnd.google-apps.photo',
+							},
+							{
+								name: 'Unknown',
+								value: 'application/vnd.google-apps.unknown',
+							},
+							{
+								name: 'Video',
+								value: 'application/vnd.google-apps.video',
+							},
+						],
 								default: 'application/vnd.google-apps.file',
 								description: 'The Mime-Type of the files to return.',
 							},
@@ -691,31 +689,31 @@ export class GoogleDrive implements INodeType {
 								name: 'role',
 								type: 'options',
 								options: [
-									{
-										name: 'Owner',
-										value: 'owner',
-									},
-									{
-										name: 'Organizer',
-										value: 'organizer',
-									},
-									{
-										name: 'File Organizer',
-										value: 'fileOrganizer',
-									},
-									{
-										name: 'Writer',
-										value: 'writer',
-									},
-									{
-										name: 'Commenter',
-										value: 'commenter',
-									},
-									{
-										name: 'Reader',
-										value: 'reader',
-									},
-								],
+							{
+								name: 'Commenter',
+								value: 'commenter',
+							},
+							{
+								name: 'File Organizer',
+								value: 'fileOrganizer',
+							},
+							{
+								name: 'Organizer',
+								value: 'organizer',
+							},
+							{
+								name: 'Owner',
+								value: 'owner',
+							},
+							{
+								name: 'Reader',
+								value: 'reader',
+							},
+							{
+								name: 'Writer',
+								value: 'writer',
+							},
+						],
 								default: '',
 							},
 							{

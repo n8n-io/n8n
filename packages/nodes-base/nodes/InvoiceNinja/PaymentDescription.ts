@@ -104,140 +104,140 @@ export const paymentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Apply Credit',
-						value: 1,
-					},
-					{
-						name: 'Bank Transfer',
-						value: 2,
-					},
-					{
-						name: 'Cash',
-						value: 3,
-					},
-					{
-						name: 'Debit',
-						value: 4,
-					},
-					{
 						name: 'ACH',
-						value: 5,
-					},
-					{
-						name: 'Visa Card',
-						value: 6,
-					},
-					{
-						name: 'MasterCard',
-						value: 7,
-					},
-					{
-						name: 'American Express',
-						value: 8,
-					},
-					{
-						name: 'Discover Card',
-						value: 9,
-					},
-					{
-						name: 'Diners Card',
-						value: 10,
-					},
-					{
-						name: 'EuroCard',
-						value: 11,
-					},
-					{
-						name: 'Nova',
-						value: 12,
-					},
-					{
-						name: 'Credit Card Other',
-						value: 13,
-					},
-					{
-						name: 'Paypal',
-						value: 14,
-					},
-					{
-						name: 'Google Wallet',
-						value: 15,
-					},
-					{
-						name: 'Check',
-						value: 16,
-					},
-					{
-						name: 'Carte Blanche',
-						value: 17,
-					},
-					{
-						name: 'UnionPay',
-						value: 18,
-					},
-					{
-						name: 'JCB',
-						value: 19,
-					},
-					{
-						name: 'Laser',
-						value: 20,
-					},
-					{
-						name: 'Maestro',
-						value: 21,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'iZettle',
-						value: 24,
-					},
-					{
-						name: 'Swish',
-						value: 25,
-					},
-					{
-						name: 'Venmo',
-						value: 26,
-					},
-					{
-						name: 'Money Order',
-						value: 27,
+						value: 5
 					},
 					{
 						name: 'Alipay',
-						value: 28,
+						value: 28
 					},
 					{
-						name: 'Sofort',
-						value: 29,
+						name: 'American Express',
+						value: 8
 					},
 					{
-						name: 'SEPA',
-						value: 30,
+						name: 'Apply Credit',
+						value: 1
 					},
 					{
-						name: 'GoCardless',
-						value: 31,
+						name: 'Bank Transfer',
+						value: 2
 					},
 					{
 						name: 'Bitcoin',
-						value: 32,
+						value: 32
+					},
+					{
+						name: 'Carte Blanche',
+						value: 17
+					},
+					{
+						name: 'Cash',
+						value: 3
+					},
+					{
+						name: 'Check',
+						value: 16
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13
+					},
+					{
+						name: 'Debit',
+						value: 4
+					},
+					{
+						name: 'Diners Card',
+						value: 10
+					},
+					{
+						name: 'Discover Card',
+						value: 9
+					},
+					{
+						name: 'EuroCard',
+						value: 11
+					},
+					{
+						name: 'GoCardless',
+						value: 31
+					},
+					{
+						name: 'Google Wallet',
+						value: 15
+					},
+					{
+						name: 'iZettle',
+						value: 24
+					},
+					{
+						name: 'JCB',
+						value: 19
+					},
+					{
+						name: 'Laser',
+						value: 20
+					},
+					{
+						name: 'Maestro',
+						value: 21
+					},
+					{
+						name: 'MasterCard',
+						value: 7
+					},
+					{
+						name: 'Money Order',
+						value: 27
+					},
+					{
+						name: 'Nova',
+						value: 12
+					},
+					{
+						name: 'Paypal',
+						value: 14
+					},
+					{
+						name: 'SEPA',
+						value: 30
+					},
+					{
+						name: 'Sofort',
+						value: 29
+					},
+					{
+						name: 'Solo',
+						value: 22
+					},
+					{
+						name: 'Solo',
+						value: 22
+					},
+					{
+						name: 'Swich',
+						value: 23
+					},
+					{
+						name: 'Swich',
+						value: 23
+					},
+					{
+						name: 'Swish',
+						value: 25
+					},
+					{
+						name: 'UnionPay',
+						value: 18
+					},
+					{
+						name: 'Venmo',
+						value: 26
+					},
+					{
+						name: 'Visa Card',
+						value: 6
 					},
 				],
 				default: 1,

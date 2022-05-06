@@ -227,32 +227,32 @@ export const contactFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Equals',
-								value: 'EQUALS',
+						name: 'After',
+						value: 'AFTER',
 							},
 							{
-								name: 'Not Equal',
-								value: 'NOTEQUALS',
+						name: 'Before',
+						value: 'BEFORE',
 							},
 							{
-								name: 'Last',
-								value: 'LAST',
+						name: 'Between',
+						value: 'BETWEEN',
 							},
 							{
-								name: 'Between',
-								value: 'BETWEEN',
+						name: 'Equals',
+						value: 'EQUALS',
 							},
 							{
-								name: 'On',
-								value: 'ON',
+						name: 'Last',
+						value: 'LAST',
 							},
 							{
-								name: 'Before',
-								value: 'BEFORE',
+						name: 'Not Equal',
+						value: 'NOTEQUALS',
 							},
 							{
-								name: 'After',
-								value: 'AFTER',
+						name: 'On',
+						value: 'ON',
 							},
 						],
 						default: 'EQUALS',
@@ -622,35 +622,35 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 								description: 'Type of phone number.',
 								options: [
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Home Fax',
-										value: 'homeFax',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-									{
-										name: 'Work Fax',
-										value: 'workFax',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-								],
+							{
+								name: 'Home',
+								value: 'home',
+							},
+							{
+								name: 'Home Fax',
+								value: 'homeFax',
+							},
+							{
+								name: 'Main',
+								value: 'main',
+							},
+							{
+								name: 'Mobile',
+								value: 'mobile',
+							},
+							{
+								name: 'Other',
+								value: 'other',
+							},
+							{
+								name: 'Work',
+								value: 'work',
+							},
+							{
+								name: 'Work Fax',
+								value: 'workFax',
+							},
+						],
 							},
 							{
 								displayName: 'Number',
@@ -1083,35 +1083,35 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 								description: 'Type of phone number.',
 								options: [
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Home Fax',
-										value: 'homeFax',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-									{
-										name: 'Work Fax',
-										value: 'workFax',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-								],
+							{
+								name: 'Home',
+								value: 'home',
+							},
+							{
+								name: 'Home Fax',
+								value: 'homeFax',
+							},
+							{
+								name: 'Main',
+								value: 'main',
+							},
+							{
+								name: 'Mobile',
+								value: 'mobile',
+							},
+							{
+								name: 'Other',
+								value: 'other',
+							},
+							{
+								name: 'Work',
+								value: 'work',
+							},
+							{
+								name: 'Work Fax',
+								value: 'workFax',
+							},
+						],
 							},
 							{
 								displayName: 'Number',

@@ -611,104 +611,104 @@ export const cardFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						value: 'white',
-						name: 'White',
-					},
-					{
-						value: 'green',
-						name: 'Green',
-					},
-					{
-						value: 'yellow',
-						name: 'Yellow',
-					},
-					{
-						value: 'orange',
-						name: 'Orange',
-					},
-					{
-						value: 'red',
-						name: 'Red',
-					},
-					{
-						value: 'purple',
-						name: 'Purple',
+						value: 'black',
+						name: 'Black',
 					},
 					{
 						value: 'blue',
 						name: 'Blue',
 					},
 					{
-						value: 'sky',
-						name: 'Sky',
-					},
-					{
-						value: 'lime',
-						name: 'Lime',
-					},
-					{
-						value: 'pink',
-						name: 'Pink',
-					},
-					{
-						value: 'black',
-						name: 'Black',
-					},
-					{
-						value: 'silver',
-						name: 'Silver',
-					},
-					{
-						value: 'peachpuff',
-						name: 'Peachpuff',
-					},
-					{
 						value: 'crimson',
 						name: 'Crimson',
-					},
-					{
-						value: 'plum',
-						name: 'Plum',
 					},
 					{
 						value: 'darkgreen',
 						name: 'Darkgreen',
 					},
 					{
-						value: 'slateblue',
-						name: 'Slateblue',
-					},
-					{
-						value: 'magenta',
-						name: 'Magenta',
-					},
-					{
 						value: 'gold',
 						name: 'Gold',
-					},
-					{
-						value: 'navy',
-						name: 'Navy',
 					},
 					{
 						value: 'gray',
 						name: 'Gray',
 					},
 					{
-						value: 'saddlebrown',
-						name: 'Saddlebrown',
+						value: 'green',
+						name: 'Green',
 					},
 					{
-						value: 'paleturquoise',
-						name: 'Paleturquoise',
+						value: 'indigo',
+						name: 'Indigo',
+					},
+					{
+						value: 'lime',
+						name: 'Lime',
+					},
+					{
+						value: 'magenta',
+						name: 'Magenta',
 					},
 					{
 						value: 'mistyrose',
 						name: 'Mistyrose',
 					},
 					{
-						value: 'indigo',
-						name: 'Indigo',
+						value: 'navy',
+						name: 'Navy',
+					},
+					{
+						value: 'orange',
+						name: 'Orange',
+					},
+					{
+						value: 'paleturquoise',
+						name: 'Paleturquoise',
+					},
+					{
+						value: 'peachpuff',
+						name: 'Peachpuff',
+					},
+					{
+						value: 'pink',
+						name: 'Pink',
+					},
+					{
+						value: 'plum',
+						name: 'Plum',
+					},
+					{
+						value: 'purple',
+						name: 'Purple',
+					},
+					{
+						value: 'red',
+						name: 'Red',
+					},
+					{
+						value: 'saddlebrown',
+						name: 'Saddlebrown',
+					},
+					{
+						value: 'silver',
+						name: 'Silver',
+					},
+					{
+						value: 'sky',
+						name: 'Sky',
+					},
+					{
+						value: 'slateblue',
+						name: 'Slateblue',
+					},
+					{
+						value: 'white',
+						name: 'White',
+					},
+					{
+						value: 'yellow',
+						name: 'Yellow',
 					},
 				],
 				default: '',

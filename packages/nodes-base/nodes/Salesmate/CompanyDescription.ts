@@ -648,39 +648,39 @@ export const companyFields: INodeProperties[] = [
 										name: 'condition',
 										type: 'options',
 										options: [
-											{
-												name: 'Equals',
-												value: 'EQUALS',
-											},
-											{
-												name: 'Not Equals',
-												value: 'NOT_EQUALS',
-											},
-											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
-												name: 'CONTAINS',
-												value: 'Contains',
-											},
-											{
-												name: 'Does Not Contains',
-												value: 'DOES_NOT_CONTAINS',
-											},
-											{
-												name: 'Starts With',
-												value: 'STARTS_WITH',
-											},
-											{
-												name: 'Ends With',
-												value: 'ENDS_WITH',
-											},
-										],
+									{
+										name: 'CONTAINS',
+										value: 'Contains',
+									},
+									{
+										name: 'Does Not Contains',
+										value: 'DOES_NOT_CONTAINS',
+									},
+									{
+										name: 'Empty',
+										value: 'EMPTY',
+									},
+									{
+										name: 'Ends With',
+										value: 'ENDS_WITH',
+									},
+									{
+										name: 'Equals',
+										value: 'EQUALS',
+									},
+									{
+										name: 'Not Empty',
+										value: 'NOT_EMPTY',
+									},
+									{
+										name: 'Not Equals',
+										value: 'NOT_EQUALS',
+									},
+									{
+										name: 'Starts With',
+										value: 'STARTS_WITH',
+									},
+								],
 										default: 'EQUALS',
 										description: 'Value of the property to set.',
 									},

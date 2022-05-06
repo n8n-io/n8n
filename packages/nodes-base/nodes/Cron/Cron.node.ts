@@ -56,35 +56,35 @@ export class Cron implements INodeType {
 								name: 'mode',
 								type: 'options',
 								options: [
-									{
-										name: 'Every Minute',
-										value: 'everyMinute',
-									},
-									{
-										name: 'Every Hour',
-										value: 'everyHour',
-									},
-									{
-										name: 'Every Day',
-										value: 'everyDay',
-									},
-									{
-										name: 'Every Week',
-										value: 'everyWeek',
-									},
-									{
-										name: 'Every Month',
-										value: 'everyMonth',
-									},
-									{
-										name: 'Every X',
-										value: 'everyX',
-									},
-									{
-										name: 'Custom',
-										value: 'custom',
-									},
-								],
+							{
+								name: 'Custom',
+								value: 'custom',
+							},
+							{
+								name: 'Every Day',
+								value: 'everyDay',
+							},
+							{
+								name: 'Every Hour',
+								value: 'everyHour',
+							},
+							{
+								name: 'Every Minute',
+								value: 'everyMinute',
+							},
+							{
+								name: 'Every Month',
+								value: 'everyMonth',
+							},
+							{
+								name: 'Every Week',
+								value: 'everyWeek',
+							},
+							{
+								name: 'Every X',
+								value: 'everyX',
+							},
+						],
 								default: 'everyDay',
 								description: 'How often to trigger.',
 							},
@@ -159,35 +159,35 @@ export class Cron implements INodeType {
 									},
 								},
 								options: [
-									{
-										name: 'Monday',
-										value: '1',
-									},
-									{
-										name: 'Tuesday',
-										value: '2',
-									},
-									{
-										name: 'Wednesday',
-										value: '3',
-									},
-									{
-										name: 'Thursday',
-										value: '4',
-									},
-									{
-										name: 'Friday',
-										value: '5',
-									},
-									{
-										name: 'Saturday',
-										value: '6',
-									},
-									{
-										name: 'Sunday',
-										value: '0',
-									},
-								],
+							{
+								name: 'Friday',
+								value: '5',
+							},
+							{
+								name: 'Monday',
+								value: '1',
+							},
+							{
+								name: 'Saturday',
+								value: '6',
+							},
+							{
+								name: 'Sunday',
+								value: '0',
+							},
+							{
+								name: 'Thursday',
+								value: '4',
+							},
+							{
+								name: 'Tuesday',
+								value: '2',
+							},
+							{
+								name: 'Wednesday',
+								value: '3',
+							},
+						],
 								default: '1',
 								description: 'The weekday to trigger.',
 							},

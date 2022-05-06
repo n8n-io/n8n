@@ -26,11 +26,6 @@ export const tweetOperations: INodeProperties[] = [
 				description: 'Delete a tweet',
 			},
 			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search tweets',
-			},
-			{
 				name: 'Like',
 				value: 'like',
 				description: 'Like a tweet',
@@ -40,7 +35,12 @@ export const tweetOperations: INodeProperties[] = [
 				value: 'retweet',
 				description: 'Retweet a tweet',
 			},
-		],
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search tweets',
+			},
+			],
 		default: 'create',
 		description: 'The operation to perform.',
 	},

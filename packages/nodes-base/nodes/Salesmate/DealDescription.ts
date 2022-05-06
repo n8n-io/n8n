@@ -168,26 +168,26 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		options: [
 			{
-				name: 'New (Untouched)',
-				value: 'New (Untouched)',
-			},
-			{
 				name: 'Contacted',
 				value: 'Contacted',
 			},
 			{
-				name: 'Qualified',
-				value: 'Qualified',
+				name: 'In Negotiation',
+				value: 'In Negotiation',
+			},
+			{
+				name: 'New (Untouched)',
+				value: 'New (Untouched)',
 			},
 			{
 				name: 'Proposal Presented',
 				value: 'Proposal Presented',
 			},
 			{
-				name: 'In Negotiation',
-				value: 'In Negotiation',
+				name: 'Qualified',
+				value: 'Qualified',
 			},
-		],
+			],
 		displayOptions: {
 			show: {
 				resource: [
@@ -455,24 +455,24 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						name: 'New (Untouched)',
-						value: 'New (Untouched)',
-					},
-					{
 						name: 'Contacted',
 						value: 'Contacted',
 					},
 					{
-						name: 'Qualified',
-						value: 'Qualified',
+						name: 'In Negotiation',
+						value: 'In Negotiation',
+					},
+					{
+						name: 'New (Untouched)',
+						value: 'New (Untouched)',
 					},
 					{
 						name: 'Proposal Presented',
 						value: 'Proposal Presented',
 					},
 					{
-						name: 'In Negotiation',
-						value: 'In Negotiation',
+						name: 'Qualified',
+						value: 'Qualified',
 					},
 				],
 			},
@@ -819,39 +819,39 @@ export const dealFields: INodeProperties[] = [
 										name: 'condition',
 										type: 'options',
 										options: [
-											{
-												name: 'Equals',
-												value: 'EQUALS',
-											},
-											{
-												name: 'Not Equals',
-												value: 'NOT_EQUALS',
-											},
-											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
-												name: 'CONTAINS',
-												value: 'Contains',
-											},
-											{
-												name: 'Does Not Contains',
-												value: 'DOES_NOT_CONTAINS',
-											},
-											{
-												name: 'Starts With',
-												value: 'STARTS_WITH',
-											},
-											{
-												name: 'Ends With',
-												value: 'ENDS_WITH',
-											},
-										],
+									{
+										name: 'CONTAINS',
+										value: 'Contains',
+									},
+									{
+										name: 'Does Not Contains',
+										value: 'DOES_NOT_CONTAINS',
+									},
+									{
+										name: 'Empty',
+										value: 'EMPTY',
+									},
+									{
+										name: 'Ends With',
+										value: 'ENDS_WITH',
+									},
+									{
+										name: 'Equals',
+										value: 'EQUALS',
+									},
+									{
+										name: 'Not Empty',
+										value: 'NOT_EMPTY',
+									},
+									{
+										name: 'Not Equals',
+										value: 'NOT_EQUALS',
+									},
+									{
+										name: 'Starts With',
+										value: 'STARTS_WITH',
+									},
+								],
 										default: 'EQUALS',
 										description: 'Value of the property to set.',
 									},

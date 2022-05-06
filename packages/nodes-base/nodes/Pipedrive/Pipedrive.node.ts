@@ -482,14 +482,14 @@ export class Pipedrive implements INodeType {
 						description: 'Get data of all organizations',
 					},
 					{
-						name: 'Update',
-						value: 'update',
-						description: 'Update an organization',
-					},
-					{
 						name: 'Search',
 						value: 'search',
 						description: 'Search organizations',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update an organization',
 					},
 				],
 				default: 'create',

@@ -333,14 +333,6 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Subscribed',
-						value: 'subscribed',
-					},
-					{
-						name: 'Unsubscribed',
-						value: 'unsubscribed',
-					},
-					{
 						name: 'Cleaned',
 						value: 'cleaned',
 					},
@@ -349,8 +341,16 @@ export class Mailchimp implements INodeType {
 						value: 'pending',
 					},
 					{
+						name: 'Subscribed',
+						value: 'subscribed',
+					},
+					{
 						name: 'Transactional',
 						value: 'transactional',
+					},
+					{
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
 					},
 				],
 				default: '',
@@ -936,24 +936,24 @@ export class Mailchimp implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Subscribed',
-								value: 'subscribed',
+						name: 'Cleaned',
+						value: 'cleaned',
 							},
 							{
-								name: 'Unsubscribed',
-								value: 'unsubscribed',
+						name: 'Pending',
+						value: 'pending',
 							},
 							{
-								name: 'Cleaned',
-								value: 'cleaned',
+						name: 'Subscribed',
+						value: 'subscribed',
 							},
 							{
-								name: 'Pending',
-								value: 'pending',
+						name: 'Transactional',
+						value: 'transactional',
 							},
 							{
-								name: 'Transactional',
-								value: 'transactional',
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
 							},
 						],
 						default: '',
@@ -1218,24 +1218,24 @@ export class Mailchimp implements INodeType {
 						required: true,
 						options: [
 							{
-								name: 'Subscribed',
-								value: 'subscribed',
+						name: 'Cleaned',
+						value: 'cleaned',
 							},
 							{
-								name: 'Unsubscribed',
-								value: 'unsubscribed',
+						name: 'Pending',
+						value: 'pending',
 							},
 							{
-								name: 'Cleaned',
-								value: 'cleaned',
+						name: 'Subscribed',
+						value: 'subscribed',
 							},
 							{
-								name: 'Pending',
-								value: 'pending',
+						name: 'Transactional',
+						value: 'transactional',
 							},
 							{
-								name: 'Transactional',
-								value: 'transactional',
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
 							},
 						],
 						default: '',

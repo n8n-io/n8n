@@ -504,12 +504,12 @@ export const postFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'Top',
-						value: 'top',
-					},
-					{
 						name: 'Relevance',
 						value: 'relevance',
+					},
+					{
+						name: 'Top',
+						value: 'top',
 					},
 				],
 			},

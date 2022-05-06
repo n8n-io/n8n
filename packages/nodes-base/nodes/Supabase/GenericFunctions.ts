@@ -154,50 +154,50 @@ export function getFilters(
 							name: 'condition',
 							type: 'options',
 							options: [
-								{
-									name: 'Equals',
-									value: 'eq',
-								},
-								{
-									name: 'Greater Than',
-									value: 'gt',
-								},
-								{
-									name: 'Greater Than or Equal',
-									value: 'gte',
-								},
-								{
-									name: 'Less Than',
-									value: 'lt',
-								},
-								{
-									name: 'Less Than or Equal',
-									value: 'lte',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-								{
-									name: 'LIKE operator',
-									value: 'like',
-									description: 'use * in place of %',
-								},
-								{
-									name: 'ILIKE operator',
-									value: 'ilike',
-									description: 'use * in place of %',
-								},
-								{
-									name: 'Is',
-									value: 'is',
-									description: 'Checking for exact equality (null,true,false,unknown)',
-								},
-								{
-									name: 'Full-Text',
-									value: 'fullText',
-								},
-							],
+						{
+							name: 'Equals',
+							value: 'eq',
+						},
+						{
+							name: 'Full-Text',
+							value: 'fullText',
+						},
+						{
+							name: 'Greater Than',
+							value: 'gt',
+						},
+						{
+							name: 'Greater Than or Equal',
+							value: 'gte',
+						},
+						{
+							name: 'ILIKE operator',
+							value: 'ilike',
+							description: 'use	*	in place of	%',
+						},
+						{
+							name: 'Is',
+							value: 'is',
+							description: 'Checking for exact equality (null,true,false,unknown)',
+						},
+						{
+							name: 'Less Than',
+							value: 'lt',
+						},
+						{
+							name: 'Less Than or Equal',
+							value: 'lte',
+						},
+						{
+							name: 'LIKE operator',
+							value: 'like',
+							description: 'use	*	in place of	%',
+						},
+						{
+							name: 'Not Equals',
+							value: 'neq',
+						},
+					],
 							default: '',
 						},
 						{

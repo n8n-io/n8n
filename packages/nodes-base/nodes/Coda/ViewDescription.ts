@@ -39,16 +39,16 @@ export const viewOperations: INodeProperties[] = [
 				description: 'Get all views rows',
 			},
 			{
-				name: 'Update Row',
-				value: 'updateViewRow',
-				description: 'Update row',
-			},
-			{
 				name: 'Push Button',
 				value: 'pushViewButton',
 				description: 'Push view button',
 			},
-		],
+			{
+				name: 'Update Row',
+				value: 'updateViewRow',
+				description: 'Update row',
+			},
+			],
 		default: 'get',
 		description: 'The operation to perform.',
 	},

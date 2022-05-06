@@ -130,16 +130,16 @@ export const labelFields: INodeProperties[] = [
 				value: 'green',
 			},
 			{
-				name: 'orange',
-				value: 'orange',
-			},
-			{
 				name: 'lime',
 				value: 'lime',
 			},
 			{
 				name: 'null',
 				value: 'null',
+			},
+			{
+				name: 'orange',
+				value: 'orange',
 			},
 			{
 				name: 'pink',
@@ -161,7 +161,7 @@ export const labelFields: INodeProperties[] = [
 				name: 'yellow',
 				value: 'yellow',
 			},
-		],
+			],
 		default: 'null',
 		description: 'The color for the label.',
 	},
@@ -428,16 +428,16 @@ export const labelFields: INodeProperties[] = [
 						value: 'green',
 					},
 					{
-						name: 'orange',
-						value: 'orange',
-					},
-					{
 						name: 'lime',
 						value: 'lime',
 					},
 					{
 						name: 'null',
 						value: 'null',
+					},
+					{
+						name: 'orange',
+						value: 'orange',
 					},
 					{
 						name: 'pink',

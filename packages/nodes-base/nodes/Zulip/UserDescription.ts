@@ -274,24 +274,24 @@ export const userFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Organization Owner',
-						value: 100,
-					},
-					{
-						name: 'Organization Administrator',
-						value: 200,
-					},
-					{
-						name: 'Organization Moderator',
-						value: 300,
+						name: 'Guest',
+						value: 600
 					},
 					{
 						name: 'Member',
-						value: 400,
+						value: 400
 					},
 					{
-						name: 'Guest',
-						value: 600,
+						name: 'Organization Administrator',
+						value: 200
+					},
+					{
+						name: 'Organization Moderator',
+						value: 300
+					},
+					{
+						name: 'Organization Owner',
+						value: 100
 					},
 				],
 				default: '',

@@ -137,14 +137,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 						description: 'A collector is created',
 					},
 					{
-						name: 'Collector Updated',
-						value: 'collector_updated',
-						description: 'A collector is updated',
-					},
-					{
 						name: 'Collector Deleted',
 						value: 'collector_deleted',
 						description: 'A collector is deleted',
+					},
+					{
+						name: 'Collector Updated',
+						value: 'collector_updated',
+						description: 'A collector is updated',
 					},
 					{
 						name: 'Response Completed',
@@ -208,14 +208,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				options: [
 					{
-						name: 'Collector Updated',
-						value: 'collector_updated',
-						description: 'A collector is updated',
-					},
-					{
 						name: 'Collector Deleted',
 						value: 'collector_deleted',
 						description: 'A collector is deleted',
+					},
+					{
+						name: 'Collector Updated',
+						value: 'collector_updated',
+						description: 'A collector is updated',
 					},
 					{
 						name: 'Response Completed',

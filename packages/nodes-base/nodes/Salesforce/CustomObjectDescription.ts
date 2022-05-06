@@ -26,6 +26,11 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a custom object record',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom object record',
@@ -36,16 +41,11 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Get all custom object records',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a custom object record',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a custom object record',
 			},
-		],
+			],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
@@ -464,27 +464,27 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: '=',
-										value: 'equal',
-									},
-									{
-										name: '>',
-										value: '>',
-									},
-									{
-										name: '<',
-										value: '<',
-									},
-									{
-										name: '>=',
-										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
-									},
-								],
+							{
+								name: '<',
+								value: '<',
+							},
+							{
+								name: '<=',
+								value: '<=',
+							},
+							{
+								name: '=',
+								value: 'equal',
+							},
+							{
+								name: '>',
+								value: '>',
+							},
+							{
+								name: '>=',
+								value: '>=',
+							},
+						],
 								default: 'equal',
 							},
 							{

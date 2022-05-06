@@ -323,31 +323,31 @@ export class Switch implements INodeType {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: 'Smaller',
-										value: 'smaller',
-									},
-									{
-										name: 'Smaller Equal',
-										value: 'smallerEqual',
-									},
-									{
-										name: 'Equal',
-										value: 'equal',
-									},
-									{
-										name: 'Not Equal',
-										value: 'notEqual',
-									},
-									{
-										name: 'Larger',
-										value: 'larger',
-									},
-									{
-										name: 'Larger Equal',
-										value: 'largerEqual',
-									},
-								],
+							{
+								name: 'Equal',
+								value: 'equal',
+							},
+							{
+								name: 'Larger',
+								value: 'larger',
+							},
+							{
+								name: 'Larger Equal',
+								value: 'largerEqual',
+							},
+							{
+								name: 'Not Equal',
+								value: 'notEqual',
+							},
+							{
+								name: 'Smaller',
+								value: 'smaller',
+							},
+							{
+								name: 'Smaller Equal',
+								value: 'smallerEqual',
+							},
+						],
 								default: 'smaller',
 								description: 'Operation to decide where the the data should be mapped to.',
 							},
@@ -423,47 +423,47 @@ export class Switch implements INodeType {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{
-										name: 'Contains',
-										value: 'contains',
-									},
-									{
-										name: 'Not Contains',
-										value: 'notContains',
-									},
-									{
-										name: 'Ends With',
-										value: 'endsWith',
-									},
-									{
-										name: 'Not Ends With',
-										value: 'notEndsWith',
-									},
-									{
-										name: 'Equal',
-										value: 'equal',
-									},
-									{
-										name: 'Not Equal',
-										value: 'notEqual',
-									},
-									{
-										name: 'Regex Match',
-										value: 'regex',
-									},
-									{
-										name: 'Regex Not Match',
-										value: 'notRegex',
-									},
-									{
-										name: 'Starts With',
-										value: 'startsWith',
-									},
-									{
-										name: 'Not Starts With',
-										value: 'notStartsWith',
-									},
-								],
+							{
+								name: 'Contains',
+								value: 'contains',
+							},
+							{
+								name: 'Ends With',
+								value: 'endsWith',
+							},
+							{
+								name: 'Equal',
+								value: 'equal',
+							},
+							{
+								name: 'Not Contains',
+								value: 'notContains',
+							},
+							{
+								name: 'Not Ends With',
+								value: 'notEndsWith',
+							},
+							{
+								name: 'Not Equal',
+								value: 'notEqual',
+							},
+							{
+								name: 'Not Starts With',
+								value: 'notStartsWith',
+							},
+							{
+								name: 'Regex Match',
+								value: 'regex',
+							},
+							{
+								name: 'Regex Not Match',
+								value: 'notRegex',
+							},
+							{
+								name: 'Starts With',
+								value: 'startsWith',
+							},
+						],
 								default: 'equal',
 								description: 'Operation to decide where the the data should be mapped to.',
 							},
@@ -529,24 +529,24 @@ export class Switch implements INodeType {
 				},
 				options: [
 					{
-						name: 'None',
-						value: -1,
-					},
-					{
 						name: '0',
-						value: 0,
+						value: 0
 					},
 					{
 						name: '1',
-						value: 1,
+						value: 1
 					},
 					{
 						name: '2',
-						value: 2,
+						value: 2
 					},
 					{
 						name: '3',
-						value: 3,
+						value: 3
+					},
+					{
+						name: 'None',
+						value: -1
 					},
 				],
 				default: -1,
