@@ -255,7 +255,7 @@ export class HackerNews implements INodeType {
 						options: [
 							{
 								name: 'Ask HN',
-								value: 'ask_hn',
+								value: 'ask_hn', // snake case per HN tags
 								description: 'Returns query results filtered by Ask HN tag',
 							},
 							{
@@ -265,7 +265,7 @@ export class HackerNews implements INodeType {
 							},
 							{
 								name: 'Front Page',
-								value: 'front_page',
+								value: 'front_page', // snake case per HN tags
 								description: 'Returns query results filtered by Front Page tag',
 							},
 							{
@@ -275,7 +275,7 @@ export class HackerNews implements INodeType {
 							},
 							{
 								name: 'Show HN',
-								value: 'show_hn',
+								value: 'show_hn', // snake case per HN tags
 								description: 'Returns query results filtered by Show HN tag',
 							},
 							{
