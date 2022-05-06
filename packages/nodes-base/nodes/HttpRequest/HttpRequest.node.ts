@@ -195,7 +195,8 @@ export class HttpRequest implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to connect even if SSL certificate validation is not possible',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
+				description: 'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Response Format',
