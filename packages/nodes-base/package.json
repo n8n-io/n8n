@@ -20,7 +20,8 @@
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json; cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes --fix",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "lintfix-plugin": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes --fix",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
@@ -711,7 +712,7 @@
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.3",
-    "eslint-plugin-n8n-nodes-base": "^1.0.28",
+    "eslint-plugin-n8n-nodes-base": "^1.0.29",
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
     "n8n-workflow": "~0.98.0",

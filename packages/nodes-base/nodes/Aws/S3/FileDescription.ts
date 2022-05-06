@@ -141,35 +141,35 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'private',
-				description: 'The canned ACL to apply to the object.',
+				description: 'The canned ACL to apply to the object',
 			},
 			{
 				displayName: 'Grant Full Control',
 				name: 'grantFullControl',
 				type: 'boolean',
 				default: false,
-				description: 'Gives the grantee READ, READ_ACP, and WRITE_ACP permissions on the object.',
+				description: 'Gives the grantee READ, READ_ACP, and WRITE_ACP permissions on the object',
 			},
 			{
 				displayName: 'Grant Read',
 				name: 'grantRead',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to read the object data and its metadata.',
+				description: 'Allows grantee to read the object data and its metadata',
 			},
 			{
 				displayName: 'Grant Read ACP',
 				name: 'grantReadAcp',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to read the object ACL.',
+				description: 'Allows grantee to read the object ACL',
 			},
 			{
 				displayName: 'Grant Write ACP',
 				name: 'grantWriteAcp',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to write the ACL for the applicable object.',
+				description: 'Allows grantee to write the ACL for the applicable object',
 			},
 			{
 				displayName: 'Lock Legal Hold',
@@ -193,14 +193,14 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The Object Lock mode that you want to apply to this object.',
+				description: 'The Object Lock mode that you want to apply to this object',
 			},
 			{
 				displayName: 'Lock Retain Until Date',
 				name: 'lockRetainUntilDate',
 				type: 'dateTime',
 				default: '',
-				description: `The date and time when you want this object's Object Lock to expire.`,
+				description: 'The date and time when you want this object\'s Object Lock to expire',
 			},
 			{
 				displayName: 'Metadata Directive',
@@ -217,7 +217,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request.',
+				description: 'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request',
 			},
 			{
 				displayName: 'Requester Pays',
@@ -262,7 +262,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'serversideEncryptionCustomerAlgorithm',
 				type: 'string',
 				default: '',
-				description: 'Specifies the algorithm to use to when encrypting the object (for example, AES256).',
+				description: 'Specifies the algorithm to use to when encrypting the object (for example, AES256)',
 			},
 			{
 				displayName: 'Server Side Encryption Customer Key',
@@ -276,7 +276,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'serversideEncryptionCustomerKeyMD5',
 				type: 'string',
 				default: '',
-				description: 'Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321.',
+				description: 'Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321',
 			},
 			{
 				displayName: 'Storage Class',
@@ -309,7 +309,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'standard',
-				description: 'Amazon S3 storage classes.',
+				description: 'Amazon S3 storage classes',
 			},
 			{
 				displayName: 'Tagging Directive',
@@ -326,7 +326,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request.',
+				description: 'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request',
 			},
 		],
 	},
@@ -389,7 +389,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If not set the binary data filename will be used.',
+		description: 'If not set the binary data filename will be used',
 	},
 	{
 		displayName: 'Binary Data',
@@ -406,7 +406,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field.',
+		description: 'If the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -427,7 +427,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'The text content of the file to upload.',
+		description: 'The text content of the file to upload',
 	},
 	{
 		displayName: 'Binary Property',
@@ -450,7 +450,7 @@ export const fileFields: INodeProperties[] = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -504,35 +504,35 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'private',
-				description: 'The canned ACL to apply to the object.',
+				description: 'The canned ACL to apply to the object',
 			},
 			{
 				displayName: 'Grant Full Control',
 				name: 'grantFullControl',
 				type: 'boolean',
 				default: false,
-				description: 'Gives the grantee READ, READ_ACP, and WRITE_ACP permissions on the object.',
+				description: 'Gives the grantee READ, READ_ACP, and WRITE_ACP permissions on the object',
 			},
 			{
 				displayName: 'Grant Read',
 				name: 'grantRead',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to read the object data and its metadata.',
+				description: 'Allows grantee to read the object data and its metadata',
 			},
 			{
 				displayName: 'Grant Read ACP',
 				name: 'grantReadAcp',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to read the object ACL.',
+				description: 'Allows grantee to read the object ACL',
 			},
 			{
 				displayName: 'Grant Write ACP',
 				name: 'grantWriteAcp',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to write the ACL for the applicable object.',
+				description: 'Allows grantee to write the ACL for the applicable object',
 			},
 			{
 				displayName: 'Lock Legal Hold',
@@ -556,14 +556,14 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The Object Lock mode that you want to apply to this object.',
+				description: 'The Object Lock mode that you want to apply to this object',
 			},
 			{
 				displayName: 'Lock Retain Until Date',
 				name: 'lockRetainUntilDate',
 				type: 'dateTime',
 				default: '',
-				description: `The date and time when you want this object's Object Lock to expire.`,
+				description: 'The date and time when you want this object\'s Object Lock to expire',
 			},
 			{
 				displayName: 'Parent Folder Key',
@@ -615,7 +615,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'serversideEncryptionCustomerAlgorithm',
 				type: 'string',
 				default: '',
-				description: 'Specifies the algorithm to use to when encrypting the object (for example, AES256).',
+				description: 'Specifies the algorithm to use to when encrypting the object (for example, AES256)',
 			},
 			{
 				displayName: 'Server Side Encryption Customer Key',
@@ -629,7 +629,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'serversideEncryptionCustomerKeyMD5',
 				type: 'string',
 				default: '',
-				description: 'Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321.',
+				description: 'Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321',
 			},
 			{
 				displayName: 'Storage Class',
@@ -662,7 +662,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'standard',
-				description: 'Amazon S3 storage classes.',
+				description: 'Amazon S3 storage classes',
 			},
 		],
 	},
@@ -705,7 +705,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Optional extra headers to add to the message (most headers are allowed).',
+		description: 'Optional extra headers to add to the message (most headers are allowed)',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                file:download                               */
@@ -760,7 +760,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                file:delete                                 */
@@ -859,7 +859,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -883,7 +883,7 @@ export const fileFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -907,7 +907,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
-				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true.',
+				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
 				displayName: 'Folder Key',

@@ -281,11 +281,18 @@ export class Pushover implements INodeType {
 						description: 'Your message\'s title, otherwise your app\'s name is used',
 					},
 					{
+						displayName: 'Timestamp',
+						name: 'timestamp',
+						type: 'dateTime',
+						default: '',
+						description: 'A Unix timestamp of your message\'s date and time to display to the user, rather than the time your message is received by our API',
+					},
+					{
 						displayName: 'URL',
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'A supplementary URL to show with your message',
+						description: 'a supplementary URL to show with your message',
 					},
 					{
 						displayName: 'URL Title',

@@ -193,7 +193,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -217,7 +217,7 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -241,7 +241,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'memberId',
 				type: 'string',
 				default: '',
-				description: 'When set the post will be filtered by the member id.',
+				description: 'When set the post will be filtered by the member ID',
 			},
 		],
 	},

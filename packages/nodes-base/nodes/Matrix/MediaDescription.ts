@@ -49,7 +49,7 @@ export const mediaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Room ID to post ',
+		description: 'Room ID to post',
 		required: true,
 	},
 	{

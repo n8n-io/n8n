@@ -268,7 +268,7 @@ export const rowFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -314,7 +314,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'convert_link_id',
 				type: 'boolean',
 				default: false,
-				description: `Whether the link column in the returned row is the ID of the linked row or the name of the linked row`,
+				description: 'Whether the link column in the returned row is the ID of the linked row or the name of the linked row',
 			},
 			{
 				displayName: 'Direction',
@@ -331,7 +331,7 @@ export const rowFields: INodeProperties[] = [
 					},
 				],
 				default: 'asc',
-				description: `The direction of the sort, ascending (asc) or descending (desc)`,
+				description: 'The direction of the sort, ascending (asc) or descending (desc)',
 			},
 			{
 				displayName: 'Order By',
@@ -341,7 +341,7 @@ export const rowFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
-				description: `A column's name or ID, use this column to sort the rows`,
+				description: 'A column\'s name or ID, use this column to sort the rows',
 			},
 		],
 	},
