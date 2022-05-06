@@ -116,7 +116,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'callDurationInSeconds',
 				type: 'number',
 				default: '',
-				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center',
+				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Object',
@@ -455,7 +455,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'callDurationInSeconds',
 				type: 'number',
 				default: '',
-				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center',
+				description: 'Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Object',

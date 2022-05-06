@@ -276,7 +276,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'Name of the options you want to set. Multiples can be defined separated by comma',
+						description: 'Name of the options you want to set. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Option',
