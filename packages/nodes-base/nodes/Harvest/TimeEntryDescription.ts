@@ -86,7 +86,7 @@ export const timeEntryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your time entries.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

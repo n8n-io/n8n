@@ -192,7 +192,7 @@ export const campaignFields: INodeProperties[] = [
 				name: 'excludeListIds',
 				type: 'string',
 				default: '',
-				description: 'Lists to exclude from your campaign. List IDs should be single or comma-separated',
+				description: 'Lists to exclude from your campaign. List IDs should be single or comma-separated.',
 			},
 			{
 				displayName: 'Exclude Segment IDs',
