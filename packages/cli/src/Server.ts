@@ -2269,7 +2269,7 @@ class App {
 						let filterToAdd = {};
 
 						if (key === 'waitTill') {
-							filterToAdd = { waitTill: !IsNull() };
+							filterToAdd = { waitTill: Not(IsNull()) };
 						} else if (key === 'finished' && value === false) {
 							filterToAdd = { finished: false, waitTill: IsNull() };
 						} else {
