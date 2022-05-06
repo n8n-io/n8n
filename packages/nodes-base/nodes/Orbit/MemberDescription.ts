@@ -191,7 +191,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -334,7 +334,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created',
+		description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created.',
 	},
 	{
 		displayName: 'Search By',
@@ -392,7 +392,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The username at the source',
+		description: 'The username at the source.',
 	},
 	{
 		displayName: 'Username',
@@ -418,7 +418,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The username at the source',
+		description: 'The username at the source.',
 	},
 	{
 		displayName: 'Email',
@@ -439,7 +439,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address',
+		description: 'The email address.',
 	},
 	{
 		displayName: 'Host',
@@ -673,7 +673,7 @@ export const memberFields: INodeProperties[] = [
 							},
 						],
 						default: '',
-						description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created',
+						description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created.',
 					},
 					{
 						displayName: 'Search By',
@@ -719,7 +719,7 @@ export const memberFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The username at the source',
+						description: 'The username at the source.',
 					},
 					{
 						displayName: 'Username',
@@ -739,7 +739,7 @@ export const memberFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The username at the source',
+						description: 'The username at the source.',
 					},
 					{
 						displayName: 'Email',

@@ -116,7 +116,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: 'The field\'s key',
+								description: 'The field\'s key.',
 							},
 							{
 								displayName: 'Field Value',
@@ -154,7 +154,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

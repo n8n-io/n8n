@@ -354,7 +354,7 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: '',
-				description: 'Subscriber\'s current status',
+				description: 'Subscriber\'s current status.',
 			},
 			{
 				displayName: 'JSON Parameters',
@@ -411,7 +411,7 @@ export class Mailchimp implements INodeType {
 						name: 'language',
 						type: 'string',
 						default: '',
-						description: 'If set/detected, the subscriber\'s language',
+						description: 'If set/detected, the subscriber\'s language.',
 					},
 					{
 						displayName: 'Opt-in IP',
@@ -439,21 +439,21 @@ export class Mailchimp implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'The tags that are associated with a member separeted by ,',
+						description: 'The tags that are associated with a member separeted by ,.',
 					},
 					{
 						displayName: 'Vip',
 						name: 'vip',
 						type: 'boolean',
 						default: false,
-						description: `Vip status for subscribers`,
+						description: 'Vip status for subscribers',
 					},
 					{
 						displayName: 'Opt-in Timestamp',
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
+						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format.',
 					},
 				],
 			},
@@ -463,7 +463,7 @@ export class Mailchimp implements INodeType {
 				type: 'fixedCollection',
 				placeholder: 'Add Location',
 				default: {},
-				description: `Subscriber location information.n`,
+				description: 'Subscriber location information.n',
 				displayOptions: {
 					show: {
 						resource:[
@@ -724,7 +724,7 @@ export class Mailchimp implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `Member's email`,
+				description: 'Member\'s email',
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:get                                 */
@@ -767,7 +767,7 @@ export class Mailchimp implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `Member's email`,
+				description: 'Member\'s email',
 			},
 			{
 				displayName: 'Options',
@@ -842,7 +842,7 @@ export class Mailchimp implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -957,7 +957,7 @@ export class Mailchimp implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Subscriber\'s current status',
+						description: 'Subscriber\'s current status.',
 					},
 					{
 						displayName: 'Since Last Changed',
@@ -1124,7 +1124,7 @@ export class Mailchimp implements INodeType {
 						name: 'language',
 						type: 'string',
 						default: '',
-						description: 'If set/detected, the subscriber\'s language',
+						description: 'If set/detected, the subscriber\'s language.',
 					},
 					{
 						displayName: 'Merge Fields',
@@ -1239,14 +1239,14 @@ export class Mailchimp implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Subscriber\'s current status',
+						description: 'Subscriber\'s current status.',
 					},
 					{
 						displayName: 'Vip',
 						name: 'vip',
 						type: 'boolean',
 						default: false,
-						description: `Vip status for subscribers`,
+						description: 'Vip status for subscribers',
 					},
 					{
 						displayName: 'Location',
@@ -1254,7 +1254,7 @@ export class Mailchimp implements INodeType {
 						type: 'fixedCollection',
 						placeholder: 'Add Location',
 						default: {},
-						description: `Subscriber location information.n`,
+						description: 'Subscriber location information.n',
 						displayOptions: {
 							show: {
 								'/resource':[
@@ -1298,7 +1298,7 @@ export class Mailchimp implements INodeType {
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
+						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format.',
 					},
 				],
 			},
@@ -1525,7 +1525,7 @@ export class Mailchimp implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -1569,7 +1569,7 @@ export class Mailchimp implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',

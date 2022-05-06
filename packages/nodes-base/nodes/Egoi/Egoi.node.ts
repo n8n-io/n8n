@@ -262,7 +262,7 @@ export class Egoi implements INodeType {
 							},
 						],
 						default: 'active',
-						description: 'Subscriber\'s current status',
+						description: 'Subscriber\'s current status.',
 					},
 					{
 						displayName: 'Tags IDs',
@@ -391,7 +391,7 @@ export class Egoi implements INodeType {
 
 						],
 						default: 'active',
-						description: 'Subscriber\'s current status',
+						description: 'Subscriber\'s current status.',
 					},
 					{
 						displayName: 'Tags IDs',
@@ -487,7 +487,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',

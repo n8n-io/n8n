@@ -273,7 +273,7 @@ export class Ftp implements INodeType {
 						name: 'createDirectories',
 						type: 'boolean',
 						default: false,
-						description: `Recursively create destination directory when renaming an existing file or folder`,
+						description: 'Recursively create destination directory when renaming an existing file or folder',
 					},
 				],
 			},

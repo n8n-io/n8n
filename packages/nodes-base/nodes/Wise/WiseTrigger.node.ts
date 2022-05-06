@@ -77,12 +77,12 @@ export class WiseTrigger implements INodeType {
 					{
 						name: 'Transfer Active Case',
 						value: 'transferActiveCases',
-						description: 'Triggered every time a transfer\'s list of active cases is updated',
+						description: 'Triggered every time a transfer\'s list of active cases is updated.',
 					},
 					{
 						name: 'Transfer State Changed',
 						value: 'tranferStateChange',
-						description: 'Triggered every time a transfer\'s status is updated',
+						description: 'Triggered every time a transfer\'s status is updated.',
 					},
 				],
 			},

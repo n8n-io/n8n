@@ -87,7 +87,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -371,7 +371,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'field',
 								type: 'string',
 								default: '',
-								description: `The sorting field`,
+								description: 'The sorting field',
 							},
 						],
 					},
@@ -422,7 +422,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>.',
 	},
 
 	{
@@ -884,7 +884,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',

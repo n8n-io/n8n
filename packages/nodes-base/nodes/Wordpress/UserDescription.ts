@@ -399,7 +399,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	default: false,
-	description: 'If all results should be returned or only up to a given limit',
+	description: 'Whether to return all results or only up to a given limit',
 },
 {
 	displayName: 'Limit',
@@ -562,6 +562,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Reassign the deleted user\'s posts and links to this user ID',
+		description: 'Reassign the deleted user\'s posts and links to this user ID.',
 	},
 ];

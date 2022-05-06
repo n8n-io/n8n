@@ -116,7 +116,7 @@ export const productFields: INodeProperties[] = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: `A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.`,
+				description: 'A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.',
 			},
 			{
 				displayName: 'Images',
@@ -148,7 +148,7 @@ export const productFields: INodeProperties[] = [
 						name: 'position',
 						type: 'number',
 						default: '',
-						description: `The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.`,
+						description: 'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
 					},
 					{
 						displayName: 'Product ID',
@@ -206,7 +206,7 @@ export const productFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				description: `The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.`,
+				description: 'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
 				options: [
 					{
 						displayName: 'Option',
@@ -217,14 +217,14 @@ export const productFields: INodeProperties[] = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Option\'s name',
+								description: 'Option\'s name.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Option\'s values',
+								description: 'Option\'s values.',
 							},
 						],
 					},
@@ -334,7 +334,7 @@ export const productFields: INodeProperties[] = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: `A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.`,
+				description: 'A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.',
 			},
 			{
 				displayName: 'Images',
@@ -366,7 +366,7 @@ export const productFields: INodeProperties[] = [
 						name: 'position',
 						type: 'number',
 						default: '',
-						description: `The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.`,
+						description: 'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
 					},
 					{
 						displayName: 'Product ID',
@@ -424,7 +424,7 @@ export const productFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				description: `The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.`,
+				description: 'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
 				options: [
 					{
 						displayName: 'Option',
@@ -435,14 +435,14 @@ export const productFields: INodeProperties[] = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Option\'s name',
+								description: 'Option\'s name.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Option\'s values',
+								description: 'Option\'s values.',
 							},
 						],
 					},
@@ -614,7 +614,7 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

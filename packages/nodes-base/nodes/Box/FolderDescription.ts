@@ -72,7 +72,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Folder's name`,
+		description: 'Folder\'s name',
 	},
 	{
 		displayName: 'Parent ID',
@@ -229,7 +229,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -535,7 +535,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The user\'s email address to share the folder with',
+		description: 'The user\'s email address to share the folder with.',
 	},
 	{
 		displayName: 'User ID',
@@ -558,7 +558,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The user\'s ID to share the folder with',
+		description: 'The user\'s ID to share the folder with.',
 	},
 	{
 		displayName: 'Group ID',
@@ -578,7 +578,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The group\'s ID to share the folder with',
+		description: 'The group\'s ID to share the folder with.',
 	},
 	{
 		displayName: 'Role',
@@ -656,7 +656,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: `Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
+				description: 'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
 			},
 			{
 				displayName: 'Expires At',

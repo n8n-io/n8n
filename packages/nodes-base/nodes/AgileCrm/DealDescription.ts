@@ -78,6 +78,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
@@ -108,7 +109,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                deal:create                                 */
@@ -263,7 +264,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -412,7 +413,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',

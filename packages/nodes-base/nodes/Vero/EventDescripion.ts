@@ -16,7 +16,7 @@ export const eventOperations: INodeProperties[] = [
 			{
 				name: 'Track',
 				value: 'track',
-				description: `Track an event for a specific customer`,
+				description: 'Track an event for a specific customer',
 			},
 		],
 		default: 'track',

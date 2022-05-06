@@ -86,7 +86,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.`,
+		description: 'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -153,7 +153,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: `Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.`,
+				description: 'Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.',
 				default: [],
 				options: [
 					{
@@ -197,7 +197,7 @@ export const contactFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: `Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.`,
+				description: 'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 			},
 			{
 				displayName: 'Job Title',
@@ -211,7 +211,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: `Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).`,
+				description: 'Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).',
 			},
 			{
 				displayName: 'Mobile',
@@ -243,7 +243,7 @@ export const contactFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Company',
-				description: `Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).`,
+				description: 'Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 			},
 			{
 				displayName: 'Other Emails',
@@ -278,7 +278,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: `Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).`,
+				description: 'Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).',
 			},
 			{
 				displayName: 'Twitter ID',

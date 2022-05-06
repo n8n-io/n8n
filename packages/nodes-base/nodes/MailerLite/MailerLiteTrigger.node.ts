@@ -50,32 +50,32 @@ export class MailerLiteTrigger implements INodeType {
 					{
 						name: 'Campaign Sent',
 						value: 'campaign.sent',
-						description: 'Fired when campaign is sent',
+						description: 'Fired when campaign is sent.',
 					},
 					{
 						name: 'Subscriber Added to Group',
 						value: 'subscriber.add_to_group',
-						description: 'Fired when a subscriber is added to a group',
+						description: 'Fired when a subscriber is added to a group.',
 					},
 					{
 						name: 'Subscriber Added Throught Webform',
 						value: 'subscriber.added_through_webform',
-						description: 'Fired when a subscriber is added though a form',
+						description: 'Fired when a subscriber is added though a form.',
 					},
 					{
 						name: 'Subscriber Autonomation Completed',
 						value: 'subscriber.automation_complete',
-						description: 'Fired when subscriber finishes automation',
+						description: 'Fired when subscriber finishes automation.',
 					},
 					{
 						name: 'Subscriber Autonomation Triggered',
 						value: 'subscriber.automation_triggered',
-						description: 'Fired when subscriber starts automation',
+						description: 'Fired when subscriber starts automation.',
 					},
 					{
 						name: 'Subscriber Bounced',
 						value: 'subscriber.bounced',
-						description: 'Fired when an email address bounces',
+						description: 'Fired when an email address bounces.',
 					},
 					{
 						name: 'Subscriber Created',
@@ -85,22 +85,22 @@ export class MailerLiteTrigger implements INodeType {
 					{
 						name: 'Subscriber Complained',
 						value: 'subscriber.complaint',
-						description: 'Fired when subscriber marks a campaign as a spam',
+						description: 'Fired when subscriber marks a campaign as a spam.',
 					},
 					{
 						name: 'Subscriber Removed from Group',
 						value: 'subscriber.remove_from_group',
-						description: 'Fired when a subscriber is removed from a group',
+						description: 'Fired when a subscriber is removed from a group.',
 					},
 					{
 						name: 'Subscriber Unsubscribe',
 						value: 'subscriber.unsubscribe',
-						description: 'Fired when a subscriber becomes unsubscribed',
+						description: 'Fired when a subscriber becomes unsubscribed.',
 					},
 					{
 						name: 'Subscriber Updated',
 						value: 'subscriber.update',
-						description: 'Fired when any of the subscriber\'s custom fields are updated',
+						description: 'Fired when any of the subscriber\'s custom fields are updated.',
 					},
 				],
 				required: true,

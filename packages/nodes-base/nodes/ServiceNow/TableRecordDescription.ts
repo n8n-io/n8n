@@ -83,7 +83,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: `Don't send any column data`,
+				description: 'Don\'t send any column data',
 			},
 		],
 		displayOptions: {
@@ -467,7 +467,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: `Don't send any column data`,
+				description: 'Don\'t send any column data',
 			},
 		],
 		displayOptions: {

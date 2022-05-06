@@ -36,7 +36,7 @@ export const companyOperations: INodeProperties[] = [
 			{
 				name: 'Users',
 				value: 'users',
-				description: `List company's users`,
+				description: 'List company\'s users',
 			},
 		],
 		default: 'create',
@@ -110,7 +110,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -155,7 +155,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -369,7 +369,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
+				description: 'The URL for this company\'s website. Please note that the value specified here is not validated. Accepts any string.',
 			},
 		],
 	},

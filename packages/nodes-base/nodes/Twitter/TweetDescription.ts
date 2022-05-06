@@ -115,7 +115,7 @@ export const tweetFields: INodeProperties[] = [
 				type: 'fixedCollection',
 				placeholder: 'Add Location',
 				default: {},
-				description: `Subscriber location information.n`,
+				description: 'Subscriber location information.n',
 				options: [
 					{
 						name: 'locationFieldsValues',
@@ -195,7 +195,7 @@ export const tweetFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.`,
+		description: 'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -212,7 +212,7 @@ export const tweetFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -277,7 +277,7 @@ export const tweetFields: INodeProperties[] = [
 				type: 'fixedCollection',
 				placeholder: 'Add Location',
 				default: {},
-				description: `Subscriber location information.n`,
+				description: 'Subscriber location information.n',
 				options: [
 					{
 						name: 'locationFieldsValues',
@@ -473,7 +473,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'trimUser',
 				type: 'boolean',
 				default: false,
-				description: 'When set to either true, each tweet returned in a timeline will include a user object including only the status authors numerical ID',
+				description: 'When set to either true, each tweet returned in a timeline will include a user object including only the status authors numerical ID.',
 			},
 		],
 	},

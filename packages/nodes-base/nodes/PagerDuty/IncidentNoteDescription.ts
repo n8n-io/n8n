@@ -23,7 +23,7 @@ export const incidentNoteOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Get all incident's notes`,
+				description: 'Get all incident\'s notes',
 			},
 		],
 		default: 'create',
@@ -91,7 +91,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request',
+		description: 'The email address of a valid user associated with the account making the request.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 incidentNote:getAll                        */
@@ -129,7 +129,7 @@ export const incidentNoteFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

@@ -148,7 +148,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'threadTs',
 				type: 'string',
 				default: '',
-				description: `Provide another message's ts value to upload this file as a reply. Never use a reply's ts value; use its parent instead.`,
+				description: 'Provide another message\'s ts value to upload this file as a reply. Never use a reply\'s ts value; use its parent instead.',
 			},
 			{
 				displayName: 'Title',
@@ -178,7 +178,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

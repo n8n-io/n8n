@@ -20,12 +20,12 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a contact`,
+				description: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a contact`,
+				description: 'Delete a contact',
 			},
 			{
 				name: 'Get',
@@ -40,7 +40,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a contact`,
+				description: 'Update a contact',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

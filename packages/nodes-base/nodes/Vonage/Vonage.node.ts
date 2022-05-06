@@ -82,7 +82,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: '',
-				description: `The name or number the message should be sent from`,
+				description: 'The name or number the message should be sent from',
 			},
 			{
 				displayName: 'To',
@@ -99,7 +99,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: '',
-				description: `The number that the message should be sent to. Numbers are specified in E.164 format.`,
+				description: 'The number that the message should be sent to. Numbers are specified in E.164 format.',
 			},
 			// {
 			// 	displayName: 'Type',
@@ -284,7 +284,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: '',
-				description: `The body of the message being sent`,
+				description: 'The body of the message being sent',
 			},
 			// {
 			// 	displayName: 'VCard',

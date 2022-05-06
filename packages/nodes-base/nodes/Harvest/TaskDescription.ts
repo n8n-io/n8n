@@ -20,12 +20,12 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a task`,
+				description: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a task`,
+				description: 'Delete a task',
 			},
 			{
 				name: 'Get',
@@ -40,7 +40,7 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a task`,
+				description: 'Update a task',
 			},
 		],
 		default: 'getAll',
@@ -67,7 +67,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your tasks',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

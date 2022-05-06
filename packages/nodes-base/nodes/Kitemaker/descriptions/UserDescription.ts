@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve data on all the users in the logged-in user\'s organization',
+				description: 'Retrieve data on all the users in the logged-in user\'s organization.',
 			},
 		],
 		displayOptions: {
@@ -32,7 +32,7 @@ export const userFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [

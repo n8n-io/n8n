@@ -117,7 +117,7 @@ export class Postgres implements INodeType {
 				},
 				default: '',
 				placeholder: 'id:int,name:text,description',
-				description: `Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.`,
+				description: 'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
@@ -173,7 +173,7 @@ export class Postgres implements INodeType {
 				},
 				default: '',
 				placeholder: 'name:text,description',
-				description: `Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.`,
+				description: 'Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------

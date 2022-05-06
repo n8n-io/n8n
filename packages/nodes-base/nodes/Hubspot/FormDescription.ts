@@ -55,7 +55,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form you\'re sending data to',
+		description: 'The ID of the form you\'re sending data to.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -79,7 +79,7 @@ export const formFields: INodeProperties[] = [
 				name: 'skipValidation',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to skip validation based on the form settings',
+				description: 'Whether or not to skip validation based on the form settings.',
 			},
 			{
 				displayName: 'Submitted At',
@@ -154,14 +154,14 @@ export const formFields: INodeProperties[] = [
 						name: 'sfdcCampaignId',
 						type: 'string',
 						default: '',
-						description: 'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign',
+						description: 'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign.',
 					},
 					{
 						displayName: 'Go to Webinar Webinar ID',
 						name: 'goToWebinarWebinarKey',
 						type: 'string',
 						default: '',
-						description: 'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form',
+						description: 'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form.',
 					},
 				],
 			},
@@ -268,7 +268,7 @@ export const formFields: INodeProperties[] = [
 						name: 'value',
 						type: 'boolean',
 						default: false,
-						description: `This must be true when using the 'legitimateInterest' option, as it reflects the consent indicated by the visitor when submitting the form`,
+						description: 'This must be true when using the \'legitimateInterest\' option, as it reflects the consent indicated by the visitor when submitting the form',
 					},
 					{
 						displayName: 'Legal Basis',

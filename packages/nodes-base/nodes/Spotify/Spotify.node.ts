@@ -164,7 +164,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:album:1YZ3k65Mqw3G8FzYlW1mmp',
-				description: 'Enter a playlist, artist, or album URI or ID',
+				description: 'Enter a playlist, artist, or album URI or ID.',
 			},
 			{
 				displayName: 'Track ID',
@@ -183,7 +183,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
-				description: 'Enter a track URI or ID',
+				description: 'Enter a track URI or ID.',
 			},
 
 			// -----------------------------------------------
@@ -215,12 +215,12 @@ export class Spotify implements INodeType {
 					{
 						name: `Get Tracks`,
 						value: 'getTracks',
-						description: 'Get an album\'s tracks by URI or ID',
+						description: 'Get an album\'s tracks by URI or ID.',
 					},
 					{
 						name: `Search`,
 						value: 'search',
-						description: 'Search albums by keyword',
+						description: 'Search albums by keyword.',
 					},
 				],
 				default: 'get',
@@ -249,7 +249,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:album:1YZ3k65Mqw3G8FzYlW1mmp',
-				description: 'The album\'s Spotify URI or ID',
+				description: 'The album\'s Spotify URI or ID.',
 			},
 			{
 				displayName: 'Search Keyword',
@@ -294,22 +294,22 @@ export class Spotify implements INodeType {
 					{
 						name: `Get Albums`,
 						value: 'getAlbums',
-						description: 'Get an artist\'s albums by URI or ID',
+						description: 'Get an artist\'s albums by URI or ID.',
 					},
 					{
 						name: `Get Related Artists`,
 						value: 'getRelatedArtists',
-						description: 'Get an artist\'s related artists by URI or ID',
+						description: 'Get an artist\'s related artists by URI or ID.',
 					},
 					{
 						name: `Get Top Tracks`,
 						value: 'getTopTracks',
-						description: 'Get an artist\'s top tracks by URI or ID',
+						description: 'Get an artist\'s top tracks by URI or ID.',
 					},
 					{
 						name: `Search`,
 						value: 'search',
-						description: 'Search artists by keyword',
+						description: 'Search artists by keyword.',
 					},
 				],
 				default: 'get',
@@ -334,7 +334,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:artist:4LLpKhyESsyAXpc4laK94U',
-				description: 'The artist\'s Spotify URI or ID',
+				description: 'The artist\'s Spotify URI or ID.',
 			},
 			{
 				displayName: 'Country',
@@ -353,7 +353,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'US',
-				description: 'Top tracks in which country? Enter the postal abbriviation',
+				description: 'Top tracks in which country? Enter the postal abbriviation.',
 			},
 
 			{
@@ -409,12 +409,12 @@ export class Spotify implements INodeType {
 					{
 						name: 'Get Tracks',
 						value: 'getTracks',
-						description: 'Get a playlist\'s tracks by URI or ID',
+						description: 'Get a playlist\'s tracks by URI or ID.',
 					},
 					{
 						name: `Get the User's Playlists`,
 						value: 'getUserPlaylists',
-						description: 'Get a user\'s playlists',
+						description: 'Get a user\'s playlists.',
 					},
 					{
 						name: 'Remove an Item',
@@ -424,7 +424,7 @@ export class Spotify implements INodeType {
 					{
 						name: `Search`,
 						value: 'search',
-						description: 'Search playlists by keyword',
+						description: 'Search playlists by keyword.',
 					},
 				],
 				default: 'add',
@@ -450,7 +450,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:playlist:37i9dQZF1DWUhI3iC1khPH',
-				description: 'The playlist\'s Spotify URI or its ID',
+				description: 'The playlist\'s Spotify URI or its ID.',
 			},
 			{
 				displayName: 'Name',
@@ -523,7 +523,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
-				description: `The track's Spotify URI or its ID. The track to add/delete from the playlist.`,
+				description: 'The track\'s Spotify URI or its ID. The track to add/delete from the playlist.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -551,7 +551,7 @@ export class Spotify implements INodeType {
 						},
 						default: 0,
 						placeholder: '0',
-						description: 'The new track\'s position in the playlist',
+						description: 'The new track\'s position in the playlist.',
 					},
 				],
 			},
@@ -603,7 +603,7 @@ export class Spotify implements INodeType {
 					{
 						name: 'Search',
 						value: 'search',
-						description: 'Search tracks by keyword',
+						description: 'Search tracks by keyword.',
 					},
 				],
 				default: 'track',
@@ -628,7 +628,7 @@ export class Spotify implements INodeType {
 					},
 				},
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
-				description: 'The track\'s Spotify URI or ID',
+				description: 'The track\'s Spotify URI or ID.',
 			},
 			{
 				displayName: 'Search Keyword',
@@ -668,7 +668,7 @@ export class Spotify implements INodeType {
 					{
 						name: 'Get Liked Tracks',
 						value: 'getLikedTracks',
-						description: 'Get the user\'s liked tracks',
+						description: 'Get the user\'s liked tracks.',
 					},
 				],
 				default: 'getLikedTracks',
@@ -728,7 +728,7 @@ export class Spotify implements INodeType {
 						],
 					},
 				},
-				description: 'The number of items to return',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -762,7 +762,7 @@ export class Spotify implements INodeType {
 					minValue: 1,
 					maxValue: 100,
 				},
-				description: 'The number of items to return',
+				description: 'The number of items to return.',
 			},
 			{
 				displayName: 'Limit',
@@ -789,7 +789,7 @@ export class Spotify implements INodeType {
 					minValue: 1,
 					maxValue: 50,
 				},
-				description: 'The number of items to return',
+				description: 'The number of items to return.',
 			},
 			{
 				displayName: 'Volume',
@@ -811,7 +811,7 @@ export class Spotify implements INodeType {
 					minValue: 0,
 					maxValue: 100,
 				},
-				description: 'The volume percentage to set',
+				description: 'The volume percentage to set.',
 			},
 			{
 				displayName: 'Filters',
@@ -866,7 +866,7 @@ export class Spotify implements INodeType {
 						type: 'options',
 						options: isoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
 						default: '',
-						description: 'If a country code is specified, only content that is playable in that market is returned',
+						description: 'If a country code is specified, only content that is playable in that market is returned.',
 					},
 				],
 			},

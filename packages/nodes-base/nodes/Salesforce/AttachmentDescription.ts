@@ -38,7 +38,7 @@ export const attachmentOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: 'Returns an overview of attachment\'s metadata',
+				description: 'Returns an overview of attachment\'s metadata.',
 			},
 			{
 				name: 'Update',
@@ -132,7 +132,7 @@ export const attachmentFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `Text description of the Document. Limit: 255 characters.`,
+				description: 'Text description of the Document. Limit: 255 characters.',
 			},
 			{
 				displayName: 'Is Private',
@@ -205,7 +205,7 @@ export const attachmentFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `Text description of the Document. Limit: 255 characters.`,
+				description: 'Text description of the Document. Limit: 255 characters.',
 			},
 			{
 				displayName: 'Is Private',
@@ -296,7 +296,7 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

@@ -166,7 +166,7 @@ export class HackerNews implements INodeType {
 				name: 'returnAll',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return all results for the query or only up to a limit',
+				description: 'Whether to return all results or only up to a given limit',
 				displayOptions: {
 					show: {
 						resource: [

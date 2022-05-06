@@ -28,7 +28,7 @@ export const agentOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all agents of the current user\'s organization',
+				description: 'Get all agents of the current user\'s organization.',
 			},
 			{
 				name: 'Get Output',
@@ -111,7 +111,7 @@ export const agentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -200,7 +200,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevContainerId',
 				type: 'string',
 				default: '',
-				description: 'If set, the output will be retrieved from the container after the specified previous container id',
+				description: 'If set, the output will be retrieved from the container after the specified previous container id.',
 			},
 			{
 				displayName: 'Prev Status',
@@ -240,7 +240,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevRuntimeEventIndex',
 				type: 'number',
 				default: 0,
-				description: 'If set, the container\'s runtime events will be returned in the response starting from the provided previous runtime event index',
+				description: 'If set, the container\'s runtime events will be returned in the response starting from the provided previous runtime event index.',
 			},
 		],
 	},
@@ -422,7 +422,7 @@ export const agentFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: `Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.`,
+				description: 'Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.',
 			},
 			{
 				displayName: 'Manual Launch',

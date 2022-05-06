@@ -217,7 +217,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'notify',
 				type: 'boolean',
 				default: true,
-				description: `By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.`,
+				description: 'By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.',
 			},
 			{
 				displayName: 'Number of Employees',
@@ -340,7 +340,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

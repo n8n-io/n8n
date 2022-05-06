@@ -245,7 +245,7 @@ export class Mandrill implements INodeType {
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
+						description: 'Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the \'reject\' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.',
 					},
 					{
 						displayName: 'Auto Text',
@@ -267,7 +267,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'message.bcc_address@example.com',
-						description: 'An optional address to receive an exact copy of each recipient\'s email',
+						description: 'An optional address to receive an exact copy of each recipient\'s email.',
 					},
 					{
 						displayName: 'From name',
@@ -283,7 +283,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn't provided the email's from address will be used instead.`,
+						description: 'Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn\'t provided the email\'s from address will be used instead.',
 					},
 					{
 						displayName: 'Google Analytics Domains',
@@ -291,7 +291,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically',
+						description: 'An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.',
 					},
 					{
 						displayName: 'HTML',
@@ -324,7 +324,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.`,
+						description: 'The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.',
 					},
 					{
 						displayName: 'Preserve Recipients',
@@ -339,7 +339,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'A custom domain to use for the messages\'s return-path',
+						description: 'A custom domain to use for the messages\'s return-path.',
 					},
 					{
 						displayName: 'Sent At',
@@ -347,7 +347,7 @@ export class Mandrill implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: `When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.`,
+						description: 'When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.',
 					},
 					{
 						displayName: 'Signing Domain',
@@ -355,7 +355,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients)',
+						description: 'A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients).',
 					},
 					{
 						displayName: 'Subaccount',
@@ -379,7 +379,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
+						description: 'An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.',
 					},
 					{
 						displayName: 'Text',
@@ -412,7 +412,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'A custom domain to use for tracking opens and clicks instead of mandrillapp.com ',
+						description: 'A custom domain to use for tracking opens and clicks instead of mandrillapp.com .',
 					},
 					{
 						displayName: 'Url Strip Qs',

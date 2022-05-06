@@ -19,7 +19,7 @@ export const userGetByIdDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: `User's ID`,
+		description: 'User\'s ID',
 	},
 	{
 		displayName: 'Additional Fields',

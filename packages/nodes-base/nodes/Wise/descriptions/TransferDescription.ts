@@ -227,7 +227,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: `Download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'.`,
+		description: 'Download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -312,7 +312,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [

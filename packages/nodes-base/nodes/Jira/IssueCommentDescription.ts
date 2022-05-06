@@ -103,7 +103,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Comment's text`,
+		description: 'Comment\'s text',
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -123,7 +123,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
+		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -266,7 +266,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -438,7 +438,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Comment\'s text',
+		description: 'Comment\'s text.',
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -458,7 +458,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
+		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',

@@ -119,22 +119,22 @@ export class MailchimpTrigger implements INodeType {
 					{
 						name: 'Profile Updated',
 						value: 'profile',
-						description: 'Whether the webhook is triggered when a subscriber\'s profile is updated',
+						description: 'Whether the webhook is triggered when a subscriber\'s profile is updated.',
 					},
 					{
 						name: 'Cleaned',
 						value: 'cleaned',
-						description: 'Whether the webhook is triggered when a subscriber\'s email address is cleaned from the list',
+						description: 'Whether the webhook is triggered when a subscriber\'s email address is cleaned from the list.',
 					},
 					{
 						name: 'Email Address Updated',
 						value: 'upemail',
-						description: 'Whether the webhook is triggered when a subscriber\'s email address is changed',
+						description: 'Whether the webhook is triggered when a subscriber\'s email address is changed.',
 					},
 					{
 						name: 'Campaign Sent',
 						value: 'campaign',
-						description: 'Whether the webhook is triggered when a campaign is sent or cancelled',
+						description: 'Whether the webhook is triggered when a campaign is sent or cancelled.',
 					},
 				],
 			},
@@ -159,7 +159,7 @@ export class MailchimpTrigger implements INodeType {
 					{
 						name: 'API',
 						value: 'api',
-						description: 'Whether the webhook is triggered by actions initiated via the API',
+						description: 'Whether the webhook is triggered by actions initiated via the API.',
 					},
 				],
 			},

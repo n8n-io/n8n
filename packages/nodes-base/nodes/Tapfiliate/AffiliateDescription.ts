@@ -61,7 +61,7 @@ export const affiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The affiliate’s email',
+		description: 'The affiliate’s email.',
 	},
 	{
 		displayName: 'First Name',
@@ -79,7 +79,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The affiliate’s firstname',
+		description: 'The affiliate’s firstname.',
 	},
 	{
 		displayName: 'Last Name',
@@ -97,7 +97,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The affiliate’s lastname',
+		description: 'The affiliate’s lastname.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -165,7 +165,7 @@ export const affiliateFields: INodeProperties[] = [
 								name: 'country',
 								type: 'string',
 								default: '',
-								description: `The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.`,
+								description: 'The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.',
 							},
 						],
 					},
@@ -176,7 +176,7 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: 'The affiliate’s company data',
+				description: 'The affiliate’s company data.',
 			},
 		],
 	},
@@ -243,7 +243,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

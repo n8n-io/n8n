@@ -94,7 +94,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'accountUrl',
 				type: 'string',
 				default: '',
-				description: `Account's website`,
+				description: 'Account\'s website',
 			},
 			{
 				displayName: 'Fields',

@@ -98,7 +98,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -249,7 +249,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `The person's first name. It doesn't need to be in lowercase.`,
+				description: 'The person\'s first name. It doesn\'t need to be in lowercase.',
 			},
 			{
 				displayName: 'Last Name',
@@ -264,7 +264,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `The person's last name. It doesn't need to be in lowercase.`,
+				description: 'The person\'s last name. It doesn\'t need to be in lowercase.',
 			},
 			{
 				displayName: 'Email',

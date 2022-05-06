@@ -115,7 +115,7 @@ export const conversationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Conversation’s subject`,
+		description: 'Conversation’s subject',
 	},
 	{
 		displayName: 'Type',
@@ -202,14 +202,14 @@ export const conversationFields: INodeProperties[] = [
 				name: 'closedAt',
 				type: 'dateTime',
 				default: '',
-				description: `When the conversation was closed, only applicable for imported conversations`,
+				description: 'When the conversation was closed, only applicable for imported conversations',
 			},
 			{
 				displayName: 'Created At',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
-				description: `When this conversation was created - ISO 8601 date time`,
+				description: 'When this conversation was created - ISO 8601 date time',
 			},
 			{
 				displayName: 'Customer Email',
@@ -228,7 +228,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
+				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
 			},
 			{
 				displayName: 'Tags',
@@ -423,7 +423,7 @@ export const conversationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

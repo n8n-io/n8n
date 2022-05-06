@@ -200,7 +200,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'lockRetainUntilDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date and time when you want this object\'s Object Lock to expire',
+				description: 'The date and time when you want this object\'s Object Lock to expire.',
 			},
 			{
 				displayName: 'Metadata Directive',
@@ -563,7 +563,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'lockRetainUntilDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date and time when you want this object\'s Object Lock to expire',
+				description: 'The date and time when you want this object\'s Object Lock to expire.',
 			},
 			{
 				displayName: 'Parent Folder Key',
@@ -859,7 +859,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

@@ -64,7 +64,7 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -254,7 +254,7 @@ export const reportFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'ga:newUsers',
-								description: 'String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against',
+								description: 'String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against.',
 							},
 						],
 					},
