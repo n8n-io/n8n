@@ -383,7 +383,7 @@ export const playlistFields: INodeProperties[] = [
 			maxValue: 50,
 		},
 		default: 25,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -414,7 +414,7 @@ export const playlistFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'The id parameter specifies a comma-separated list of the YouTube playlist ID(s) for the resource(s) that are being retrieved. In a playlist resource, the id property specifies the playlist\'s YouTube playlist ID.',
+				description: 'The ID parameter specifies a comma-separated list of the YouTube playlist ID(s) for the resource(s) that are being retrieved. In a playlist resource, the ID property specifies the playlist\'s YouTube playlist ID.',
 			},
 		],
 	},

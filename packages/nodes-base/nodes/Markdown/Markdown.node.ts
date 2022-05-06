@@ -343,7 +343,7 @@ export class Markdown implements INodeType {
 						name: 'customizedHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to use text in curly braces as header id',
+						description: 'Whether to use text in curly braces as header ID',
 					},
 					{
 						displayName: 'Emoji Support',
@@ -381,8 +381,7 @@ export class Markdown implements INodeType {
 						name: 'ghCompatibleHeaderId',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to generate header ids compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
+						description: 'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
 					},
 					{
 						displayName: 'GitHub Mention Link',
@@ -441,7 +440,7 @@ export class Markdown implements INodeType {
 						name: 'noHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to disable the automatic generation of header ids',
+						description: 'Whether to disable the automatic generation of header IDs',
 					},
 					{
 						displayName: 'Parse Image Dimensions',
@@ -456,15 +455,14 @@ export class Markdown implements INodeType {
 						name: 'prefixHeaderId',
 						type: 'string',
 						default: 'section',
-						description: 'Add a prefix to the generated header ids',
+						description: 'Add a prefix to the generated header IDs',
 					},
 					{
 						displayName: 'Raw Header ID',
 						name: 'rawHeaderId',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to remove only spaces, \' and " from generated header ids (including prefixes), replacing them with dashes (-)',
+						description: 'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
 					},
 					{
 						displayName: 'Raw Prefix Header ID',

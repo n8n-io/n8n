@@ -446,7 +446,7 @@ export const conversationFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -470,7 +470,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'assignTo',
 				type: 'number',
 				default: 0,
-				description: 'Filters conversations by assignee id',
+				description: 'Filters conversations by assignee ID',
 			},
 			{
 				displayName: 'Embed',
@@ -490,7 +490,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'folder',
 				type: 'string',
 				default: '',
-				description: 'Filters conversations from a specific folder id',
+				description: 'Filters conversations from a specific folder ID',
 			},
 			{
 				displayName: 'Mailbox ID',

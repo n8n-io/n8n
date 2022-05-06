@@ -124,7 +124,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Optional event id. If an event exists with that id, the event will be updated. If none is specified, a new id will automatically be generated and returned.',
+				description: 'Optional event ID. If an event exists with that ID, the event will be updated. If none is specified, a new ID will automatically be generated and returned.',
 			},
 			{
 				displayName: 'Template ID',

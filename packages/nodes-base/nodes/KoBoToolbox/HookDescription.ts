@@ -179,6 +179,6 @@ export const hookFields: INodeProperties[] = [
 			},
 		},
 		default: 1000,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 ];

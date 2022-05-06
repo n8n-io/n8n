@@ -279,7 +279,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -303,7 +303,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				name: 'mwindow',
 				type: 'string',
 				default: '',
-				description: 'Maintenance windows ids separated with dash, e.g. 236-1782-4790',
+				description: 'Maintenance windows IDs separated with dash, e.g. 236-1782-4790',
 			},
 		],
 	},

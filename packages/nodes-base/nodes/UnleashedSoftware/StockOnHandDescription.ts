@@ -94,7 +94,7 @@ export const stockOnHandFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -146,7 +146,7 @@ export const stockOnHandFields: INodeProperties[] = [
 				name: 'productId',
 				type: 'string',
 				default: '',
-				description: 'Returns products with the specific Product Guid. You can enter multiple product Ids separated by commas.',
+				description: 'Returns products with the specific Product Guid. You can enter multiple product IDs separated by commas.',
 			},
 			{
 				displayName: 'Warehouse Code',

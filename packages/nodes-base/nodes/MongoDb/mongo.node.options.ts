@@ -136,6 +136,7 @@ export const nodeDescription: INodeTypeDescription = {
 					name: 'limit',
 					type: 'number',
 					default: 0,
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-limit
 					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents',
 				},
 				{
@@ -214,8 +215,8 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: 'id',
 			required: true,
-			description:
-				'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+			description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 		},
 		{
 			displayName: 'Fields',

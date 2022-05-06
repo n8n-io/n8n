@@ -64,7 +64,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the list to create card in',
+		description: 'The ID of the list to create card in',
 	},
 	{
 		displayName: 'Name',

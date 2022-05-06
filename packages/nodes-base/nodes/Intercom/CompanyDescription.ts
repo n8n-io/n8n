@@ -67,7 +67,7 @@ export const companyFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the company',
+				description: 'The Intercom defined ID representing the company',
 			},
 			{
 				name: 'Company ID',
@@ -134,7 +134,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -179,7 +179,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -241,7 +241,7 @@ export const companyFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the company',
+				description: 'The Intercom defined ID representing the company',
 			},
 			{
 				name: 'Name',
@@ -290,7 +290,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The company id you have defined for the company',
+		description: 'The company ID you have defined for the company',
 	},
 	{
 		displayName: 'JSON Parameters',

@@ -252,7 +252,7 @@ export const fileFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -279,7 +279,7 @@ export const fileFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Filter based on Contact Id, if user has permission to see Contact files',
+				description: 'Filter based on Contact ID, if user has permission to see Contact files',
 			},
 			{
 				displayName: 'Name',

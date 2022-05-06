@@ -73,7 +73,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
+		description: 'The ID of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 	},
 	{
 		displayName: 'External checkout ID',
@@ -90,7 +90,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
+		description: 'The ID of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
 	},
 	{
 		displayName: 'Order source',
@@ -181,7 +181,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the connection from which this order originated',
+		description: 'The ID of the connection from which this order originated',
 	},
 	{
 		displayName: 'Customer ID',
@@ -199,7 +199,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the customer associated with this order',
+		description: 'The ID of the customer associated with this order',
 	},
 	{
 		displayName: 'Creation Date',
@@ -284,7 +284,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the product in the external service',
+				description: 'The ID of the product in the external service',
 			},
 			{
 				displayName: 'Product Category',
@@ -412,7 +412,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the e-commerce order',
+		description: 'The ID of the e-commerce order',
 	},
 
 	{
@@ -437,14 +437,14 @@ export const ecomOrderFields: INodeProperties[] = [
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
+				description: 'The ID of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 			},
 			{
 				displayName: 'External checkout ID',
 				name: 'externalcheckoutid',
 				type: 'string',
 				default: '',
-				description: 'The id of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
+				description: 'The ID of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
 			},
 			{
 				displayName: 'Order source',
@@ -480,14 +480,14 @@ export const ecomOrderFields: INodeProperties[] = [
 				name: 'connectionid',
 				type: 'number',
 				default: 0,
-				description: 'The id of the connection from which this order originated',
+				description: 'The ID of the connection from which this order originated',
 			},
 			{
 				displayName: 'Customer ID',
 				name: 'customerid',
 				type: 'number',
 				default: 0,
-				description: 'The id of the customer associated with this order',
+				description: 'The ID of the customer associated with this order',
 			},
 			{
 				displayName: 'Creation Date',
@@ -592,7 +592,7 @@ export const ecomOrderFields: INodeProperties[] = [
 						name: 'externalid',
 						type: 'string',
 						default: '',
-						description: 'The id of the product in the external service',
+						description: 'The ID of the product in the external service',
 					},
 					{
 						displayName: 'Product Category',
@@ -653,7 +653,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the e-commerce order',
+		description: 'The ID of the e-commerce order',
 	},
 
 	// ----------------------------------
@@ -674,7 +674,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the e-commerce order',
+		description: 'The ID of the e-commerce order',
 	},
 
 	// ----------------------------------

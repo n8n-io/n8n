@@ -149,7 +149,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to delete',
+				description: 'ID of the record to delete',
 			},
 
 			// ----------------------------------
@@ -188,7 +188,7 @@ export class Airtable implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'Number of results to return',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Download Attachments',
@@ -329,7 +329,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to return',
+				description: 'ID of the record to return',
 			},
 
 			// ----------------------------------
@@ -348,7 +348,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to update',
+				description: 'ID of the record to update',
 			},
 			{
 				displayName: 'Update All Fields',

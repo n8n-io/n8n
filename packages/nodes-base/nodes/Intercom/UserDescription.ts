@@ -65,7 +65,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The Intercom defined id representing the Lead',
+		description: 'The Intercom defined ID representing the Lead',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -110,7 +110,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -183,7 +183,7 @@ export const userFields: INodeProperties[] = [
 				name: 'ID',
 				value: 'id',
 				default: '',
-				description: 'The Intercom defined id representing the Lead',
+				description: 'The Intercom defined ID representing the Lead',
 			},
 			{
 				name: 'User ID',
@@ -235,7 +235,7 @@ export const userFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the user',
+				description: 'The Intercom defined ID representing the user',
 			},
 			{
 				name: 'Email',

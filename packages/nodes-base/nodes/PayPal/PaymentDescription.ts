@@ -334,7 +334,7 @@ export const payoutFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Max number of results to return',
 	},
 
 ];

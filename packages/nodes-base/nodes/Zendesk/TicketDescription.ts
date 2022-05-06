@@ -153,7 +153,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'An id you can use to link Zendesk Support tickets to local records',
+				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
 				displayName: 'Group',
@@ -376,7 +376,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'An id you can use to link Zendesk Support tickets to local records',
+				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
 				displayName: 'Group',
@@ -624,7 +624,7 @@ export const ticketFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

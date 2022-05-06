@@ -231,7 +231,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		],
 		default: 'ethereum',
-		description: 'The id of the platform issuing tokens',
+		description: 'The ID of the platform issuing tokens',
 	},
 	{
 		displayName: 'Contract address',
@@ -462,7 +462,7 @@ export const coinFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

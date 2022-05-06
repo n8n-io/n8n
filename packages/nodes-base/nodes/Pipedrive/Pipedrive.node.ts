@@ -1894,7 +1894,7 @@ export class Pipedrive implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -3524,7 +3524,7 @@ export class Pipedrive implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 
 			// ----------------------------------
@@ -3580,7 +3580,7 @@ export class Pipedrive implements INodeType {
 						name: 'exclude',
 						type: 'string',
 						default: '',
-						description: 'A comma-separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
+						description: 'A comma-separated Activity IDs, to exclude from result. Ex. 4, 9, 11, ...',
 					},
 				],
 			},

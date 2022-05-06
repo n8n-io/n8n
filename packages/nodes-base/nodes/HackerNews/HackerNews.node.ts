@@ -183,7 +183,7 @@ export class HackerNews implements INodeType {
 				name: 'limit',
 				type: 'number',
 				default: 100,
-				description: 'Limit of Hacker News articles to be returned for the query',
+				description: 'Max number of results to return',
 				displayOptions: {
 					show: {
 						resource: [

@@ -55,7 +55,7 @@ export const imageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The template id you want to use',
+		description: 'The template ID you want to use',
 	},
 	{
 		displayName: 'Additional Fields',

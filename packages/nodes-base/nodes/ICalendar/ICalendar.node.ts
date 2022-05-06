@@ -283,7 +283,7 @@ export class ICalendar implements INodeType {
 						name: 'uid',
 						type: 'string',
 						default: '',
-						description: 'Universally unique id for the event (will be auto-generated if not specified here). Should be globally unique.',
+						description: 'Universally unique ID for the event (will be auto-generated if not specified here). Should be globally unique.',
 					},
 					{
 						displayName: 'URL',

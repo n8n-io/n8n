@@ -284,7 +284,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Id of case that needs to be fetched',
+		description: 'ID of case that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -567,7 +567,7 @@ export const caseFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
