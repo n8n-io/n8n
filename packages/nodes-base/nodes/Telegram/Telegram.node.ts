@@ -121,14 +121,19 @@ export class Telegram implements INodeType {
 						description: 'Get up to date information about a chat',
 					},
 					{
-						name: 'Leave',
-						value: 'leave',
-						description: 'Leave a group, supergroup or channel',
+						name: 'Get Administrators',
+						value: 'administrators',
+						description: 'Get the Administrators of a chat.',
 					},
 					{
-						name: 'Member',
+						name: 'Get Member',
 						value: 'member',
 						description: 'Get the member of a chat',
+					},
+					{
+						name: 'Leave',
+						value: 'leave',
+						description: 'Leave a group, supergroup or channel.',
 					},
 					{
 						name: 'Set Description',
@@ -293,6 +298,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'administrators',
 							'deleteMessage',
 							'get',
 							'leave',
@@ -889,7 +895,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get an animation from the Internet',
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get an animation from the Internet.',
 			},
 
 
@@ -915,7 +921,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet.',
 			},
 
 
@@ -1006,7 +1012,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet.',
 			},
 
 
@@ -1201,7 +1207,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a photo from the Internet',
+				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a photo from the Internet.',
 			},
 
 
@@ -1226,7 +1232,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a .webp file from the Internet',
+				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a .webp file from the Internet.',
 			},
 
 
@@ -1251,7 +1257,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet.',
 			},
 
 			// ----------------------------------
@@ -1909,6 +1915,15 @@ export class Telegram implements INodeType {
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 
+					} else if (operation === 'administrators') {
+						// ----------------------------------
+						//         chat:administrators
+						// ----------------------------------
+
+						endpoint = 'getChatAdministrators';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+
 					} else if (operation === 'leave') {
 						// ----------------------------------
 						//         chat:leave
@@ -2207,6 +2222,9 @@ export class Telegram implements INodeType {
 						});
 						continue;
 					}
+				} else if (resource === 'chat' && operation === 'administrators') {
+					returnData.push(...this.helpers.returnJsonArray(responseData.result));
+					continue;
 				}
 
 				// if (resource === 'bot' && operation === 'info') {

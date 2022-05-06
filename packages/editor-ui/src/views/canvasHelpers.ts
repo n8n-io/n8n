@@ -1,5 +1,5 @@
-import { getStyleTokenValue } from "@/components/helpers";
-import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE } from "@/constants";
+import { getStyleTokenValue, isNumber } from "@/components/helpers";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -217,17 +217,22 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 
 export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
 	return nodes.reduce((accu: IBounds, node: INodeUi) => {
-		if (node.position[0] < accu.minX) {
-			accu.minX = node.position[0];
+		const xOffset = node.type === STICKY_NODE_TYPE && isNumber(node.parameters.width) ? node.parameters.width : NODE_SIZE;
+		const yOffset = node.type === STICKY_NODE_TYPE && isNumber(node.parameters.height) ? node.parameters.height : NODE_SIZE;
+		const x = node.position[0];
+		const y = node.position[1];
+
+		if (x < accu.minX) {
+			accu.minX = x;
 		}
-		if (node.position[1] < accu.minY) {
-			accu.minY = node.position[1];
+		if (y < accu.minY) {
+			accu.minY = y;
 		}
-		if (node.position[0] > accu.maxX) {
-			accu.maxX = node.position[0];
+		if ((x + xOffset) > accu.maxX) {
+			accu.maxX = x + xOffset;
 		}
-		if (node.position[1] > accu.maxY) {
-			accu.maxY = node.position[1];
+		if ((y + yOffset) > accu.maxY) {
+			accu.maxY = y + yOffset;
 		}
 
 		return accu;
@@ -592,6 +597,7 @@ export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {off
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
 	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
 	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
+	const footerHeight = addComponentPadding? 200: 100;
 
 	const PADDING = NODE_SIZE * 4;
 
@@ -605,10 +611,10 @@ export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {off
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
 	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
-	xOffset += (editorWidth - sidebarWidth - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+	xOffset += (editorWidth - sidebarWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
-	yOffset += (editorHeight - headerHeight - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+	yOffset += (editorHeight - headerHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,

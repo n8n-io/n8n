@@ -215,7 +215,7 @@ export const webinarFields: INodeProperties[] = [
 					},
 				],
 				default: 1,
-				description: 'Registration type. Used for recurring webinar with fixed time only',
+				description: 'Registration type. Used for recurring webinar with fixed time only.',
 			},
 			{
 				displayName: 'Start Time',
@@ -313,7 +313,7 @@ export const webinarFields: INodeProperties[] = [
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'To view webinar details of all previous occurrences of the recurring webinar',
+				description: 'To view webinar details of all previous occurrences of the recurring webinar.',
 			},
 		],
 	},

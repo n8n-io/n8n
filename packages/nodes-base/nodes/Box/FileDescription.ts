@@ -93,7 +93,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of folder to copy the file to. If not defined will be copied to the root folder',
+		description: 'The ID of folder to copy the file to. If not defined will be copied to the root folder.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -828,6 +828,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the parent folder that will contain the file. If not it will be uploaded to the root folder',
+		description: 'ID of the parent folder that will contain the file. If not it will be uploaded to the root folder.',
 	},
 ];

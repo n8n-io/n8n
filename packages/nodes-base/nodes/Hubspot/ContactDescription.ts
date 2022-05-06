@@ -999,11 +999,11 @@ export const contactFields: INodeProperties[] = [
 											},
 											{
 												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
+												value: 'CONTAINS_TOKEN',
 											},
 											{
 												name: `Doesn't Contain Exactly`,
-												value: 'NOT_CONSTAIN_TOKEN',
+												value: 'NOT_CONTAINS_TOKEN',
 											},
 										],
 										default: 'EQ',
@@ -1025,7 +1025,7 @@ export const contactFields: INodeProperties[] = [
 								],
 							},
 						],
-						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 					},
 				],
 			},

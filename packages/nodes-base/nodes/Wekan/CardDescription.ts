@@ -186,7 +186,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of assignee IDs attached to the card',
+				description: 'The new list of assignee IDs attached to the card.',
 			},
 			{
 				displayName: 'Description',
@@ -203,7 +203,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of member IDs attached to the card',
+				description: 'The new list of member IDs attached to the card.',
 			},
 		],
 	},
@@ -603,7 +603,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of assignee IDs attached to the card',
+				description: 'The new list of assignee IDs attached to the card.',
 			},
 			{
 				displayName: 'Color',
@@ -763,7 +763,7 @@ export const cardFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of member IDs attached to the card',
+				description: 'The new list of member IDs attached to the card.',
 			},
 			{
 				displayName: 'Over Time',

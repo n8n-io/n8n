@@ -134,6 +134,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Create a new sheet',
 					},
 					{
+						name: 'Create or Update',
+						value: 'upsert',
+						description: 'Create a new record, or update the current one if it already exists',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
@@ -179,7 +184,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
+				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
 			},
 			{
 				displayName: 'Range',
@@ -363,6 +368,7 @@ export class GoogleSheets implements INodeType {
 						],
 						operation: [
 							'update',
+							'upsert',
 						],
 					},
 				},
@@ -381,6 +387,7 @@ export class GoogleSheets implements INodeType {
 						],
 						operation: [
 							'update',
+							'upsert',
 						],
 						rawData: [
 							true,
@@ -512,6 +519,7 @@ export class GoogleSheets implements INodeType {
 						],
 						operation: [
 							'update',
+							'upsert',
 						],
 						rawData: [
 							false,
@@ -537,6 +545,7 @@ export class GoogleSheets implements INodeType {
 							'lookup',
 							'read',
 							'update',
+							'upsert',
 						],
 					},
 				},
@@ -571,6 +580,20 @@ export class GoogleSheets implements INodeType {
 						description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
 					},
 					{
+						displayName: 'Use Header Names as JSON Paths',
+						name: 'usePathForKeyRow',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': [
+									'append',
+								],
+							},
+						},
+						description: 'Enable if you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
+					},
+					{
 						displayName: 'Value Input Mode',
 						name: 'valueInputMode',
 						type: 'options',
@@ -579,6 +602,7 @@ export class GoogleSheets implements INodeType {
 								'/operation': [
 									'append',
 									'update',
+									'upsert',
 								],
 							},
 						},
@@ -637,6 +661,7 @@ export class GoogleSheets implements INodeType {
 							show: {
 								'/operation': [
 									'update',
+									'upsert',
 								],
 								'/rawData': [
 									false,
@@ -663,7 +688,6 @@ export class GoogleSheets implements INodeType {
 						default: 'UNFORMATTED_VALUE',
 						description: 'Determines how values should be rendered in the output',
 					},
-
 				],
 			},
 
@@ -1078,8 +1102,10 @@ export class GoogleSheets implements INodeType {
 						setData.push(item.json);
 					});
 
+					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
+
 					// Convert data into array format
-					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
+					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode, usePathForKeyRow);
 
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
@@ -1293,10 +1319,11 @@ export class GoogleSheets implements INodeType {
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
-			} else if (operation === 'update') {
+			} else if (operation === 'update' || operation === 'upsert') {
 				// ----------------------------------
-				//         update
+				//         update/upsert
 				// ----------------------------------
+				const upsert = operation === 'upsert' ? true : false;
 				try {
 					const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
@@ -1324,7 +1351,7 @@ export class GoogleSheets implements INodeType {
 							setData.push(item.json);
 						});
 
-						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
+						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, upsert);
 					}
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through

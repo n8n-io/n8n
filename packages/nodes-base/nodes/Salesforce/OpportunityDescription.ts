@@ -106,7 +106,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the opportunity. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the opportunity. Otherwise create a new one.',
 	},
 	{
 		displayName: 'Name',

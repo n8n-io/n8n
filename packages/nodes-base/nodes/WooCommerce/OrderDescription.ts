@@ -78,7 +78,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -114,7 +114,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items',
+				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -787,7 +787,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',

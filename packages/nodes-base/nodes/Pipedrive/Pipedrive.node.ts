@@ -1918,7 +1918,7 @@ export class Pipedrive implements INodeType {
 						name: 'includeFields',
 						type: 'string',
 						default: '',
-						description: 'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email',
+						description: 'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email.',
 					},
 					{
 						displayName: 'Organization ID',

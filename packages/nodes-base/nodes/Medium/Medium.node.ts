@@ -171,7 +171,7 @@ export class Medium implements INodeType {
 						],
 					},
 				},
-				description: 'Title of the post. Max Length : 100 characters',
+				description: 'Title of the post. Max Length : 100 characters.',
 			},
 			{
 				displayName: 'Content Format',

@@ -404,7 +404,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 					},
 					{
 						displayName: 'Description',
@@ -446,7 +446,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id.',
 					},
 					{
 						displayName: 'Name',
@@ -645,7 +645,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 					},
 					{
 						displayName: 'Due By',
@@ -676,7 +676,7 @@ export class Freshdesk implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id.',
 					},
 					{
 						displayName: 'Name',

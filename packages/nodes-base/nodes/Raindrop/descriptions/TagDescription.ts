@@ -76,7 +76,7 @@ export const tagFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCollections',
 				},
 				default: '',
-				description: `It's possible to restrict remove action to just one collection. It's optional`,
+				description: 'It\'s possible to restrict remove action to just one collection. It\'s optional.',
 			},
 		],
 	},

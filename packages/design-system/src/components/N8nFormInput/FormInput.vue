@@ -58,7 +58,7 @@ import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator } from "../../../../editor-ui/src/Interface";
+import { Rule, RuleGroup, IValidator } from "../../types";
 
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';

@@ -32,6 +32,29 @@ export class Aws implements ICredentialType {
 			},
 		},
 		{
+			displayName: 'Temporary Security Credentials',
+			name: 'temporaryCredentials',
+			description: 'Support for temporary credentials from AWS STS',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Session Token',
+			name: 'sessionToken',
+			type: 'string',
+			displayOptions: {
+				show: {
+					temporaryCredentials: [
+						true,
+					],
+				},
+			},
+			default: '',
+			typeOptions: {
+				password: true,
+			},
+		},
+		{
 			displayName: 'Custom Endpoints',
 			name: 'customEndpoints',
 			type: 'boolean',

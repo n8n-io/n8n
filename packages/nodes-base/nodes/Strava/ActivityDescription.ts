@@ -255,7 +255,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'gear_id',
 				type: 'string',
 				default: '',
-				description: 'Identifier for the gear associated with the activity. ‘none’ clears gear from activity',
+				description: 'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
 			},
 			{
 				displayName: 'Name',

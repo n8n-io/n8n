@@ -81,7 +81,7 @@ export const metricFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Can only be the current or previous month. Format should be YYYY-MM',
+		description: 'Can only be the current or previous month. Format should be YYYY-MM.',
 	},
 	{
 		displayName: 'Simplify Response',

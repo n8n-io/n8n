@@ -90,7 +90,7 @@ export const groupFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups`,
+				description: 'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
 			{
 				displayName: 'Name',
@@ -209,7 +209,7 @@ export const groupFields: INodeProperties[] = [
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description: `The unique ID for the customer's G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain`,
+				description: 'The unique ID for the customer\'s G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.',
 			},
 			{
 				displayName: 'Domain',
@@ -236,7 +236,7 @@ export const groupFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>`,
+				description: 'Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>.',
 			},
 			{
 				displayName: 'Sort Order',
@@ -307,7 +307,7 @@ export const groupFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups`,
+				description: 'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
 			{
 				displayName: 'Email',

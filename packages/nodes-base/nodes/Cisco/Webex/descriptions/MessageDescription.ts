@@ -316,7 +316,7 @@ export const messageFields: INodeProperties[] = [
 													},
 												},
 												default: '',
-												description: 'Any extra data to pass along. These are essentially ‘hidden’ properties',
+												description: 'Any extra data to pass along. These are essentially ‘hidden’ properties.',
 											},
 											{
 												displayName: 'Verb',
@@ -409,7 +409,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'markdown',
 				type: 'string',
 				default: '',
-				description: 'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text',
+				description: 'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text.',
 			},
 		],
 	},
@@ -633,7 +633,7 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Markdown',
 		name: 'markdownText',
-		description: 'The message, in Markdown format. The maximum message length is 7439 bytes',
+		description: 'The message, in Markdown format. The maximum message length is 7439 bytes.',
 		type: 'string',
 		required: true,
 		default: '',

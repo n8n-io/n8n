@@ -97,7 +97,7 @@ export const notificationFields: INodeProperties[] = [
 										],
 									},
 								},
-								description: 'HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG',
+								description: 'HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG.',
 							},
 							{
 								displayName: 'Image Thumbnail',
@@ -111,7 +111,7 @@ export const notificationFields: INodeProperties[] = [
 									},
 								},
 								default: '',
-								description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG',
+								description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG.',
 							},
 							{
 								displayName: 'Binary Property',

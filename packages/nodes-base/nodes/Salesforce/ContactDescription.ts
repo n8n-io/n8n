@@ -111,7 +111,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the contact. Otherwise create a new one`,
+		description: 'If this value exists in the \'match against\' field, update the contact. Otherwise create a new one.',
 	},
 	{
 		displayName: 'Last Name',

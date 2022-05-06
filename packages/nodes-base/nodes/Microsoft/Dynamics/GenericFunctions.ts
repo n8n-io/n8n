@@ -16,7 +16,7 @@ import {
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credenitals = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string };
+	const credentials = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string, region: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -27,7 +27,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		body,
 		qs,
-		uri: uri || `https://${credenitals.subdomain}.crm.dynamics.com/api/data/v9.2${resource}`,
+		uri: uri || `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
 		json: true,
 	};
 
@@ -314,7 +314,7 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'creditlimit',
 			type: 'number',
 			default: '',
-			description: 'Credit limit of the account. This is a useful reference when you address invoice and accounting issues with the customer',
+			description: 'Credit limit of the account. This is a useful reference when you address invoice and accounting issues with the customer.',
 		},
 		{
 			displayName: 'Number Of Employees',
@@ -387,7 +387,7 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'sharesoutstanding',
 			type: 'number',
 			default: '',
-			description: 'The number of shares available to the public for the account. This number is used as an indicator in financial performance analysis',
+			description: 'The number of shares available to the public for the account. This number is used as an indicator in financial performance analysis.',
 		},
 		{
 			displayName: 'Shipping Method',
@@ -455,7 +455,7 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'tickersymbol',
 			type: 'string',
 			default: '',
-			description: 'Type the stock exchange symbol for the account to track financial performance of the company. You can click the code entered in this field to access the latest trading information from MSN Money',
+			description: 'Type the stock exchange symbol for the account to track financial performance of the company. You can click the code entered in this field to access the latest trading information from MSN Money.',
 		},
 		{
 			displayName: 'Website URL',

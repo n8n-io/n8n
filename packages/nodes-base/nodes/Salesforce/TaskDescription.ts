@@ -229,7 +229,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: `The frequency of the recurring task. For example, “2nd” or “3rd.”`,
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -599,7 +599,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: `The frequency of the recurring task. For example, “2nd” or “3rd.”`,
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
 			},
 			{
 				displayName: 'Recurrence Interval',
