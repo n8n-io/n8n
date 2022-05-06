@@ -1,4 +1,4 @@
-import { crossInformationPackages, executeCommand, parsePackageName } from '../../src/CommunityNodes/helpers';
+import { matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages } from '../../src/CommunityNodes/helpers';
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_NOT_FOUND_ERROR, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 jest.mock('fs/promises');
@@ -136,7 +136,7 @@ describe('CommunityNodesHelper', () => {
 
 		it('Should return same list if availableUpdates is undefined', () => {
 			const fakePackages = generateListOfFakeInstalledPackages();
-			const crossedData = crossInformationPackages(fakePackages);
+			const crossedData = matchPackagesWithUpdates(fakePackages);
 			expect(crossedData).toEqual(fakePackages);
 		});
 
@@ -158,7 +158,7 @@ describe('CommunityNodesHelper', () => {
 				}
 			};
 
-			const crossedData = crossInformationPackages(fakePackages, updates);
+			const crossedData = matchPackagesWithUpdates(fakePackages, updates);
 
 			// @ts-ignore
 			expect(crossedData[0].updateAvailable).toBe('0.2.0');
@@ -179,7 +179,7 @@ describe('CommunityNodesHelper', () => {
 				}
 			};
 
-			const crossedData = crossInformationPackages(fakePackages, updates);
+			const crossedData = matchPackagesWithUpdates(fakePackages, updates);
 
 			// @ts-ignore
 			expect(crossedData[0].updateAvailable).toBeUndefined();
@@ -188,6 +188,36 @@ describe('CommunityNodesHelper', () => {
 
 		});
 
+	});
+
+	describe('matchMissingPackages', () => {
+		it('Should not match failed packages that do not exist', () => {
+			const fakePackages = generateListOfFakeInstalledPackages();
+			const notFoundPackageList = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${NODE_PACKAGE_PREFIX}another-very-long-name-that-never-is-seen`;
+			const matchedPackages = matchMissingPackages(fakePackages, notFoundPackageList);
+
+			expect(matchedPackages).toEqual(fakePackages);
+			expect(matchedPackages[0].failedLoading).toBeUndefined();
+			expect(matchedPackages[1].failedLoading).toBeUndefined();
+		});
+
+		it('Should match failed packages that should be present', () => {
+			const fakePackages = generateListOfFakeInstalledPackages();
+			const notFoundPackageList = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${fakePackages[0].packageName}@${fakePackages[0].installedVersion}`;
+			const matchedPackages = matchMissingPackages(fakePackages, notFoundPackageList);
+
+			expect(matchedPackages[0].failedLoading).toBe(true);
+			expect(matchedPackages[1].failedLoading).toBeUndefined();
+		});
+
+		it('Should match failed packages even if version is wrong', () => {
+			const fakePackages = generateListOfFakeInstalledPackages();
+			const notFoundPackageList = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${fakePackages[0].packageName}@123.456.789`;
+			const matchedPackages = matchMissingPackages(fakePackages, notFoundPackageList);
+
+			expect(matchedPackages[0].failedLoading).toBe(true);
+			expect(matchedPackages[1].failedLoading).toBeUndefined();
+		});
 	});
 });
 

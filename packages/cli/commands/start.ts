@@ -34,7 +34,8 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
-import { executeCommand } from '../src/CommunityNodes/helpers';
+import { getInstance } from '../src/UserManagement/email/UserManagementMailer';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -213,25 +214,29 @@ export class Start extends Command {
 				installedPackages.forEach((installedpackage) => {
 					installedpackage.installedNodes.forEach((installedNode) => {
 						if (!loadNodesAndCredentials.nodeTypes[installedNode.name]) {
+							// Leave the list ready for installing in case we need.
 							missingPackages.add(
 								`${installedpackage.packageName}@${installedpackage.installedVersion}`,
 							);
 						}
 					});
 				});
-
+				config.set('nodes.packagesMissing', '');
 				if (missingPackages.size) {
+					// TODO: improve this message
 					LoggerProxy.error(
-						'n8n has detected that some installed packages could not be found. Attempting installation now.',
+						'n8n has detected that some of the pacakges with nodes are missing from the hard disk. Check the setup instructions for community packages in the docs on how to prevent this error in the future.',
 					);
-					const packageList = Array.from(missingPackages).join(' ');
-					const command = `npm install ${packageList}`;
-					// We are not catching possible errors bwlow
-					// Therefore n8n's init stops
-					await executeCommand(command);
-					LoggerProxy.error(
-						'Missing packages installed correctly. To prevent this in the future, make sure your .n8n folder is persisted.',
-					);
+					config.set('nodes.packagesMissing', Array.from(missingPackages).join(' '));
+					if (
+						config.getEnv('userManagement.emails.mode') === 'smtp' &&
+						config.getEnv('userManagement.isInstanceOwnerSetUp')
+					) {
+						// Send an email async to instance owner whenever possible
+						void getInstanceOwner().then(async (user) => {
+							void (await getInstance()).warnAbouMissingPackages(user);
+						});
+					}
 				}
 
 				await UserSettings.getEncryptionKey();

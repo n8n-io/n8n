@@ -4,6 +4,7 @@ import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import { GenericHelpers } from '../..';
 import * as config from '../../../config';
+import { User } from '../../databases/entities/User';
 import {
 	InviteEmailData,
 	PasswordResetData,
@@ -83,6 +84,18 @@ export class UserManagementMailer {
 		});
 
 		// If mailer does not exist it means mail has been disabled.
+		return result ?? { success: true };
+	}
+
+	async warnAbouMissingPackages(user: User): Promise<SendEmailResult> {
+		// TODO: Improve message contents and maybe create a template?
+		const body = `Hello ${user.firstName}.\n\nThis is an automatic email from your n8n instance.\n\nDuring startup we noticed some packages with nodes are missing and could not be loaded.\n\nn8n has initiated as normal but workflows using custom nodes may not be working.\n\nFor more details about this error, check the docs: http://docs.n8n.io/somelink`;
+
+		const result = await this.mailer?.sendMail({
+			emailRecipients: user.email,
+			subject: 'Problem initializing your n8n instance',
+			body,
+		});
 		return result ?? { success: true };
 	}
 }

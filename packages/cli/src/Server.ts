@@ -345,6 +345,10 @@ class App {
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
 
+		if (config.get('nodes.packagesMissing').length > 0) {
+			this.frontendSettings.missingPackages = true;
+		}
+
 		return this.frontendSettings;
 	}
 
