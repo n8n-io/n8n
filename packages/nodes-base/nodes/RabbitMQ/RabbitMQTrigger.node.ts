@@ -113,7 +113,7 @@ export class RabbitMQTrigger implements INodeType {
 						description: 'Whether to parse the body to an object',
 					},
 					{
-						displayName: 'Nack On Error',
+						displayName: 'Reject On Error',
 						name: 'nack',
 						type: 'boolean',
 						default: false,
