@@ -369,7 +369,7 @@ export class GoogleBooks implements INodeType {
 					maxValue: 40,
 				},
 				default: 40,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 		],
 	};

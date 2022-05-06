@@ -187,7 +187,7 @@ export const personFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 25,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 25,

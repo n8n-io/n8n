@@ -1273,7 +1273,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 30,
 		},
 		default: 30,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */

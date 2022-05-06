@@ -119,7 +119,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					maxValue: 10,
 				},
 				default: 5,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 		],
 	};

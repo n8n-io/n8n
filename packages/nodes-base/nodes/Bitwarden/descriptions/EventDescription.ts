@@ -52,7 +52,7 @@ export const eventFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'Number of results to return for the query',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				resource: [

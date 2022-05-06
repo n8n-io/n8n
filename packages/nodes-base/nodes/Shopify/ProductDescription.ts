@@ -638,7 +638,7 @@ export const productFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
