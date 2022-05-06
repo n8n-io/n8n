@@ -329,7 +329,7 @@ export class Markdown implements INodeType {
 						name: 'backslashEscapesHTMLTags',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to support for HTML Tag escaping ex: &lt;div&gt;foo&lt;/div',
+						description: 'Whether to support for HTML Tag escaping ex: &lt;div&gt;foo&lt;/div&gt;',
 					},
 					{
 						displayName: 'Complete HTML Document',
