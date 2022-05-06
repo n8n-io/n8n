@@ -73,7 +73,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Send a resume for a resume based analysis.',
+		description: 'Send a resume for a resume based analysis',
 	},
 	{
 		displayName: 'Binary Property',
@@ -93,7 +93,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The resume in PDF or DOCX format.',
+		description: 'The resume in PDF or DOCX format',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -192,7 +192,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Send a resume for a resume of the user.',
+		description: 'Send a resume for a resume of the user',
 	},
 	{
 		displayName: 'Text',
@@ -212,7 +212,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Additional text written by the user.',
+		description: 'Additional text written by the user',
 	},
 	{
 		displayName: 'Binary Property',
@@ -232,6 +232,6 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The resume in PDF or DOCX format.',
+		description: 'The resume in PDF or DOCX format',
 	},
 ];

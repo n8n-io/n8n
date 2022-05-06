@@ -136,7 +136,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'The property to select the lead by.',
+		description: 'The property to select the lead by',
 	},
 	{
 		displayName: 'Value',
@@ -175,7 +175,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -199,7 +199,7 @@ export const leadFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -265,7 +265,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		],
 		default: 'id',
-		description: 'The property via which to query the lead.',
+		description: 'The property via which to query the lead',
 	},
 	{
 		displayName: 'Value',
@@ -305,7 +305,7 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email of the user.',
+		description: 'The email of the user',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -357,7 +357,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Identifies the companies this user belongs to.',
+				description: 'Identifies the companies this user belongs to',
 			},
 			{
 				displayName: 'Email',
@@ -374,7 +374,7 @@ export const leadFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'The email of the user.',
+				description: 'The email of the user',
 			},
 			{
 				displayName: 'Name',
@@ -464,7 +464,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -510,6 +510,6 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

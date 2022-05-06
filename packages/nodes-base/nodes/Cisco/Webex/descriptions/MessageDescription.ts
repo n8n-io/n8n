@@ -79,7 +79,6 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-		description: 'The room ID',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
@@ -487,7 +486,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [

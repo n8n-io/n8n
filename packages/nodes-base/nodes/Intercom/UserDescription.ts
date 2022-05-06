@@ -86,7 +86,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -110,7 +110,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -193,7 +193,7 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'The property to select the user by.',
+		description: 'The property to select the user by',
 	},
 	{
 		displayName: 'Value',
@@ -250,7 +250,7 @@ export const userFields: INodeProperties[] = [
 
 		],
 		default: 'id',
-		description: 'The property via which to query the user.',
+		description: 'The property via which to query the user',
 	},
 	{
 		displayName: 'Value',
@@ -371,7 +371,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Identifies the companies this user belongs to.',
+				description: 'Identifies the companies this user belongs to',
 			},
 			{
 				displayName: 'Email',
@@ -455,7 +455,7 @@ export const userFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC.',
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -517,7 +517,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -563,6 +563,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

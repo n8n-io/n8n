@@ -111,7 +111,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -124,7 +124,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -180,7 +180,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------
@@ -240,7 +240,7 @@ export class CrateDb implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},

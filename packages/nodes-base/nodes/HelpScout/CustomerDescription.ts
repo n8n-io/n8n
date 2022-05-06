@@ -118,7 +118,7 @@ export const customerFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Gender of this customer.',
+				description: 'Gender of this customer',
 			},
 			{
 				displayName: 'Job Title',
@@ -139,7 +139,7 @@ export const customerFields: INodeProperties[] = [
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Location of the customer.',
+				description: 'Location of the customer',
 			},
 			{
 				displayName: 'Notes',
@@ -576,7 +576,7 @@ export const customerFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -599,7 +599,7 @@ export const customerFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -791,7 +791,7 @@ export const customerFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Gender of this customer.',
+				description: 'Gender of this customer',
 			},
 			{
 				displayName: 'Job Title',
@@ -812,7 +812,7 @@ export const customerFields: INodeProperties[] = [
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Location of the customer.',
+				description: 'Location of the customer',
 			},
 			{
 				displayName: 'Notes',

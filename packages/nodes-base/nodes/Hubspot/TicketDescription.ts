@@ -70,7 +70,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in.',
+		description: 'The ID of the pipeline the ticket is in',
 	},
 	{
 		displayName: 'Stage ID',
@@ -94,7 +94,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in.',
+		description: 'The ID of the pipeline the ticket is in',
 	},
 	{
 		displayName: 'Ticket Name',
@@ -112,7 +112,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in.',
+		description: 'The ID of the pipeline the ticket is in',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -246,7 +246,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular ticket.',
+		description: 'Unique identifier for a particular ticket',
 	},
 	{
 		displayName: 'Update Fields',
@@ -273,7 +273,7 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Companies associated with the ticket.',
+				description: 'Companies associated with the ticket',
 			},
 			{
 				displayName: 'Contact Ids',
@@ -283,7 +283,7 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
-				description: 'Contact associated with the ticket.',
+				description: 'Contact associated with the ticket',
 			},
 			{
 				displayName: 'Category',
@@ -293,21 +293,21 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketCategories',
 				},
 				default: '',
-				description: 'Main reason customer reached out for help.',
+				description: 'Main reason customer reached out for help',
 			},
 			{
 				displayName: 'Close Date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was closed.',
+				description: 'The date the ticket was closed',
 			},
 			{
 				displayName: 'Create Date',
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was created.',
+				description: 'The date the ticket was created',
 			},
 			{
 				displayName: 'Description',
@@ -327,7 +327,7 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketPipelines',
 				},
 				default: '',
-				description: 'The ID of the pipeline the ticket is in.',
+				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
 				displayName: 'Priority',
@@ -357,14 +357,14 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTicketSources',
 				},
 				default: '',
-				description: 'Channel where ticket was originally submitted.',
+				description: 'Channel where ticket was originally submitted',
 			},
 			{
 				displayName: 'Ticket Name',
 				name: 'ticketName',
 				type: 'string',
 				default: '',
-				description: 'The ID of the pipeline the ticket is in.',
+				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
 				displayName: 'Ticket Owner ID',
@@ -461,7 +461,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -485,7 +485,7 @@ export const ticketFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',

@@ -55,7 +55,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,7 +90,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
+		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 	},
 	{
 		displayName: 'Download Fields',
@@ -222,7 +222,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
+		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 	},
 	{
 		displayName: 'Download Fields',
