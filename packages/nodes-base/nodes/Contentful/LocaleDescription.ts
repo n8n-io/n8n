@@ -89,6 +89,6 @@ export const fields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

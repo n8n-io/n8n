@@ -92,7 +92,7 @@ export class Signl4 implements INodeType {
 						],
 					},
 				},
-				description: 'A more detailed description for the alert.',
+				description: 'A more detailed description for the alert',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -119,7 +119,7 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Single ACK',
 								value: 'single_ack',
-								description: 'In case only one person needs to confirm this Signl.',
+								description: 'In case only one person needs to confirm this Signl',
 							},
 							{
 								name: 'Multi ACK',
@@ -176,7 +176,7 @@ export class Signl4 implements INodeType {
 						type: 'fixedCollection',
 						placeholder: 'Add Location',
 						default: {},
-						description: 'Transmit location information (\'latitude, longitude\') with your event and display a map in the mobile app.',
+						description: 'Transmit location information (\'latitude, longitude\') with your event and display a map in the mobile app',
 						options: [
 							{
 								name: 'locationFieldsValues',
@@ -187,7 +187,7 @@ export class Signl4 implements INodeType {
 										name: 'latitude',
 										type: 'string',
 										required: true,
-										description: 'The location latitude.',
+										description: 'The location latitude',
 										default: '',
 									},
 									{
@@ -195,7 +195,7 @@ export class Signl4 implements INodeType {
 										name: 'longitude',
 										type: 'string',
 										required: true,
-										description: 'The location longitude.',
+										description: 'The location longitude',
 										default: '',
 									},
 								],
@@ -207,14 +207,14 @@ export class Signl4 implements INodeType {
 						name: 'service',
 						type: 'string',
 						default: '',
-						description: 'Assigns the alert to the service/system category with the specified name.',
+						description: 'Assigns the alert to the service/system category with the specified name',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The title or subject of this alert.',
+						description: 'The title or subject of this alert',
 					},
 				],
 			},

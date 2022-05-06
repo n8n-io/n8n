@@ -75,7 +75,7 @@ export class CopperTrigger implements INodeType {
 						value: 'task',
 					},
 				],
-				description: 'The resource which will fire the event.',
+				description: 'The resource which will fire the event',
 			},
 			{
 				displayName: 'Event',
@@ -100,7 +100,7 @@ export class CopperTrigger implements INodeType {
 						description: 'Any field in the existing entity record is changed',
 					},
 				],
-				description: 'The event to listen to.',
+				description: 'The event to listen to',
 			},
 		],
 	};

@@ -399,6 +399,6 @@ export const expenseFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

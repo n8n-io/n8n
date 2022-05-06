@@ -45,14 +45,14 @@ export class AirtableTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of this base.',
+				description: 'The ID of this base',
 			},
 			{
 				displayName: 'Table ID',
 				name: 'tableId',
 				type: 'string',
 				default: '',
-				description: 'The ID of the table to access.',
+				description: 'The ID of the table to access',
 				required: true,
 			},
 			{
@@ -68,7 +68,7 @@ export class AirtableTrigger implements INodeType {
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
-				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
+				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 			},
 			{
 				displayName: 'Download Fields',

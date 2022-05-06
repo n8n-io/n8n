@@ -50,7 +50,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to create.',
+		description: 'Name of data type of the object to create',
 		default: '',
 		displayOptions: {
 			show: {
@@ -92,14 +92,14 @@ export const objectFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Field to set for the object to create.',
+						description: 'Field to set for the object to create',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the object to create.',
+						description: 'Value to set for the object to create',
 					},
 				],
 			},
@@ -114,7 +114,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to retrieve.',
+		description: 'Name of data type of the object to retrieve',
 		default: '',
 		displayOptions: {
 			show: {
@@ -133,7 +133,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'objectId',
 		type: 'string',
 		required: true,
-		description: 'ID of the object to retrieve.',
+		description: 'ID of the object to retrieve',
 		default: '',
 		displayOptions: {
 			show: {
@@ -156,7 +156,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to update.',
+		description: 'Name of data type of the object to update',
 		default: '',
 		displayOptions: {
 			show: {
@@ -174,7 +174,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'objectId',
 		type: 'string',
 		required: true,
-		description: 'ID of the object to update.',
+		description: 'ID of the object to update',
 		default: '',
 		displayOptions: {
 			show: {
@@ -216,14 +216,14 @@ export const objectFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Field to set for the object to create.',
+						description: 'Field to set for the object to create',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the object to create.',
+						description: 'Value to set for the object to create',
 					},
 				],
 			},
@@ -238,7 +238,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to create.',
+		description: 'Name of data type of the object to create',
 		default: '',
 		displayOptions: {
 			show: {
@@ -290,7 +290,7 @@ export const objectFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -351,7 +351,7 @@ export const objectFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'Field to set for the object to create.',
+								description: 'Field to set for the object to create',
 							},
 							{
 								displayName: 'Constrain',
@@ -361,7 +361,7 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'Equals',
 										value: 'equals',
-										description: 'Use to test strict equality, for all field types.',
+										description: 'Use to test strict equality, for all field types',
 									},
 									{
 										name: 'Not Equal',
@@ -371,12 +371,12 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'Is Empty',
 										value: 'is_empty',
-										description: 'Use to test whether a thing\'s given field is empty, for all field types.',
+										description: 'Use to test whether a thing\'s given field is empty, for all field types',
 									},
 									{
 										name: 'Is Not Empty',
 										value: 'is_not_empty',
-										description: 'Use to test whether a thing\'s given field is not empty, for all field types.',
+										description: 'Use to test whether a thing\'s given field is not empty, for all field types',
 									},
 									{
 										name: 'Text Contains',
@@ -401,12 +401,12 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'In',
 										value: 'in',
-										description: 'Use to test whether a thing\'s field is in a list, for all field types.',
+										description: 'Use to test whether a thing\'s field is in a list, for all field types',
 									},
 									{
 										name: 'Not In',
 										value: 'not in',
-										description: 'Use to test whether a thing\'s field is not in a list, for all field types.',
+										description: 'Use to test whether a thing\'s field is not in a list, for all field types',
 									},
 									{
 										name: 'Contains',
@@ -451,7 +451,7 @@ export const objectFields: INodeProperties[] = [
 									},
 								},
 								default: '',
-								description: 'Value to set for the object to create.',
+								description: 'Value to set for the object to create',
 							},
 						],
 					},

@@ -105,7 +105,7 @@ export const employeeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the employee to retrieve.',
+		description: 'The ID of the employee to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -143,7 +143,7 @@ export const employeeFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -202,7 +202,7 @@ export const employeeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the employee to update.',
+		description: 'The ID of the employee to update',
 		displayOptions: {
 			show: {
 				resource: [

@@ -66,7 +66,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -191,7 +191,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -228,7 +228,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -265,7 +265,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',

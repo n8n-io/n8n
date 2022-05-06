@@ -157,7 +157,7 @@ export const pipelineFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -181,7 +181,7 @@ export const pipelineFields: INodeProperties[] = [
 				name: 'branch',
 				type: 'string',
 				default: '',
-				description: 'The name of a vcs branch.',
+				description: 'The name of a vcs branch',
 			},
 		],
 	},

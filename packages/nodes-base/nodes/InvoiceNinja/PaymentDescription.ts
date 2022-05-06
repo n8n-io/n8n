@@ -373,7 +373,7 @@ export const paymentFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',

@@ -176,8 +176,7 @@ export class Markdown implements INodeType {
 						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">.',
+						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
 					},
 					{
 						displayName: 'Line Start Escape Pattern',
@@ -330,15 +329,14 @@ export class Markdown implements INodeType {
 						name: 'backslashEscapesHTMLTags',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to support for HTML Tag escaping ex: <div>foo</div',
+						description: 'Whether to support for HTML Tag escaping ex: &lt;div&gt;foo&lt;/div&gt;',
 					},
 					{
 						displayName: 'Complete HTML Document',
 						name: 'completeHTMLDocument',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to output a complete html document, including <html>, <head> and <body> tags instead of an HTML fragment',
+						description: 'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
 					},
 					{
 						displayName: 'Customized Header ID',

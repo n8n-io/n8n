@@ -46,7 +46,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The \'From name\' of your campaign.',
+		description: 'The \'From name\' of your campaign',
 	},
 	{
 		displayName: 'From Email',
@@ -63,7 +63,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The \'From email\' of your campaign.',
+		description: 'The \'From email\' of your campaign',
 	},
 	{
 		displayName: 'Reply To',
@@ -80,7 +80,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The \'Reply to\' of your campaign.',
+		description: 'The \'Reply to\' of your campaign',
 	},
 	{
 		displayName: 'Title',
@@ -97,7 +97,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The \'Title\' of your campaign.',
+		description: 'The \'Title\' of your campaign',
 	},
 	{
 		displayName: 'Subject',
@@ -114,7 +114,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The \'Subject\' of your campaign.',
+		description: 'The \'Subject\' of your campaign',
 	},
 	{
 		displayName: 'HTML Text',
@@ -131,7 +131,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The \'HTML version\' of your campaign.',
+		description: 'The \'HTML version\' of your campaign',
 	},
 	{
 		displayName: 'Send Campaign',
@@ -206,28 +206,28 @@ export const campaignFields: INodeProperties[] = [
 				name: 'listIds',
 				type: 'string',
 				default: '',
-				description: 'List IDs should be single or comma-separated.',
+				description: 'List IDs should be single or comma-separated',
 			},
 			{
 				displayName: 'Plain Text',
 				name: 'plainText',
 				type: 'string',
 				default: '',
-				description: 'The \'Plain text version\' of your campaign.',
+				description: 'The \'Plain text version\' of your campaign',
 			},
 			{
 				displayName: 'Querystring',
 				name: 'queryString',
 				type: 'string',
 				default: '',
-				description: 'Google Analytics tags.',
+				description: 'Google Analytics tags',
 			},
 			{
 				displayName: 'Segment IDs',
 				name: 'segmentIds',
 				type: 'string',
 				default: '',
-				description: 'Segment IDs should be single or comma-separated.',
+				description: 'Segment IDs should be single or comma-separated',
 			},
 			{
 				displayName: 'Track Clicks',

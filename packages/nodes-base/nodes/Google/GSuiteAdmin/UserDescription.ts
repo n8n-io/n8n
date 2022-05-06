@@ -182,7 +182,7 @@ export const userFields: INodeProperties[] = [
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the user is forced to change their password at next login.',
+				description: 'Indicates if the user is forced to change their password at next login',
 			},
 			{
 				displayName: 'Phones',
@@ -374,7 +374,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
@@ -395,7 +395,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	{
 		displayName: 'Projection',
@@ -529,7 +529,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Projection',
@@ -633,7 +633,7 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Property to use for sorting results.',
+				description: 'Property to use for sorting results',
 			},
 			{
 				displayName: 'Query',
@@ -647,7 +647,7 @@ export const userFields: INodeProperties[] = [
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, retrieves the list of deleted users.',
+				description: 'If set to true, retrieves the list of deleted users',
 			},
 			{
 				displayName: 'Sort Order',
@@ -706,7 +706,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -730,14 +730,14 @@ export const userFields: INodeProperties[] = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if user is archived.',
+				description: 'Indicates if user is archived',
 			},
 			{
 				displayName: 'Change Password At Next Login',
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the user is forced to change their password at next login.',
+				description: 'Indicates if the user is forced to change their password at next login',
 			},
 			{
 				displayName: 'First Name',

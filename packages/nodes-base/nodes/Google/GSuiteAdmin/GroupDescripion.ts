@@ -185,7 +185,7 @@ export const groupFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -229,7 +229,7 @@ export const groupFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Property to use for sorting results.',
+				description: 'Property to use for sorting results',
 			},
 			{
 				displayName: 'Query',

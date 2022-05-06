@@ -16,7 +16,7 @@ export const workbookOperations: INodeProperties[] = [
 			{
 				name: 'Add Worksheet',
 				value: 'addWorksheet',
-				description: 'Adds a new worksheet to the workbook.',
+				description: 'Adds a new worksheet to the workbook',
 			},
 			{
 				name: 'Get All',
@@ -122,7 +122,7 @@ export const workbookFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
