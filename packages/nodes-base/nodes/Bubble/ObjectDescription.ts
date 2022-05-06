@@ -358,82 +358,82 @@ export const objectFields: INodeProperties[] = [
 								name: 'constraint_type',
 								type: 'options',
 								options: [
-									{
-										name: 'Equals',
-										value: 'equals',
-										description: 'Use to test strict equality, for all field types',
-									},
-									{
-										name: 'Not Equal',
-										value: 'not equal',
-										description: 'Use to test strict equality, for all field types',
-									},
-									{
-										name: 'Is Empty',
-										value: 'is_empty',
-										description: 'Use to test whether a thing\'s given field is empty, for all field types',
-									},
-									{
-										name: 'Is Not Empty',
-										value: 'is_not_empty',
-										description: 'Use to test whether a thing\'s given field is not empty, for all field types',
-									},
-									{
-										name: 'Text Contains',
-										value: 'text contains',
-										description: 'Use to test if a text field contains a string, for text fields only',
-									},
-									{
-										name: 'Not Text Contains',
-										value: 'not text contains',
-										description: 'Use to test if a text field does not contain a string, for text fields only',
-									},
-									{
-										name: 'Greater Than',
-										value: 'greater than',
-										description: 'Use to compare a thing\'s field value relative to a string or number, for text, number, and date fields',
-									},
-									{
-										name: 'Less Than',
-										value: 'less than',
-										description: 'Use to compare a thing\'s field value relative to a string or number, for text, number, and date fields',
-									},
-									{
-										name: 'In',
-										value: 'in',
-										description: 'Use to test whether a thing\'s field is in a list, for all field types',
-									},
-									{
-										name: 'Not In',
-										value: 'not in',
-										description: 'Use to test whether a thing\'s field is not in a list, for all field types',
-									},
-									{
-										name: 'Contains',
-										value: 'contains',
-										description: 'Use to test whether a list field contains an entry, for list fields only',
-									},
-									{
-										name: 'Not Contains',
-										value: 'not contains',
-										description: 'Use to test whether a list field does not contains an entry, for list fields only',
-									},
-									{
-										name: 'Empty',
-										value: 'empty',
-										description: 'Use to test whether a list field is empty, for list fields only',
-									},
-									{
-										name: 'Not Empty',
-										value: 'not empty',
-										description: 'Use to test whether a list field is not empty, for list fields only',
-									},
-									{
-										name: 'Geographic Search',
-										value: 'geographic_search',
-										description: 'Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.',
-									},
-								],
+							{
+								name: 'Contains',
+								value: 'contains',
+								description: 'Use to test whether a list field contains an entry, for list fields only',
+							},
+							{
+								name: 'Empty',
+								value: 'empty',
+								description: 'Use to test whether a list field is empty, for list fields only',
+							},
+							{
+								name: 'Equals',
+								value: 'equals',
+								description: 'Use to test strict equality, for all field types',
+							},
+							{
+								name: 'Geographic Search',
+								value: 'geographic_search',
+								description: 'Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.',
+							},
+							{
+								name: 'Greater Than',
+								value: 'greater than',
+								description: 'Use to compare a thing\'s field value relative to a string or number, for text, number, and date fields',
+							},
+							{
+								name: 'In',
+								value: 'in',
+								description: 'Use to test whether a thing\'s field is in a list, for all field types',
+							},
+							{
+								name: 'Is Empty',
+								value: 'is_empty',
+								description: 'Use to test whether a thing\'s given field is empty, for all field types',
+							},
+							{
+								name: 'Is Not Empty',
+								value: 'is_not_empty',
+								description: 'Use to test whether a thing\'s given field is not empty, for all field types',
+							},
+							{
+								name: 'Less Than',
+								value: 'less than',
+								description: 'Use to compare a thing\'s field value relative to a string or number, for text, number, and date fields',
+							},
+							{
+								name: 'Not Contains',
+								value: 'not contains',
+								description: 'Use to test whether a list field does not contains an entry, for list fields only',
+							},
+							{
+								name: 'Not Empty',
+								value: 'not empty',
+								description: 'Use to test whether a list field is not empty, for list fields only',
+							},
+							{
+								name: 'Not Equal',
+								value: 'not equal',
+								description: 'Use to test strict equality, for all field types',
+							},
+							{
+								name: 'Not In',
+								value: 'not in',
+								description: 'Use to test whether a thing\'s field is not in a list, for all field types',
+							},
+							{
+								name: 'Not Text Contains',
+								value: 'not text contains',
+								description: 'Use to test if a text field does not contain a string, for text fields only',
+							},
+							{
+								name: 'Text Contains',
+								value: 'text contains',
+								description: 'Use to test if a text field contains a string, for text fields only',
+							},
+						],
 								default: '',
 							},
 							{

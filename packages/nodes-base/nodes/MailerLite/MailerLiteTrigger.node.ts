@@ -53,11 +53,6 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when campaign is sent',
 					},
 					{
-						name: 'Subscriber Added to Group',
-						value: 'subscriber.add_to_group',
-						description: 'Fired when a subscriber is added to a group',
-					},
-					{
 						name: 'Subscriber Added Throught Webform',
 						value: 'subscriber.added_through_webform',
 						description: 'Fired when a subscriber is added though a form',
@@ -65,7 +60,12 @@ export class MailerLiteTrigger implements INodeType {
 					{
 						name: 'Subscriber Added to Group',
 						value: 'subscriber.add_to_group',
-						description: 'Fired when a subscriber is added to a group.',
+						description: 'Fired when a subscriber is added to a group',
+					},
+					{
+						name: 'Subscriber Added to Group',
+						value: 'subscriber.add_to_group',
+						description: 'Fired when a subscriber is added to a group',
 					},
 					{
 						name: 'Subscriber Autonomation Completed',
@@ -83,11 +83,6 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when an email address bounces',
 					},
 					{
-						name: 'Subscriber Created',
-						value: 'subscriber.create',
-						description: 'Fired when a new subscriber is added to an account',
-					},
-					{
 						name: 'Subscriber Complained',
 						value: 'subscriber.complaint',
 						description: 'Fired when subscriber marks a campaign as a spam',
@@ -95,7 +90,12 @@ export class MailerLiteTrigger implements INodeType {
 					{
 						name: 'Subscriber Created',
 						value: 'subscriber.create',
-						description: 'Fired when a new subscriber is added to an account.',
+						description: 'Fired when a new subscriber is added to an account',
+					},
+					{
+						name: 'Subscriber Created',
+						value: 'subscriber.create',
+						description: 'Fired when a new subscriber is added to an account',
 					},
 					{
 						name: 'Subscriber Removed from Group',

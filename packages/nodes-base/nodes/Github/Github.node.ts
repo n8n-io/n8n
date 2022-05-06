@@ -223,11 +223,6 @@ export class Github implements INodeType {
 						description: 'Get the data of a single repository',
 					},
 					{
-						name: 'Get License',
-						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected',
-					},
-					{
 						name: 'Get Issues',
 						value: 'getIssues',
 						description: 'Returns issues of a repository',
@@ -235,7 +230,12 @@ export class Github implements INodeType {
 					{
 						name: 'Get License',
 						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected.',
+						description: 'Returns the contents of the repository\'s license file, if one is detected',
+					},
+					{
+						name: 'Get License',
+						value: 'getLicense',
+						description: 'Returns the contents of the repository\'s license file, if one is detected',
 					},
 					{
 						name: 'Get Profile',
@@ -304,7 +304,12 @@ export class Github implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a release.',
+						description: 'Delete a release',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a release',
 					},
 					{
 						name: 'Get',
@@ -315,11 +320,6 @@ export class Github implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all repository releases',
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-						description: 'Delete a release',
 					},
 					{
 						name: 'Update',

@@ -49,11 +49,6 @@ export class Redis implements INodeType {
 						description: 'Get the value of a key from Redis',
 					},
 					{
-						name: 'Info',
-						value: 'info',
-						description: 'Returns generic information about the Redis instance',
-					},
-					{
 						name: 'Increment',
 						value: 'incr',
 						description: 'Atomically increments a key by 1. Creates the key if it does not exist.',
@@ -61,17 +56,17 @@ export class Redis implements INodeType {
 					{
 						name: 'Info',
 						value: 'info',
-						description: 'Returns generic information about the Redis instance.',
+						description: 'Returns generic information about the Redis instance',
+					},
+					{
+						name: 'Info',
+						value: 'info',
+						description: 'Returns generic information about the Redis instance',
 					},
 					{
 						name: 'Keys',
 						value: 'keys',
 						description: 'Returns all the keys matching a pattern',
-					},
-					{
-						name: 'Set',
-						value: 'set',
-						description: 'Set the value of a key in redis',
 					},
 					{
 						name: 'Publish',
@@ -81,7 +76,12 @@ export class Redis implements INodeType {
 					{
 						name: 'Set',
 						value: 'set',
-						description: 'Set the value of a key in redis.',
+						description: 'Set the value of a key in redis',
+					},
+					{
+						name: 'Set',
+						value: 'set',
+						description: 'Set the value of a key in redis',
 					},
 				],
 				default: 'info',
@@ -156,22 +156,22 @@ export class Redis implements INodeType {
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type "hash"',
-					},
-					{
-						name: 'String',
-						value: 'string',
-						description: 'Data in key is of type "string"',
+						description: 'Data in key is of type \'hash\'',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Data in key is of type "lists"',
+						description: 'Data in key is of type \'lists\'',
 					},
 					{
 						name: 'Sets',
 						value: 'sets',
-						description: 'Data in key is of type "sets"',
+						description: 'Data in key is of type \'sets\'',
+					},
+					{
+						name: 'String',
+						value: 'string',
+						description: 'Data in key is of type \'string\'',
 					},
 				],
 				default: 'automatic',
@@ -327,22 +327,22 @@ export class Redis implements INodeType {
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type "hash"',
-					},
-					{
-						name: 'String',
-						value: 'string',
-						description: 'Data in key is of type "string"',
+						description: 'Data in key is of type \'hash\'',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Data in key is of type "lists"',
+						description: 'Data in key is of type \'lists\'',
 					},
 					{
 						name: 'Sets',
 						value: 'sets',
-						description: 'Data in key is of type "sets"',
+						description: 'Data in key is of type \'sets\'',
+					},
+					{
+						name: 'String',
+						value: 'string',
+						description: 'Data in key is of type \'string\'',
 					},
 				],
 				default: 'automatic',
