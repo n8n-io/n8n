@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-param-options-type-unsorted-items */
 import {
 	INodeProperties,
 } from 'n8n-workflow';
@@ -279,7 +280,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'greaterOrEqual',
 							},
 							{
-								name: ' Child of',
+								name: 'Child of',
 								value: 'childOf',
 							},
 							{
