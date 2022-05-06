@@ -18,12 +18,12 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a list.',
+				description: 'Create a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all lists.',
+				description: 'Get all lists',
 			},
 		],
 		default: 'create',
@@ -52,7 +52,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the list to create.',
+		description: 'Name of the list to create',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -73,7 +73,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -97,6 +97,6 @@ export const listFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

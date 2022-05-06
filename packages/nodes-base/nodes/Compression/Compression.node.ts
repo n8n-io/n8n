@@ -147,7 +147,6 @@ export class Compression implements INodeType {
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
-				required: false,
 				displayOptions: {
 					show: {
 						outputFormat: [
@@ -159,7 +158,7 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property to which to write the data of the compressed files.',
+				description: 'Name of the binary property to which to write the data of the compressed files',
 			},
 			{
 				displayName: 'Output Prefix',

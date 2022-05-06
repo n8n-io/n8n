@@ -108,7 +108,7 @@ export const searchResultFields: INodeProperties[] = [
 			{
 				displayName: 'Key-Value Match',
 				name: 'keyValueMatch',
-				description: 'Key-value pair to match against. Example: if "Key" is set to <code>user</code> and "Field" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned. ',
+				description: 'Key-value pair to match against. Example: if "Key" is set to <code>user</code> and "Field" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned.',
 				type: 'fixedCollection',
 				default: {},
 				placeholder: 'Add Key-Value Pair',
