@@ -32,8 +32,8 @@
 			box-sizing: border-box;
 			padding-top: 6px;
 			text-align: left;
-			border-top: 1px solid var(--border-color-base);
-			border-bottom: 1px solid var(--border-color-base);
+			border-top: 1px solid var(--color-foreground-base);
+			border-bottom: 1px solid var(--color-foreground-base);
 		}
 
 		&::after {

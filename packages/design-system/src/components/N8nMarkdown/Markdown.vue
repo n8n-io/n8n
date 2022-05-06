@@ -225,7 +225,7 @@ export default {
 	blockquote {
 		padding-left: 10px;
 		font-style: italic;
-		border-left: var(--border-color-base) 2px solid;
+		border-left: var(--color-foreground-base) 2px solid;
 	}
 }
 

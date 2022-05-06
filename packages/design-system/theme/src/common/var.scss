@@ -266,7 +266,7 @@ $index-popper: 2000;
 -------------------------- */
 $disabled-fill-base: var(--disabled-fill, var(--color-background-light));
 $disabled-color-base: var(--disabled-color, var(--color-text-base));
-$disabled-border-base: var(--disabled-border, var(--border-color-base));
+$disabled-border-base: var(--disabled-border, var(--color-foreground-base));
 
 /* Icon
 -------------------------- */
@@ -288,12 +288,12 @@ $checkbox-background-color: $color-white;
 $checkbox-input-border: var(--border-base);
 
 /// color||Color|0
-$checkbox-disabled-border-color: var(--border-color-base);
+$checkbox-disabled-border-color: var(--color-foreground-base);
 $checkbox-disabled-input-fill: #edf2fc;
 $checkbox-disabled-icon-color: var(--color-text-lighter);
 
 $checkbox-disabled-checked-input-fill: var(--border-color-light);
-$checkbox-disabled-checked-input-border-color: var(--border-color-base);
+$checkbox-disabled-checked-input-border-color: var(--color-foreground-base);
 $checkbox-disabled-checked-icon-color: var(--color-text-lighter);
 
 /// color||Color|0
@@ -350,7 +350,7 @@ $radio-input-border-radius: $border-radius-circle;
 $radio-input-background-color: $color-white;
 $radio-input-border: var(--border-base);
 /// color||Color|0
-$radio-input-border-color: var(--border-color-base);
+$radio-input-border-color: var(--color-foreground-base);
 /// color||Color|0
 $radio-icon-color: $color-white;
 
@@ -434,7 +434,7 @@ $select-dropdown-empty-color: #999;
 $select-dropdown-max-height: 274px;
 $select-dropdown-padding: 6px 0;
 $select-dropdown-empty-padding: 10px 0;
-$select-dropdown-border: solid 1px var(--border-color-base);
+$select-dropdown-border: solid 1px var(--color-foreground-base);
 
 /* Alert
 -------------------------- */
@@ -546,7 +546,7 @@ $notification-danger-icon-color: var(--color-danger);
 -------------------------- */
 $input-placeholder-color: var(--input-placeholder-color, var(--color-text-light));
 $input-focus-border: var(--input-focus-border-color, var(--color-secondary));
-$input-border-color: var(--input-border-color, var(--border-color-base));
+$input-border-color: var(--input-border-color, var(--color-foreground-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
 $input-border-width: var(--border-width-base);
 $input-border: $input-border-color $input-border-style $input-border-width;
@@ -600,7 +600,7 @@ $cascader-menu-selected-font-color: var(--color-primary);
 $cascader-menu-fill: $fill-base;
 $cascader-menu-font-size: $font-size-base;
 $cascader-menu-radius: var(--border-radius-base);
-$cascader-menu-border: solid 1px var(--border-color-base);
+$cascader-menu-border: solid 1px var(--color-foreground-base);
 $cascader-menu-shadow: $box-shadow-light;
 $cascader-node-background-hover: $background-color-base;
 $cascader-node-color-disabled: var(--color-text-lighter);
@@ -681,7 +681,7 @@ $button-default-font-color: var(--color-text-dark);
 /// color||Color|0
 $button-default-background-color: $color-white;
 /// color||Color|0
-$button-default-border-color: var(--border-color-base);
+$button-default-border-color: var(--color-foreground-base);
 
 /// color||Color|0
 $button-disabled-font-color: var(--color-text-light);
@@ -691,7 +691,7 @@ $button-disabled-background-color: var(
 	var(--color-foreground-base)
 );
 /// color||Color|0
-$button-disabled-border-color: var(--border-color-base);
+$button-disabled-border-color: var(--color-foreground-base);
 
 /// color||Color|0
 $button-primary-border-color: var(--color-primary);
@@ -891,7 +891,7 @@ $card-padding: 20px;
 /// color||Color|0
 $slider-main-background-color: var(--color-primary);
 /// color||Color|0
-$slider-runway-background-color: var(--border-color-base);
+$slider-runway-background-color: var(--color-foreground-base);
 $slider-button-hover-color: function.saturation(
 	--color-primary-h,
 	--color-primary-s,
@@ -1055,7 +1055,7 @@ $main-padding: 20px;
 --------------------------*/
 $timeline-node-size-normal: 12px;
 $timeline-node-size-large: 14px;
-$timeline-node-color: var(--border-color-base);
+$timeline-node-color: var(--color-foreground-base);
 
 /* Backtop
 --------------------------*/

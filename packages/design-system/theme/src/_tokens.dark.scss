@@ -38,7 +38,7 @@
 
 	--color-secondary-h: 247;
 	--color-secondary-s: 100%;
-	--color-secondary-l: 35%;
+	--color-secondary-l: 55%;
 	--color-secondary: hsl(
 		var(--color-secondary-h),
 		var(--color-secondary-s),
@@ -184,7 +184,7 @@
 
 	--color-foreground-base-h: 220;
 	--color-foreground-base-s: 20%;
-	--color-foreground-base-l: 12%;
+	--color-foreground-base-l: 30%;
 	--color-foreground-base: hsl(
 		var(--color-foreground-base-h),
 		var(--color-foreground-base-s),
@@ -236,9 +236,9 @@
 		var(--color-background-light-l)
 	);
 
-	--color-background-lighter-h: 220;
-	--color-background-lighter-s: 30%;
-	--color-background-lighter-l: 96%;
+	--color-background-lighter-h: 0;
+	--color-background-lighter-s: 0%;
+	--color-background-lighter-l: 36%;
 	--color-background-lighter: hsl(
 		var(--color-background-lighter-h),
 		var(--color-background-lighter-s),

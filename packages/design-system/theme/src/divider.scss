@@ -2,7 +2,7 @@
 @use "mixins/mixins";
 
 @include mixins.b(divider) {
-	background-color: var(--border-color-base);
+	background-color: var(--color-foreground-base);
 	position: relative;
 
 	@include mixins.m(horizontal) {
