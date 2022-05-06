@@ -398,6 +398,8 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-untrimmed': 'error',
 				'n8n-nodes-base/node-param-description-missing-from-limit': 'error',
 				'n8n-nodes-base/node-param-description-unneeded-backticks': 'error',
+				"n8n-nodes-base/node-param-description-wrong-for-return-all": "error",
+				'n8n-nodes-base/node-param-description-miscased-id': 'error',
 				'n8n-nodes-base/node-param-description-unencoded-angle-brackets': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-return-all': 'error',
 				'n8n-nodes-base/node-param-description-url-missing-protocol': 'error',

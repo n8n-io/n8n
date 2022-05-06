@@ -413,7 +413,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'teamIds',
 				type: 'string',
 				default: '',
-				description: 'Team IDs. Only results related to these teams will be returned. Account must have the teams ability to use this parameter. (multiples Ids can be added separated by comma)',
+				description: 'Team IDs. Only results related to these teams will be returned. Account must have the teams ability to use this parameter. (multiples IDs can be added separated by comma)',
 			},
 			{
 				displayName: 'Timezone',
@@ -454,7 +454,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'userIds',
 				type: 'string',
 				default: '',
-				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple Ids can be added separated by comma).',
+				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple IDs can be added separated by comma).',
 			},
 		],
 	},

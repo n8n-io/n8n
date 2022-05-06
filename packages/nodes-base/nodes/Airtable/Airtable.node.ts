@@ -149,7 +149,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to delete',
+				description: 'ID of the record to delete',
 			},
 
 			// ----------------------------------
@@ -329,7 +329,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to return',
+				description: 'ID of the record to return',
 			},
 
 			// ----------------------------------
@@ -348,7 +348,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to update',
+				description: 'ID of the record to update',
 			},
 			{
 				displayName: 'Update All Fields',

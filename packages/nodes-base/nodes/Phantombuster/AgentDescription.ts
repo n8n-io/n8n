@@ -18,12 +18,12 @@ export const agentOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an agent by id',
+				description: 'Delete an agent by ID',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get an agent by id',
+				description: 'Get an agent by ID',
 			},
 			{
 				name: 'Get All',
@@ -200,7 +200,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevContainerId',
 				type: 'string',
 				default: '',
-				description: 'If set, the output will be retrieved from the container after the specified previous container id',
+				description: 'If set, the output will be retrieved from the container after the specified previous container ID',
 			},
 			{
 				displayName: 'Prev Status',

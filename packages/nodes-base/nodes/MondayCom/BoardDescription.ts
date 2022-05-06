@@ -145,7 +145,7 @@ export const boardFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Optional board template id',
+				description: 'Optional board template ID',
 			},
 		],
 	},

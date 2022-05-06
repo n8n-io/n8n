@@ -254,6 +254,7 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{

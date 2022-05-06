@@ -284,7 +284,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Id of case that needs to be fetched',
+		description: 'ID of case that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
