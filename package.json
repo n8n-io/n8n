@@ -23,6 +23,7 @@
   "devDependencies": {
     "lerna": "^3.13.1",
     "plop": "^3.1.0",
+    "plop-action-eslint": "^0.1.0",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7"
   },

@@ -1,5 +1,4 @@
-import { PlopGeneratorConfig, ActionConfig } from 'node-plop';
-import * as dir from 'node:path';
+import { PlopGeneratorConfig } from 'node-plop';
 
 const generator: PlopGeneratorConfig = {
 	description: 'Create credentials for a service provider',
@@ -36,19 +35,25 @@ const generator: PlopGeneratorConfig = {
 			type: 'add',
 			path: './packages/nodes_base/credentials/{{pascalCase creds}}.credentials.ts',
 			templateFile: './plop/credentials/strategies/apikey.ts',
-		})
+		});
 
 		// Add documentation url if needed
 		if (data.hasDocumentation) {
 			result.push({
 				type: 'modify',
 				template: 'documentationUrl = {{documentationUrl}}',
-
-			})
+				pattern: /documentationUrl = null/g,
+			});
 		}
+
+		// Lint results
+		result.push({
+			type: 'eslint',
+			path: './packages/nodes_base/credentials/{{pascalCase creds}}.credentials.ts',
+		});
 
 		return result;
 	}
 }
 
-export default generator
+export default generator;
