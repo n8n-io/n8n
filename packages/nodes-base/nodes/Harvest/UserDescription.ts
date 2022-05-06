@@ -331,6 +331,7 @@ export const userFields: INodeProperties[] = [
 				name: 'timezone',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
 				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
@@ -486,6 +487,7 @@ export const userFields: INodeProperties[] = [
 				name: 'timezone',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
 				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
