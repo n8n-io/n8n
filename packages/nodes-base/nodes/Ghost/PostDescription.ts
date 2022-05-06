@@ -101,7 +101,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Post's title.`,
+		description: 'Post\'s title',
 	},
 	{
 		displayName: 'Content Format',
@@ -131,7 +131,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'html',
-		description: `The format of the post.`,
+		description: 'The format of the post',
 	},
 	{
 		displayName: 'Content',
@@ -157,7 +157,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The content of the post to create.',
+		description: 'The content of the post to create',
 	},
 	{
 		displayName: 'Content (JSON)',
@@ -355,7 +355,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the post to delete.',
+		description: 'The ID of the post to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -391,7 +391,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Get the post either by slug or ID.',
+		description: 'Get the post either by slug or ID',
 	},
 	{
 		displayName: 'Identifier',
@@ -413,7 +413,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID or slug of the post to get.',
+		description: 'The ID or slug of the post to get',
 	},
 	{
 		displayName: 'Options',
@@ -532,7 +532,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -560,7 +560,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -623,7 +623,7 @@ export const postFields: INodeProperties[] = [
 				default: [
 					'html',
 				],
-				description: `By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext.`,
+				description: 'By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext',
 			},
 		],
 	},
@@ -713,7 +713,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the post to update.',
+		description: 'The ID of the post to update',
 	},
 	{
 		displayName: 'Content Format',
@@ -743,7 +743,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'html',
-		description: `The format of the post.`,
+		description: 'The format of the post',
 	},
 	{
 		displayName: 'Update Fields',
@@ -905,7 +905,7 @@ export const postFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: `Post's title`,
+				description: 'Post\'s title',
 			},
 			{
 				displayName: 'Twitter Description',

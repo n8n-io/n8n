@@ -30,7 +30,7 @@ export class SseTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com',
-				description: 'The URL to receive the SSE from.',
+				description: 'The URL to receive the SSE from',
 				required: true,
 			},
 		],

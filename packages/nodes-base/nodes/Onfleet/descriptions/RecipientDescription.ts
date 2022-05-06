@@ -42,7 +42,6 @@ const additionalRecipientFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
-		required: false,
 	},
 	{
 		displayName: 'Skip Recipient SMS Notifications',
@@ -50,7 +49,6 @@ const additionalRecipientFields: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: 'Whether this recipient has requested to skip SMS notifications',
-		required: false,
 	},
 ];
 
@@ -322,7 +320,6 @@ export const recipientFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to skip validation for this recipient\'s phone number',
-				required: false,
 			},
 		],
 	},
