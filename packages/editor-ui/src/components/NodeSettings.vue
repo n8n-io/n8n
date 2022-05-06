@@ -63,7 +63,7 @@
 				<div v-if="customActionSelected" class="parameter-item parameter-notice">
 					<n8n-notice
 						:content="$locale.baseText(
-							'nodeSettings.youCanUseTheHttpRequestNode',
+							'nodeSettings.useTheHttpRequestNode',
 							{
 								interpolate: {
 									nodeTypeDisplayName: nodeType.displayName
