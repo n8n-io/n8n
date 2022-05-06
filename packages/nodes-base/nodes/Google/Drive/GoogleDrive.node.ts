@@ -966,12 +966,12 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
 							},
 							{
 								name: 'id',
@@ -982,12 +982,12 @@ export class GoogleDrive implements INodeType {
 								value: 'kind',
 							},
 							{
-								name: 'name',
-								value: 'name',
-							},
-							{
 								name: 'mimeType',
 								value: 'mimeType',
+							},
+							{
+								name: 'name',
+								value: 'name',
 							},
 							{
 								name: 'permissions',
@@ -1186,73 +1186,73 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
-								value: '*',
-								description: 'All fields',
+						name: '*',
+						value: '*',
+						description: 'All fields',
 							},
 							{
-								name: 'explicitlyTrashed',
-								value: 'explicitlyTrashed',
+						name: 'explicitlyTrashed',
+						value: 'explicitlyTrashed',
 							},
 							{
-								name: 'exportLinks',
-								value: 'exportLinks',
+						name: 'exportLinks',
+						value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
+						name: 'hasThumbnail',
+						value: 'hasThumbnail',
 							},
 							{
-								name: 'hasThumbnail',
-								value: 'hasThumbnail',
+						name: 'iconLink',
+						value: 'iconLink',
 							},
 							{
-								name: 'id',
-								value: 'id',
+						name: 'id',
+						value: 'id',
 							},
 							{
-								name: 'kind',
-								value: 'kind',
+						name: 'kind',
+						value: 'kind',
 							},
 							{
-								name: 'name',
-								value: 'name',
+						name: 'mimeType',
+						value: 'mimeType',
 							},
 							{
-								name: 'mimeType',
-								value: 'mimeType',
+						name: 'name',
+						value: 'name',
 							},
 							{
-								name: 'permissions',
-								value: 'permissions',
+						name: 'permissions',
+						value: 'permissions',
 							},
 							{
-								name: 'shared',
-								value: 'shared',
+						name: 'shared',
+						value: 'shared',
 							},
 							{
-								name: 'spaces',
-								value: 'spaces',
+						name: 'spaces',
+						value: 'spaces',
 							},
 							{
-								name: 'starred',
-								value: 'starred',
+						name: 'starred',
+						value: 'starred',
 							},
 							{
-								name: 'thumbnailLink',
-								value: 'thumbnailLink',
+						name: 'thumbnailLink',
+						value: 'thumbnailLink',
 							},
 							{
-								name: 'trashed',
-								value: 'trashed',
+						name: 'trashed',
+						value: 'trashed',
 							},
 							{
-								name: 'version',
-								value: 'version',
+						name: 'version',
+						value: 'version',
 							},
 							{
-								name: 'webViewLink',
-								value: 'webViewLink',
+						name: 'webViewLink',
+						value: 'webViewLink',
 							},
 						],
 						required: true,

@@ -178,44 +178,44 @@ export class Hunter implements INodeType {
 						default: [],
 						options: [
 							{
-								name: 'Executive',
-								value: 'executive',
+								name: 'Communication',
+								value: 'communication',
 							},
 							{
-								name: 'IT',
-								value: 'it',
+								name: 'Executive',
+								value: 'executive',
 							},
 							{
 								name: 'Finance',
 								value: 'finance',
 							},
 							{
-								name: 'Management',
-								value: 'management',
+								name: 'HR',
+								value: 'hr',
 							},
 							{
-								name: 'Sales',
-								value: 'sales',
+								name: 'IT',
+								value: 'it',
 							},
 							{
 								name: 'Legal',
 								value: 'legal',
 							},
 							{
-								name: 'Support',
-								value: 'support',
-							},
-							{
-								name: 'HR',
-								value: 'hr',
+								name: 'Management',
+								value: 'management',
 							},
 							{
 								name: 'Marketing',
 								value: 'marketing',
 							},
 							{
-								name: 'Communication',
-								value: 'communication',
+								name: 'Sales',
+								value: 'sales',
+							},
+							{
+								name: 'Support',
+								value: 'support',
 							},
 						],
 					},
