@@ -96,7 +96,7 @@ export class Todoist implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-						description: 'Task resource.',
+						description: 'Task resource',
 					},
 				],
 				default: 'task',
@@ -173,7 +173,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The project you want to operate on.',
+				description: 'The project you want to operate on',
 			},
 			{
 				displayName: 'Labels',
@@ -193,7 +193,6 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: [],
-				required: false,
 			},
 			{
 				displayName: 'Content',
@@ -259,14 +258,14 @@ export class Todoist implements INodeType {
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'A description for the task.',
+						description: 'A description for the task',
 					},
 					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
 						type: 'dateTime',
 						default: '',
-						description: 'Specific date and time in RFC3339 format in UTC.',
+						description: 'Specific date and time in RFC3339 format in UTC',
 					},
 					{
 						displayName: 'Due String',
@@ -280,7 +279,7 @@ export class Todoist implements INodeType {
 						name: 'dueLang',
 						type: 'string',
 						default: '',
-						description: '2-letter code specifying language in case due_string is not written in English.',
+						description: '2-letter code specifying language in case due_string is not written in English',
 					},
 					{
 						displayName: 'Priority',
@@ -291,7 +290,7 @@ export class Todoist implements INodeType {
 							minValue: 1,
 						},
 						default: 1,
-						description: 'Task priority from 1 (normal) to 4 (urgent).',
+						description: 'Task priority from 1 (normal) to 4 (urgent)',
 					},
 					{
 						displayName: 'Section',
@@ -304,7 +303,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: {},
-						description: 'The section you want to operate on.',
+						description: 'The section you want to operate on',
 					},
 				],
 			},
@@ -323,7 +322,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -347,7 +346,7 @@ export class Todoist implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -378,7 +377,7 @@ export class Todoist implements INodeType {
 						name: 'ids',
 						type: 'string',
 						default: '',
-						description: 'A list of the task IDs to retrieve, this should be a comma-separated list.',
+						description: 'A list of the task IDs to retrieve, this should be a comma-separated list',
 					},
 					{
 						displayName: 'Label ID',
@@ -388,7 +387,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: {},
-						description: 'Filter tasks by label.',
+						description: 'Filter tasks by label',
 					},
 					{
 						displayName: 'Lang',
@@ -405,7 +404,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'Filter tasks by project id.',
+						description: 'Filter tasks by project ID',
 					},
 				],
 			},
@@ -438,14 +437,14 @@ export class Todoist implements INodeType {
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'A description for the task.',
+						description: 'A description for the task',
 					},
 					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
 						type: 'dateTime',
 						default: '',
-						description: 'Specific date and time in RFC3339 format in UTC.',
+						description: 'Specific date and time in RFC3339 format in UTC',
 					},
 					{
 						displayName: 'Due String',
@@ -459,7 +458,7 @@ export class Todoist implements INodeType {
 						name: 'dueLang',
 						type: 'string',
 						default: '',
-						description: '2-letter code specifying language in case due_string is not written in English.',
+						description: '2-letter code specifying language in case due_string is not written in English',
 					},
 					{
 						displayName: 'Labels',
@@ -469,7 +468,6 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: [],
-						required: false,
 					},
 					{
 						displayName: 'Priority',
@@ -480,7 +478,7 @@ export class Todoist implements INodeType {
 							minValue: 1,
 						},
 						default: 1,
-						description: 'Task priority from 1 (normal) to 4 (urgent).',
+						description: 'Task priority from 1 (normal) to 4 (urgent)',
 					},
 				],
 			},

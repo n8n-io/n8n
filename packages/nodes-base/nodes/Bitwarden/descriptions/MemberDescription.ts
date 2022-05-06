@@ -58,7 +58,7 @@ export const memberFields: INodeProperties[] = [
 		name: 'memberId',
 		type: 'string',
 		required: true,
-		description: 'The identifier of the member.',
+		description: 'The identifier of the member',
 		default: '',
 		placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 		displayOptions: {
@@ -119,7 +119,7 @@ export const memberFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all available results for the query.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -136,7 +136,7 @@ export const memberFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'Number of results to return for the query.',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				resource: [
@@ -159,7 +159,7 @@ export const memberFields: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		default: '',
-		description: 'The email of the member to update.',
+		description: 'The email of the member to update',
 		displayOptions: {
 			show: {
 				resource: [
@@ -198,7 +198,7 @@ export const memberFields: INodeProperties[] = [
 				displayName: 'Collections',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member.',
+				description: 'The collections to assign to this member',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -208,7 +208,7 @@ export const memberFields: INodeProperties[] = [
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
-				description: 'The external identifier to set to this member.',
+				description: 'The external identifier to set to this member',
 				default: '',
 			},
 		],
@@ -261,7 +261,7 @@ export const memberFields: INodeProperties[] = [
 				displayName: 'Collections',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member.',
+				description: 'The collections to assign to this member',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -271,7 +271,7 @@ export const memberFields: INodeProperties[] = [
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
-				description: 'The external identifier to set to this member.',
+				description: 'The external identifier to set to this member',
 				default: '',
 			},
 			{
@@ -300,7 +300,7 @@ export const memberFields: INodeProperties[] = [
 		name: 'groupIds',
 		type: 'string',
 		default: '',
-		description: 'Comma-separated list of IDs of groups to set for a member.',
+		description: 'Comma-separated list of IDs of groups to set for a member',
 		displayOptions: {
 			show: {
 				resource: [

@@ -327,7 +327,6 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				required: false,
 				default: '',
 				description: 'Freeform reason for quiet down mode',
 			},

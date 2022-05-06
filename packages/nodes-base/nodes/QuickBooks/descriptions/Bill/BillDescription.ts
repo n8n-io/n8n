@@ -54,7 +54,7 @@ export const billFields: INodeProperties[] = [
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the vendor who the bill is for.',
+		description: 'The ID of the vendor who the bill is for',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -75,7 +75,7 @@ export const billFields: INodeProperties[] = [
 		name: 'Line',
 		type: 'collection',
 		placeholder: 'Add Line Item Property',
-		description: 'Individual line item of a transaction.',
+		description: 'Individual line item of a transaction',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -125,14 +125,14 @@ export const billFields: INodeProperties[] = [
 			{
 				displayName: 'Amount',
 				name: 'Amount',
-				description: 'Monetary amount of the line item.',
+				description: 'Monetary amount of the line item',
 				type: 'number',
 				default: 0,
 			},
 			{
 				displayName: 'Description',
 				name: 'Description',
-				description: 'Textual description of the line item.',
+				description: 'Textual description of the line item',
 				type: 'string',
 				default: '',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const billFields: INodeProperties[] = [
 			{
 				displayName: 'Position',
 				name: 'LineNum',
-				description: 'Position of the line item relative to others.',
+				description: 'Position of the line item relative to others',
 				type: 'number',
 				default: 1,
 			},
@@ -176,7 +176,7 @@ export const billFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to delete.',
+		description: 'The ID of the bill to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -198,7 +198,7 @@ export const billFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to retrieve.',
+		description: 'The ID of the bill to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -219,7 +219,7 @@ export const billFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -236,7 +236,7 @@ export const billFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -295,7 +295,7 @@ export const billFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to update.',
+		description: 'The ID of the bill to update',
 		displayOptions: {
 			show: {
 				resource: [

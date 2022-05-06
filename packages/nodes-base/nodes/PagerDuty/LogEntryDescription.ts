@@ -51,7 +51,7 @@ export const logEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the log entry.',
+		description: 'Unique identifier for the log entry',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 logEntry:getAll                            */
@@ -71,7 +71,7 @@ export const logEntryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -95,7 +95,7 @@ export const logEntryFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -137,14 +137,14 @@ export const logEntryFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Additional details to include.',
+				description: 'Additional details to include',
 			},
 			{
 				displayName: 'Is Overview',
 				name: 'isOverview',
 				type: 'boolean',
 				default: false,
-				description: 'If true, will return a subset of log entries that show only the most important changes to the incident.',
+				description: 'If true, will return a subset of log entries that show only the most important changes to the incident',
 			},
 			{
 				displayName: 'Since',

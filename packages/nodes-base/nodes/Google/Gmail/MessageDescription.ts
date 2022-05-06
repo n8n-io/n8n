@@ -65,7 +65,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The ID of the message you are operating on.',
+		description: 'The ID of the message you are operating on',
 	},
 	{
 		displayName: 'Thread ID',
@@ -84,7 +84,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The ID of the thread you are replying to.',
+		description: 'The ID of the thread you are replying to',
 	},
 	{
 		displayName: 'Message ID',
@@ -103,7 +103,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
-		description: 'The ID of the message you are replying to.',
+		description: 'The ID of the message you are replying to',
 	},
 	{
 		displayName: 'Subject',
@@ -123,7 +123,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message subject.',
+		description: 'The message subject',
 	},
 	{
 		displayName: 'HTML',
@@ -141,7 +141,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Switch ON if the message should also be included as HTML.',
+		description: 'Switch ON if the message should also be included as HTML',
 	},
 	{
 		displayName: 'HTML Message',
@@ -163,7 +163,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The HTML message body.',
+		description: 'The HTML message body',
 	},
 	{
 		displayName: 'Message',
@@ -182,7 +182,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Plain text message body.',
+		description: 'Plain text message body',
 	},
 	{
 		displayName: 'To Email',
@@ -206,7 +206,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'info@example.com',
-		description: 'The email addresses of the recipients.',
+		description: 'The email addresses of the recipients',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -244,19 +244,19 @@ export const messageFields: INodeProperties[] = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.`,
+								description: 'Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
 				],
 				default: {},
-				description: 'Array of supported attachments to add to the message.',
+				description: 'Array of supported attachments to add to the message',
 			},
 			{
 				displayName: 'BCC Email',
 				name: 'bccList',
 				type: 'string',
-				description: 'The email addresses of the blind copy recipients.',
+				description: 'The email addresses of the blind copy recipients',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add BCC Email',
@@ -268,7 +268,7 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'CC Email',
 				name: 'ccList',
 				type: 'string',
-				description: 'The email addresses of the copy recipients.',
+				description: 'The email addresses of the copy recipients',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add CC Email',
@@ -282,7 +282,7 @@ export const messageFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'Name <test@gmail.com>',
 				default: '',
-				description: `The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API`,
+				description: 'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API',
 			},
 		],
 	},
@@ -316,7 +316,7 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Metadata',
 						value: 'metadata',
-						description: 'Returns only email message ID, labels, and email headers.',
+						description: 'Returns only email message ID, labels, and email headers',
 					},
 					{
 						name: 'Minimal',
@@ -326,12 +326,12 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data.',
+						description: 'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',
@@ -375,7 +375,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -399,7 +399,7 @@ export const messageFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -454,7 +454,7 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Metadata',
 						value: 'metadata',
-						description: 'Returns only email message ID, labels, and email headers.',
+						description: 'Returns only email message ID, labels, and email headers',
 					},
 					{
 						name: 'Minimal',
@@ -464,12 +464,12 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data.',
+						description: 'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',
@@ -480,7 +480,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages from SPAM and TRASH in the results.',
+				description: 'Include messages from SPAM and TRASH in the results',
 			},
 			{
 				displayName: 'Label IDs',
@@ -490,7 +490,7 @@ export const messageFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return messages with labels that match all of the specified label IDs.',
+				description: 'Only return messages with labels that match all of the specified label IDs',
 			},
 			{
 				displayName: 'Query',
@@ -500,7 +500,7 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.`,
+				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.',
 			},
 		],
 	},

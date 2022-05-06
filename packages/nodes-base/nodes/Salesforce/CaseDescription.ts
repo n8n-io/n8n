@@ -36,7 +36,7 @@ export const caseOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of case's metadata`,
+				description: 'Returns an overview of case\'s metadata',
 			},
 			{
 				name: 'Delete',
@@ -102,14 +102,14 @@ export const caseFields: INodeProperties[] = [
 				name: 'accountId',
 				type: 'string',
 				default: '',
-				description: 'ID of the account associated with this case.',
+				description: 'ID of the account associated with this case',
 			},
 			{
 				displayName: 'Contact ID',
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'ID of the associated Contact.',
+				description: 'ID of the associated Contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -119,7 +119,7 @@ export const caseFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -134,14 +134,14 @@ export const caseFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -159,7 +159,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isEscalated',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the case has been escalated (true) or not.',
+				description: 'Indicates whether the case has been escalated (true) or not',
 			},
 			{
 				displayName: 'Origin',
@@ -179,7 +179,7 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseOwners',
 				},
 				default: '',
-				description: 'The owner of the case.',
+				description: 'The owner of the case',
 			},
 			{
 				displayName: 'Parent ID',
@@ -196,7 +196,7 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCasePriorities',
 				},
 				default: '',
-				description: 'The importance or urgency of the case, such as High, Medium, or Low.',
+				description: 'The importance or urgency of the case, such as High, Medium, or Low',
 			},
 			{
 				displayName: 'Reason',
@@ -206,7 +206,7 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseReasons',
 				},
 				default: '',
-				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
+				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training',
 			},
 			{
 				displayName: 'Record Type ID',
@@ -239,14 +239,14 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
-				description: `The company name that was entered when the case was created. This field can't be updated after the case has been created..`,
+				description: 'The company name that was entered when the case was created. This field can\'t be updated after the case has been created..',
 			},
 			{
 				displayName: 'Supplied Email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
-				description: `The email address that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The email address that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Supplied Name',
@@ -260,7 +260,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
-				description: `The phone number that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 		],
 	},
@@ -284,7 +284,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Id of case that needs to be fetched',
+		description: 'ID of case that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -308,14 +308,14 @@ export const caseFields: INodeProperties[] = [
 				name: 'accountId',
 				type: 'string',
 				default: '',
-				description: 'ID of the account associated with this case.',
+				description: 'ID of the account associated with this case',
 			},
 			{
 				displayName: 'Contact ID',
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'ID of the associated Contact.',
+				description: 'ID of the associated Contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -325,7 +325,7 @@ export const caseFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -340,14 +340,14 @@ export const caseFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -365,7 +365,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isEscalated',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the case has been escalated (true) or not.',
+				description: 'Indicates whether the case has been escalated (true) or not',
 			},
 			{
 				displayName: 'Origin',
@@ -385,7 +385,7 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseOwners',
 				},
 				default: '',
-				description: 'The owner of the case.',
+				description: 'The owner of the case',
 			},
 			{
 				displayName: 'Parent ID',
@@ -402,7 +402,7 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCasePriorities',
 				},
 				default: '',
-				description: 'The importance or urgency of the case, such as High, Medium, or Low.',
+				description: 'The importance or urgency of the case, such as High, Medium, or Low',
 			},
 			{
 				displayName: 'Reason',
@@ -412,7 +412,7 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseReasons',
 				},
 				default: '',
-				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
+				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training',
 			},
 			{
 				displayName: 'Record Type ID',
@@ -445,14 +445,14 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
-				description: `The company name that was entered when the case was created. This field can't be updated after the case has been created..`,
+				description: 'The company name that was entered when the case was created. This field can\'t be updated after the case has been created..',
 			},
 			{
 				displayName: 'Supplied Email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
-				description: `The email address that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The email address that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Supplied Name',
@@ -466,7 +466,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
-				description: `The phone number that was entered when the case was created. This field can't be updated after the case has been created.`,
+				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
 				displayName: 'Type',
@@ -500,7 +500,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of case that needs to be fetched.',
+		description: 'ID of case that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -522,7 +522,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of case that needs to be fetched.',
+		description: 'ID of case that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -543,7 +543,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -567,7 +567,7 @@ export const caseFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -594,7 +594,7 @@ export const caseFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -609,7 +609,7 @@ export const caseFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCaseFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',
@@ -678,7 +678,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of case that needs to be fetched.',
+		description: 'ID of case that needs to be fetched',
 	},
 	{
 		displayName: 'Options',
@@ -712,7 +712,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false). ',
+				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false)',
 			},
 		],
 	},
