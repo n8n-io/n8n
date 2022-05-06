@@ -68,7 +68,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your invoices.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
