@@ -107,7 +107,6 @@ export const responderFields: INodeProperties[] = [
 		name: 'parameters',
 		type: 'fixedCollection',
 		placeholder: 'Add Parameter',
-		required: false,
 		options: [
 			{
 				displayName: 'Case Attributes',
@@ -238,7 +237,6 @@ export const responderFields: INodeProperties[] = [
 		name: 'parameters',
 		type: 'fixedCollection',
 		placeholder: 'Add Parameter',
-		required: false,
 		options: [
 			{
 				displayName: 'Alert Attributes',
@@ -374,7 +372,6 @@ export const responderFields: INodeProperties[] = [
 						name: 'artifacts',
 						type: 'fixedCollection',
 						placeholder: 'Add an artifact',
-						required: false,
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add an Artifact',
@@ -531,7 +528,6 @@ export const responderFields: INodeProperties[] = [
 		name: 'parameters',
 		type: 'fixedCollection',
 		placeholder: 'Add Parameter',
-		required: false,
 		options: [
 			{
 				displayName: 'Observable Attributes',
@@ -729,7 +725,6 @@ export const responderFields: INodeProperties[] = [
 		name: 'parameters',
 		type: 'fixedCollection',
 		placeholder: 'Add Parameter',
-		required: false,
 		options: [
 			{
 				displayName: 'Task Attributes',
@@ -739,7 +734,6 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
-						required: false,
 						default: '',
 						description: 'Title of the task',
 					},
@@ -813,7 +807,6 @@ export const responderFields: INodeProperties[] = [
 		name: 'parameters',
 		type: 'fixedCollection',
 		placeholder: 'Add Parameter',
-		required: false,
 		options: [
 			{
 				displayName: 'Log Attributes',

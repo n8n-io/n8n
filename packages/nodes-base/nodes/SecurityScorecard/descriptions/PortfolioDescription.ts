@@ -124,7 +124,6 @@ export const portfolioFields: INodeProperties[] = [
 		displayName: 'Description',
 		name: 'description',
 		type: 'string',
-		required: false,
 		default: '',
 		displayOptions: {
 			show: {
@@ -142,7 +141,6 @@ export const portfolioFields: INodeProperties[] = [
 		displayName: 'Privacy',
 		name: 'privacy',
 		type: 'options',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

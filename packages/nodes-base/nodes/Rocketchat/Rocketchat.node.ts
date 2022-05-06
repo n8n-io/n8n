@@ -389,7 +389,6 @@ export class Rocketchat implements INodeType {
 					},
 				},
 				default: '',
-				required: false,
 			},
 		],
 	};

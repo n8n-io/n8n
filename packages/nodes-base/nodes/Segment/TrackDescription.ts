@@ -51,7 +51,6 @@ export const trackFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Event',

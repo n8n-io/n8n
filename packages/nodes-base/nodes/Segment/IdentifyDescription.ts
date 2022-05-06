@@ -46,7 +46,6 @@ export const identifyFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Traits',

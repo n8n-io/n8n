@@ -1472,7 +1472,6 @@ export class GoogleDrive implements INodeType {
 						name: 'driveId',
 						type: 'string',
 						default: '',
-						required: false,
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -1542,7 +1541,6 @@ export class GoogleDrive implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -1775,7 +1773,6 @@ export class GoogleDrive implements INodeType {
 				name: 'driveId',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -1796,7 +1793,6 @@ export class GoogleDrive implements INodeType {
 				name: 'driveId',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -1920,7 +1916,6 @@ export class GoogleDrive implements INodeType {
 				name: 'driveId',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [

@@ -74,7 +74,6 @@ export const mmsFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'Message to send',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -91,7 +90,6 @@ export const mmsFields: INodeProperties[] = [
 		name: 'media_urls',
 		type: 'string',
 		default: '',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

@@ -677,7 +677,6 @@ export const workerFields: INodeProperties[] = [
 				name: 'analytics',
 				type: 'boolean',
 				default: true,
-				required: false,
 				description: 'Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics',
 			},
 			{

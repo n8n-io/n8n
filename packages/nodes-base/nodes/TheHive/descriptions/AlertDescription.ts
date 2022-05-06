@@ -488,7 +488,6 @@ export const alertFields: INodeProperties[] = [
 		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -572,7 +571,6 @@ export const alertFields: INodeProperties[] = [
 		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -737,7 +735,6 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Case Template',
 				name: 'caseTemplate',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Case template to use when a case is created from this alert',
 			},
@@ -745,7 +742,6 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Description of the alert',
 			},
@@ -812,7 +808,6 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Title of the alert',
 			},
@@ -820,7 +815,6 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{

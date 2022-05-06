@@ -181,7 +181,6 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Branding',
 		name: 'branding',
 		type: 'options',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -236,7 +235,6 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -269,7 +267,6 @@ export const reportFields: INodeProperties[] = [
 						value: 'pdf',
 					},
 				],
-				required: false,
 			},
 		],
 	},
@@ -277,7 +274,6 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -302,7 +298,6 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: [],
-				required: false,
 			},
 			{
 				displayName: 'Format',
@@ -319,7 +314,6 @@ export const reportFields: INodeProperties[] = [
 						value: 'pdf',
 					},
 				],
-				required: false,
 			},
 			{
 				displayName: 'IPs',
@@ -329,7 +323,6 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: [],
-				required: false,
 			},
 			{
 				displayName: 'Subdomains',
@@ -339,7 +332,6 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: [],
-				required: false,
 			},
 
 		],

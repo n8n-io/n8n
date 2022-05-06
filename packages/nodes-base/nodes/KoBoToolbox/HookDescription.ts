@@ -160,7 +160,6 @@ export const hookFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		required: false,
 		typeOptions: {
 			maxValue: 3000,
 		},

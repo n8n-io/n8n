@@ -46,7 +46,6 @@ export const groupFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Group ID',

@@ -253,7 +253,6 @@ export class BoxTrigger implements INodeType {
 				displayName: 'Target ID',
 				name: 'targetId',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'The ID of the item to trigger a webhook',
 			},

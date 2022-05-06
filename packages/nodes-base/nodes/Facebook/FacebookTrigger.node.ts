@@ -146,7 +146,6 @@ export class FacebookTrigger implements INodeType {
 						'object',
 					],
 				},
-				required: false,
 				default: [],
 				description: 'The set of fields in this object that are subscribed to',
 			},

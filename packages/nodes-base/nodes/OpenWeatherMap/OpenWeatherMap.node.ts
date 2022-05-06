@@ -196,7 +196,6 @@ export class OpenWeatherMap implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'en',
-				required: false,
 				description: 'The two letter language code to get your output in (eg. en, de, ...).',
 			},
 
