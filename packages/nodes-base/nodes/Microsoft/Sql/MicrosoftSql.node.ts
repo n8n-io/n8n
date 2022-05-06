@@ -204,7 +204,8 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description: 'Name of the property which decides which rows in the database should be deleted. Normally that would be "ID".',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
 			},
 		],
 	};
