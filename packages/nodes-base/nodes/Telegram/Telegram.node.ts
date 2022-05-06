@@ -123,7 +123,7 @@ export class Telegram implements INodeType {
 					{
 						name: 'Get Administrators',
 						value: 'administrators',
-						description: 'Get the Administrators of a chat.',
+						description: 'Get the Administrators of a chat',
 					},
 					{
 						name: 'Get Member',
@@ -133,7 +133,7 @@ export class Telegram implements INodeType {
 					{
 						name: 'Leave',
 						value: 'leave',
-						description: 'Leave a group, supergroup or channel.',
+						description: 'Leave a group, supergroup or channel',
 					},
 					{
 						name: 'Set Description',

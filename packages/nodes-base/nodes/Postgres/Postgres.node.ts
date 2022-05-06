@@ -238,7 +238,7 @@ export class Postgres implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},

@@ -393,7 +393,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'test',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this is a test order.',
+				description: 'Whether this is a test order',
 			},
 		],
 	},

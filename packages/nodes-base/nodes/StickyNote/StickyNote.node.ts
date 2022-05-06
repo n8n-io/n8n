@@ -18,8 +18,8 @@ export class StickyNote implements INodeType {
 			name: 'Note',
 			color: '#FFD233',
 		},
-		inputs: [],
-		outputs: [],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Content',

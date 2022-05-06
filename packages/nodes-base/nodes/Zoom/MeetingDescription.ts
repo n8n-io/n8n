@@ -345,7 +345,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'To view meeting details of all previous occurrences of the recurring meeting.',
+				description: 'To view meeting details of all previous occurrences of the recurring meeting',
 			},
 		],
 	},

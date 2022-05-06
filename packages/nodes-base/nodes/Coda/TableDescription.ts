@@ -133,7 +133,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,)',
+				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,).',
 			},
 		],
 	},

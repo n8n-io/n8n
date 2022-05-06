@@ -313,7 +313,7 @@ export const webinarFields: INodeProperties[] = [
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'To view webinar details of all previous occurrences of the recurring webinar.',
+				description: 'To view webinar details of all previous occurrences of the recurring webinar',
 			},
 		],
 	},

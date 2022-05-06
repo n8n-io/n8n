@@ -120,7 +120,7 @@ export class QuestDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: `Comma-separated list of the properties which should used as columns for the new rows.`,
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 			{
 				displayName: 'Return Fields',
@@ -183,7 +183,7 @@ export class QuestDb implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},
