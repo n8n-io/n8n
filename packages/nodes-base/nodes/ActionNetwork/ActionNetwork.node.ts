@@ -72,6 +72,7 @@ export class ActionNetwork implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Attendance',

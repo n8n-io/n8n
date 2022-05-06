@@ -31,6 +31,7 @@ export const versionDescription: INodeTypeDescription = {
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
+			noDataExpression: true,
 			options: [
 				{
 					name: 'Channel',

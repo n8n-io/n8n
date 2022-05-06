@@ -39,6 +39,7 @@ export class AwsTranscribe implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Transcription Job',

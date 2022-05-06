@@ -409,6 +409,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-wrong-for-return-all': 'error',
 				'n8n-nodes-base/node-param-description-url-missing-protocol': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues': 'error',
+				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 			},
 		},
 	],

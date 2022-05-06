@@ -63,6 +63,7 @@ export class Contentful implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					AssetDescription.resource,
 					ContentTypeDescription.resource,

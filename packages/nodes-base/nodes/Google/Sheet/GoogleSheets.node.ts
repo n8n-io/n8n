@@ -92,6 +92,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Spreadsheet',

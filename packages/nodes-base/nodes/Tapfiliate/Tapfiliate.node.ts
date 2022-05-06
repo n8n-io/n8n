@@ -57,6 +57,7 @@ export class Tapfiliate implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Affiliate',
