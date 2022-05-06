@@ -454,7 +454,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'userIds',
 				type: 'string',
 				default: '',
-				description: 'Returns only the incIDents currently assigned to the passed user(s). This expects one or more user IDs (multiple IDs can be added separated by comma).',
+				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple IDs can be added separated by comma).',
 			},
 		],
 	},

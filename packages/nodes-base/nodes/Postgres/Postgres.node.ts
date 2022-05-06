@@ -117,7 +117,8 @@ export class Postgres implements INodeType {
 				},
 				default: '',
 				placeholder: 'id:int,name:text,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like ID:int.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
@@ -160,7 +161,8 @@ export class Postgres implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "ID".',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -173,7 +175,8 @@ export class Postgres implements INodeType {
 				},
 				default: '',
 				placeholder: 'name:text,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like ID:int.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
