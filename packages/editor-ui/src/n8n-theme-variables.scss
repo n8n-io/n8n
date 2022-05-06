@@ -1,17 +1,16 @@
 // Primary Theme Color
-$--color-primary: #ff6d5a;
-$--color-primary-light: #fbebed;
+$--color-primary: var(--color-primary);
 
 // Dialog
-$--custom-dialog-text-color: #666;
-$--custom-dialog-background: #fff;
+$--custom-dialog-text-color: var(--color-text-base);
+$--custom-dialog-background: var(--color-background-xlight);
 
-$--custom-font-black: #000;
-$--custom-font-dark: #595e67;
-$--custom-font-light: #777;
-$--custom-font-very-light: #999;
+$--custom-font-black: var(--color-text-dark);
+$--custom-font-dark: var(--color-text-dark);
+$--custom-font-light: var(--color-text-light);
+$--custom-font-very-light: var(--color-text-lighter);
 
-$--custom-header-background: #384d5b;
+$--custom-header-background: var(--color-foreground-xdark);
 
 $--custom-expression-text: #996688;
 $--custom-expression-background: #f7f5ff;
@@ -19,7 +18,7 @@ $--custom-expression-background: #f7f5ff;
 $--custom-window-sidebar-top : #fff5f2;
 
 // Badge
-$--badge-danger-color: #f45959;
+$--badge-danger-color: var(--color-danger);
 $--badge-danger-background-color: #fef0f0;
 $--badge-danger-border-color: #fde2e2;
 $--badge-warning-background-color: rgba(255, 229, 100, 0.3);
@@ -33,10 +32,9 @@ $--custom-table-background-main: $--custom-header-background;
 $--custom-table-background-stripe-color: #f6f6f6;
 $--custom-table-background-hover-color: #e9f0f4;
 
-$--custom-input-background: #f0f0f0;
 $--custom-input-background-disabled: #ccc;
 $--custom-input-font: #333;
-$--custom-input-border-color: #dcdfe6;
+$--custom-input-border-color: var(--color-text-lighter);
 $--custom-input-font-disabled: #555;
 $--custom-input-border-shadow: 1px solid $--custom-input-border-color;
 
@@ -45,7 +43,7 @@ $--header-height: 65px;
 // sidebar
 $--sidebar-width: 65px;
 $--sidebar-expanded-width: 200px;
-$--sidebar-inactive-color: #909399;
+$--sidebar-inactive-color: var(--color-foreground-xdark);
 $--sidebar-active-color: $--color-primary;
 
 // gifts notification
@@ -68,7 +66,7 @@ $--tag-close-background-hover-color: #3d3f46;
 
 // Node creator
 $--node-creator-width: 385px;
-$--node-creator-text-color: #555;
+$--node-creator-text-color: var(--color-text-dark);
 $--node-creator-select-background-color: #f2f4f8;
 $--node-creator-background-color: var(--color-background-xlight);
 $--node-creator-search-background-color: var(--color-background-xlight);
@@ -79,12 +77,12 @@ $--node-creator-no-results-background-color: #f8f9fb;
 $--node-creator-close-button-color: var(--color-text-xlight);
 $--node-creator-search-clear-background-color: #8d939c;
 $--node-creator-search-clear-background-color-hover: #3d3f46;
-$--node-creator-search-placeholder-color: #909399;
+$--node-creator-search-placeholder-color: var(--color-foreground-xdark);
 $--node-creator-subcategory-panel-header-bacground-color: #f2f4f8;
-$--node-creator-description-color: #7d7d87;
+$--node-creator-description-color: var(--color-text-base);
 
 // trigger icon
-$--trigger-icon-border-color: #dcdfe6;
+$--trigger-icon-border-color: var(--color-text-lighter);
 $--trigger-icon-background-color: var(--color-background-xlight);
 
 // drawer
@@ -92,17 +90,17 @@ $--drawer-background-color: var(--color-background-xlight);
 
 // updates-panel
 $--updates-panel-info-url-color: $--color-primary;
-$--updates-panel-border: 1px #dbdfe7 solid;
-$--updates-panel-dark-background-color: #f8f9fb;
-$--updates-panel-description-text-color: #7d7d87;
-$--updates-panel-text-color: #555;
+$--updates-panel-border: var(--border-base);
+$--updates-panel-dark-background-color: var(--color-background-lighter);
+$--updates-panel-description-text-color: var(--color-text-base);
+$--updates-panel-text-color: var(--color-text-dark);
 
 // versions card
-$--version-card-name-text-color: #666;
+$--version-card-name-text-color: var(--color-text-base);
 $--version-card-background-color: var(--color-background-xlight);
-$--version-card-border: 1px #dbdfe7 solid;
-$--version-card-description-text-color: #7d7d87;
-$--version-card-release-date-text-color: #909399;
+$--version-card-border: var(--border-base);
+$--version-card-description-text-color: var(--color-text-base);
+$--version-card-release-date-text-color: var(--color-foreground-xdark);
 $--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);
 
 

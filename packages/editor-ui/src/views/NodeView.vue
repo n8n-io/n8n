@@ -3056,7 +3056,7 @@ export default mixins(
 }
 
 .drop-add-node-label {
-	color: #555;
+	color: var(--color-text-dark);
 	font-weight: 600;
 	font-size: 0.8em;
 	text-align: center;
@@ -3082,10 +3082,10 @@ export default mixins(
 	margin: 0 0.1em;
 	border-radius: 3px;
 	font-size: 1.2em;
-	background: #fff;
+	background: var(--color-background-xlight);
 	width: 40px;
 	height: 40px;
-	color: #666;
+	color: var(--color-text-base);
 	cursor: pointer;
 
 	&:hover {

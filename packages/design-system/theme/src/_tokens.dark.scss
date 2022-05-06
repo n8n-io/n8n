@@ -148,7 +148,7 @@
 
 	--color-text-base-h: 240;
 	--color-text-base-s: 4%;
-	--color-text-base-l: 49%;
+	--color-text-base-l: 70%;
 	--color-text-base: hsl(
 		var(--color-text-base-h),
 		var(--color-text-base-s),
@@ -218,9 +218,9 @@
 		var(--color-background-dark-l)
 	);
 
-	--color-background-base-h: 252;
-	--color-background-base-s: 71%;
-	--color-background-base-l: 99%;
+	--color-background-base-h: 0;
+	--color-background-base-s: 98%;
+	--color-background-base-l: 1%;
 	--color-background-base: hsl(
 		var(--color-background-base-h),
 		var(--color-background-base-s),

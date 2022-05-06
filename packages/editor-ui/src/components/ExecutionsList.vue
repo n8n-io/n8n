@@ -803,11 +803,11 @@ export default mixins(
 <style lang="scss">
 
 .currently-running {
-	background-color: $--color-primary-light !important;
+	background-color: var(--color-primary-tint-3) !important;
 }
 
 .el-table tr:hover.currently-running td {
-	background-color: darken($--color-primary-light, 3% ) !important;
+	background-color: var(--color-primary-tint-2) !important;
 }
 
 </style>
