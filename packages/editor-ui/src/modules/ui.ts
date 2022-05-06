@@ -1,3 +1,4 @@
+import { isEditorTheme } from '@/components/typeHelpers';
 import {
 	ABOUT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -17,13 +18,23 @@ import {
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
+	LOCAL_STORAGE_THEME_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
+	EditorTheme,
 	IRootState,
 	IUiState,
 } from '../Interface';
+
+function getInitialTheme(): EditorTheme {
+	const saved = window.localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
+	return isEditorTheme(saved)? saved : 'light';
+}
+
+const INITIAL_THEME = getInitialTheme();
+document.body.classList.add(`theme-${INITIAL_THEME}`);
 
 const module: Module<IUiState, IRootState> = {
 	namespaced: true,
@@ -88,6 +99,7 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
+		theme: INITIAL_THEME,
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -109,6 +121,7 @@ const module: Module<IUiState, IRootState> = {
 			return (name: string) => state.modals[name].mode;
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
+		editorTheme: (state: IUiState): string => state.theme,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -142,6 +155,16 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
+		},
+		toggleTheme: (state: IUiState) => {
+			state.theme = state.theme === 'light' ? 'dark' : 'light';
+			window.localStorage.setItem(LOCAL_STORAGE_THEME_KEY, state.theme);
+			document.body.classList.forEach((theme) => {
+				if (theme.startsWith('theme-')) {
+					document.body.classList.remove(theme);
+				}
+			});
+			document.body.classList.add(`theme-${state.theme}`);
 		},
 	},
 	actions: {

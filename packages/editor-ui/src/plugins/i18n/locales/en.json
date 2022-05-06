@@ -464,6 +464,7 @@
 	"nodeView.stopCurrentExecution": "Stop current execution",
 	"nodeView.stopWaitingForWebhookCall": "Stop waiting for webhook call",
 	"nodeView.stoppingCurrentExecution": "Stopping current execution",
+	"nodeView.switchTheme": "Switch theme",
 	"nodeView.thereWasAProblemLoadingTheNodeParametersOfNode": "There was a problem loading the parameters of the node",
 	"nodeView.thisExecutionHasntFinishedYet": "This execution hasn't finished yet",
 	"nodeView.toSeeTheLatestStatus": "to see the latest status",

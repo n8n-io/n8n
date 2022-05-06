@@ -840,6 +840,8 @@ export interface IModalState {
 	activeId?: string | null;
 }
 
+export type EditorTheme = 'light' | 'dark';
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -848,6 +850,7 @@ export interface IUiState {
 	};
 	isPageLoading: boolean;
 	currentView: string;
+	theme: EditorTheme;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
