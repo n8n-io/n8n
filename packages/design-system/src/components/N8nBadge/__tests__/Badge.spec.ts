@@ -1,19 +1,22 @@
 import { render } from '@testing-library/vue';
 import N8nBadge from '../Badge.vue';
+import N8nText from '../../N8nText/Text.vue'
 
 describe('components', () => {
 	describe('N8nBadge', () => {
 		describe('props', () => {
-			// Test badge rendering with different prop settings
 			it('should render default theme correctly', () => {
 				const wrapper = render(N8nBadge, {
 					props: {
 						theme: 'default',
-						size: 'small',
+						size: 'large',
 						bold: true
 					},
 					slots: {
-						default: 'Default badge',
+						default: '<n8n-text>Default badge</n8n-text>',
+					},
+					stubs: {
+						'n8n-text': N8nText
 					},
 				});
 				expect(wrapper.html()).toMatchSnapshot();
@@ -26,10 +29,23 @@ describe('components', () => {
 						bold: false
 					},
 					slots: {
-						default: 'Secondary badge',
+						default: '<n8n-text>Secondary badge</n8n-text>',
+					},
+					stubs: {
+						'n8n-text': N8nText
 					},
 				});
-				console.log(wrapper.html())
+				expect(wrapper.html()).toMatchSnapshot();
+			});
+			it('should render with default values correctly', () => {
+				const wrapper = render(N8nBadge, {
+					slots: {
+						default: '<n8n-text>A Badge</n8n-text>',
+					},
+					stubs: {
+						'n8n-text': N8nText
+					},
+				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
 		})
