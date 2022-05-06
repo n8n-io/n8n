@@ -83,57 +83,65 @@ export class HubspotTrigger implements INodeType {
 								name: 'name',
 								type: 'options',
 								options: [
-							{
-								name: 'Company Created',
-								value: 'company.creation',
-								description: 'To get notified if any company is created in a customer\'s account',
-							},
-							{
-								name: 'Company Deleted',
-								value: 'company.deletion',
-								description: 'To get notified if any company is deleted in a customer\'s account',
-							},
-							{
-								name: 'Company Property Changed',
-								value: 'company.propertyChange',
-								description: 'To get notified if a specified property is changed for any company in a customer\'s account',
-							},
-							{
-								name: 'Contact Created',
-								value: 'contact.creation',
-								description: 'To get notified if any contact is created in a customer\'s account',
-							},
-							{
-								name: 'Contact Deleted',
-								value: 'contact.deletion',
-								description: 'To get notified if any contact is deleted in a customer\'s account',
-							},
-							{
-								name: 'Contact Privacy Deleted',
-								value: 'contact.privacyDeletion',
-								description: 'To get notified if a contact is deleted for privacy compliance reasons',
-							},
-							{
-								name: 'Contact Property Changed',
-								value: 'contact.propertyChange',
-								description: 'To get notified if a specified property is changed for any contact in a customer\'s account',
-							},
-							{
-								name: 'Deal Created',
-								value: 'deal.creation',
-								description: 'To get notified if any deal is created in a customer\'s account',
-							},
-							{
-								name: 'Deal Deleted',
-								value: 'deal.deletion',
-								description: 'To get notified if any deal is deleted in a customer\'s account',
-							},
-							{
-								name: 'Deal Property Changed',
-								value: 'deal.propertyChange',
-								description: 'To get notified if a specified property is changed for any deal in a customer\'s account',
-							},
-						],
+									{
+										name: 'Company Created',
+										value: 'company.creation',
+										description:
+											"To get notified if any company is created in a customer's account",
+									},
+									{
+										name: 'Company Deleted',
+										value: 'company.deletion',
+										description:
+											"To get notified if any company is deleted in a customer's account",
+									},
+									{
+										name: 'Company Property Changed',
+										value: 'company.propertyChange',
+										description:
+											"To get notified if a specified property is changed for any company in a customer's account",
+									},
+									{
+										name: 'Contact Created',
+										value: 'contact.creation',
+										description:
+											"To get notified if any contact is created in a customer's account",
+									},
+									{
+										name: 'Contact Deleted',
+										value: 'contact.deletion',
+										description:
+											"To get notified if any contact is deleted in a customer's account",
+									},
+									{
+										name: 'Contact Privacy Deleted',
+										value: 'contact.privacyDeletion',
+										description:
+											'To get notified if a contact is deleted for privacy compliance reasons',
+									},
+									{
+										name: 'Contact Property Changed',
+										value: 'contact.propertyChange',
+										description:
+											"To get notified if a specified property is changed for any contact in a customer's account",
+									},
+									{
+										name: 'Deal Created',
+										value: 'deal.creation',
+										description: "To get notified if any deal is created in a customer's account",
+									},
+									{
+										name: 'Deal Deleted',
+										value: 'deal.deletion',
+										description: "To get notified if any deal is deleted in a customer's account",
+									},
+									{
+										name: 'Deal Property Changed',
+										value: 'deal.propertyChange',
+										description:
+											"To get notified if a specified property is changed for any deal in a customer's account",
+									},
+								],
 								default: 'contact.creation',
 								required: true,
 							},
@@ -142,16 +150,12 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'contact.propertyChange',
-									],
+									loadOptionsDependsOn: ['contact.propertyChange'],
 									loadOptionsMethod: 'getContactProperties',
 								},
 								displayOptions: {
 									show: {
-										name: [
-											'contact.propertyChange',
-										],
+										name: ['contact.propertyChange'],
 									},
 								},
 								default: '',
@@ -162,16 +166,12 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'company.propertyChange',
-									],
+									loadOptionsDependsOn: ['company.propertyChange'],
 									loadOptionsMethod: 'getCompanyProperties',
 								},
 								displayOptions: {
 									show: {
-										name: [
-											'company.propertyChange',
-										],
+										name: ['company.propertyChange'],
 									},
 								},
 								default: '',
@@ -182,16 +182,12 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'deal.propertyChange',
-									],
+									loadOptionsDependsOn: ['deal.propertyChange'],
 									loadOptionsMethod: 'getDealProperties',
 								},
 								displayOptions: {
 									show: {
-										name: [
-											'deal.propertyChange',
-										],
+										name: ['deal.propertyChange'],
 									},
 								},
 								default: '',
