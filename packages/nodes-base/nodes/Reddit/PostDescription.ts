@@ -289,7 +289,7 @@ export const postFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -447,7 +447,7 @@ export const postFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

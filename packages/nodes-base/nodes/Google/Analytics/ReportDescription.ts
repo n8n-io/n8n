@@ -88,7 +88,7 @@ export const reportFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 1000,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Simplify Response',

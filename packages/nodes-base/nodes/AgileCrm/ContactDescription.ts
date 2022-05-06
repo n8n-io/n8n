@@ -107,7 +107,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: 20,
-		description: 'Number of results to fetch.',
+		description: 'Max number of results to return',
 	},
 
 	{

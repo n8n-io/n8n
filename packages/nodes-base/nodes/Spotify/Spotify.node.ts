@@ -762,7 +762,7 @@ export class Spotify implements INodeType {
 					minValue: 1,
 					maxValue: 100,
 				},
-				description: 'The number of items to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Limit',
@@ -789,7 +789,7 @@ export class Spotify implements INodeType {
 					minValue: 1,
 					maxValue: 50,
 				},
-				description: 'The number of items to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Volume',

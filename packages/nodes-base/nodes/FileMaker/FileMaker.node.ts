@@ -149,7 +149,7 @@ export class FileMaker implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				placeholder: '100',
-				description: 'The maximum number of records that should be returned. If not specified, the default value is 100.',
+				description: 'Max number of results to return',
 				type: 'number',
 				default: '100',
 				displayOptions: {

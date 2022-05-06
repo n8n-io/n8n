@@ -477,7 +477,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',

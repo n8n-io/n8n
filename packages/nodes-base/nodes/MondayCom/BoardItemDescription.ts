@@ -474,7 +474,7 @@ export const boardItemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:getByColumnValue                 */
@@ -581,7 +581,7 @@ export const boardItemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:move                             */

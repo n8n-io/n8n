@@ -132,7 +132,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Simplify Response',

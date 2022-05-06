@@ -138,7 +138,7 @@ export class Stackby implements INodeType {
 					maxValue: 1000,
 				},
 				default: 1000,
-				description: 'Number of results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',

@@ -90,6 +90,6 @@ export const videoCategoryFields: INodeProperties[] = [
 			maxValue: 50,
 		},
 		default: 25,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

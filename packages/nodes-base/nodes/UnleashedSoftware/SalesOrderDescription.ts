@@ -70,7 +70,7 @@ export const salesOrderFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

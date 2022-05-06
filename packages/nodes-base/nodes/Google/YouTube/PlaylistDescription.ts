@@ -383,7 +383,7 @@ export const playlistFields: INodeProperties[] = [
 			maxValue: 50,
 		},
 		default: 25,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

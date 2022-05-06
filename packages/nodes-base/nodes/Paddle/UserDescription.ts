@@ -70,7 +70,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Number of subscription records to return per page.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',

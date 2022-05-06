@@ -866,7 +866,7 @@ export class Mailchimp implements INodeType {
 					maxValue: 1000,
 				},
 				default: 500,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',
@@ -1549,7 +1549,7 @@ export class Mailchimp implements INodeType {
 					maxValue: 1000,
 				},
 				default: 500,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 campaign:getAll                            */
@@ -1593,7 +1593,7 @@ export class Mailchimp implements INodeType {
 					maxValue: 1000,
 				},
 				default: 10,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',

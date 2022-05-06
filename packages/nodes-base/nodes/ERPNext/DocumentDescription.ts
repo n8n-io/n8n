@@ -93,7 +93,7 @@ export const documentFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				resource: [

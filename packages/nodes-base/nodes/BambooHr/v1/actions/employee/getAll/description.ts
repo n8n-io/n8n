@@ -40,6 +40,6 @@ export const employeeGetAllDescription: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 ];

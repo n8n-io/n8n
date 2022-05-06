@@ -476,7 +476,7 @@ export class GoogleDrive implements INodeType {
 					maxValue: 1000,
 				},
 				default: 100,
-				description: 'How many files to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -1877,7 +1877,7 @@ export class GoogleDrive implements INodeType {
 					maxValue: 200,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',
