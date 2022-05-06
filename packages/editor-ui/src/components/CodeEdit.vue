@@ -35,6 +35,7 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 import { mapGetters } from 'vuex';
+import { getStyleTokenValue } from './helpers';
 
 export default mixins(
 	genericHelpers,
@@ -115,6 +116,7 @@ export default mixins(
 			});
 
 			if (this.editorTheme === 'light') {
+				const backgroundColor = getStyleTokenValue('--color-foreground-light');
 				monaco.editor.defineTheme('n8nCustomTheme', {
 					base: 'vs',
 					inherit: true,
