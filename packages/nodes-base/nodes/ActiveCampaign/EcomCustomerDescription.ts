@@ -70,7 +70,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the connection object for the service where the customer originates.',
+		description: 'The ID of the connection object for the service where the customer originates',
 	},
 	{
 		displayName: 'Customer ID',
@@ -88,7 +88,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the customer in the external service.',
+		description: 'The ID of the customer in the external service',
 	},
 	{
 		displayName: 'Customer Email',
@@ -106,7 +106,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of the customer.',
+		description: 'The email address of the customer',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -130,7 +130,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
-				description: 'Indication of whether customer has opt-ed in to marketing communications.',
+				description: 'Indication of whether customer has opt-ed in to marketing communications',
 			},
 		],
 	},
@@ -154,13 +154,13 @@ export const ecomCustomerFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the E-commerce customer to update.',
+		description: 'ID of the E-commerce customer to update',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
@@ -179,28 +179,28 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'connectionid',
 				type: 'string',
 				default: '',
-				description: 'The id of the connection object for the service where the customer originates.',
+				description: 'The ID of the connection object for the service where the customer originates',
 			},
 			{
 				displayName: 'Customer ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the customer in the external service.',
+				description: 'The ID of the customer in the external service',
 			},
 			{
 				displayName: 'Customer Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The email address of the customer.',
+				description: 'The email address of the customer',
 			},
 			{
 				displayName: 'Accepts Marketing',
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
-				description: 'Indication of whether customer has opt-ed in to marketing communications.',
+				description: 'Indication of whether customer has opt-ed in to marketing communications',
 			},
 		],
 	},
@@ -224,7 +224,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the E-commerce customer to delete.',
+		description: 'ID of the E-commerce customer to delete',
 	},
 
 	// ----------------------------------
@@ -246,7 +246,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the E-commerce customer to get.',
+		description: 'ID of the E-commerce customer to get',
 	},
 
 	// ----------------------------------

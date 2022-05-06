@@ -61,7 +61,7 @@ export class Coda implements INodeType {
 					{
 						name: 'Control',
 						value: 'control',
-						description: 'Controls provide a user-friendly way to input a value that can affect other parts of the doc.',
+						description: 'Controls provide a user-friendly way to input a value that can affect other parts of the doc',
 					},
 					{
 						name: 'Formula',
@@ -71,12 +71,12 @@ export class Coda implements INodeType {
 					{
 						name: 'Table',
 						value: 'table',
-						description: `Access data of tables in documents.`,
+						description: 'Access data of tables in documents',
 					},
 					{
 						name: 'View',
 						value: 'view',
-						description: `Access data of views in documents.`,
+						description: 'Access data of views in documents',
 					},
 				],
 				default: 'table',

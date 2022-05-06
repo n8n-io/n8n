@@ -215,22 +215,22 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a user.',
+						description: 'Delete a user',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Retrieve information about a single user.',
+						description: 'Retrieve information about a single user',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Retrieve a list of users.',
+						description: 'Retrieve a list of users',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Edit attributes related to a user.',
+						description: 'Edit attributes related to a user',
 					},
 				],
 				default: 'create',
@@ -391,7 +391,7 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 
 			// ----------------------------------
@@ -453,7 +453,7 @@ export class NextCloud implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'The text content of the file to upload.',
+				description: 'The text content of the file to upload',
 			},
 			{
 				displayName: 'Binary Property',
@@ -476,7 +476,7 @@ export class NextCloud implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded',
 			},
 
 			// ----------------------------------
@@ -663,7 +663,7 @@ export class NextCloud implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Optional search string.',
+						description: 'Optional search string',
 					},
 					{
 						displayName: 'Permissions',
@@ -770,7 +770,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'john',
-				description: 'Username the user will have.',
+				description: 'Username the user will have',
 			},
 			{
 				displayName: 'Email',
@@ -789,7 +789,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'john@email.com',
-				description: 'The email of the user to invite.',
+				description: 'The email of the user to invite',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -813,7 +813,7 @@ export class NextCloud implements INodeType {
 						name: 'displayName',
 						type: 'string',
 						default: '',
-						description: 'The display name of the user to invite.',
+						description: 'The display name of the user to invite',
 					},
 				],
 			},
@@ -839,7 +839,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'john',
-				description: 'Username the user will have.',
+				description: 'Username the user will have',
 			},
 			// ----------------------------------
 			//         user:getAll
@@ -859,7 +859,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -883,7 +883,7 @@ export class NextCloud implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',
@@ -907,14 +907,14 @@ export class NextCloud implements INodeType {
 						name: 'search',
 						type: 'string',
 						default: '',
-						description: 'Optional search string.',
+						description: 'Optional search string',
 					},
 					{
 						displayName: 'Offset',
 						name: 'offset',
 						type: 'number',
 						default: '',
-						description: 'Optional offset value.',
+						description: 'Optional offset value',
 					},
 				],
 			},
@@ -955,42 +955,42 @@ export class NextCloud implements INodeType {
 										{
 											name: 'Address',
 											value: 'address',
-											description: 'The new address for the user.',
+											description: 'The new address for the user',
 										},
 										{
 											name: 'Display Name',
 											value: 'displayname',
-											description: 'The new display name for the user.',
+											description: 'The new display name for the user',
 										},
 										{
 											name: 'Email',
 											value: 'email',
-											description: 'The new email for the user.',
+											description: 'The new email for the user',
 										},
 										{
 											name: 'Password',
 											value: 'password',
-											description: 'The new password for the user.',
+											description: 'The new password for the user',
 										},
 										{
 											name: 'Twitter',
 											value: 'twitter',
-											description: 'The new twitter handle for the user.',
+											description: 'The new twitter handle for the user',
 										},
 										{
 											name: 'Website',
 											value: 'website',
-											description: 'The new website for the user.',
+											description: 'The new website for the user',
 										},
 									],
-								description: 'Key of the updated attribute.',
+								description: 'Key of the updated attribute',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the updated attribute.',
+								description: 'Value of the updated attribute',
 							},
 						],
 					},

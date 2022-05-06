@@ -50,7 +50,7 @@ export const messageLabelFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The message ID of your email.',
+		description: 'The message ID of your email',
 	},
 	{
 		displayName: 'Label IDs',

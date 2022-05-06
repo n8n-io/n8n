@@ -91,6 +91,6 @@ export const contactTagFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact tag to delete.',
+		description: 'ID of the contact tag to delete',
 	},
 ];

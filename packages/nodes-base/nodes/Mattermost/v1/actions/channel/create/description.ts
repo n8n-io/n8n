@@ -23,7 +23,7 @@ export const channelCreateDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team.',
+		description: 'The Mattermost Team',
 	},
 	{
 		displayName: 'Display Name',
@@ -88,6 +88,6 @@ export const channelCreateDescription: ChannelProperties = [
 			},
 		],
 		default: 'public',
-		description: 'The type of channel to create.',
+		description: 'The type of channel to create',
 	},
 ];
