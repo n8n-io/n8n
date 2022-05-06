@@ -79,7 +79,7 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				name: 'Sales Invoice',
 				value: 'ACCREC',
-				description: ' Accounts Receivable or customer invoice',
+				description: 'Accounts Receivable or customer invoice',
 			},
 		],
 		default: '',
