@@ -93,7 +93,7 @@ export const fields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Asset ID',
@@ -197,7 +197,7 @@ export const fields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed.',
+				description: 'If the data should be returned RAW instead of parsed',
 			},
 		],
 	},

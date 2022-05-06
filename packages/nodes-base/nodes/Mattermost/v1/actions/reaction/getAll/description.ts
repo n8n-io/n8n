@@ -19,7 +19,7 @@ export const reactionGetAllDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'One or more (comma-separated) posts to retrieve reactions from.',
+		description: 'One or more (comma-separated) posts to retrieve reactions from',
 	},
 	{
 		displayName: 'Return All',
@@ -60,6 +60,6 @@ export const reactionGetAllDescription: ReactionProperties = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

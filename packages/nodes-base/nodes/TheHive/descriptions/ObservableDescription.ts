@@ -90,7 +90,7 @@ export const observableFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	// required attributs
 	{

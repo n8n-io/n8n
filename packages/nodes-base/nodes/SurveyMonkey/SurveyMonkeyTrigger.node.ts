@@ -341,7 +341,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Returns only the answers of the form and not any of the other data',
 			},
 		],
 	};

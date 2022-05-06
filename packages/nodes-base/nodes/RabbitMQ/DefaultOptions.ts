@@ -9,7 +9,7 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		displayName: 'Arguments',
 		name: 'arguments',
 		placeholder: 'Add Argument',
-		description: 'Arguments to add.',
+		description: 'Arguments to add',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -40,7 +40,7 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		displayName: 'Headers',
 		name: 'headers',
 		placeholder: 'Add Header',
-		description: 'Headers to add.',
+		description: 'Headers to add',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -72,20 +72,20 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		name: 'autoDelete',
 		type: 'boolean',
 		default: false,
-		description: 'The queue will be deleted when the number of consumers drops to zero .',
+		description: 'The queue will be deleted when the number of consumers drops to zero',
 	},
 	{
 		displayName: 'Durable',
 		name: 'durable',
 		type: 'boolean',
 		default: true,
-		description: 'The queue will survive broker restarts.',
+		description: 'The queue will survive broker restarts',
 	},
 	{
 		displayName: 'Exclusive',
 		name: 'exclusive',
 		type: 'boolean',
 		default: false,
-		description: 'Scopes the queue to the connection.',
+		description: 'Scopes the queue to the connection',
 	},
 ];

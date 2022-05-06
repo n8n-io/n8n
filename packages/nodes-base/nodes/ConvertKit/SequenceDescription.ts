@@ -32,7 +32,7 @@ export const sequenceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'addSubscriber',
-		description: 'The operations to perform.',
+		description: 'The operations to perform',
 	},
 ];
 
@@ -74,7 +74,7 @@ export const sequenceFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The subscriber\'s email address.',
+		description: 'The subscriber\'s email address',
 	},
 	{
 		displayName: 'Return All',
@@ -117,7 +117,7 @@ export const sequenceFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -140,7 +140,7 @@ export const sequenceFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldsUi',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here).',
+				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -157,7 +157,7 @@ export const sequenceFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: 'The field\'s key.',
+								description: 'The field\'s key',
 							},
 							{
 								displayName: 'Field Value',
@@ -165,7 +165,7 @@ export const sequenceFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'Doe',
-								description: 'Value of the field.',
+								description: 'Value of the field',
 							},
 						],
 					},
@@ -176,7 +176,7 @@ export const sequenceFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'The subscriber\'s first name.',
+				description: 'The subscriber\'s first name',
 			},
 			{
 				displayName: 'Tag IDs',
@@ -224,6 +224,6 @@ export const sequenceFields: INodeProperties[] = [
 				default: 'active',
 			},
 		],
-		description: 'Receive only active subscribers or cancelled subscribers.',
+		description: 'Receive only active subscribers or cancelled subscribers',
 	},
 ];

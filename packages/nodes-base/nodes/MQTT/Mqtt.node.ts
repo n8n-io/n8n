@@ -48,7 +48,7 @@ export class Mqtt implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON.',
+				description: 'Send the the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',

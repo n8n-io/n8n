@@ -51,7 +51,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list object to be retrieved.',
+		description: 'The unique id of the list object to be retrieved',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:getAll                                */
@@ -95,6 +95,6 @@ export const listFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

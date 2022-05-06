@@ -125,7 +125,7 @@ export const notificationFields: INodeProperties[] = [
 									},
 								},
 								default: 'data',
-								description: 'Name of the property that holds the binary data.',
+								description: 'Name of the property that holds the binary data',
 							},
 						],
 					},
