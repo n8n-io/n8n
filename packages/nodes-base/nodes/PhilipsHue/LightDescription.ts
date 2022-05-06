@@ -221,7 +221,7 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 100,
-				description: 'The brightness value to set the light to.Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum)',
+				description: 'The brightness value to set the light to. Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
 			},
 			{
 				displayName: 'Brightness Increments',

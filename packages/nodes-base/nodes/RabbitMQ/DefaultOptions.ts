@@ -72,7 +72,7 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		name: 'autoDelete',
 		type: 'boolean',
 		default: false,
-		description: 'The queue will be deleted when the number of consumers drops to zero ',
+		description: 'The queue will be deleted when the number of consumers drops to zero',
 	},
 	{
 		displayName: 'Durable',

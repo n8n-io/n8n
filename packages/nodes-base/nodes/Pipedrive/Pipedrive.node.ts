@@ -636,7 +636,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				placeholder: 'call',
-				description: 'Type of the activity like "call", "meeting", ',
+				description: 'Type of the activity like "call", "meeting", etc',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -898,7 +898,7 @@ export class Pipedrive implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'call',
-						description: 'Type of the activity like "call", "meeting", ',
+						description: 'Type of the activity like "call", "meeting", etc',
 					},
 					{
 						displayName: 'User ID',
