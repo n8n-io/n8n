@@ -448,13 +448,11 @@ export class Xata implements INodeType {
 				const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
 				const bulkSize: number = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] as number : items.length;
 				const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
-				const bulkNumbers = Math.ceil(items.length / bulkSize);
+				const bulkCount = Math.ceil(items.length / bulkSize);
 
-				for (let i = 0; i < bulkNumbers; i++) {
+				for (let i = 0; i < bulkCount; i++) {
 
-					const startIndex = i * bulkSize;
-					const endIndex = (1 + i) * bulkSize;
-					const records = getRecordsBulk.call(this, i, items, sendAll, startIndex, endIndex);
+					const records = getRecordsBulk.call(this, i, items, sendAll,bulkSize);
 					const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
 					responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
 

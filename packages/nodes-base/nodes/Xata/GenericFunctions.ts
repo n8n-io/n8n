@@ -95,8 +95,10 @@ export function filterItemsColumns(item: IDataObject, filterColumns: string[], i
 
 }
 
-export function getRecordsBulk(this: IExecuteFunctions, index: number, items: INodeExecutionData[], sendAll: boolean, startIndex: number, endIndex: number) {
+export function getRecordsBulk(this: IExecuteFunctions, index: number, items: INodeExecutionData[], sendAll: boolean, bulkSize: number) {
 
+	const startIndex = index * bulkSize;
+	const endIndex = (1 + index) * bulkSize;
 	const records = [];
 
 	for (let i = startIndex; i < endIndex && i < items.length; i++) {
