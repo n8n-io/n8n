@@ -279,7 +279,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -348,7 +348,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 					},
 				],
 				default: 'approved',
-				description: `Registrant Status.`,
+				description: 'Registrant Status.',
 			},
 
 		],
@@ -403,7 +403,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: `Registrant Status.`,
+		description: 'Registrant Status.',
 	},
 	{
 		displayName: 'Additional Fields',

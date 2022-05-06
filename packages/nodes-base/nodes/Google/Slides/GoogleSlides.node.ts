@@ -205,7 +205,7 @@ export class GoogleSlides implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -334,7 +334,7 @@ export class GoogleSlides implements INodeType {
 						name: 'revisionId',
 						type: 'string',
 						default: '',
-						description: `The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn't exactly match the presentation's current revisionId, the request will not be processed and will return a 400 bad request error.`,
+						description: 'The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn\'t exactly match the presentation\'s current revisionId, the request will not be processed and will return a 400 bad request error.',
 					},
 				],
 			},

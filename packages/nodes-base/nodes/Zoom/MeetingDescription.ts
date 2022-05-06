@@ -69,7 +69,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Topic of the meeting.`,
+		description: 'Topic of the meeting.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -264,7 +264,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
 			},
 			{
 				displayName: 'Type',
@@ -367,7 +367,7 @@ export const meetingFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -433,7 +433,7 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 'live',
-				description: `Meeting type.`,
+				description: 'Meeting type.',
 			},
 		],
 	},
@@ -705,14 +705,14 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
 			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Meeting topic.`,
+				description: 'Meeting topic.',
 			},
 			{
 				displayName: 'Type',

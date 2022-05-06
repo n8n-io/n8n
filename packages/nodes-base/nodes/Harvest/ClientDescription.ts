@@ -20,12 +20,12 @@ export const clientOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a client`,
+				description: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a client`,
+				description: 'Delete a client',
 			},
 			{
 				name: 'Get',
@@ -41,7 +41,7 @@ export const clientOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a client`,
+				description: 'Update a client',
 			},
 		],
 		default: 'getAll',
@@ -69,7 +69,7 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your clients.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

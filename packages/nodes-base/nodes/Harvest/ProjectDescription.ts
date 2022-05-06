@@ -20,12 +20,12 @@ export const projectOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a project`,
+				description: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a project`,
+				description: 'Delete a project',
 			},
 			{
 				name: 'Get',
@@ -40,7 +40,7 @@ export const projectOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a project`,
+				description: 'Update a project',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your projects.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

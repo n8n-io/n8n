@@ -30,12 +30,12 @@ export const timeEntryOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a time entry`,
+				description: 'Delete a time entry',
 			},
 			{
 				name: 'Delete External Reference',
 				value: 'deleteExternal',
-				description: `Delete a time entry’s external reference.`,
+				description: 'Delete a time entry’s external reference.',
 			},
 			{
 				name: 'Get',
@@ -86,7 +86,7 @@ export const timeEntryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your time entries.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

@@ -43,7 +43,7 @@ export const accountOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of account's metadata.`,
+				description: 'Returns an overview of account\'s metadata.',
 			},
 			{
 				name: 'Delete',
@@ -88,7 +88,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the account already exists`,
+		description: 'The field to check to see if the account already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -718,7 +718,7 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

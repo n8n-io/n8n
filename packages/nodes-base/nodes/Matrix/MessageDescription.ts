@@ -140,7 +140,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 		default: 'plain',
-		description: `The format of the message's body.`,
+		description: 'The format of the message\'s body.',
 	},
 	{
 		displayName: 'Fallback Text',
@@ -206,7 +206,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 		required: true,
 	},
 	{

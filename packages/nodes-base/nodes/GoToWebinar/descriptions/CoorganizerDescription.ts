@@ -198,7 +198,7 @@ export const coorganizerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
+		description: 'By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to \'true\'.',
 	},
 
 	// ----------------------------------
@@ -230,7 +230,7 @@ export const coorganizerFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -276,7 +276,7 @@ export const coorganizerFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
+		description: 'By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to \'true\'.',
 		displayOptions: {
 			show: {
 				resource: [

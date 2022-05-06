@@ -431,7 +431,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -479,7 +479,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: `Contacts with a status of ARCHIVED will be included in the response`,
+				description: 'Contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',

@@ -719,7 +719,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Returns the data exactly in the way it got received from the API.`,
+		description: 'Returns the data exactly in the way it got received from the API.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:getAll                             */
@@ -739,7 +739,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -899,7 +899,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Whether or not to use a query to filter the results`,
+		description: 'Whether or not to use a query to filter the results',
 	},
 	{
 		displayName: 'Query',
@@ -919,7 +919,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".`,
+		description: 'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".',
 	},
 	{
 		displayName: 'RAW Data',
@@ -936,7 +936,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Returns the data exactly in the way it got received from the API.`,
+		description: 'Returns the data exactly in the way it got received from the API.',
 	},
 	{
 		displayName: 'Options',

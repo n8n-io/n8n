@@ -209,7 +209,7 @@ export const draftFields: INodeProperties[] = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.`,
+								description: 'Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
@@ -308,7 +308,7 @@ export const draftFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

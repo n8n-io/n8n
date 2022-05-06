@@ -23,7 +23,7 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Custom Fields',
 				value: 'customFields',
-				description: `Retrieve list's custom fields`,
+				description: 'Retrieve list\'s custom fields',
 			},
 			{
 				name: 'Delete',
@@ -270,7 +270,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

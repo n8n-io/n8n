@@ -53,7 +53,7 @@ export const leadOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of Lead's metadata`,
+				description: 'Returns an overview of Lead\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -93,7 +93,7 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the lead already exists`,
+		description: 'The field to check to see if the lead already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -282,7 +282,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Number Of Employees',
@@ -544,7 +544,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Number Of Employees',
@@ -703,7 +703,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

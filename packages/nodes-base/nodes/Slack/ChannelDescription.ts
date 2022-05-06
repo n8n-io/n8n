@@ -43,7 +43,7 @@ export const channelOperations: INodeProperties[] = [
 			{
 				name: 'History',
 				value: 'history',
-				description: `Get a conversation's history of messages and events.`,
+				description: 'Get a conversation\'s history of messages and events.',
 			},
 			{
 				name: 'Invite',
@@ -388,7 +388,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -506,7 +506,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -636,7 +636,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -720,7 +720,7 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: `If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users.`,
+				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users.',
 			},
 		],
 	},
@@ -809,7 +809,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: `Unique identifier of a thread's parent message.`,
+		description: 'Unique identifier of a thread\'s parent message.',
 	},
 	{
 		displayName: 'Return All',
@@ -826,7 +826,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

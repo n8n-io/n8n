@@ -90,14 +90,14 @@ export const customerFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description: 'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',
@@ -576,7 +576,7 @@ export const customerFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -763,14 +763,14 @@ export const customerFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description: 'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',

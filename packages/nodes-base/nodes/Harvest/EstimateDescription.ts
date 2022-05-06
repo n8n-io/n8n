@@ -20,12 +20,12 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an estimate`,
+				description: 'Create an estimate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an estimate`,
+				description: 'Delete an estimate',
 			},
 			{
 				name: 'Get',
@@ -40,7 +40,7 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an estimate`,
+				description: 'Update an estimate',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const estimateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your estimates.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

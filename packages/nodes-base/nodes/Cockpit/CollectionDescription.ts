@@ -70,7 +70,7 @@ export const collectionFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -155,7 +155,7 @@ export const collectionFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API.',
 			},
 			{
 				displayName: 'Skip',

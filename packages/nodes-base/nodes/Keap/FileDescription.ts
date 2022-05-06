@@ -228,7 +228,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -286,7 +286,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `Filter files based on name, with '*' preceding or following to indicate LIKE queries.`,
+				description: 'Filter files based on name, with \'*\' preceding or following to indicate LIKE queries.',
 			},
 			{
 				displayName: 'Permission',

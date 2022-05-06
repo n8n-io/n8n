@@ -167,7 +167,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -202,7 +202,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: false,
-				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
 			},
 			{
 				displayName: 'Download Fields',
@@ -220,7 +220,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: '',
-				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.`,
+				description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.',
 			},
 			{
 				displayName: 'Additional Options',
@@ -416,7 +416,7 @@ export class Airtable implements INodeType {
 							maxValue: 10,
 						},
 						default: 10,
-						description: `Number of records to process at once.`,
+						description: 'Number of records to process at once.',
 					},
 					{
 						displayName: 'Ignore Fields',

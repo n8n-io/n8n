@@ -165,7 +165,7 @@ export const orderFields: INodeProperties[] = [
 								name: 'amount',
 								type: 'string',
 								default: '',
-								description: `The amount that's deducted from the order total.`,
+								description: 'The amount that\'s deducted from the order total.',
 							},
 							{
 								displayName: 'Code',
@@ -182,17 +182,17 @@ export const orderFields: INodeProperties[] = [
 									{
 										name: 'Fixed Amount',
 										value: 'fixedAmount',
-										description: `Applies amount as a unit of the store's currency.`,
+										description: 'Applies amount as a unit of the store\'s currency.',
 									},
 									{
 										name: 'Percentage',
 										value: 'percentage',
-										description: `Applies a discount of amount as a percentage of the order total.`,
+										description: 'Applies a discount of amount as a percentage of the order total.',
 									},
 									{
 										name: 'Shipping',
 										value: 'shipping',
-										description: `Applies a free shipping discount on orders that have a shipping rate less than or equal to amount.`,
+										description: 'Applies a free shipping discount on orders that have a shipping rate less than or equal to amount.',
 									},
 								],
 								default: 'fixedAmount',
@@ -207,7 +207,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: `The customer's email address.`,
+				description: 'The customer\'s email address.',
 			},
 			{
 				displayName: 'Fulfillment Status',
@@ -236,7 +236,7 @@ export const orderFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: `The order's status in terms of fulfilled line items`,
+				description: 'The order\'s status in terms of fulfilled line items',
 			},
 			{
 				displayName: 'Inventory Behaviour',
@@ -251,16 +251,16 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Decrement Ignoring Policy',
 						value: 'decrementIgnoringPolicy',
-						description: `Ignore the product's inventory policy and claim inventory.`,
+						description: 'Ignore the product\'s inventory policy and claim inventory.',
 					},
 					{
 						name: 'Decrement Obeying Policy',
 						value: 'decrementObeyingPolicy',
-						description: `Follow the product's inventory policy and claim inventory, if possible.`,
+						description: 'Follow the product\'s inventory policy and claim inventory, if possible.',
 					},
 				],
 				default: 'bypass',
-				description: `The behaviour to use when updating inventory.`,
+				description: 'The behaviour to use when updating inventory.',
 			},
 			{
 				displayName: 'Location ID',
@@ -556,7 +556,7 @@ export const orderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -830,7 +830,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: `The customer's email address.`,
+				description: 'The customer\'s email address.',
 			},
 			{
 				displayName: 'Location ID',

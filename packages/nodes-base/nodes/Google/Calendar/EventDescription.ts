@@ -237,7 +237,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: `Whether attendees other than the organizer can see who the event's attendees are.`,
+				description: 'Whether attendees other than the organizer can see who the event\'s attendees are.',
 			},
 			{
 				displayName: 'ID',
@@ -444,7 +444,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
+		description: 'If the event doesn\'t use the default reminders, this lists the reminders specific to the event',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -562,7 +562,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
 			},
 		],
 	},
@@ -585,7 +585,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -687,21 +687,21 @@ export const eventFields: INodeProperties[] = [
 				name: 'singleEvents',
 				type: 'boolean',
 				default: false,
-				description: `Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves.`,
+				description: 'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves.',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
-				description: `Upper bound (exclusive) for an event's start time to filter by`,
+				description: 'Upper bound (exclusive) for an event\'s start time to filter by',
 			},
 			{
 				displayName: 'End Time',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
-				description: `Lower bound (exclusive) for an event's end time to filter by`,
+				description: 'Lower bound (exclusive) for an event\'s end time to filter by',
 			},
 			{
 				displayName: 'Timezone',
@@ -711,7 +711,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
 			},
 			{
 				displayName: 'Updated Min',
@@ -850,7 +850,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: `Whether attendees other than the organizer can see who the event's attendees are.`,
+				description: 'Whether attendees other than the organizer can see who the event\'s attendees are.',
 			},
 			{
 				displayName: 'ID',
@@ -1064,6 +1064,6 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
+		description: 'If the event doesn\'t use the default reminders, this lists the reminders specific to the event',
 	},
 ];

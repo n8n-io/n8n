@@ -169,7 +169,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: `A response is over a survey’s quota`,
+						description: 'A response is over a survey’s quota',
 					},
 					{
 						name: 'Response Updated',
@@ -240,7 +240,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: `A response is over a survey’s quota`,
+						description: 'A response is over a survey’s quota',
 					},
 					{
 						name: 'Response Updated',

@@ -866,7 +866,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -914,7 +914,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
-				description: `When set to true you'll only retrieve Invoices created by your app`,
+				description: 'When set to true you\'ll only retrieve Invoices created by your app',
 			},
 			{
 				displayName: 'Order By',

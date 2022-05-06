@@ -30,17 +30,17 @@ export const expenseOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an expense`,
+				description: 'Create an expense',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an expense`,
+				description: 'Update an expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an expense`,
+				description: 'Delete an expense',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const expenseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your expenses.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

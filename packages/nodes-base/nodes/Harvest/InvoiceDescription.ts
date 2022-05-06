@@ -30,17 +30,17 @@ export const invoiceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an invoice`,
+				description: 'Create an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an invoice`,
+				description: 'Update an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an invoice`,
+				description: 'Delete an invoice',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your invoices.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',

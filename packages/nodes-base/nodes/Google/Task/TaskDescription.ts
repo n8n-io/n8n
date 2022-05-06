@@ -109,7 +109,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
-				description: `Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.`,
+				description: 'Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.',
 			},
 			{
 				displayName: 'Deleted',
@@ -284,7 +284,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -447,7 +447,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
-				description: `Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.`,
+				description: 'Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.',
 			},
 
 			{
