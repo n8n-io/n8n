@@ -88,6 +88,8 @@ export default mixins(externalHooks).extend({
 		outline: none;
 		font-size: 18px;
 		-webkit-appearance: none;
+		background-color: var(--color-background-xlight);
+		color: var(--color-text-dark);
 
 		&::placeholder,
 		&::-webkit-input-placeholder {

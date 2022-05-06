@@ -253,7 +253,7 @@ export default mixins(workflowHelpers).extend({
 	}
 
 	.el-drawer {
-		background: var(--color-background-dark);
+		background: var(--color-foreground-xdark);
 
 		@media (max-width: $--breakpoint-xs) {
 			height: 140px !important;
