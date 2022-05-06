@@ -82,7 +82,7 @@ export class ImportWorkflowsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			const credentials = (await Db.collections.Credentials?.find()) ?? [];
+			const credentials = (await Db.collections.Credentials.find()) ?? [];
 
 			let totalImported = 0;
 

@@ -429,7 +429,7 @@ export class Freshdesk implements INodeType {
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
-						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set',
+						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set.',
 					},
 					{
 						displayName: 'FR Due By',
@@ -659,7 +659,7 @@ export class Freshdesk implements INodeType {
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
-						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set',
+						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set.',
 					},
 					{
 						displayName: 'FR Due By',
