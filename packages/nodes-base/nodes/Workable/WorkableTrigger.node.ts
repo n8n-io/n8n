@@ -81,7 +81,7 @@ export class WorkableTrigger implements INodeType {
 							loadOptionsMethod: 'getJobs',
 						},
 						default: '',
-						description: `Get notifications only for one job`,
+						description: 'Get notifications only for one job',
 					},
 					{
 						displayName: 'Stage',

@@ -16,7 +16,7 @@ export const addFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'README.md',
-		description: 'Comma-separated list of paths (absolute or relative to Repository Path) of files or folders to add.',
+		description: 'Comma-separated list of paths (absolute or relative to Repository Path) of files or folders to add',
 		required: true,
 	},
 ];

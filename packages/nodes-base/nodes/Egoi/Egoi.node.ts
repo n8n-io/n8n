@@ -107,7 +107,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'ID of list to operate on.',
+				description: 'ID of list to operate on',
 			},
 			{
 				displayName: 'Email',
@@ -121,7 +121,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address for a subscriber.',
+				description: 'Email address for a subscriber',
 			},
 			{
 				displayName: 'Contact ID',
@@ -138,7 +138,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Contact ID of the subscriber.',
+				description: 'Contact ID of the subscriber',
 			},
 			{
 				displayName: 'Resolve Data',
@@ -153,7 +153,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the response just includes the contact id. If this option gets activated, it will resolve the data automatically.',
+				description: 'By default the response just includes the contact ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -177,14 +177,14 @@ export class Egoi implements INodeType {
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Birth date of a subscriber.',
+						description: 'Birth date of a subscriber',
 					},
 					{
 						displayName: 'Cellphone',
 						name: 'cellphone',
 						type: 'string',
 						default: '',
-						description: 'Cellphone of a subscriber.',
+						description: 'Cellphone of a subscriber',
 					},
 					{
 						displayName: 'Extra Fields',
@@ -230,14 +230,14 @@ export class Egoi implements INodeType {
 						name: 'first_name',
 						type: 'string',
 						default: '',
-						description: 'Name of a subscriber.',
+						description: 'Name of a subscriber',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
-						description: 'Name of a subscriber.',
+						description: 'Name of a subscriber',
 					},
 					{
 						displayName: 'Status',
@@ -262,7 +262,7 @@ export class Egoi implements INodeType {
 							},
 						],
 						default: 'active',
-						description: `Subscriber's current status.`,
+						description: 'Subscriber\'s current status',
 					},
 					{
 						displayName: 'Tags IDs',
@@ -272,7 +272,7 @@ export class Egoi implements INodeType {
 							loadOptionsMethod: 'getListTags',
 						},
 						default: [],
-						description: 'List of tag ids to be added',
+						description: 'List of tag IDs to be added',
 					},
 				],
 			},
@@ -298,21 +298,21 @@ export class Egoi implements INodeType {
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Birth date of subscriber.',
+						description: 'Birth date of subscriber',
 					},
 					{
 						displayName: 'Cellphone',
 						name: 'cellphone',
 						type: 'string',
 						default: '',
-						description: 'Cellphone of subscriber.',
+						description: 'Cellphone of subscriber',
 					},
 					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
 						default: '',
-						description: 'Email address for subscriber.',
+						description: 'Email address for subscriber',
 					},
 					{
 						displayName: 'Extra Fields',
@@ -358,14 +358,14 @@ export class Egoi implements INodeType {
 						name: 'first_name',
 						type: 'string',
 						default: '',
-						description: 'Name of subscriber.',
+						description: 'Name of subscriber',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
-						description: 'Name of subscriber.',
+						description: 'Name of subscriber',
 					},
 					{
 						displayName: 'Status',
@@ -391,7 +391,7 @@ export class Egoi implements INodeType {
 
 						],
 						default: 'active',
-						description: `Subscriber's current status.`,
+						description: 'Subscriber\'s current status',
 					},
 					{
 						displayName: 'Tags IDs',
@@ -401,7 +401,7 @@ export class Egoi implements INodeType {
 							loadOptionsMethod: 'getListTags',
 						},
 						default: [],
-						description: 'List of tag ids to be added',
+						description: 'List of tag IDs to be added',
 					},
 				],
 			},
@@ -450,7 +450,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Contact ID of the subscriber.',
+				description: 'Contact ID of the subscriber',
 			},
 			{
 				displayName: 'Email',
@@ -470,7 +470,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address for subscriber.',
+				description: 'Email address for subscriber',
 			},
 			{
 				displayName: 'Return All',
@@ -487,7 +487,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -511,7 +511,7 @@ export class Egoi implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Simplify Response',
@@ -529,7 +529,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data.',
+				description: 'Return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

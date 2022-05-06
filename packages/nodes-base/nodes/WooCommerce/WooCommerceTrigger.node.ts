@@ -103,7 +103,7 @@ export class WooCommerceTrigger implements INodeType {
 						value: 'product.deleted',
 					},
 				],
-				description: 'Determines which resource events the webhook is triggered for.',
+				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
 

@@ -30,17 +30,17 @@ export const invoiceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an invoice`,
+				description: 'Create an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an invoice`,
+				description: 'Update an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an invoice`,
+				description: 'Delete an invoice',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your invoices.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,7 +90,7 @@ export const invoiceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -112,14 +112,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'client_id',
 				type: 'string',
 				default: '',
-				description: 'Only return time entries belonging to the client with the given ID.',
+				description: 'Only return time entries belonging to the client with the given ID',
 			},
 			{
 				displayName: 'From',
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries with a spent_date on or after the given date.',
+				description: 'Only return time entries with a spent_date on or after the given date',
 			},
 			{
 				displayName: 'Page',
@@ -136,7 +136,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'project_id',
 				type: 'string',
 				default: '',
-				description: 'Only return time entries belonging to the client with the given ID.',
+				description: 'Only return time entries belonging to the client with the given ID',
 			},
 			{
 				displayName: 'State',
@@ -168,7 +168,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries with a spent_date on or before the given date.',
+				description: 'Only return time entries with a spent_date on or before the given date',
 			},
 
 			{
@@ -176,7 +176,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries that have been updated since the given date and time.',
+				description: 'Only return time entries that have been updated since the given date and time',
 			},
 		],
 	},
@@ -198,7 +198,7 @@ export const invoiceFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the invoice you are retrieving.',
+		description: 'The ID of the invoice you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -218,7 +218,7 @@ export const invoiceFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the invoice want to delete.',
+		description: 'The ID of the invoice want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -238,7 +238,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the retainer associated with this invoice..',
+		description: 'The ID of the retainer associated with this invoice',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -281,7 +281,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'estimate_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the estimate associated with this invoice.',
+				description: 'The ID of the estimate associated with this invoice',
 			},
 			{
 				displayName: 'Issue Date',
@@ -295,14 +295,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the project.',
+				description: 'Notes about the project',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.',
+				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
 				displayName: 'Payment Term',
@@ -316,21 +316,21 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.',
+				description: 'The purchase order number',
 			},
 			{
 				displayName: 'Retainer Id',
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
-				description: 'The ID of the retainer associated with this invoice.',
+				description: 'The ID of the retainer associated with this invoice',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The invoice subject.',
+				description: 'The invoice subject',
 			},
 			{
 				displayName: 'Tax',
@@ -366,7 +366,7 @@ export const invoiceFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the invoice want to update.',
+		description: 'The ID of the invoice want to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -388,7 +388,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'client_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the retainer associated with this invoice..',
+				description: 'The ID of the retainer associated with this invoice',
 			},
 			{
 				displayName: 'Currency',
@@ -416,7 +416,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'estimate_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the estimate associated with this invoice.',
+				description: 'The ID of the estimate associated with this invoice',
 			},
 			{
 				displayName: 'Issue Date',
@@ -430,14 +430,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the project.',
+				description: 'Notes about the project',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.',
+				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
 				displayName: 'Payment Term',
@@ -451,21 +451,21 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.',
+				description: 'The purchase order number',
 			},
 			{
 				displayName: 'Retainer Id',
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
-				description: 'The ID of the retainer associated with this invoice.',
+				description: 'The ID of the retainer associated with this invoice',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The invoice subject.',
+				description: 'The invoice subject',
 			},
 			{
 				displayName: 'Tax',

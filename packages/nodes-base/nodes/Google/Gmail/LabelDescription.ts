@@ -110,7 +110,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The visibility of the label in the label list in the Gmail web interface.',
+		description: 'The visibility of the label in the label list in the Gmail web interface',
 	},
 	{
 		displayName: 'Message List Visibility',
@@ -138,7 +138,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The visibility of messages with this label in the message list in the Gmail web interface.',
+		description: 'The visibility of messages with this label in the message list in the Gmail web interface',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 label:getAll                               */
@@ -158,7 +158,7 @@ export const labelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -182,6 +182,6 @@ export const labelFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

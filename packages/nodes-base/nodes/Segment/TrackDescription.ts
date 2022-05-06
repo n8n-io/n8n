@@ -23,7 +23,7 @@ export const trackOperations: INodeProperties[] = [
 			{
 				name: 'Page',
 				value: 'page',
-				description: 'Record page views on your website, along with optional extra information about the page being viewed.',
+				description: 'Record page views on your website, along with optional extra information about the page being viewed',
 			},
 		],
 		default: 'event',
@@ -51,7 +51,6 @@ export const trackFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Event',
@@ -68,7 +67,7 @@ export const trackFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the action that a user has performed.',
+		description: 'Name of the action that a user has performed',
 		required: true,
 	},
 	{
@@ -107,14 +106,14 @@ export const trackFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',
@@ -424,14 +423,14 @@ export const trackFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',

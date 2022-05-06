@@ -111,7 +111,6 @@ export const pushFields: INodeProperties[] = [
 				name: 'pushToEmails',
 				type: 'string',
 				default: '',
-				required: false,
 				description: '<p>Emails (strings) to whom to send the notification. If all three attributes \'pushToFollowers\', \'pushToPhoneNumbers\' and \'pushToEmails\' are not supplied, then everyone who follows the channel will receive the push notification.</p><p>If \'pushToFollowers\' is supplied, only those listed in the array will receive the push notification.</p><p>If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored.</p><p>See the "Followers" section to learn how to list the userIds of those who follow one of your channels.</p>.',
 			},
 			{
