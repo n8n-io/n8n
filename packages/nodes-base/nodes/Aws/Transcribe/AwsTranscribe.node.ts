@@ -339,7 +339,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'The maximum number of results to return',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',

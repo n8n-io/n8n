@@ -1266,7 +1266,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 
 
@@ -1316,7 +1316,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -1549,7 +1549,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 			// ----------------------------------
 			//         review:create
@@ -1726,7 +1726,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 			// ----------------------------------
 			//         user:invite

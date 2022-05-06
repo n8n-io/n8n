@@ -191,7 +191,7 @@ export const submissionFields: INodeProperties[] = [
 			},
 		},
 		default: 100,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

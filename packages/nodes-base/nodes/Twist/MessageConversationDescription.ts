@@ -326,7 +326,7 @@ export const messageConversationFields: INodeProperties[] = [
 				name: 'limit',
 				type: 'number',
 				default: 50,
-				description: 'Limits the number of messages returned',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Order By',
