@@ -147,7 +147,7 @@ export default mixins(
 	}
 
 	.right-side {
-		background-color: #f9f9f9;
+		background-color: var(--color-background-light);
 		border-top-right-radius: 8px;
 		border-bottom-right-radius: 8px;
 	}

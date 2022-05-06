@@ -881,7 +881,9 @@ export default mixins(
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;
-	background-color: #f0f0f0;
+	background-color: var(--color-background-lighter);
+	border: var(--border-base);
+	color: var(--color-text-dark);
 }
 
 .expression {
@@ -904,7 +906,7 @@ export default mixins(
 }
 
 .el-dropdown {
-	color: #999;
+	color: var(--color-text-base);
 }
 
 .list-option {
