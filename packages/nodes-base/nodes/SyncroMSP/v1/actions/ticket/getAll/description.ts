@@ -39,7 +39,7 @@ export const ticketGetAllDescription: TicketProperties = [
 			},
 		},
 		default: 25,
-		description: 'Limit the number of rows returned',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

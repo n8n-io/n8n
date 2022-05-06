@@ -195,7 +195,7 @@ export function getPagingParameters(resource: string, operation = 'getAll') {
 				},
 			},
 			default: 100,
-			description: 'How many results to return',
+			description: 'Max number of results to return',
 		},
 	];
 	return pagingParameters;
