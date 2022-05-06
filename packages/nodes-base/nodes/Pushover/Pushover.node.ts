@@ -292,7 +292,7 @@ export class Pushover implements INodeType {
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'a supplementary URL to show with your message',
+						description: 'A supplementary URL to show with your message',
 					},
 					{
 						displayName: 'URL Title',
