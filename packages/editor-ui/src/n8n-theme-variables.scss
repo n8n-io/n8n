@@ -27,8 +27,8 @@ $--warning-tooltip-color: #ff8080;
 
 // Table
 $--custom-table-background-main: $--custom-header-background;
-$--custom-table-background-stripe-color: #f6f6f6;
-$--custom-table-background-hover-color: #e9f0f4;
+$--custom-table-background-stripe-color: var(--color-foreground-light);
+$--custom-table-background-hover-color: var(--color-foreground-base);
 
 $--custom-input-background-disabled: #ccc;
 $--custom-input-font: #333;
