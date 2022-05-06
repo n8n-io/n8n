@@ -101,7 +101,7 @@ export const subscriberFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -223,7 +223,7 @@ export const subscriberFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{

@@ -188,7 +188,7 @@ export class DateTime implements INodeType {
 						name: 'fromFormat',
 						type: 'string',
 						default: '',
-						description: 'In case the input format is not recognized you can provide the format ',
+						description: 'In case the input format is not recognized you can provide the format',
 					},
 					{
 						displayName: 'From Timezone',

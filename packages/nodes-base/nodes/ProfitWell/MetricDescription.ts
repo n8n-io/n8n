@@ -328,7 +328,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Downgrade Recurring Revenue',
 						value: 'downgraded_recurring_revenue',
-						description: 'How much downgrades and plan length decreases affect your MRR	',
+						description: 'How much downgrades and plan length decreases affect your MRR',
 					},
 					{
 						name: 'Existing Customers',
@@ -393,7 +393,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Revenue Churn Delinquent_ Rate',
 						value: 'revenue_churn_delinquent_rate',
-						description: `Delinquent churn revenue as a percent of the month's starting revenue	`,
+						description: 'Delinquent churn revenue as a percent of the month\'s starting revenue',
 					},
 					{
 						name: 'Revenue Churn Rate',
@@ -413,7 +413,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Upgraded Customers',
 						value: 'upgraded_customers',
-						description: `Number of existing customers who net upgraded	`,
+						description: 'Number of existing customers who net upgraded',
 					},
 					{
 						name: 'Upgraded Recurring Revenue',

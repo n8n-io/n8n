@@ -69,7 +69,7 @@ export const tweetFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.	',
+		description: 'The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.',
 	},
 	{
 		displayName: 'Additional Fields',

@@ -111,7 +111,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'The S3 object location of the input media file. ',
+				description: 'The S3 object location of the input media file.',
 			},
 			{
 				displayName: 'Detect Language',

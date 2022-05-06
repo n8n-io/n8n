@@ -611,7 +611,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'createdAtMin',
 				type: 'dateTime',
 				default: '',
-				description: 'Show orders created at or after date ',
+				description: 'Show orders created at or after date',
 			},
 			{
 				displayName: 'Created At Max',

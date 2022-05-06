@@ -464,7 +464,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: ' The string to search for. May match across multiple fields based on the request arguments.',
+				description: 'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
 				displayName: 'File Status',
@@ -491,7 +491,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: ' The string to search for. May match across multiple fields based on the request arguments.',
+				description: 'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
 				displayName: 'Return All',

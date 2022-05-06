@@ -239,7 +239,7 @@ export class FileMaker implements INodeType {
 						],
 					},
 				},
-				description: 'Queries ',
+				description: 'Queries',
 				default: {},
 				options: [
 					{

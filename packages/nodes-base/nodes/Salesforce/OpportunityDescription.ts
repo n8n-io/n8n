@@ -224,7 +224,7 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -420,7 +420,7 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{

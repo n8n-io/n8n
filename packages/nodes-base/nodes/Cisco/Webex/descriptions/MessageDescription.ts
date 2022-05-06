@@ -79,7 +79,7 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-		description: ' The room ID',
+		description: 'The room ID',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',

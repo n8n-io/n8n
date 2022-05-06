@@ -187,8 +187,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
-						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>
-						`,
+						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>`,
 					},
 				],
 			},

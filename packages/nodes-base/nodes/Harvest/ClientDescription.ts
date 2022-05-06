@@ -204,7 +204,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.',
+				description: 'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
@@ -262,7 +262,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.',
+				description: 'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',

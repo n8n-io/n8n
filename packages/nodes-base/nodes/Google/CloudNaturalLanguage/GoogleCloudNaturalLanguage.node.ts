@@ -106,7 +106,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the input in string format. Cloud audit logging exempt since it is based on user data. ',
+				description: 'The content of the input in string format. Cloud audit logging exempt since it is based on user data.',
 				required: true,
 				displayOptions: {
 					show: {
