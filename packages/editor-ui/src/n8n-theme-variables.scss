@@ -12,10 +12,8 @@ $--custom-font-very-light: var(--color-text-lighter);
 
 $--custom-header-background: var(--color-foreground-xdark);
 
-$--custom-expression-text: #996688;
-$--custom-expression-background: #f7f5ff;
-
-$--custom-window-sidebar-top : #fff5f2;
+$--custom-expression-text: var(--color-secondary);
+$--custom-expression-background: var(--color-background-lighter);
 
 // Badge
 $--badge-danger-color: var(--color-danger);

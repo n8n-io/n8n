@@ -2895,7 +2895,6 @@ export default mixins(
 
 	position: fixed;
 	left: $--sidebar-width + $--zoom-menu-margin;
-	width: 200px;
 	bottom: 45px;
 	line-height: 25px;
 	color: #444;

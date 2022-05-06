@@ -17,8 +17,8 @@ $color-transition-base: color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 /* Color
 -------------------------- */
-$color-white: #ffffff;
-$color-black: #000000;
+$color-white: var(--color-background-xlight);
+$color-black: var(--color-background-dark);
 
 $color-primary-light-1: function.lightness(
 	--color-primary-h,
