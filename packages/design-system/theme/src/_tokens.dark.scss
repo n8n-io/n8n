@@ -253,6 +253,25 @@
 		var(--color-background-xlight-s),
 		var(--color-background-xlight-l)
 	);
+
+	--color-canvas-dot-h: 204;
+	--color-canvas-dot-s: 15.6%;
+	--color-canvas-dot-l: 87.5%;
+	--color-canvas-dot: hsl(
+		var(--color-canvas-dot-h),
+		var(--color-canvas-dot-s),
+		var(--color-canvas-dot-l)
+	);
+
+	--color-canvas-background-h: 90;
+	--color-canvas-background-s: 10%;
+	--color-canvas-background-l: 5%;
+	--color-canvas-background: hsl(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l)
+	);
+
 }
 
 body.theme-dark {
