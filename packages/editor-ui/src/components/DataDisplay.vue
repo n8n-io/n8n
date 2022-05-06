@@ -140,7 +140,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 }
 
 .data-display {
-	background-color: #fff;
+	background-color: var(--color-background-xlight);
 	border-radius: 8px;
 	display: flex;
 	height: 100%;

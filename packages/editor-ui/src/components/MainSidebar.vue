@@ -721,7 +721,7 @@ export default mixins(
 	line-height: 24px;
 	height: 20px;
 	width: 20px;
-	background-color: #fff;
+	background-color: var(--color-background-xlight);
 	border: none;
 	border-radius: 15px;
 
@@ -752,7 +752,7 @@ export default mixins(
 	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: #fff;
+	color: var(--color-text-xlight);
 	text-decoration: none;
 }
 

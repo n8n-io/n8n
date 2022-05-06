@@ -155,7 +155,7 @@ export default mixins(
 	border-radius: 2px;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: #fff;
+	color: var(--color-text-xlight);
 }
 
 .minimize-icon {
@@ -218,7 +218,7 @@ export default mixins(
 	line-height: 1.5;
 	position: relative;
 	margin-top: var(--spacing-xs);
-	background-color: #fff;
+	background-color: var(--color-background-xlight);
 	border-radius: 3px;
 }
 </style>
