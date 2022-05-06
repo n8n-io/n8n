@@ -642,6 +642,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		description: 'Max number of results to return',
 		default: 100,
 		placeholder: 'Limit',
 		displayOptions: {
