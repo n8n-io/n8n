@@ -58,7 +58,7 @@ export const storyContentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID or slug of the story to get.',
+		description: 'The ID or slug of the story to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -109,7 +109,7 @@ export const storyContentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -136,7 +136,7 @@ export const storyContentFields: INodeProperties[] = [
 				name: 'starts_with',
 				type: 'string',
 				default: '',
-				description: 'Filter by slug.',
+				description: 'Filter by slug',
 			},
 		],
 	},

@@ -97,6 +97,6 @@ export const ticketFieldFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 ];

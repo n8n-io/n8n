@@ -51,7 +51,7 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table identifier.',
+		description: 'The table identifier',
 	},
 	{
 		displayName: 'Report ID',
@@ -69,7 +69,7 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The identifier of the report, unique to the table.',
+		description: 'The identifier of the report, unique to the table',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                report:run                                  */
@@ -90,7 +90,7 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table identifier.',
+		description: 'The table identifier',
 	},
 	{
 		displayName: 'Report ID',
@@ -108,7 +108,7 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The identifier of the report, unique to the table.',
+		description: 'The identifier of the report, unique to the table',
 	},
 	{
 		displayName: 'Return All',
@@ -151,6 +151,6 @@ export const reportFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'Number of results to return',
 	},
 ];

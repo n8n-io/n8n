@@ -45,7 +45,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Origin System',
 		name: 'originSystem',
-		description: 'Source where the event originated.',
+		description: 'Source where the event originated',
 		type: 'string',
 		required: true,
 		default: '',
@@ -63,7 +63,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Title',
 		name: 'title',
-		description: 'Title of the event to create.',
+		description: 'Title of the event to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -104,7 +104,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
-		description: 'ID of the event to retrieve.',
+		description: 'ID of the event to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -146,7 +146,7 @@ export const eventFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

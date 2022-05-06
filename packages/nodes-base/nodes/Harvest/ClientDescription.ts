@@ -91,7 +91,7 @@ export const clientFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -113,14 +113,14 @@ export const clientFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active clients and false to return inactive clients.',
+				description: 'Pass true to only return active clients and false to return inactive clients',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return clients that have been updated since the given date and time.',
+				description: 'Only return clients that have been updated since the given date and time',
 			},
 		],
 	},
@@ -142,7 +142,7 @@ export const clientFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the client you are retrieving.',
+		description: 'The ID of the client you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -162,7 +162,7 @@ export const clientFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the client you want to delete.',
+		description: 'The ID of the client you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -182,7 +182,7 @@ export const clientFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the client.',
+		description: 'The name of the client',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -240,7 +240,7 @@ export const clientFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the client want to update.',
+		description: 'The ID of the client want to update',
 	},
 	{
 		displayName: 'Update Fields',

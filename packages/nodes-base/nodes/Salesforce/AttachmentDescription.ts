@@ -38,7 +38,7 @@ export const attachmentOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: 'Returns an overview of attachment\'s metadata.',
+				description: 'Returns an overview of attachment\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -108,7 +108,7 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -139,7 +139,7 @@ export const attachmentFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false).',
+				description: 'Indicates whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
 			},
 			{
 				displayName: 'Owner',
@@ -149,7 +149,7 @@ export const attachmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the attachment.',
+				description: 'ID of the User who owns the attachment',
 			},
 		],
 	},
@@ -173,7 +173,7 @@ export const attachmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of attachment that needs to be fetched.',
+		description: 'ID of attachment that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -198,7 +198,7 @@ export const attachmentFields: INodeProperties[] = [
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded',
 			},
 			{
 				displayName: 'Description',
@@ -212,7 +212,7 @@ export const attachmentFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false).',
+				description: 'Indicates whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
 			},
 			{
 				displayName: 'Name',
@@ -229,7 +229,7 @@ export const attachmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the attachment.',
+				description: 'ID of the User who owns the attachment',
 			},
 		],
 	},
@@ -253,7 +253,7 @@ export const attachmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of attachment that needs to be fetched.',
+		description: 'ID of attachment that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -275,7 +275,7 @@ export const attachmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of attachment that needs to be fetched.',
+		description: 'ID of attachment that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -320,7 +320,7 @@ export const attachmentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -347,7 +347,7 @@ export const attachmentFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -362,7 +362,7 @@ export const attachmentFields: INodeProperties[] = [
 									loadOptionsMethod: 'getAtachmentFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',

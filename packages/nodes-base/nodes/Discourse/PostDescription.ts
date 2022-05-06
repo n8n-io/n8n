@@ -61,7 +61,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title of the post.',
+		description: 'Title of the post',
 	},
 	{
 		displayName: 'Content',
@@ -82,7 +82,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Content of the post.',
+		description: 'Content of the post',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -147,7 +147,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post.',
+		description: 'ID of the post',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -192,7 +192,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                post:update                                 */
@@ -213,7 +213,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post.',
+		description: 'ID of the post',
 	},
 	{
 		displayName: 'Content',

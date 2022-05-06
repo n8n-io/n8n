@@ -95,7 +95,7 @@ export const portfolioCompanyFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'Number of results to return',
 	},
 	{
 		displayName: 'Filters',

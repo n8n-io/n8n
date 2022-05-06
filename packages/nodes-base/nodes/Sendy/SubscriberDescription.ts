@@ -66,7 +66,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -83,7 +83,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The list id you want to subscribe a user to. This encrypted & hashed id can be found under View all lists section named ID.',
+		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -171,7 +171,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The list id you want to subscribe a user to. This encrypted & hashed id can be found under View all lists section named ID.',
+		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                subscriber:delete                           */
@@ -191,7 +191,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -208,7 +208,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The list id you want to subscribe a user to. This encrypted & hashed id can be found under View all lists section named ID.',
+		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                subscriber:remove                           */
@@ -228,7 +228,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -245,7 +245,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The list id you want to subscribe a user to. This encrypted & hashed id can be found under View all lists section named ID.',
+		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                subscriber:status                           */
@@ -265,7 +265,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the subscriber.',
+		description: 'Email address of the subscriber',
 	},
 	{
 		displayName: 'List ID',
@@ -282,6 +282,6 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The list id you want to subscribe a user to. This encrypted & hashed id can be found under View all lists section named ID.',
+		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 ];

@@ -70,7 +70,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Max number of results to return',
+		description: 'Number of subscription records to return per page',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -109,7 +109,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Attributes in JSON form.',
+		description: 'Attributes in JSON form',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -136,14 +136,14 @@ export const userFields: INodeProperties[] = [
 				name: 'planId',
 				type: 'string',
 				default: '',
-				description: 'Filter: The subscription plan ID.',
+				description: 'Filter: The subscription plan ID',
 			},
 			{
 				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				type: 'string',
 				default: '',
-				description: 'A specific user subscription ID.',
+				description: 'A specific user subscription ID',
 			},
 			{
 				displayName: 'State',

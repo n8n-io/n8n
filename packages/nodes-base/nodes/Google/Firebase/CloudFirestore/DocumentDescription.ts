@@ -78,7 +78,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL.',
+		description: 'As displayed in firebase console URL',
 		required: true,
 	},
 	{
@@ -151,7 +151,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -246,7 +246,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -349,7 +349,7 @@ export const documentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -366,7 +366,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -738,6 +738,6 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 ];

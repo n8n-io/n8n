@@ -39,7 +39,7 @@ export const purchaseFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the purchase to retrieve.',
+		description: 'The ID of the purchase to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -77,7 +77,7 @@ export const purchaseFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

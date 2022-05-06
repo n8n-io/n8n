@@ -18,7 +18,7 @@ export const productOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all products.',
+				description: 'Get all products',
 			},
 		],
 		default: 'getAll',
@@ -66,6 +66,6 @@ export const productFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 ];

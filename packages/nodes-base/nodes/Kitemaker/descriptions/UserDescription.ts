@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve data on all the users in the logged-in user\'s organization.',
+				description: 'Retrieve data on all the users in the logged-in user\'s organization',
 			},
 		],
 		displayOptions: {
@@ -49,7 +49,7 @@ export const userFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

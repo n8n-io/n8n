@@ -86,7 +86,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The title of the list.',
+		description: 'The title of the list',
 	},
 
 	// ----------------------------------
@@ -111,7 +111,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'List ID',
@@ -135,7 +135,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to delete.',
+		description: 'The ID of the list to delete',
 	},
 
 	// ----------------------------------
@@ -160,7 +160,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.',
+		description: 'The ID of the board that list belongs to',
 	},
 	{
 		displayName: 'List ID',
@@ -178,7 +178,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to get.',
+		description: 'The ID of the list to get',
 	},
 
 	// ----------------------------------
@@ -203,7 +203,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the board where the lists are in.',
+		description: 'ID of the board where the lists are in',
 	},
 	{
 		displayName: 'Return All',
@@ -244,7 +244,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 
 ];

@@ -150,7 +150,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -191,7 +191,7 @@ export const listFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response.',
+				description: 'A comma-separated list of attributes to include in the response',
 			},
 			{
 				displayName: 'Sort By',

@@ -57,7 +57,7 @@ export const projectFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Name of project being created.',
+		description: 'Name of project being created',
 		displayOptions: {
 			show: {
 				resource: [
@@ -247,7 +247,7 @@ export const projectFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -295,7 +295,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have a client.',
+				description: 'If provided, projects will be filtered by whether they have a client',
 			},
 			{
 				displayName: 'Client Status',
@@ -312,21 +312,21 @@ export const projectFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'If provided, projects will be filtered by whether they have a client.',
+				description: 'If provided, projects will be filtered by whether they have a client',
 			},
 			{
 				displayName: 'Contains User',
 				name: 'contains-user',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have users.',
+				description: 'If provided, projects will be filtered by whether they have users',
 			},
 			{
 				displayName: 'Is Template',
 				name: 'is-template',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they are used as a template.',
+				description: 'If provided, projects will be filtered by whether they are used as a template',
 			},
 			{
 				displayName: 'Name',
@@ -397,7 +397,7 @@ export const projectFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'If provided, projects will be filtered by whether they have a client.',
+				description: 'If provided, projects will be filtered by whether they have a client',
 			},
 		],
 	},

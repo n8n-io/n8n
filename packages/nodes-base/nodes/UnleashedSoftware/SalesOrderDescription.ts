@@ -70,7 +70,7 @@ export const salesOrderFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -102,7 +102,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'customerCode',
 				type: 'string',
 				default: '',
-				description: 'Returns orders that start with the specific customer code.',
+				description: 'Returns orders that start with the specific customer code',
 			},
 			{
 				displayName: 'End Date',
@@ -116,7 +116,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns orders created or edited after a specified date, must be UTC format.',
+				description: 'Returns orders created or edited after a specified date, must be UTC format',
 			},
 			{
 				displayName: 'Order Number',

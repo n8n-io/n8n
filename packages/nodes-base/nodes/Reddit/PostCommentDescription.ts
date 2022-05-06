@@ -92,7 +92,7 @@ export const postCommentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit where the post is.',
+		description: 'The name of subreddit where the post is',
 		displayOptions: {
 			show: {
 				resource: [
@@ -145,7 +145,7 @@ export const postCommentFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

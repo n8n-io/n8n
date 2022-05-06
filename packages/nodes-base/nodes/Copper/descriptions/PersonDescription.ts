@@ -54,7 +54,7 @@ export const personFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the person to create.',
+		description: 'Name of the person to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -92,7 +92,7 @@ export const personFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the person.',
+				description: 'Description to set for the person',
 			},
 			{
 				displayName: 'Email Domain',
@@ -111,7 +111,7 @@ export const personFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to delete.',
+		description: 'ID of the person to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -133,7 +133,7 @@ export const personFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to retrieve.',
+		description: 'ID of the person to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -174,7 +174,7 @@ export const personFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -215,7 +215,7 @@ export const personFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the person to filter by.',
+				description: 'Name of the person to filter by',
 			},
 		],
 	},
@@ -226,7 +226,7 @@ export const personFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to update.',
+		description: 'ID of the person to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -264,7 +264,7 @@ export const personFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the person.',
+				description: 'Description to set for the person',
 			},
 			{
 				displayName: 'Email Domain',
@@ -278,7 +278,7 @@ export const personFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the person.',
+				description: 'Name to set for the person',
 			},
 			phoneNumbersFixedCollection,
 		],

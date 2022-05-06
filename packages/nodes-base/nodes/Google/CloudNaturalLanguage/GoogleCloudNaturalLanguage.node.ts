@@ -91,7 +91,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				],
 				default: 'content',
-				description: 'The source of the document: a string containing the content or a Google Cloud Storage URI.',
+				description: 'The source of the document: a string containing the content or a Google Cloud Storage URI',
 				required: true,
 				displayOptions: {
 					show: {
@@ -166,7 +166,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							},
 						],
 						default: 'PLAIN_TEXT',
-						description: 'The type of input document.',
+						description: 'The type of input document',
 						required: true,
 					},
 					{
@@ -192,7 +192,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							},
 						],
 						default: 'UTF16',
-						description: 'The encoding type used by the API to calculate sentence offsets.',
+						description: 'The encoding type used by the API to calculate sentence offsets',
 					},
 					{
 						displayName: 'Language',

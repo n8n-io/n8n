@@ -55,7 +55,7 @@ export class Hunter implements INodeType {
 					},
 				],
 				default: 'domainSearch',
-				description: 'operation to consume.',
+				description: 'operation to consume',
 			},
 			{
 				displayName: 'Domain',
@@ -84,7 +84,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return only the the found emails.',
+				description: 'Return only the the found emails',
 			},
 			{
 				displayName: 'Return All',
@@ -119,7 +119,7 @@ export class Hunter implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'Max number of results to return',
+				description: 'How many results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -279,7 +279,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The email address you want to verify.',
+				description: 'The email address you want to verify',
 			},
 		],
 	};

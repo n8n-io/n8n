@@ -92,7 +92,7 @@ export const worksheetFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -199,7 +199,7 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
+		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -219,7 +219,7 @@ export const worksheetFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the property into which to write the RAW data.',
+		description: 'The name of the property into which to write the RAW data',
 	},
 	{
 		displayName: 'Data Start Row',

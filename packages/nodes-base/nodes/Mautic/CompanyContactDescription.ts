@@ -52,7 +52,7 @@ export const companyContactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the contact.',
+		description: 'The ID of the contact',
 	},
 	{
 		displayName: 'Company ID',
@@ -70,6 +70,6 @@ export const companyContactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the company.',
+		description: 'The ID of the company',
 	},
 ];

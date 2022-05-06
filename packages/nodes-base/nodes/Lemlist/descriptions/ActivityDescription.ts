@@ -51,7 +51,7 @@ export const activityFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -96,14 +96,14 @@ export const activityFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
-				description: 'ID of the campaign to retrieve activity for.',
+				description: 'ID of the campaign to retrieve activity for',
 			},
 			{
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
 				default: 'emailsOpened',
-				description: 'Type of activity to retrieve.',
+				description: 'Type of activity to retrieve',
 				options: [
 					{
 						name: 'Emails Bounced',

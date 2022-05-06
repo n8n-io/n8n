@@ -217,7 +217,7 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -241,7 +241,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'memberId',
 				type: 'string',
 				default: '',
-				description: 'When set the post will be filtered by the member id.',
+				description: 'When set the post will be filtered by the member ID',
 			},
 		],
 	},

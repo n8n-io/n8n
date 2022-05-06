@@ -18,17 +18,17 @@ export const summaryOperations: INodeProperties[] = [
 			{
 				name: 'Get Activity Summary',
 				value: 'getActivity',
-				description: 'Get the user\'s activity summary.',
+				description: 'Get the user\'s activity summary',
 			},
 			{
 				name: 'Get Readiness Summary',
 				value: 'getReadiness',
-				description: 'Get the user\'s readiness summary.',
+				description: 'Get the user\'s readiness summary',
 			},
 			{
 				name: 'Get Sleep Periods',
 				value: 'getSleep',
-				description: 'Get the user\'s sleep summary.',
+				description: 'Get the user\'s sleep summary',
 			},
 		],
 		default: 'getSleep',
@@ -70,7 +70,7 @@ export const summaryFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',

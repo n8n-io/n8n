@@ -206,7 +206,7 @@ export const ecommerceProductFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',

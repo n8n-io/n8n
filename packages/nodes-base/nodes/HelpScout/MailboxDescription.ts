@@ -92,6 +92,6 @@ export const mailboxFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 ];

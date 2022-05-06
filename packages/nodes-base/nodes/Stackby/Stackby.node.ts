@@ -70,7 +70,7 @@ export class Stackby implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the stack to access.',
+				description: 'The ID of the stack to access',
 			},
 			{
 				displayName: 'Table',
@@ -99,7 +99,7 @@ export class Stackby implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'ID of the record to return.',
+				description: 'ID of the record to return',
 			},
 
 			// ----------------------------------
@@ -138,7 +138,7 @@ export class Stackby implements INodeType {
 					maxValue: 1000,
 				},
 				default: 1000,
-				description: 'Max number of results to return',
+				description: 'Number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -181,7 +181,7 @@ export class Stackby implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 		],
 	};

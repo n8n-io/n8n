@@ -76,7 +76,7 @@ export const reportFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'Number of results to return',
 	},
 	{
 		displayName: 'Report',
@@ -378,6 +378,6 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 ];

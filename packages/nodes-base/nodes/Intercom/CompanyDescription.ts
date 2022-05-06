@@ -67,7 +67,7 @@ export const companyFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the company',
+				description: 'The Intercom defined ID representing the company',
 			},
 			{
 				name: 'Company ID',
@@ -134,7 +134,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -179,7 +179,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -241,7 +241,7 @@ export const companyFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the company',
+				description: 'The Intercom defined ID representing the company',
 			},
 			{
 				name: 'Name',
@@ -250,7 +250,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'What property to use to query the company.',
+		description: 'What property to use to query the company',
 	},
 	{
 		displayName: 'Value',
@@ -290,7 +290,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The company id you have defined for the company',
+		description: 'The company ID you have defined for the company',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -396,7 +396,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -442,6 +442,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

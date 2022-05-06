@@ -116,7 +116,7 @@ export const industryFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'Number of results to return',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -134,7 +134,7 @@ export const industryFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
