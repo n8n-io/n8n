@@ -69,7 +69,7 @@ export default {
 }
 
 .info-light {
-	color: var(--color-foreground-dark);
+	color: var(--color-text-base);
 }
 
 .info {

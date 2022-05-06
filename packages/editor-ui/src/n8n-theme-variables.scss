@@ -65,10 +65,10 @@ $--tag-close-background-hover-color: #3d3f46;
 // Node creator
 $--node-creator-width: 385px;
 $--node-creator-text-color: var(--color-text-dark);
-$--node-creator-select-background-color: #f2f4f8;
+$--node-creator-select-background-color: var(--color-background-base);
 $--node-creator-background-color: var(--color-background-xlight);
 $--node-creator-search-background-color: var(--color-background-xlight);
-$--node-creator-border-color: #dbdfe7;
+$--node-creator-border-color: var(--color-foreground-base);
 $--node-creator-item-hover-border-color: #8d939c;
 $--node-creator-arrow-color: #8d939c;
 $--node-creator-no-results-background-color: #f8f9fb;
@@ -76,7 +76,7 @@ $--node-creator-close-button-color: var(--color-text-xlight);
 $--node-creator-search-clear-background-color: #8d939c;
 $--node-creator-search-clear-background-color-hover: #3d3f46;
 $--node-creator-search-placeholder-color: var(--color-foreground-xdark);
-$--node-creator-subcategory-panel-header-bacground-color: #f2f4f8;
+$--node-creator-subcategory-panel-header-bacground-color: var(--color-background-base);
 $--node-creator-description-color: var(--color-text-base);
 
 // trigger icon

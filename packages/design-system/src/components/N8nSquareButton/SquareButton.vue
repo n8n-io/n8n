@@ -38,6 +38,6 @@ export default Vue.extend({
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-loose);
-	color: var(--color-background-dark);
+	color: var(--color-text-dark);
 }
 </style>
