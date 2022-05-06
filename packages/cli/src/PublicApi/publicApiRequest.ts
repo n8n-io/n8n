@@ -56,6 +56,20 @@ export declare namespace ExecutionRequest {
 }
 
 export declare namespace WorkflowRequest {
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			status?: ExecutionStatus;
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			workflowId?: number;
+			active: boolean;
+		}
+	>;
+
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
 	type Get = AuthenticatedRequest<{ workflowId: number }, {}, {}, {}>;
 	type Delete = Get;
