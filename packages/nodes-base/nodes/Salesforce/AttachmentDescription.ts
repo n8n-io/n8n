@@ -7,6 +7,7 @@ export const attachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -368,6 +369,7 @@ export const attachmentFields: INodeProperties[] = [
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
 									{
 										name: '=',

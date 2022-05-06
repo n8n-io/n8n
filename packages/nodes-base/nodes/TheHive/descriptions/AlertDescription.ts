@@ -11,6 +11,7 @@ export const alertOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'loadAlertOptions',

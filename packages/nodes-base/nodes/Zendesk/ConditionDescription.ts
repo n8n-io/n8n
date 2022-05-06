@@ -54,6 +54,7 @@ export const conditionFields: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Is',
@@ -109,6 +110,7 @@ export const conditionFields: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Is',

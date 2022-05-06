@@ -63,6 +63,7 @@ export class Egoi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{

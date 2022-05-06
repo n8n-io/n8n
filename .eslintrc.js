@@ -408,6 +408,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-unencoded-angle-brackets': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-return-all': 'error',
 				'n8n-nodes-base/node-param-description-url-missing-protocol': 'error',
+				'n8n-nodes-base/node-param-operation-without-no-data-expression': 'error',
 			},
 		},
 	],

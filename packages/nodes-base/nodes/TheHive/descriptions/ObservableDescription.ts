@@ -11,6 +11,7 @@ export const observableOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {

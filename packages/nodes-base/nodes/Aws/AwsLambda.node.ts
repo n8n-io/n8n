@@ -38,6 +38,7 @@ export class AwsLambda implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Invoke',
