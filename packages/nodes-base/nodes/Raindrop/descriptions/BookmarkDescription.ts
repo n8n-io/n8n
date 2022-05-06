@@ -70,7 +70,7 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Link of the bookmark to be created.',
+		description: 'Link of the bookmark to be created',
 		displayOptions: {
 			show: {
 				resource: [
@@ -104,7 +104,7 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this bookmark is marked as favorite.',
+				description: 'Whether this bookmark is marked as favorite',
 			},
 			{
 				displayName: 'Order',
@@ -132,7 +132,7 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the bookmark to create.',
+				description: 'Title of the bookmark to create',
 			},
 		],
 	},
@@ -146,7 +146,7 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the bookmark to delete.',
+		description: 'The ID of the bookmark to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -168,7 +168,7 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the bookmark to retrieve.',
+		description: 'The ID of the bookmark to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -193,7 +193,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the collection from which to retrieve all bookmarks.',
+		description: 'The ID of the collection from which to retrieve all bookmarks',
 		displayOptions: {
 			show: {
 				resource: [
@@ -220,7 +220,7 @@ export const bookmarkFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -244,7 +244,7 @@ export const bookmarkFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	// ----------------------------------
@@ -256,7 +256,7 @@ export const bookmarkFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the bookmark to update.',
+		description: 'The ID of the bookmark to update',
 		displayOptions: {
 			show: {
 				resource: [
@@ -299,7 +299,7 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this bookmark is marked as favorite.',
+				description: 'Whether this bookmark is marked as favorite',
 			},
 			{
 				displayName: 'Order',
@@ -327,7 +327,7 @@ export const bookmarkFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the bookmark to be created.',
+				description: 'Title of the bookmark to be created',
 			},
 		],
 	},

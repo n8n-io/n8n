@@ -16,12 +16,12 @@ export const customerOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/Update a customer.',
+				description: 'Create/Update a customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a customer.',
+				description: 'Delete a customer',
 			},
 		],
 		default: 'upsert',
@@ -50,7 +50,7 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier for the customer.',
+		description: 'The unique identifier for the customer',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -72,7 +72,7 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier for the customer.',
+		description: 'The unique identifier for the customer',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -111,7 +111,7 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>.',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -152,7 +152,7 @@ export const customerFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 								placeholder: 'Plan',
 							},
 
@@ -162,7 +162,7 @@ export const customerFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 								placeholder: 'Basic',
 							},
 						],
@@ -174,14 +174,14 @@ export const customerFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The email address of the user.',
+				description: 'The email address of the user',
 			},
 			{
 				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The UNIX timestamp from when the user was created.',
+				description: 'The UNIX timestamp from when the user was created',
 			},
 		],
 	},

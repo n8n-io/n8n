@@ -895,12 +895,13 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
 					show: {

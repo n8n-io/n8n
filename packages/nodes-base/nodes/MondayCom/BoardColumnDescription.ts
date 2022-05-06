@@ -200,7 +200,7 @@ export const boardColumnFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `The new column's defaults.`,
+				description: 'The new column\'s defaults',
 			},
 		],
 	},

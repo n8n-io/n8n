@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	getConditions,
 	getSearchFilters,
 } from './GenericFunctions';
@@ -114,7 +114,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
 		displayName: 'Title',
@@ -276,7 +276,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'Name of the options you want to set. Multiples can be defined separated by comma',
+						description: 'Name of the options you want to set. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Option',
@@ -293,7 +293,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Name of the option you want to set`,
+						description: 'Name of the option you want to set',
 					},
 					{
 						displayName: 'Email',
@@ -462,7 +462,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
+						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
 						displayName: 'Timezone',
@@ -547,7 +547,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -872,7 +872,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
+						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
 						displayName: 'Timezone',
@@ -959,7 +959,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -1043,7 +1043,7 @@ export const databasePageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -1177,7 +1177,7 @@ export const databasePageFields = [
 								name: 'timestamp',
 								type: 'boolean',
 								default: false,
-								description: `Whether or not to use the record's timestamp to sort the response`,
+								description: 'Whether or not to use the record\'s timestamp to sort the response',
 							},
 							{
 								displayName: 'Property Name',

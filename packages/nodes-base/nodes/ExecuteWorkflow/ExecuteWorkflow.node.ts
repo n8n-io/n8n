@@ -37,26 +37,26 @@ export class ExecuteWorkflow implements INodeType {
 					{
 						name: 'Database',
 						value: 'database',
-						description: 'Load the workflow from the database by ID.',
+						description: 'Load the workflow from the database by ID',
 					},
 					{
 						name: 'Local File',
 						value: 'localFile',
-						description: 'Load the workflow from a locally saved file.',
+						description: 'Load the workflow from a locally saved file',
 					},
 					{
 						name: 'Parameter',
 						value: 'parameter',
-						description: 'Load the workflow from a parameter.',
+						description: 'Load the workflow from a parameter',
 					},
 					{
 						name: 'URL',
 						value: 'url',
-						description: 'Load the workflow from an URL.',
+						description: 'Load the workflow from an URL',
 					},
 				],
 				default: 'database',
-				description: 'Where to get the workflow to execute from.',
+				description: 'Where to get the workflow to execute from',
 			},
 
 			// ----------------------------------
@@ -75,7 +75,7 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The workflow to execute.',
+				description: 'The workflow to execute',
 			},
 
 			// ----------------------------------
@@ -95,7 +95,7 @@ export class ExecuteWorkflow implements INodeType {
 				default: '',
 				placeholder: '/data/workflow.json',
 				required: true,
-				description: 'The path to local JSON workflow file to execute.',
+				description: 'The path to local JSON workflow file to execute',
 			},
 
 			// ----------------------------------
@@ -119,7 +119,7 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				default: '\n\n\n',
 				required: true,
-				description: 'The workflow JSON code to execute.',
+				description: 'The workflow JSON code to execute',
 			},
 
 			// ----------------------------------
@@ -139,7 +139,7 @@ export class ExecuteWorkflow implements INodeType {
 				default: '',
 				placeholder: 'https://example.com/workflow.json',
 				required: true,
-				description: 'The URL from which to load the workflow from.',
+				description: 'The URL from which to load the workflow from',
 			},
 			{
 				displayName: 'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',

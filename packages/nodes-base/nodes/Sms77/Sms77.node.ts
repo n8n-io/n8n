@@ -102,7 +102,6 @@ export class Sms77 implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: '+4901234567890',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
