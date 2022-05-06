@@ -1,12 +1,16 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, PublicInstalledPackage } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
 import { ResponseHelper, LoadNodesAndCredentials, Push } from '..';
 import { NodeRequest } from '../requests';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { crossInformationPackages, executeCommand } from '../CommunityNodes/helpers';
+import {
+	matchMissingPackages,
+	matchPackagesWithUpdates,
+	executeCommand,
+} from '../CommunityNodes/helpers';
 import {
 	getAllInstalledPackages,
 	removePackageFromDatabase,
@@ -96,7 +100,7 @@ nodesController.post(
 // Install new credentials/nodes from npm
 nodesController.get(
 	'/',
-	ResponseHelper.send(async () => {
+	ResponseHelper.send(async (): Promise<PublicInstalledPackage[]> => {
 		const packages = await getAllInstalledPackages();
 
 		if (packages.length === 0) {
@@ -117,7 +121,10 @@ nodesController.get(
 				pendingUpdates = JSON.parse(error.stdout);
 			}
 		}
-		const hydratedPackages = crossInformationPackages(packages, pendingUpdates);
+		let hydratedPackages = matchPackagesWithUpdates(packages, pendingUpdates);
+		if (config.get('nodes.packagesMissing')) {
+			hydratedPackages = matchMissingPackages(packages, config.get('nodes.packagesMissing'));
+		}
 		return hydratedPackages;
 	}),
 );

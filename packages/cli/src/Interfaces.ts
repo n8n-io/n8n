@@ -477,6 +477,7 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	missingPackages?: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {

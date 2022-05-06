@@ -1443,3 +1443,20 @@ export interface ITelemetrySettings {
 	enabled: boolean;
 	config?: ITelemetryClientConfig;
 }
+
+export type PublicInstalledPackage = {
+	packageName: string;
+	installedVersion: string;
+	installedNodes: PublicInstalledNode[];
+	createdAt: Date;
+	updatedAt: Date;
+	updateAvailable?: string;
+	failedLoading?: boolean;
+};
+
+export type PublicInstalledNode = {
+	name: string;
+	type: string;
+	latestVersion: string;
+	package: PublicInstalledPackage;
+};
