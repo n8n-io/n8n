@@ -87,7 +87,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Monitor ids to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors).',
+		description: 'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors).',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -237,7 +237,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 				name: 'psps',
 				type: 'string',
 				default: '',
-				description: 'Public status pages ids separated with dash, e.g. 236-1782-4790.',
+				description: 'Public status pages IDs separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},

@@ -51,7 +51,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique id of the list object to be retrieved.',
+		description: 'The unique ID of the list object to be retrieved.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:getAll                                */

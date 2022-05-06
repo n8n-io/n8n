@@ -230,7 +230,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		],
 		default: 'ethereum',
-		description: 'The id of the platform issuing tokens.',
+		description: 'The ID of the platform issuing tokens.',
 	},
 	{
 		displayName: 'Contract address',

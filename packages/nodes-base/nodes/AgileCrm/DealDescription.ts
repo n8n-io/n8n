@@ -372,7 +372,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Id of deal to update',
+		description: 'ID of deal to update',
 	},
 	{
 		displayName: 'JSON Parameters',

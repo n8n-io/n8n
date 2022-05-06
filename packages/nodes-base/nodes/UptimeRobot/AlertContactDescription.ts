@@ -238,7 +238,7 @@ export const alertContactFields: INodeProperties[] = [
 				name: 'alert_contacts',
 				type: 'string',
 				default: '',
-				description: 'Alert contact ids separated with dash, e.g. 236-1782-4790.',
+				description: 'Alert contact IDs separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},

@@ -120,7 +120,7 @@ export class Chargebee implements INodeType {
 						name: 'id',
 						type: 'string',
 						default: '',
-						description: 'Id for the new customer. If not given, this will be auto-generated.',
+						description: 'ID for the new customer. If not given, this will be auto-generated.',
 					},
 					{
 						displayName: 'First Name',
@@ -368,7 +368,7 @@ export class Chargebee implements INodeType {
 			{
 				displayName: 'Invoice Id',
 				name: 'invoiceId',
-				description: 'The id of the invoice to get.',
+				description: 'The ID of the invoice to get.',
 				type: 'string',
 				default: '',
 				required: true,
@@ -422,7 +422,7 @@ export class Chargebee implements INodeType {
 			{
 				displayName: 'Subscription Id',
 				name: 'subscriptionId',
-				description: 'The id of the subscription to cancel.',
+				description: 'The ID of the subscription to cancel.',
 				type: 'string',
 				default: '',
 				required: true,
@@ -461,7 +461,7 @@ export class Chargebee implements INodeType {
 			{
 				displayName: 'Subscription Id',
 				name: 'subscriptionId',
-				description: 'The id of the subscription to delete.',
+				description: 'The ID of the subscription to delete.',
 				type: 'string',
 				default: '',
 				required: true,

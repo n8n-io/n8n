@@ -152,7 +152,7 @@ export class Medium implements INodeType {
 					loadOptionsMethod: 'getPublications',
 				},
 				default: '',
-				description: 'Publication ids',
+				description: 'Publication IDs',
 			},
 			{
 				displayName: 'Title',

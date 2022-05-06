@@ -89,7 +89,7 @@ export const connectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the account in the external service.',
+		description: 'The ID of the account in the external service.',
 	},
 	{
 		displayName: 'Account Name',
@@ -197,7 +197,7 @@ export const connectionFields: INodeProperties[] = [
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the account in the external service.',
+				description: 'The ID of the account in the external service.',
 			},
 			{
 				displayName: 'Account Name',

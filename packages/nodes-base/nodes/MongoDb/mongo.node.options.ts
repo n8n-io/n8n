@@ -214,8 +214,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: 'id',
 			required: true,
-			description:
-				'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+			description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "ID".',
 		},
 		{
 			displayName: 'Fields',

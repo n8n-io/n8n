@@ -97,7 +97,7 @@ export class AirtableTrigger implements INodeType {
 						name: 'fields',
 						type: 'string',
 						default: '',
-						description: 'Fields to be included in the response. Multiple ones can be set separated by comma. Example: <code>name, id</code>. By default just the trigger field will be included.',
+						description: 'Fields to be included in the response. Multiple ones can be set separated by comma. Example: <code>name, ID</code>. By default just the trigger field will be included.',
 					},
 					{
 						displayName: 'Formula',

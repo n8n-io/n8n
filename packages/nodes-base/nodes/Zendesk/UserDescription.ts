@@ -174,7 +174,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The id of the user\'s organization. If the user has more than one organization memberships, the id of the user\'s default organization.',
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization.',
 			},
 			{
 				displayName: 'Phone',
@@ -437,7 +437,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The id of the user\'s organization. If the user has more than one organization memberships, the id of the user\'s default organization.',
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization.',
 			},
 			{
 				displayName: 'Phone',

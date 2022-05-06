@@ -254,7 +254,7 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
+				description: 'Custom fields to set as JSON in the format: <code>[ {"ID": "", "value": ""} ]</code>',
 			},
 			{
 				displayName: 'Content',

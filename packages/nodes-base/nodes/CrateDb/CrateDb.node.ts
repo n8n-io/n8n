@@ -167,7 +167,7 @@ export class CrateDb implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
+				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "ID".',
 			},
 			{
 				displayName: 'Columns',

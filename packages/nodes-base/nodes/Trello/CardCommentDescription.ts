@@ -56,7 +56,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the card',
+		description: 'The ID of the card',
 	},
 	{
 		displayName: 'Text',

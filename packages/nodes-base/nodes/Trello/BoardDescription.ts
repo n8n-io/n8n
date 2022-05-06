@@ -124,7 +124,7 @@ export const boardFields: INodeProperties[] = [
 				name: 'prefs_background',
 				type: 'string',
 				default: 'blue',
-				description: 'The id of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey.',
+				description: 'The ID of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey.',
 			},
 			{
 				displayName: 'Comments',
@@ -205,7 +205,7 @@ export const boardFields: INodeProperties[] = [
 				name: 'idOrganization',
 				type: 'string',
 				default: '',
-				description: 'The id or name of the team the board should belong to.',
+				description: 'The ID or name of the team the board should belong to.',
 			},
 			{
 				displayName: 'Permission Level',
@@ -269,7 +269,7 @@ export const boardFields: INodeProperties[] = [
 				name: 'idBoardSource',
 				type: 'string',
 				default: '',
-				description: 'The id of a board to copy into the new board.',
+				description: 'The ID of a board to copy into the new board.',
 			},
 			{
 				displayName: 'Voting',
@@ -444,7 +444,7 @@ export const boardFields: INodeProperties[] = [
 				name: 'idOrganization',
 				type: 'string',
 				default: '',
-				description: 'The id of the team the board should be moved to.',
+				description: 'The ID of the team the board should be moved to.',
 			},
 			{
 				displayName: 'Subscribed',

@@ -823,7 +823,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Id of contact to delete.',
+		description: 'ID of contact to delete.',
 	},
 
 	/* -------------------------------------------------------------------------- */

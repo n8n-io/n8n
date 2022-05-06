@@ -363,7 +363,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'The unique id of a subaccount for this message - must already exist or will fail with an error',
+						description: 'The unique ID of a subaccount for this message - must already exist or will fail with an error',
 					},
 					{
 						displayName: 'Subject',

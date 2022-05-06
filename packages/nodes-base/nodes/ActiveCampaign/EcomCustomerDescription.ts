@@ -70,7 +70,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the connection object for the service where the customer originates.',
+		description: 'The ID of the connection object for the service where the customer originates.',
 	},
 	{
 		displayName: 'Customer ID',
@@ -88,7 +88,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the customer in the external service.',
+		description: 'The ID of the customer in the external service.',
 	},
 	{
 		displayName: 'Customer Email',
@@ -179,14 +179,14 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'connectionid',
 				type: 'string',
 				default: '',
-				description: 'The id of the connection object for the service where the customer originates.',
+				description: 'The ID of the connection object for the service where the customer originates.',
 			},
 			{
 				displayName: 'Customer ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the customer in the external service.',
+				description: 'The ID of the customer in the external service.',
 			},
 			{
 				displayName: 'Customer Email',

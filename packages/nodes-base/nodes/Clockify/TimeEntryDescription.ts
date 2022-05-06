@@ -242,7 +242,7 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'hydrated',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, returned timeentry\'s project,task and tags will be returned in full and not just their ids',
+				description: 'If provided, returned timeentry\'s project,task and tags will be returned in full and not just their IDs',
 			},
 		],
 	},

@@ -355,7 +355,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the ids of the comments are returned.',
+				description: 'If enabled, only the IDs of the comments are returned.',
 			},
 			{
 				displayName: 'Ending Object Index',

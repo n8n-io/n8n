@@ -303,7 +303,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				name: 'mwindow',
 				type: 'string',
 				default: '',
-				description: 'Maintenance windows ids separated with dash, e.g. 236-1782-4790.',
+				description: 'Maintenance windows IDs separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},

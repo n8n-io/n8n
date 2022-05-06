@@ -53,7 +53,7 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Get By ID',
 				value: 'getById',
-				description: 'Get a user by id',
+				description: 'Get a user by ID',
 			},
 			{
 				name: 'Invite',

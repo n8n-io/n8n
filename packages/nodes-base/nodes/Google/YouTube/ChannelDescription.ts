@@ -182,7 +182,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'The id parameter specifies a comma-separated list of the YouTube channel ID(s) for the resource(s) that are being retrieved. In a channel resource, the id property specifies the channel\'s YouTube channel ID.',
+				description: 'The ID parameter specifies a comma-separated list of the YouTube channel ID(s) for the resource(s) that are being retrieved. In a channel resource, the ID property specifies the channel\'s YouTube channel ID.',
 			},
 			{
 				displayName: 'Managed By Me',

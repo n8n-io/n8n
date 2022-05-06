@@ -405,7 +405,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'Filter tasks by project id.',
+						description: 'Filter tasks by project ID.',
 					},
 				],
 			},

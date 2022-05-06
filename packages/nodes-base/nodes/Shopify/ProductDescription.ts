@@ -155,7 +155,7 @@ export const productFields: INodeProperties[] = [
 						name: 'product_id',
 						type: 'number',
 						default: '',
-						description: 'The id of the product associated with the image.',
+						description: 'The ID of the product associated with the image.',
 					},
 					{
 						displayName: 'Variant IDs',
@@ -165,7 +165,7 @@ export const productFields: INodeProperties[] = [
 							multipleValues: true,
 						},
 						default: '',
-						description: 'An array of variant ids associated with the image.',
+						description: 'An array of variant IDs associated with the image.',
 					},
 					{
 						displayName: 'Source',
@@ -373,7 +373,7 @@ export const productFields: INodeProperties[] = [
 						name: 'product_id',
 						type: 'number',
 						default: '',
-						description: 'The id of the product associated with the image.',
+						description: 'The ID of the product associated with the image.',
 					},
 					{
 						displayName: 'Variant IDs',
@@ -383,7 +383,7 @@ export const productFields: INodeProperties[] = [
 							multipleValues: true,
 						},
 						default: '',
-						description: 'An array of variant ids associated with the image.',
+						description: 'An array of variant IDs associated with the image.',
 					},
 					{
 						displayName: 'Source',

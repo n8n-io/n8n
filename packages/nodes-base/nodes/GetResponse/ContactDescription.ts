@@ -205,7 +205,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Id of contact to delete.',
+		description: 'ID of contact to delete.',
 	},
 	{
 		displayName: 'Options',
@@ -283,7 +283,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				description: 'List of fields that should be returned. Id is always returned. Fields should be separated by comma',
+				description: 'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
 				default: '',
 			},
 		],
@@ -391,7 +391,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				description: 'List of fields that should be returned. Id is always returned. Fields should be separated by comma',
+				description: 'List of fields that should be returned. ID is always returned. Fields should be separated by comma',
 				default: '',
 			},
 			{

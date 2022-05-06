@@ -255,7 +255,7 @@ export const userFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Id of custom profile data value.',
+								description: 'ID of custom profile data value.',
 							},
 							{
 								displayName: 'Value',
