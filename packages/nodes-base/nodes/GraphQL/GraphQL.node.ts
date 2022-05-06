@@ -162,7 +162,7 @@ export class GraphQL implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still fetch the response even if SSL certificate validation is not possible',
+				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Request Format',

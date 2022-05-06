@@ -195,7 +195,7 @@ export class HttpRequest implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still download the response even if SSL certificate validation is not possible',
+				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Response Format',
