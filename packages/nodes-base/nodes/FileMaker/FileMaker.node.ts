@@ -215,7 +215,6 @@ export class FileMaker implements INodeType {
 				},
 				options: [],
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -411,7 +410,6 @@ export class FileMaker implements INodeType {
 				name: 'scriptBeforeParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -473,7 +471,6 @@ export class FileMaker implements INodeType {
 				name: 'scriptSortParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -535,7 +532,6 @@ export class FileMaker implements INodeType {
 				name: 'scriptAfterParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -656,7 +652,6 @@ export class FileMaker implements INodeType {
 				name: 'scriptParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [

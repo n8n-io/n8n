@@ -159,7 +159,6 @@ export const industryFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				required: false,
 			},
 			{
 				displayName: 'Date To',
@@ -167,7 +166,6 @@ export const industryFields: INodeProperties[] = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				required: false,
 			},
 		],
 	},

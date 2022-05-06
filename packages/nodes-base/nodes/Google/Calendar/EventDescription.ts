@@ -396,7 +396,6 @@ export const eventFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -1015,7 +1014,6 @@ export const eventFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

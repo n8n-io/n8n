@@ -152,7 +152,6 @@ export const salesOrderFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				required: false,
 				description: 'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
 			},
 			{

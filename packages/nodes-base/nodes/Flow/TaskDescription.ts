@@ -101,7 +101,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Owner ID',
 				name: 'ownerid',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'The ID of the account to whom this task will be assigned',
 			},
@@ -110,7 +109,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'listID',
 				type: 'string',
 				default: '',
-				required : false,
 				description: 'Put the new task in a list ("project"). Omit this param to have the task be private.',
 			},
 			{
@@ -118,7 +116,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'startsOn',
 				type: 'dateTime',
 				default: '',
-				required : false,
 				description: 'The date on which the task should start',
 			},
 			{
@@ -126,7 +123,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'dueOn',
 				type: 'dateTime',
 				default: '',
-				required : false,
 				description: 'The date on which the task should be due',
 			},
 			{
@@ -134,7 +130,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'mirrorParentSubscribers',
 				type: 'boolean',
 				default: false,
-				required : false,
 				description: 'If this task will be a subtask, and this is true, the parent tasks\'s subscribers will be mirrored to this one',
 			},
 			{
@@ -142,7 +137,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'mirrorParentTags',
 				type: 'boolean',
 				default: false,
-				required : false,
 				description: 'If this task will be a subtask, and this is true, the parent tasks\'s tags will be mirrored to this one',
 			},
 			{
@@ -153,7 +147,6 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				required : false,
 				description: 'Provide the content for the task\'s note',
 			},
 			{
@@ -182,7 +175,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				required : false,
 				description: 'If provided, this task will become a subtask of the given task',
 			},
 			{
@@ -190,7 +182,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'positionList',
 				type: 'number',
 				default: 0,
-				required : false,
 				description: 'Determines the sort order when showing tasks in, or grouped by, a list',
 			},
 			{
@@ -198,7 +189,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'positionUpcoming',
 				type: 'number',
 				default: 0,
-				required : false,
 				description: 'Determines the sort order when showing tasks grouped by their due_date',
 			},
 			{
@@ -206,7 +196,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'position',
 				type: 'number',
 				default: 0,
-				required : false,
 				description: 'Determines the sort order of tasks',
 			},
 			{
@@ -214,7 +203,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'sectionId',
 				type: 'string',
 				default: '',
-				required : false,
 				description: 'Specify which section under which to create this task',
 			},
 			{
@@ -222,7 +210,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				required : false,
 				description: 'A list of tag names to apply to the new task separated by a comma (,)',
 			},
 		],
@@ -330,7 +317,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'mirrorParentSubscribers',
 				type: 'boolean',
 				default: false,
-				required : false,
 				description: 'If this task will be a subtask, and this is true, the parent tasks\'s subscribers will be mirrored to this one',
 			},
 			{

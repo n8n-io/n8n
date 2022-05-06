@@ -658,7 +658,6 @@ export const channelFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Resolve Data',

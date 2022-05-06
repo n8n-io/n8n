@@ -193,7 +193,6 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: [],
-				required: false,
 			},
 			{
 				displayName: 'Content',
@@ -469,7 +468,6 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: [],
-						required: false,
 					},
 					{
 						displayName: 'Priority',

@@ -135,7 +135,6 @@ export const analyzerFields: INodeProperties[] = [
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

@@ -116,7 +116,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
@@ -500,7 +499,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{

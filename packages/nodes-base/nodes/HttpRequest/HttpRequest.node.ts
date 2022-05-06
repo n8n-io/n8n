@@ -354,7 +354,6 @@ export class HttpRequest implements INodeType {
 						default: '',
 						placeholder: 'text/xml',
 						description: 'Specify the mime type for raw/custom body type',
-						required: false,
 						displayOptions: {
 							show: {
 								'/requestMethod': [

@@ -328,7 +328,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 		default: {},
 		options: [
 			{
@@ -432,7 +431,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 		default: {},
 		options: [
 			{
@@ -709,7 +707,6 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add a Filter',
 		displayOptions: {
@@ -905,7 +902,6 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{

@@ -445,7 +445,6 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -475,7 +474,6 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

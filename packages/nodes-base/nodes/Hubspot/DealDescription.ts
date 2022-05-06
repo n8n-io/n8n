@@ -622,7 +622,6 @@ export const dealFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -647,7 +646,6 @@ export const dealFields: INodeProperties[] = [
 						typeOptions: {
 							multipleValues: true,
 						},
-						required: false,
 						options: [
 							{
 								name: 'filterValues',

@@ -134,7 +134,6 @@ export class Postgres implements INodeType {
 					},
 				},
 				default: 'public',
-				required: false,
 				description: 'Name of the schema the table belongs to',
 			},
 			{

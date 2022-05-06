@@ -81,7 +81,6 @@ export class Signl4 implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -128,7 +127,6 @@ export class Signl4 implements INodeType {
 							},
 						],
 						default: 'single_ack',
-						required: false,
 					},
 					{
 						displayName: 'Attachments',
@@ -223,7 +221,6 @@ export class Signl4 implements INodeType {
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [

@@ -147,7 +147,6 @@ export class Compression implements INodeType {
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
-				required: false,
 				displayOptions: {
 					show: {
 						outputFormat: [

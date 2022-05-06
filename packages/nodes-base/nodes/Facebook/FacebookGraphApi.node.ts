@@ -159,7 +159,6 @@ export class FacebookGraphApi implements INodeType {
 				default: '',
 				description: 'Edge of the node on which to operate. Edges represent collections of objects which are attached to the node.',
 				placeholder: 'videos',
-				required: false,
 			},
 			{
 				displayName: 'Ignore SSL Issues',
@@ -188,7 +187,6 @@ export class FacebookGraphApi implements INodeType {
 				displayName: 'Binary Property',
 				name: 'binaryPropertyName',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'file:data',
 				displayOptions: {
@@ -286,7 +284,6 @@ export class FacebookGraphApi implements INodeType {
 						default: '{}',
 						placeholder: '{\"field_name\": \"field_value\"}',
 						description: 'The query parameters to send, defined as a JSON object',
-						required: false,
 					},
 				],
 			},

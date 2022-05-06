@@ -176,7 +176,6 @@ export const payoutFields: INodeProperties[] = [
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
-						required: false,
 						default: '',
 						description: 'The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters.',
 					},

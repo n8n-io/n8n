@@ -377,7 +377,6 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -407,7 +406,6 @@ export const companyFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

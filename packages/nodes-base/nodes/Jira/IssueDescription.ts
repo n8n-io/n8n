@@ -512,7 +512,6 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Simplify Output',
 		name: 'simplifyOutput',
 		type: 'boolean',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

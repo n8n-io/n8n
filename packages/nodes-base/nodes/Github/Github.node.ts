@@ -436,7 +436,6 @@ export class Github implements INodeType {
 				name: 'filePath',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						resource: [

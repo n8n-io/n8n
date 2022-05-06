@@ -215,7 +215,6 @@ export const companyFields: INodeProperties[] = [
 				name: 'date_from',
 				type: 'dateTime',
 				default: '',
-				required: false,
 
 			},
 			{
@@ -224,7 +223,6 @@ export const companyFields: INodeProperties[] = [
 				name: 'date_to',
 				type: 'dateTime',
 				default: '',
-				required: false,
 			},
 			{
 				displayName: 'Timing',
@@ -246,7 +244,6 @@ export const companyFields: INodeProperties[] = [
 					},
 				],
 				default: 'daily',
-				required: false,
 			},
 		],
 	},
