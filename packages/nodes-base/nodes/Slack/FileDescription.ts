@@ -270,16 +270,16 @@ export const fileFields: INodeProperties[] = [
 						value: 'images',
 					},
 					{
+						name: 'pdfs',
+						value: 'pdfs',
+					},
+					{
 						name: 'Snippets',
 						value: 'snippets',
 					},
 					{
 						name: 'Spaces',
 						value: 'spaces',
-					},
-					{
-						name: 'pdfs',
-						value: 'pdfs',
 					},
 					{
 						name: 'Zips',

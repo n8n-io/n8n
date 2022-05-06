@@ -323,12 +323,12 @@ export const incidentFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Assigness',
-						value: 'assigness',
-					},
-					{
 						name: 'Acknowledgers',
 						value: 'acknowledgers',
+					},
+					{
+						name: 'Assigness',
+						value: 'assigness',
 					},
 					{
 						name: 'Conferenece Bridge',

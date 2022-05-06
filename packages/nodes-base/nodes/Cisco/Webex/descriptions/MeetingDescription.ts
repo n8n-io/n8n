@@ -278,26 +278,6 @@ export const meetingFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Require First Name',
-						value: 'requireFirstName',
-					},
-					{
-						name: 'Require Last Name',
-						value: 'requireLastName',
-					},
-					{
-						name: 'Require Email',
-						value: 'requireEmail',
-					},
-					{
-						name: 'Require Job Title',
-						value: 'requireJobTitle',
-					},
-					{
-						name: 'Require Company Name',
-						value: 'requireCompanyName',
-					},
-					{
 						name: 'Require Address 1',
 						value: 'requireAddress1',
 					},
@@ -310,24 +290,44 @@ export const meetingFields: INodeProperties[] = [
 						value: 'requireCity',
 					},
 					{
-						name: 'Require State',
-						value: 'requireState',
-					},
-					{
-						name: 'Require Zip Code',
-						value: 'requireZipCode',
+						name: 'Require Company Name',
+						value: 'requireCompanyName',
 					},
 					{
 						name: 'Require Country Region',
 						value: 'requireCountryRegion',
 					},
 					{
-						name: 'Require Work Phone',
-						value: 'requireWorkPhone',
+						name: 'Require Email',
+						value: 'requireEmail',
 					},
 					{
 						name: 'Require Fax',
 						value: 'requireFax',
+					},
+					{
+						name: 'Require First Name',
+						value: 'requireFirstName',
+					},
+					{
+						name: 'Require Job Title',
+						value: 'requireJobTitle',
+					},
+					{
+						name: 'Require Last Name',
+						value: 'requireLastName',
+					},
+					{
+						name: 'Require State',
+						value: 'requireState',
+					},
+					{
+						name: 'Require Work Phone',
+						value: 'requireWorkPhone',
+					},
+					{
+						name: 'Require Zip Code',
+						value: 'requireZipCode',
 					},
 				],
 				default: [],
@@ -870,26 +870,6 @@ export const meetingFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Require First Name',
-						value: 'requireFirstName',
-					},
-					{
-						name: 'Require Last Name',
-						value: 'requireLastName',
-					},
-					{
-						name: 'Require Email',
-						value: 'requireEmail',
-					},
-					{
-						name: 'Require Job Title',
-						value: 'requireJobTitle',
-					},
-					{
-						name: 'Require Company Name',
-						value: 'requireCompanyName',
-					},
-					{
 						name: 'Require Address 1',
 						value: 'requireAddress1',
 					},
@@ -902,24 +882,44 @@ export const meetingFields: INodeProperties[] = [
 						value: 'requireCity',
 					},
 					{
-						name: 'Require State',
-						value: 'requireState',
-					},
-					{
-						name: 'Require Zip Code',
-						value: 'requireZipCode',
+						name: 'Require Company Name',
+						value: 'requireCompanyName',
 					},
 					{
 						name: 'Require Country Region',
 						value: 'requireCountryRegion',
 					},
 					{
-						name: 'Require Work Phone',
-						value: 'requireWorkPhone',
+						name: 'Require Email',
+						value: 'requireEmail',
 					},
 					{
 						name: 'Require Fax',
 						value: 'requireFax',
+					},
+					{
+						name: 'Require First Name',
+						value: 'requireFirstName',
+					},
+					{
+						name: 'Require Job Title',
+						value: 'requireJobTitle',
+					},
+					{
+						name: 'Require Last Name',
+						value: 'requireLastName',
+					},
+					{
+						name: 'Require State',
+						value: 'requireState',
+					},
+					{
+						name: 'Require Work Phone',
+						value: 'requireWorkPhone',
+					},
+					{
+						name: 'Require Zip Code',
+						value: 'requireZipCode',
 					},
 				],
 				default: [],

@@ -120,12 +120,12 @@ export class ClickUpTrigger implements INodeType {
 						value: 'goalCreated',
 					},
 					{
-						name: 'goal.updated',
-						value: 'goalUpdated',
-					},
-					{
 						name: 'goal.deleted',
 						value: 'goalDeleted',
+					},
+					{
+						name: 'goal.updated',
+						value: 'goalUpdated',
 					},
 					{
 						name: 'keyResult.created',

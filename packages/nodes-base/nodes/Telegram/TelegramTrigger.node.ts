@@ -59,23 +59,23 @@ export class TelegramTrigger implements INodeType {
 						description: 'All updates',
 					},
 					{
-						name: 'message',
-						value: 'message',
-						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc',
-					},
-					{
-						name: 'edited_message',
-						value: 'edited_message',
-						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
+						name: 'callback_query',
+						value: 'callback_query',
+						description: 'Trigger on new incoming callback query',
 					},
 					{
 						name: 'channel_post',
 						value: 'channel_post',
-						description: 'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
+						description: 'Trigger on new incoming channel post of any kind	—	text, photo, sticker, etc',
 					},
 					{
 						name: 'edited_channel_post',
 						value: 'edited_channel_post',
+						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
+					},
+					{
+						name: 'edited_message',
+						value: 'edited_message',
 						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
@@ -84,15 +84,14 @@ export class TelegramTrigger implements INodeType {
 						description: 'Trigger on new incoming inline query',
 					},
 					{
-						name: 'callback_query',
-						value: 'callback_query',
-						description: 'Trigger on new incoming callback query',
+						name: 'message',
+						value: 'message',
+						description: 'Trigger on new incoming message of any kind	—	text, photo, sticker, etc',
 					},
-
 					{
-						name: 'shipping_query',
-						value: 'shipping_query',
-						description: 'Trigger on new incoming shipping query. Only for invoices with flexible price.',
+						name: 'poll',
+						value: 'poll',
+						description: 'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
 					{
 						name: 'pre_checkout_query',
@@ -100,9 +99,9 @@ export class TelegramTrigger implements INodeType {
 						description: 'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
 					},
 					{
-						name: 'poll',
-						value: 'poll',
-						description: 'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
+						name: 'shipping_query',
+						value: 'shipping_query',
+						description: 'Trigger on new incoming shipping query. Only for invoices with flexible price.',
 					},
 				],
 				required: true,

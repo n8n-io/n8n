@@ -220,19 +220,24 @@ export class GithubTrigger implements INodeType {
 						description: 'Triggered when a milestone is created, closed, opened, edited, or deleted',
 					},
 					{
-						name: 'organization',
-						value: 'organization',
-						description: 'Triggered when an organization is deleted and renamed, and when a user is added, removed, or invited to an organization. Organization hooks only.',
-					},
-					{
 						name: 'org_block',
 						value: 'org_block',
 						description: 'Triggered when an organization blocks or unblocks a user. Organization hooks only.',
 					},
 					{
+						name: 'organization',
+						value: 'organization',
+						description: 'Triggered when an organization is deleted and renamed, and when a user is added, removed, or invited to an organization. Organization hooks only.',
+					},
+					{
 						name: 'page_build',
 						value: 'page_build',
 						description: 'Triggered on push to a GitHub Pages enabled branch (gh-pages for project pages, master for user and organization pages)',
+					},
+					{
+						name: 'project',
+						value: 'project',
+						description: 'Triggered when a project is created, updated, closed, reopened, or deleted',
 					},
 					{
 						name: 'project_card',
@@ -243,11 +248,6 @@ export class GithubTrigger implements INodeType {
 						name: 'project_column',
 						value: 'project_column',
 						description: 'Triggered when a project column is created, updated, moved, or deleted',
-					},
-					{
-						name: 'project',
-						value: 'project',
-						description: 'Triggered when a project is created, updated, closed, reopened, or deleted',
 					},
 					{
 						name: 'public',
@@ -264,7 +264,6 @@ export class GithubTrigger implements INodeType {
 						value: 'pull_request_review',
 						description: 'Triggered when a pull request review is submitted into a non-pending state, the body is edited, or the review is dismissed',
 					},
-
 					{
 						name: 'pull_request_review_comment',
 						value: 'pull_request_review_comment',
