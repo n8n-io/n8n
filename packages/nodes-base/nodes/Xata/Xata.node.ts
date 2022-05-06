@@ -9,7 +9,7 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { start } from 'repl';
+
 
 import {
 	getAdditionalOptions,
