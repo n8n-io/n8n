@@ -1,5 +1,4 @@
 import express from 'express';
-import { randomName } from './shared/random';
 import * as utils from './shared/utils';
 import type { InstalledNodePayload, InstalledPackagePayload } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
@@ -7,10 +6,10 @@ import type { User } from '../../src/databases/entities/User';
 import * as testDb from './shared/testDb';
 
 jest.mock('../../src/CommunityNodes/helpers',  () => ({
-  crossInformationPackages: jest.requireActual('../../src/CommunityNodes/helpers').crossInformationPackages,
+  matchPackagesWithUpdates: jest.requireActual('../../src/CommunityNodes/helpers').matchPackagesWithUpdates,
   executeCommand: jest.fn(),
 }));
-import { executeCommand, crossInformationPackages } from '../../src/CommunityNodes/helpers';
+import { executeCommand } from '../../src/CommunityNodes/helpers';
 import { CURRENT_PACKAGE_VERSION, UPDATED_PACKAGE_VERSION } from './shared/constants';
 import { installedPackagePayload } from './shared/utils';
 

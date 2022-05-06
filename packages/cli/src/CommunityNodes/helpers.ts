@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 
 import { UserSettings } from 'n8n-core';
+import { PublicInstalledPackage } from 'n8n-workflow';
 import {
 	NODE_PACKAGE_PREFIX,
 	NPM_PACKAGE_NOT_FOUND_ERROR,
@@ -71,24 +72,53 @@ export const executeCommand = async (command: string): Promise<string> => {
 	}
 };
 
-export function crossInformationPackages(
+export function matchPackagesWithUpdates(
 	installedPackages: InstalledPackages[],
 	availableUpdates?: NpmUpdatesAvailable,
-): InstalledPackages[] {
+): PublicInstalledPackage[] {
 	if (!availableUpdates) {
 		return installedPackages;
 	}
-	const hydratedPackageList = [];
+	const hydratedPackageList = [] as PublicInstalledPackage[];
 
 	for (let i = 0; i < installedPackages.length; i++) {
 		const installedPackage = installedPackages[i];
+		const publicPackage = { ...installedPackage } as PublicInstalledPackage;
+
 		if (availableUpdates[installedPackage.packageName]) {
-			// TODO: Check what's the best way to remove this ts-ignore
-			// @ts-ignore
-			installedPackage.updateAvailable = availableUpdates[installedPackage.packageName].latest;
+			publicPackage.updateAvailable = availableUpdates[installedPackage.packageName].latest;
 		}
-		hydratedPackageList.push(installedPackage);
+		hydratedPackageList.push(publicPackage);
 	}
+
+	return hydratedPackageList;
+}
+
+export function matchMissingPackages(
+	installedPackages: PublicInstalledPackage[],
+	missingPackages: string,
+): PublicInstalledPackage[] {
+	const missingPackageNames = missingPackages.split(' ');
+
+	const missingPackagesList = missingPackageNames.map((missingPackageName: string) => {
+		// Strip away versions but maintain scope and package name
+		try {
+			const parsedPackageData = parsePackageName(missingPackageName);
+			return parsedPackageData.packageName;
+
+			// eslint-disable-next-line no-empty
+		} catch (_) {}
+		return undefined;
+	});
+
+	const hydratedPackageList = [] as PublicInstalledPackage[];
+	installedPackages.forEach((installedPackage) => {
+		const hydratedInstalledPackage = { ...installedPackage };
+		if (missingPackagesList.includes(hydratedInstalledPackage.packageName)) {
+			hydratedInstalledPackage.failedLoading = true;
+		}
+		hydratedPackageList.push(hydratedInstalledPackage);
+	});
 
 	return hydratedPackageList;
 }
