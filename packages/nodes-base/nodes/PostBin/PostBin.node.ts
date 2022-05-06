@@ -4,13 +4,13 @@ import {
 } from 'n8n-workflow';
 
 import {
-	binOperations,
 	binFields,
+	binOperations,
 } from './BinDescription';
 
 import {
-	requestOperations,
 	requestFields,
+	requestOperations,
 } from './RequestDescription';
 
 export class PostBin implements INodeType {
@@ -24,7 +24,7 @@ export class PostBin implements INodeType {
 		description: 'Consume PostBin API',
 		defaults: {
 			name: 'PostBin',
-			color: '#4dc0b5'
+			color: '#4dc0b5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -33,7 +33,6 @@ export class PostBin implements INodeType {
 			baseURL: 'https://www.toptal.com',
 		},
 		properties: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -41,21 +40,21 @@ export class PostBin implements INodeType {
 				options: [
 					{
 						name: 'Bin',
-						value: 'bin'
+						value: 'bin',
 					},
 					{
 						name: 'Request',
-						value: 'request'
-					}
+						value: 'request',
+					},
 				],
 				default: 'bin',
 				required: true,
-				description: 'Bin to work with'
+				description: 'Bin to work with',
 			},
 			...binOperations,
 			...requestOperations,
 			...binFields,
 			...requestFields,
-		]
+		],
 	};
 }

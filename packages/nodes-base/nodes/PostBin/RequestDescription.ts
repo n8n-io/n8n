@@ -1,10 +1,12 @@
 import {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
 	INodeProperties
 } from 'n8n-workflow';
 
+import {
+	buildRequestURL
+} from './GenericFunctions';
+
+// Operations for the `Request` resource
 export const requestOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -25,7 +27,13 @@ export const requestOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}/req/{{$parameter["requestId"]}}'
+						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}/req/{{$parameter["requestId"]}}',
+					},
+					send: {
+						preSend: [
+							// Parse binId before sending to make sure it's in the right format
+							buildRequestURL,
+						],
 					},
 				},
 			},
@@ -36,16 +44,23 @@ export const requestOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}/req/shift'
+						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}/req/shift',
 					},
-				}
-			}
+					send: {
+						preSend: [
+							// Parse binId before sending to make sure it's in the right format
+							buildRequestURL,
+						],
+					},
+				},
+			},
 		],
 		default: 'get',
-		description: 'The operation to perform'
-	}
-]
+		description: 'The operation to perform',
+	},
+];
 
+// Properties of the `Request` resource
 export const requestFields: INodeProperties[] = [
 	{
 		name: 'requestId',
@@ -56,13 +71,13 @@ export const requestFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'request'
+					'request',
 				],
 				operation: [
 					'get',
-				]
-			}
+				],
+			},
 		},
 		description: 'Unique identifier for each request.',
-	}
-]
+	},
+];

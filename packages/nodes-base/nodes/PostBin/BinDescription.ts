@@ -1,12 +1,14 @@
 import {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
 	INodeProperties
 } from 'n8n-workflow';
 
+import {
+	buildBinAPIURL,
+	buildBinTestURL
+} from './GenericFunctions';
+
+
+// Operations for the `Bin` resource:
 export const binOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -21,15 +23,15 @@ export const binOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-					name: 'Create',
-					value: 'create',
-					description: 'Create new bin',
-					routing: {
-						request: {
-							method: 'POST',
-							url: '/developers/postbin/api/bin',
-						},
-					}
+				name: 'Create',
+				value: 'create',
+				description: 'Create new bin',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/developers/postbin/api/bin',
+					},
+				},
 			},
 			{
 				name: 'Get',
@@ -40,7 +42,13 @@ export const binOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}',
 					},
-				}
+					send: {
+						preSend: [
+							// Parse binId before sending to make sure it's in the right format
+							buildBinAPIURL,
+						],
+					},
+				},
 			},
 			{
 				name: 'Delete',
@@ -49,9 +57,15 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}'
+						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}',
 					},
-				}
+					send: {
+						preSend: [
+							// Parse binId before sending to make sure it's in the right format
+							buildBinAPIURL,
+						],
+					},
+				},
 			},
 			{
 				name: 'Test',
@@ -60,7 +74,13 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/developers/postbin/{{$parameter["binId"]}}'
+						url: '=/developers/postbin/{{$parameter["binId"]}}',
+					},
+					send: {
+						preSend: [
+							// Parse binId before sending to make sure it's in the right format
+							buildBinTestURL,
+						],
 					},
 					output: {
 						postReceive: [
@@ -69,17 +89,18 @@ export const binOperations: INodeProperties[] = [
 								properties: {
 									value: '={{ { "status": "Sent" } }}',
 								},
-							}
-						]
-					}
-				}
+							},
+						],
+					},
+				},
 			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-]
+];
 
+// Properties of the `Bin` resource
 export const binFields: INodeProperties[] = [
 	{
 		name: 'binId',
@@ -91,14 +112,14 @@ export const binFields: INodeProperties[] = [
 			show: {
 				resource: [
 					'bin',
-					'request'
+					'request',
 				],
 				operation: [
 					'get',
 					'delete',
 					'test',
 					'shift',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for each bin.',
@@ -109,23 +130,24 @@ export const binFields: INodeProperties[] = [
 	 type: 'string',
 	 default: '',
 	 typeOptions: {
-	     rows: 5,
+		rows: 5,
 	 },
 	 displayOptions: {
-	     show: {
-	         resource: [
-	             'bin',
-	         ],
-	         operation: [
-	             'test',
-	         ]
-	     }
+		show: {
+			resource: [
+				'bin',
+			],
+			operation: [
+				'test',
+			],
+		},
 	 },
+	 // Content is sent is the body of POST requests
 	 routing: {
 		send: {
 			property: 'content',
-			type: 'body'
-		}
-	 }
+			type: 'body',
+		},
+	 },
 	},
-]
+];
