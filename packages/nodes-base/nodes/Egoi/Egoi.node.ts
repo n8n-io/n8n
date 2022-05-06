@@ -262,7 +262,7 @@ export class Egoi implements INodeType {
 							},
 						],
 						default: 'active',
-						description: 'Subscriber\'s current status.',
+						description: 'Subscriber\'s current status',
 					},
 					{
 						displayName: 'Tags IDs',
@@ -391,7 +391,7 @@ export class Egoi implements INodeType {
 
 						],
 						default: 'active',
-						description: 'Subscriber\'s current status.',
+						description: 'Subscriber\'s current status',
 					},
 					{
 						displayName: 'Tags IDs',

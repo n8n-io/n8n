@@ -354,7 +354,7 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: '',
-				description: 'Subscriber\'s current status.',
+				description: 'Subscriber\'s current status',
 			},
 			{
 				displayName: 'JSON Parameters',
@@ -411,7 +411,7 @@ export class Mailchimp implements INodeType {
 						name: 'language',
 						type: 'string',
 						default: '',
-						description: 'If set/detected, the subscriber\'s language.',
+						description: 'If set/detected, the subscriber\'s language',
 					},
 					{
 						displayName: 'Opt-in IP',
@@ -439,7 +439,7 @@ export class Mailchimp implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'The tags that are associated with a member separeted by ,.',
+						description: 'The tags that are associated with a member separeted by ,',
 					},
 					{
 						displayName: 'Vip',
@@ -453,7 +453,7 @@ export class Mailchimp implements INodeType {
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format.',
+						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
 					},
 				],
 			},
@@ -957,7 +957,7 @@ export class Mailchimp implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Subscriber\'s current status.',
+						description: 'Subscriber\'s current status',
 					},
 					{
 						displayName: 'Since Last Changed',
@@ -1124,7 +1124,7 @@ export class Mailchimp implements INodeType {
 						name: 'language',
 						type: 'string',
 						default: '',
-						description: 'If set/detected, the subscriber\'s language.',
+						description: 'If set/detected, the subscriber\'s language',
 					},
 					{
 						displayName: 'Merge Fields',
@@ -1239,7 +1239,7 @@ export class Mailchimp implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Subscriber\'s current status.',
+						description: 'Subscriber\'s current status',
 					},
 					{
 						displayName: 'Vip',
@@ -1298,7 +1298,7 @@ export class Mailchimp implements INodeType {
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format.',
+						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
 					},
 				],
 			},

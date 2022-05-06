@@ -155,7 +155,7 @@ export const collectionFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API.',
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Skip',

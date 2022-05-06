@@ -180,7 +180,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------

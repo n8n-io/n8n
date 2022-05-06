@@ -88,7 +88,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Timestamp of the message to get permanent link.',
+		description: 'Timestamp of the message to get permanent link',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -517,7 +517,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Timestamp of the message to be updated.',
+		description: 'Timestamp of the message to be updated',
 	},
 	{
 		displayName: 'JSON parameters',
@@ -866,7 +866,7 @@ export const messageFields: INodeProperties[] = [
 																],
 															},
 														],
-														description: 'Defines the dialog\'s title.',
+														description: 'Defines the dialog\'s title',
 													},
 													{
 														displayName: 'Text',
@@ -899,7 +899,7 @@ export const messageFields: INodeProperties[] = [
 																],
 															},
 														],
-														description: 'Defines the explanatory text that appears in the confirm dialog.',
+														description: 'Defines the explanatory text that appears in the confirm dialog',
 													},
 													{
 														displayName: 'Confirm',
@@ -920,7 +920,7 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Defines the explanatory text that appears in the confirm dialog.',
+																		description: 'Defines the explanatory text that appears in the confirm dialog',
 																	},
 																	{
 																		displayName: 'Emoji',
@@ -1082,7 +1082,7 @@ export const messageFields: INodeProperties[] = [
 										},
 										type: 'boolean',
 										default: false,
-										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed.',
+										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
 									},
 								],
 							},
@@ -1160,7 +1160,7 @@ export const messageFields: INodeProperties[] = [
 										},
 										type: 'boolean',
 										default: false,
-										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed.',
+										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
 									},
 								],
 							},
@@ -1384,7 +1384,7 @@ export const messageFields: INodeProperties[] = [
 																],
 															},
 														],
-														description: 'Defines the explanatory text that appears in the confirm dialog.',
+														description: 'Defines the explanatory text that appears in the confirm dialog',
 													},
 													{
 														displayName: 'Confirm',
@@ -1405,7 +1405,7 @@ export const messageFields: INodeProperties[] = [
 																		name: 'text',
 																		type: 'string',
 																		default: '',
-																		description: 'Defines the explanatory text that appears in the confirm dialog.',
+																		description: 'Defines the explanatory text that appears in the confirm dialog',
 																	},
 																	{
 																		displayName: 'Emoji',
@@ -1417,7 +1417,7 @@ export const messageFields: INodeProperties[] = [
 																],
 															},
 														],
-														description: 'Defines the explanatory text that appears in the confirm dialog.',
+														description: 'Defines the explanatory text that appears in the confirm dialog',
 													},
 													{
 														displayName: 'Deny',
@@ -1773,6 +1773,6 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Timestamp of the message to be deleted.',
+		description: 'Timestamp of the message to be deleted',
 	},
 ];

@@ -61,7 +61,7 @@ export const affiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The affiliate’s email.',
+		description: 'The affiliate’s email',
 	},
 	{
 		displayName: 'First Name',
@@ -79,7 +79,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The affiliate’s firstname.',
+		description: 'The affiliate’s firstname',
 	},
 	{
 		displayName: 'Last Name',
@@ -97,7 +97,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The affiliate’s lastname.',
+		description: 'The affiliate’s lastname',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -176,7 +176,7 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: 'The affiliate’s company data.',
+				description: 'The affiliate’s company data',
 			},
 		],
 	},

@@ -202,7 +202,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: false,
-				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
+				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 			},
 			{
 				displayName: 'Download Fields',
@@ -416,7 +416,7 @@ export class Airtable implements INodeType {
 							maxValue: 10,
 						},
 						default: 10,
-						description: 'Number of records to process at once.',
+						description: 'Number of records to process at once',
 					},
 					{
 						displayName: 'Ignore Fields',

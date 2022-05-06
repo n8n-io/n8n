@@ -175,7 +175,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'forUsername',
 				type: 'string',
 				default: '',
-				description: 'The forUsername parameter specifies a YouTube username, thereby requesting the channel associated with that username.',
+				description: 'The forUsername parameter specifies a YouTube username, thereby requesting the channel associated with that username',
 			},
 			{
 				displayName: 'ID',
@@ -218,7 +218,7 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports.',
+				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
@@ -439,7 +439,7 @@ export const channelFields: INodeProperties[] = [
 										name: 'profileColor',
 										type: 'string',
 										default: '',
-										description: 'A prominent color that complements the channel\'s content.',
+										description: 'A prominent color that complements the channel\'s content',
 									},
 									{
 										displayName: 'Show Related Channels',
@@ -466,7 +466,7 @@ export const channelFields: INodeProperties[] = [
 										displayName: 'Unsubscribed Trailer',
 										name: 'unsubscribedTrailer',
 										type: 'string',
-										description: 'The video that should play in the featured video module in the channel page\'s browse view for unsubscribed viewers.',
+										description: 'The video that should play in the featured video module in the channel page\'s browse view for unsubscribed viewers',
 										default: '',
 									},
 								],
@@ -484,7 +484,7 @@ export const channelFields: INodeProperties[] = [
 								type: 'collection',
 								default: {},
 								placeholder: 'Add Channel Settings',
-								description: 'The image object encapsulates information about images that display on the channel\'s channel page or video watch pages.',
+								description: 'The image object encapsulates information about images that display on the channel\'s channel page or video watch pages',
 								typeOptions: {
 									multipleValues: false,
 								},

@@ -270,7 +270,7 @@ export class Ssh implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'Overrides the binary data file name.',
+						description: 'Overrides the binary data file name',
 					},
 				],
 			},

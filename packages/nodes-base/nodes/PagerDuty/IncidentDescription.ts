@@ -101,7 +101,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request.',
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -202,7 +202,7 @@ export const incidentFields: INodeProperties[] = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.',
+						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input',
 					},
 					{
 						displayName: 'Conference URL',
@@ -495,7 +495,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request.',
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 	{
 		displayName: 'Update Fields',
@@ -626,7 +626,7 @@ export const incidentFields: INodeProperties[] = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.',
+						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input',
 					},
 					{
 						displayName: 'Conference URL',

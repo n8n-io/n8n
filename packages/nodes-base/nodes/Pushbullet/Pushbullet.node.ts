@@ -141,7 +141,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Title of the push.',
+				description: 'Title of the push',
 			},
 			{
 				displayName: 'Body',
@@ -164,7 +164,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Body of the push.',
+				description: 'Body of the push',
 			},
 			{
 				displayName: 'URL',
@@ -185,7 +185,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: 'URL of the push.',
+				description: 'URL of the push',
 			},
 			{
 				displayName: 'Binary Property',
@@ -377,14 +377,14 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: 'Don\'t return deleted pushes.',
+						description: 'Don\'t return deleted pushes',
 					},
 					{
 						displayName: 'Modified After',
 						name: 'modified_after',
 						type: 'dateTime',
 						default: '',
-						description: 'Request pushes modified after this timestamp.',
+						description: 'Request pushes modified after this timestamp',
 					},
 				],
 			},

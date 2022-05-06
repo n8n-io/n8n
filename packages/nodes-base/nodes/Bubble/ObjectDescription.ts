@@ -371,12 +371,12 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'Is Empty',
 										value: 'is_empty',
-										description: 'Use to test whether a thing\'s given field is empty, for all field types.',
+										description: 'Use to test whether a thing\'s given field is empty, for all field types',
 									},
 									{
 										name: 'Is Not Empty',
 										value: 'is_not_empty',
-										description: 'Use to test whether a thing\'s given field is not empty, for all field types.',
+										description: 'Use to test whether a thing\'s given field is not empty, for all field types',
 									},
 									{
 										name: 'Text Contains',
@@ -401,12 +401,12 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'In',
 										value: 'in',
-										description: 'Use to test whether a thing\'s field is in a list, for all field types.',
+										description: 'Use to test whether a thing\'s field is in a list, for all field types',
 									},
 									{
 										name: 'Not In',
 										value: 'not in',
-										description: 'Use to test whether a thing\'s field is not in a list, for all field types.',
+										description: 'Use to test whether a thing\'s field is not in a list, for all field types',
 									},
 									{
 										name: 'Contains',

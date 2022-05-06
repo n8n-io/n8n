@@ -100,7 +100,7 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'This field can only be changed by admins for users on paid teams.',
+				description: 'This field can only be changed by admins for users on paid teams',
 			},
 			{
 				displayName: 'First Name',
@@ -133,7 +133,7 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'status_text',
 				type: 'string',
 				default: '',
-				description: 'allows up to 100 characters, though we strongly encourage brevity.',
+				description: 'allows up to 100 characters, though we strongly encourage brevity',
 			},
 			{
 				displayName: 'User ID',

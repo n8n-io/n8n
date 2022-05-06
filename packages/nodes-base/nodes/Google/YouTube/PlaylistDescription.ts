@@ -66,7 +66,7 @@ export const playlistFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The playlist\'s title.',
+		description: 'The playlist\'s title',
 	},
 	{
 		displayName: 'Options',
@@ -90,7 +90,7 @@ export const playlistFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The playlist\'s description.',
+				description: 'The playlist\'s description',
 			},
 			{
 				displayName: 'Privacy Status',
@@ -111,7 +111,7 @@ export const playlistFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The playlist\'s privacy status.',
+				description: 'The playlist\'s privacy status',
 			},
 			{
 				displayName: 'Tags',
@@ -128,7 +128,7 @@ export const playlistFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties.',
+				description: 'The language of the text in the playlist resource\'s title and description properties',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner Channel',
@@ -407,7 +407,7 @@ export const playlistFields: INodeProperties[] = [
 				name: 'channelId',
 				type: 'string',
 				default: '',
-				description: 'This value indicates that the API should only return the specified channel\'s playlists.',
+				description: 'This value indicates that the API should only return the specified channel\'s playlists',
 			},
 			{
 				displayName: 'ID',
@@ -470,7 +470,7 @@ export const playlistFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The playlist\'s title.',
+		description: 'The playlist\'s title',
 	},
 	{
 		displayName: 'Title',
@@ -488,7 +488,7 @@ export const playlistFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The playlist\'s title.',
+		description: 'The playlist\'s title',
 	},
 	{
 		displayName: 'Update Fields',
@@ -515,14 +515,14 @@ export const playlistFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties.',
+				description: 'The language of the text in the playlist resource\'s title and description properties',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The playlist\'s description.',
+				description: 'The playlist\'s description',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
@@ -550,7 +550,7 @@ export const playlistFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The playlist\'s privacy status.',
+				description: 'The playlist\'s privacy status',
 			},
 			{
 				displayName: 'Tags',

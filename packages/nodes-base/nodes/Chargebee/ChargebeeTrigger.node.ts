@@ -123,7 +123,7 @@ export class ChargebeeTrigger implements INodeType {
 					{
 						name: 'Subscription Deleted',
 						value: 'subscription_deleted',
-						description: 'Triggered when a subscription is deleted.',
+						description: 'Triggered when a subscription is deleted',
 					},
 					{
 						name: 'Invoice Created',

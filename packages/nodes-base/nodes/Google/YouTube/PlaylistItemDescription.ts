@@ -104,7 +104,7 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'endAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The time, measured in seconds from the start of the video, when the video should stop playing.',
+				description: 'The time, measured in seconds from the start of the video, when the video should stop playing',
 			},
 			{
 				displayName: 'Note',
@@ -135,7 +135,7 @@ export const playlistItemFields: INodeProperties[] = [
 				name: 'startAt',
 				type: 'dateTime',
 				default: '',
-				description: 'The time, measured in seconds from the start of the video, when the video should start playing.',
+				description: 'The time, measured in seconds from the start of the video, when the video should start playing',
 			},
 		],
 	},

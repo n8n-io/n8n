@@ -267,7 +267,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'message.bcc_address@example.com',
-						description: 'An optional address to receive an exact copy of each recipient\'s email.',
+						description: 'An optional address to receive an exact copy of each recipient\'s email',
 					},
 					{
 						displayName: 'From name',
@@ -291,7 +291,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.',
+						description: 'An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically',
 					},
 					{
 						displayName: 'HTML',
@@ -339,7 +339,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'A custom domain to use for the messages\'s return-path.',
+						description: 'A custom domain to use for the messages\'s return-path',
 					},
 					{
 						displayName: 'Sent At',
@@ -355,7 +355,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients).',
+						description: 'A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients)',
 					},
 					{
 						displayName: 'Subaccount',
@@ -412,7 +412,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'A custom domain to use for tracking opens and clicks instead of mandrillapp.com .',
+						description: 'A custom domain to use for tracking opens and clicks instead of mandrillapp.com',
 					},
 					{
 						displayName: 'Url Strip Qs',

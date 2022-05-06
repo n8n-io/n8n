@@ -562,6 +562,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Reassign the deleted user\'s posts and links to this user ID.',
+		description: 'Reassign the deleted user\'s posts and links to this user ID',
 	},
 ];

@@ -123,7 +123,7 @@ export class Gotify implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The title of the message.',
+						description: 'The title of the message',
 					},
 				],
 			},

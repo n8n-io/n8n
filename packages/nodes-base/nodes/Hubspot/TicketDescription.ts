@@ -364,7 +364,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'ticketName',
 				type: 'string',
 				default: '',
-				description: 'The ID of the pipeline the ticket is in.',
+				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
 				displayName: 'Ticket Owner ID',

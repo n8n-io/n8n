@@ -43,7 +43,7 @@ export const accountOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: 'Returns an overview of account\'s metadata.',
+				description: 'Returns an overview of account\'s metadata',
 			},
 			{
 				name: 'Delete',

@@ -270,7 +270,7 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.',
+		description: 'Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -507,7 +507,7 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.',
+		description: 'Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 	{
 		displayName: 'Ticket Type',

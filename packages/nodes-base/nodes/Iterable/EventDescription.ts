@@ -78,7 +78,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
-				description: 'Time event happened.',
+				description: 'Time event happened',
 			},
 			{
 				displayName: 'Data Fields',

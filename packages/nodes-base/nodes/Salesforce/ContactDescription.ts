@@ -307,7 +307,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: 'Contact’s mobile phone number.',
+				description: 'Contact’s mobile phone number',
 			},
 			{
 				displayName: 'Mailing Postal Code',
@@ -630,7 +630,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: 'Contact’s mobile phone number.',
+				description: 'Contact’s mobile phone number',
 			},
 			{
 				displayName: 'Other City',

@@ -506,7 +506,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: 'Case template to use when a case is created from this alert.',
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -590,7 +590,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: 'Case template to use when a case is created from this alert.',
+				description: 'Case template to use when a case is created from this alert',
 			},
 		],
 	},
@@ -739,7 +739,7 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Case template to use when a case is created from this alert.',
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Description',

@@ -91,7 +91,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request.',
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 incidentNote:getAll                        */

@@ -92,14 +92,14 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Allow sending message to a previously non exisiting topic ',
+						description: 'Allow sending message to a previously non exisiting topic',
 					},
 					{
 						displayName: 'Read messages from beginning',
 						name: 'fromBeginning',
 						type: 'boolean',
 						default: true,
-						description: 'Read message from beginning ',
+						description: 'Read message from beginning',
 					},
 					{
 						displayName: 'JSON Parse Message',

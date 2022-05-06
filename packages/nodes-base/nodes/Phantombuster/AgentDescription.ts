@@ -28,7 +28,7 @@ export const agentOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all agents of the current user\'s organization.',
+				description: 'Get all agents of the current user\'s organization',
 			},
 			{
 				name: 'Get Output',
@@ -200,7 +200,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevContainerId',
 				type: 'string',
 				default: '',
-				description: 'If set, the output will be retrieved from the container after the specified previous container id.',
+				description: 'If set, the output will be retrieved from the container after the specified previous container id',
 			},
 			{
 				displayName: 'Prev Status',
@@ -240,7 +240,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'prevRuntimeEventIndex',
 				type: 'number',
 				default: 0,
-				description: 'If set, the container\'s runtime events will be returned in the response starting from the provided previous runtime event index.',
+				description: 'If set, the container\'s runtime events will be returned in the response starting from the provided previous runtime event index',
 			},
 		],
 	},

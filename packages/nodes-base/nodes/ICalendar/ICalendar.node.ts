@@ -132,7 +132,7 @@ export class ICalendar implements INodeType {
 										name: 'rsvp',
 										type: 'boolean',
 										default: false,
-										description: 'Whether the attendee has to confirm attendance or not.',
+										description: 'Whether the attendee has to confirm attendance or not',
 									},
 								],
 							},

@@ -228,7 +228,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
+				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
 			},
 			{
 				displayName: 'Tags',

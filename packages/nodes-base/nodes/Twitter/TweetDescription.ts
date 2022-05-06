@@ -473,7 +473,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'trimUser',
 				type: 'boolean',
 				default: false,
-				description: 'When set to either true, each tweet returned in a timeline will include a user object including only the status authors numerical ID.',
+				description: 'When set to either true, each tweet returned in a timeline will include a user object including only the status authors numerical ID',
 			},
 		],
 	},

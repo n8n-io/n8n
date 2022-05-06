@@ -396,7 +396,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-missing-for-simplify': 'error',
 				"n8n-nodes-base/node-param-description-excess-final-period": "error",
 				"n8n-nodes-base/node-param-description-untrimmed": "error",
-				"n8n-nodes-base/node-param-description-missing-from-limit": "error"
+				"n8n-nodes-base/node-param-description-missing-from-limit": "error",
 				'n8n-nodes-base/node-param-description-unneeded-backticks': 'error',
 				"n8n-nodes-base/node-param-description-wrong-for-return-all": "error",
 			},

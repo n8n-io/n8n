@@ -140,7 +140,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 		default: 'plain',
-		description: 'The format of the message\'s body.',
+		description: 'The format of the message\'s body',
 	},
 	{
 		displayName: 'Fallback Text',

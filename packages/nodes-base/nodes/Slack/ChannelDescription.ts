@@ -43,7 +43,7 @@ export const channelOperations: INodeProperties[] = [
 			{
 				name: 'History',
 				value: 'history',
-				description: 'Get a conversation\'s history of messages and events.',
+				description: 'Get a conversation\'s history of messages and events',
 			},
 			{
 				name: 'Invite',
@@ -809,7 +809,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of a thread\'s parent message.',
+		description: 'Unique identifier of a thread\'s parent message',
 	},
 	{
 		displayName: 'Return All',

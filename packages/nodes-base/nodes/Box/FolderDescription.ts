@@ -535,7 +535,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The user\'s email address to share the folder with.',
+		description: 'The user\'s email address to share the folder with',
 	},
 	{
 		displayName: 'User ID',
@@ -558,7 +558,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The user\'s ID to share the folder with.',
+		description: 'The user\'s ID to share the folder with',
 	},
 	{
 		displayName: 'Group ID',
@@ -578,7 +578,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The group\'s ID to share the folder with.',
+		description: 'The group\'s ID to share the folder with',
 	},
 	{
 		displayName: 'Role',

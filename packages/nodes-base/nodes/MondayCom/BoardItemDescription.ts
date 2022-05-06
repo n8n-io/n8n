@@ -18,7 +18,7 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Add Update',
 				value: 'addUpdate',
-				description: 'Add an update to an item.',
+				description: 'Add an update to an item',
 			},
 			{
 				name: 'Change Column Value',
@@ -171,7 +171,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier.',
+		description: 'The column\'s unique identifier',
 	},
 	{
 		displayName: 'Value',
@@ -316,7 +316,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The new item\'s name.',
+		description: 'The new item\'s name',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -522,7 +522,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier.',
+		description: 'The column\'s unique identifier',
 	},
 	{
 		displayName: 'Column Value',

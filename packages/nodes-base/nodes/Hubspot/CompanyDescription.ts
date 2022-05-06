@@ -197,7 +197,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A short statement about the company\'s mission and goals.',
+				description: 'A short statement about the company\'s mission and goals',
 			},
 			{
 				displayName: 'Facebook Fans',
@@ -549,7 +549,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A short statement about the company\'s mission and goals.',
+				description: 'A short statement about the company\'s mission and goals',
 			},
 			{
 				displayName: 'Facebook Fans',

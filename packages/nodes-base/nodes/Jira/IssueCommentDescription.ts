@@ -438,7 +438,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Comment\'s text.',
+		description: 'Comment\'s text',
 	},
 	{
 		displayName: 'Document Format (JSON)',

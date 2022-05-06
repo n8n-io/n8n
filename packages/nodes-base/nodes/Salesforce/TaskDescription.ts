@@ -209,7 +209,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: 'Indicates the importance or urgency of a task, such as high or low.',
+				description: 'Indicates the importance or urgency of a task, such as high or low',
 			},
 			{
 				displayName: 'Recurrence Type',
@@ -376,7 +376,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: 'Represents Type of the task, such as Call or Meeting.',
+				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
 				displayName: 'What Id',
@@ -548,7 +548,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: 'Indicates the importance or urgency of a task, such as high or low.',
+				description: 'Indicates the importance or urgency of a task, such as high or low',
 			},
 			{
 				displayName: 'Status',
@@ -725,7 +725,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: 'Represents Type of the task, such as Call or Meeting.',
+				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
 				displayName: 'What Id',

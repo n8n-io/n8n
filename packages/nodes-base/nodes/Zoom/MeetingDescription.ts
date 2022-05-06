@@ -69,7 +69,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Topic of the meeting.',
+		description: 'Topic of the meeting',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -433,7 +433,7 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 'live',
-				description: 'Meeting type.',
+				description: 'Meeting type',
 			},
 		],
 	},
@@ -712,7 +712,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: 'Meeting topic.',
+				description: 'Meeting topic',
 			},
 			{
 				displayName: 'Type',

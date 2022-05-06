@@ -525,7 +525,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: 'Return a simplified output of the issues fields.',
+		description: 'Return a simplified output of the issues fields',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -902,7 +902,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'reporter',
 						type: 'boolean',
-						description: 'Indicates whether the notification should be sent to the issue\'s reporter.',
+						description: 'Indicates whether the notification should be sent to the issue\'s reporter',
 						default: false,
 					},
 					{
@@ -910,21 +910,21 @@ export const issueFields: INodeProperties[] = [
 						name: 'assignee',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates whether the notification should be sent to the issue\'s assignees.',
+						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Watchers',
 						name: 'watchers',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates whether the notification should be sent to the issue\'s assignees.',
+						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Voters',
 						name: 'voters',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates whether the notification should be sent to the issue\'s voters.',
+						description: 'Indicates whether the notification should be sent to the issue\'s voters',
 					},
 					{
 						displayName: 'Users',
@@ -934,7 +934,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification.',
+						description: 'List of users to receive the notification',
 					},
 					{
 						displayName: 'Groups',
@@ -944,7 +944,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification.',
+						description: 'List of groups to receive the notification',
 					},
 				],
 
@@ -1010,7 +1010,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification.',
+						description: 'List of users to receive the notification',
 					},
 					{
 						displayName: 'Groups',
@@ -1020,7 +1020,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification.',
+						description: 'List of groups to receive the notification',
 					},
 				],
 

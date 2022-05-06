@@ -345,7 +345,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				name: 'shippingAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total shipping amount for the order in cents ',
+				description: 'The total shipping amount for the order in cents',
 			},
 
 			{
@@ -508,7 +508,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				name: 'shippingAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total shipping amount for the order in cents ',
+				description: 'The total shipping amount for the order in cents',
 			},
 
 			{

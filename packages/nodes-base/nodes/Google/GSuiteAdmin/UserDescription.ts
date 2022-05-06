@@ -374,7 +374,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
@@ -395,7 +395,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	{
 		displayName: 'Projection',
@@ -706,7 +706,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID.',
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	{
 		displayName: 'Update Fields',

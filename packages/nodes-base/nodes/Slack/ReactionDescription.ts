@@ -96,6 +96,6 @@ export const reactionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Timestamp of the message.',
+		description: 'Timestamp of the message',
 	},
 ];

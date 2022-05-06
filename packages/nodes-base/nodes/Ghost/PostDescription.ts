@@ -101,7 +101,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Post\'s title.',
+		description: 'Post\'s title',
 	},
 	{
 		displayName: 'Content Format',
@@ -131,7 +131,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'html',
-		description: 'The format of the post.',
+		description: 'The format of the post',
 	},
 	{
 		displayName: 'Content',
@@ -623,7 +623,7 @@ export const postFields: INodeProperties[] = [
 				default: [
 					'html',
 				],
-				description: 'By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext.',
+				description: 'By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext',
 			},
 		],
 	},
@@ -743,7 +743,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'html',
-		description: 'The format of the post.',
+		description: 'The format of the post',
 	},
 	{
 		displayName: 'Update Fields',

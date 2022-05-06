@@ -237,7 +237,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: 'Whether attendees other than the organizer can see who the event\'s attendees are.',
+				description: 'Whether attendees other than the organizer can see who the event\'s attendees are',
 			},
 			{
 				displayName: 'ID',
@@ -687,7 +687,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'singleEvents',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves.',
+				description: 'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
 			},
 			{
 				displayName: 'Start Time',
@@ -850,7 +850,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: 'Whether attendees other than the organizer can see who the event\'s attendees are.',
+				description: 'Whether attendees other than the organizer can see who the event\'s attendees are',
 			},
 			{
 				displayName: 'ID',

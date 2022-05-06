@@ -309,7 +309,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 							minValue: 0,
 						},
 						default: 0,
-						description: 'Overridable price of the product, if not specified, the default will be used.',
+						description: 'Overridable price of the product, if not specified, the default will be used',
 					},
 					{
 						displayName: 'Product ID',

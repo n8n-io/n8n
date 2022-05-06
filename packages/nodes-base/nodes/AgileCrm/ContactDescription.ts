@@ -422,7 +422,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>.',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>',
 	},
 
 	{
@@ -884,7 +884,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>.',
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',

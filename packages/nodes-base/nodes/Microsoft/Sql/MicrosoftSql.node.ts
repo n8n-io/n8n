@@ -130,7 +130,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -174,7 +174,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------

@@ -104,7 +104,7 @@ export const imageFields: INodeProperties[] = [
 					},
 				},
 				default: 3,
-				description: 'How often it should check if the image is available before it fails.',
+				description: 'How often it should check if the image is available before it fails',
 			},
 			{
 				displayName: 'Webhook URL',

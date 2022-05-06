@@ -560,7 +560,7 @@ export const webinarFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Webinar occurrence ID.',
+				description: 'Webinar occurrence ID',
 			},
 			{
 				displayName: 'Password',

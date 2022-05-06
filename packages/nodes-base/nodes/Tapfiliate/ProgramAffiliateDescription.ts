@@ -111,7 +111,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'approved',
 				type: 'boolean',
 				default: true,
-				description: 'An optional approval status.',
+				description: 'An optional approval status',
 			},
 			{
 				displayName: 'Coupon',

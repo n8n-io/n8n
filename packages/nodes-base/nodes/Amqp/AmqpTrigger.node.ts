@@ -50,7 +50,7 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'for durable/persistent topic subscriptions, example: "n8n"',
-				description: 'Leave empty for non-durable topic subscriptions or queues.',
+				description: 'Leave empty for non-durable topic subscriptions or queues',
 			},
 			{
 				displayName: 'Subscription',

@@ -583,7 +583,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The user\'s email address to share the file with.',
+		description: 'The user\'s email address to share the file with',
 	},
 	{
 		displayName: 'User ID',
@@ -606,7 +606,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The user\'s ID to share the file with.',
+		description: 'The user\'s ID to share the file with',
 	},
 	{
 		displayName: 'Group ID',
@@ -626,7 +626,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The group\'s ID to share the file with.',
+		description: 'The group\'s ID to share the file with',
 	},
 	{
 		displayName: 'Role',
