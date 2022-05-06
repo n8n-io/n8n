@@ -103,7 +103,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Comment's text`,
+		description: 'Comment\'s text',
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -123,7 +123,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
+		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -438,7 +438,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Comment's text.`,
+		description: 'Comment\'s text.',
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -458,7 +458,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
+		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',

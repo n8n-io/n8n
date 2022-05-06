@@ -116,7 +116,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: `The field's key.`,
+								description: 'The field\'s key.',
 							},
 							{
 								displayName: 'Field Value',

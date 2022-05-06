@@ -286,7 +286,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `Filter files based on name, with '*' preceding or following to indicate LIKE queries.`,
+				description: 'Filter files based on name, with \'*\' preceding or following to indicate LIKE queries.',
 			},
 			{
 				displayName: 'Permission',

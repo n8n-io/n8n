@@ -564,7 +564,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'mentionedPeople',
 				type: 'string',
 				default: '',
-				description: `List only messages with certain person mentioned. Enter their ID. You can use 'me' as a shorthand for yourself`,
+				description: 'List only messages with certain person mentioned. Enter their ID. You can use \'me\' as a shorthand for yourself',
 			},
 		],
 	},

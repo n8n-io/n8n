@@ -38,7 +38,7 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of task's metadata`,
+				description: 'Returns an overview of task\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -99,7 +99,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'activityDate',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
+				description: 'Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
 				displayName: 'Call Disposition',
@@ -126,7 +126,7 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.`,
+				description: 'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Type',
@@ -209,7 +209,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: `Indicates the importance or urgency of a task, such as high or low.`,
+				description: 'Indicates the importance or urgency of a task, such as high or low.',
 			},
 			{
 				displayName: 'Recurrence Type',
@@ -250,7 +250,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceDayOfWeekMask',
 				type: 'number',
 				default: '',
-				description: `The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64 Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20.`,
+				description: 'The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64 Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20.',
 			},
 			{
 				displayName: 'Recurrence End Date Only',
@@ -335,21 +335,21 @@ export const taskFields: INodeProperties[] = [
 						value: 'RecurrenceRegenerated',
 					},
 				],
-				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.`,
+				description: 'Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.',
 			},
 			{
 				displayName: 'Recurrence Start Date Only',
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly.`,
+				description: 'The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly.',
 			},
 			{
 				displayName: 'Recurrence TimeZone SidKey',
 				name: 'recurrenceTimeZoneSidKey',
 				type: 'string',
 				default: '',
-				description: `The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time.`,
+				description: 'The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time.',
 			},
 			{
 				displayName: 'Reminder Date Time',
@@ -376,7 +376,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: `Represents Type of the task, such as Call or Meeting.`,
+				description: 'Represents Type of the task, such as Call or Meeting.',
 			},
 			{
 				displayName: 'What Id',
@@ -390,7 +390,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'whoId',
 				type: 'string',
 				default: '',
-				description: `The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
+				description: 'The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.',
 			},
 		],
 	},
@@ -438,7 +438,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'activityDate',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
+				description: 'Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
 				displayName: 'Call Disposition',
@@ -465,7 +465,7 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.`,
+				description: 'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
 				displayName: 'Call Type',
@@ -548,7 +548,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: `Indicates the importance or urgency of a task, such as high or low.`,
+				description: 'Indicates the importance or urgency of a task, such as high or low.',
 			},
 			{
 				displayName: 'Status',
@@ -582,7 +582,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceDayOfWeekMask',
 				type: 'number',
 				default: '',
-				description: `The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64. Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20.`,
+				description: 'The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64. Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20.',
 			},
 			{
 				displayName: 'Recurrence End Date Only',
@@ -670,7 +670,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly.`,
+				description: 'The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly.',
 			},
 			{
 				displayName: 'Recurrence Regenerated Type',
@@ -691,7 +691,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'RecurrenceRegenerated',
 					},
 				],
-				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.`,
+				description: 'Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.',
 			},
 			{
 				displayName: 'Recurrence Type',
@@ -708,7 +708,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'recurrenceTimeZoneSidKey',
 				type: 'string',
 				default: '',
-				description: `The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time.`,
+				description: 'The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time.',
 			},
 			{
 				displayName: 'Reminder Date Time',
@@ -725,7 +725,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: `Represents Type of the task, such as Call or Meeting.`,
+				description: 'Represents Type of the task, such as Call or Meeting.',
 			},
 			{
 				displayName: 'What Id',
@@ -739,7 +739,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'whoId',
 				type: 'string',
 				default: '',
-				description: `The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
+				description: 'The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.',
 			},
 		],
 	},

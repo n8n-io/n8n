@@ -92,7 +92,7 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: '',
-				description: `The message. Markdown (excluding html) is allowed.`,
+				description: 'The message. Markdown (excluding html) is allowed.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -123,7 +123,7 @@ export class Gotify implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: `The title of the message.`,
+						description: 'The title of the message.',
 					},
 				],
 			},

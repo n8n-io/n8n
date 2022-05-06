@@ -85,7 +85,7 @@ export const streamFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `JSON format parameters for stream creation.`,
+		description: 'JSON format parameters for stream creation.',
 	},
 	{
 		displayName: 'Subscriptions',
@@ -383,7 +383,7 @@ export const streamFields: INodeProperties[] = [
 			},
 		},
 
-		description: `JSON format parameters for stream creation.`,
+		description: 'JSON format parameters for stream creation.',
 	},
 
 	{

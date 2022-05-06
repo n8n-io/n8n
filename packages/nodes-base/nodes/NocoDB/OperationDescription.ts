@@ -90,7 +90,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
 	},
 	{
 		displayName: 'Download Fields',
@@ -108,7 +108,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+		description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.',
 	},
 	{
 		displayName: 'Options',
@@ -222,7 +222,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
 	},
 	{
 		displayName: 'Download Fields',
@@ -240,7 +240,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+		description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.',
 	},
 	// ----------------------------------
 	//         update

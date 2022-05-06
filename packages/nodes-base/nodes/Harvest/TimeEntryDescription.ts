@@ -30,12 +30,12 @@ export const timeEntryOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a time entry`,
+				description: 'Delete a time entry',
 			},
 			{
 				name: 'Delete External Reference',
 				value: 'deleteExternal',
-				description: `Delete a time entry’s external reference.`,
+				description: 'Delete a time entry’s external reference.',
 			},
 			{
 				name: 'Get',

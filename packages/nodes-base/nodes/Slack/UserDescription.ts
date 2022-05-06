@@ -18,12 +18,12 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Info',
 				value: 'info',
-				description: `Get information about a user`,
+				description: 'Get information about a user',
 			},
 			{
 				name: 'Get Presence',
 				value: 'getPresence',
-				description: `Get online status of a user`,
+				description: 'Get online status of a user',
 			},
 		],
 		default: 'info',

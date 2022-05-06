@@ -297,7 +297,7 @@ export const userFields: INodeProperties[] = [
 			{
 				name: 'Email',
 				value: 'email',
-				description: `The user's email address. It is required on creation if a user_id is not supplied.`,
+				description: 'The user\'s email address. It is required on creation if a user_id is not supplied.',
 			},
 		],
 		default: '',
@@ -416,7 +416,7 @@ export const userFields: INodeProperties[] = [
 				type: 'number',
 				default: false,
 				options: [],
-				description: `How many sessions the user has recorded`,
+				description: 'How many sessions the user has recorded',
 			},
 			{
 				displayName: 'User ID',

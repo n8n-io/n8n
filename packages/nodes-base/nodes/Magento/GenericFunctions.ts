@@ -402,7 +402,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 										loadOptionsMethod: sortableAttributeFunction,
 									},
 									default: '',
-									description: `The sorting field`,
+									description: 'The sorting field',
 								},
 							],
 						},

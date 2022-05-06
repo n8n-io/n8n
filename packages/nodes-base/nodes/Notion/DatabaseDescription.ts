@@ -87,7 +87,7 @@ export const databaseFields = [
 				],
 			},
 		},
-		description: `The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Database URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -291,7 +291,7 @@ export const databaseFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},

@@ -324,7 +324,7 @@ export class AwsRekognition implements INodeType {
 						typeOptions: {
 							minValue: 0,
 						},
-						description: `Maximum number of labels you want the service to return in the response. The service returns the specified number of highest confidence labels.`,
+						description: 'Maximum number of labels you want the service to return in the response. The service returns the specified number of highest confidence labels.',
 					},
 					{
 						displayName: 'Min Confidence',
@@ -343,7 +343,7 @@ export class AwsRekognition implements INodeType {
 							minValue: 0,
 							maxValue: 100,
 						},
-						description: `Specifies the minimum confidence level for the labels to return. Amazon Rekognition doesn't return any labels with a confidence level lower than this specified value.`,
+						description: 'Specifies the minimum confidence level for the labels to return. Amazon Rekognition doesn\'t return any labels with a confidence level lower than this specified value.',
 					},
 					{
 						displayName: 'Attributes',
@@ -367,7 +367,7 @@ export class AwsRekognition implements INodeType {
 							},
 						],
 						default: [],
-						description: `An array of facial attributes you want to be returned`,
+						description: 'An array of facial attributes you want to be returned',
 					},
 				],
 			},

@@ -113,7 +113,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form.',
 	},
 	{
 		displayName: 'Additional Fields',

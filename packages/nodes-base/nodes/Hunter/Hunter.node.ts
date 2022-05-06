@@ -249,7 +249,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `The person's first name. It doesn't need to be in lowercase.`,
+				description: 'The person\'s first name. It doesn\'t need to be in lowercase.',
 			},
 			{
 				displayName: 'Last Name',
@@ -264,7 +264,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `The person's last name. It doesn't need to be in lowercase.`,
+				description: 'The person\'s last name. It doesn\'t need to be in lowercase.',
 			},
 			{
 				displayName: 'Email',

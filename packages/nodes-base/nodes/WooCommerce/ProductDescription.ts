@@ -158,14 +158,14 @@ export const productFields: INodeProperties[] = [
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
-				description: `Start date of sale price, in the site's timezone.`,
+				description: 'Start date of sale price, in the site\'s timezone.',
 			},
 			{
 				displayName: 'Date On Sale To',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
-				description: `Ennd date of sale price, in the site's timezone.`,
+				description: 'Ennd date of sale price, in the site\'s timezone.',
 			},
 			{
 				displayName: 'Description',
@@ -671,14 +671,14 @@ export const productFields: INodeProperties[] = [
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
-				description: `Start date of sale price, in the site's timezone.`,
+				description: 'Start date of sale price, in the site\'s timezone.',
 			},
 			{
 				displayName: 'Date On Sale To',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
-				description: `Ennd date of sale price, in the site's timezone.`,
+				description: 'Ennd date of sale price, in the site\'s timezone.',
 			},
 			{
 				displayName: 'Description',

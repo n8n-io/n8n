@@ -164,7 +164,7 @@ export class AwsSes implements INodeType {
 						],
 					},
 				},
-				description: `The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML`,
+				description: 'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 				default: '',
 			},
 			{
@@ -349,7 +349,7 @@ export class AwsSes implements INodeType {
 						typeOptions: {
 							alwaysOpenEditWindow: true,
 						},
-						description: `The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML`,
+						description: 'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 						default: '',
 					},
 					{
