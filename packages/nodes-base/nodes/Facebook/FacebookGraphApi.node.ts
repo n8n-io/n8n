@@ -166,7 +166,7 @@ export class FacebookGraphApi implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still download the response even if SSL certificate validation is not possible. (Not recommended).',
+				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Send Binary Data',

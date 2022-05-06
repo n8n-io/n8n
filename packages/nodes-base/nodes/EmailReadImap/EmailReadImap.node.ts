@@ -160,7 +160,7 @@ export class EmailReadImap implements INodeType {
 						name: 'allowUnauthorizedCerts',
 						type: 'boolean',
 						default: false,
-						description: 'Do connect even if SSL certificate validation is not possible',
+						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
 					{
 						displayName: 'Force reconnect',
