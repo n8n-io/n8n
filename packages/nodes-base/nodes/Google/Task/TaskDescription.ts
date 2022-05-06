@@ -360,7 +360,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'showCompleted',
 				type: 'boolean',
 				default: true,
-				description: 'Flag indicating whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google\'s mobile apps.',
+				description: 'Flag indicating whether completed tasks are returned in the result. &lt;strong&gt;Show Hidden&lt;/strong&gt; must also be True to show tasks completed in first party clients such as the web UI or Google\'s mobile apps.',
 			},
 			{
 				displayName: 'Show Deleted',

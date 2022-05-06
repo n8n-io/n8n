@@ -718,7 +718,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'updatedMin',
 				type: 'dateTime',
 				default: '',
-				description: `Lower bound for an event's last modification time (as a RFC3339 timestamp) to filter by.<b/r>
+				description: `Lower bound for an event\'s last modification time (as a RFC3339 timestamp) to filter by.&lt;b/r&gt;
 				When specified, entries deleted since this time will always be included regardless of showDeleted`,
 			},
 		],
