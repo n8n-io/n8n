@@ -17,7 +17,7 @@
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
-				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
+				<prism-editor class="prism-editor" v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
 			<n8n-input
@@ -863,7 +863,7 @@ export default mixins(
 	width: 20px;
 	text-align: right;
 	float: right;
-	color: #ff8080;
+	color: var(--color-danger);
 	font-size: var(--font-size-s);
 }
 
@@ -877,6 +877,13 @@ export default mixins(
 </style>
 
 <style lang="scss">
+
+.prism-editor {
+	> div, pre {
+		background-color: var(--color-foreground-light) !important;
+		text-shadow: none;
+	}
+}
 
 .ql-editor {
 	padding: 6px;
