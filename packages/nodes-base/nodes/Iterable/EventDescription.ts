@@ -46,7 +46,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the event to track.',
+		description: 'The name of the event to track',
 		default: '',
 	},
 	{
@@ -78,7 +78,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
-				description: 'Time event happened.',
+				description: 'Time event happened',
 			},
 			{
 				displayName: 'Data Fields',
@@ -99,14 +99,14 @@ export const eventFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'The end event specified key of the event defined data.',
+								description: 'The end event specified key of the event defined data',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The end event specified value of the event defined data.',
+								description: 'The end event specified value of the event defined data',
 							},
 						],
 					},
@@ -124,7 +124,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Optional event id. If an event exists with that id, the event will be updated. If none is specified, a new id will automatically be generated and returned.',
+				description: 'Optional event ID. If an event exists with that ID, the event will be updated. If none is specified, a new ID will automatically be generated and returned.',
 			},
 			{
 				displayName: 'Template ID',

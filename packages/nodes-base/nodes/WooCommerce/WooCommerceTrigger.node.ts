@@ -103,7 +103,7 @@ export class WooCommerceTrigger implements INodeType {
 						value: 'product.updated',
 					},
 				],
-				description: 'Determines which resource events the webhook is triggered for.',
+				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
 

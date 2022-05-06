@@ -254,13 +254,13 @@ export const dealFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the deal to update.',
+		description: 'ID of the deal to update',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
@@ -367,7 +367,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the deal to delete.',
+		description: 'The ID of the deal to delete',
 	},
 
 	// ----------------------------------
@@ -389,7 +389,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the deal to get.',
+		description: 'The ID of the deal to get',
 	},
 
 	// ----------------------------------

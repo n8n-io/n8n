@@ -18,7 +18,7 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Add Update',
 				value: 'addUpdate',
-				description: 'Add an update to an item.',
+				description: 'Add an update to an item',
 			},
 			{
 				name: 'Change Column Value',
@@ -87,7 +87,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the item to add update to.',
+		description: 'The unique identifier of the item to add update to',
 	},
 	{
 		displayName: 'Update Text',
@@ -105,7 +105,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The update text to add.',
+		description: 'The update text to add',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:changeColumnValue                */
@@ -129,7 +129,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board.',
+		description: 'The unique identifier of the board',
 	},
 	{
 		displayName: 'Item ID',
@@ -147,7 +147,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the item to to change column of.',
+		description: 'The unique identifier of the item to to change column of',
 	},
 	{
 		displayName: 'Column ID',
@@ -171,7 +171,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier.',
+		description: 'The column\'s unique identifier',
 	},
 	{
 		displayName: 'Value',
@@ -213,7 +213,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board.',
+		description: 'The unique identifier of the board',
 	},
 	{
 		displayName: 'Item ID',
@@ -316,7 +316,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The new item\'s name.',
+		description: 'The new item\'s name',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -474,7 +474,7 @@ export const boardItemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:getByColumnValue                 */
@@ -498,7 +498,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board.',
+		description: 'The unique identifier of the board',
 	},
 	{
 		displayName: 'Column ID',
@@ -522,7 +522,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier.',
+		description: 'The column\'s unique identifier',
 	},
 	{
 		displayName: 'Column Value',
@@ -540,7 +540,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column value to search items by.',
+		description: 'The column value to search items by',
 	},
 	{
 		displayName: 'Return All',
@@ -581,7 +581,7 @@ export const boardItemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:move                             */

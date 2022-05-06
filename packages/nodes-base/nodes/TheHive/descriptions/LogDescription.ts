@@ -100,7 +100,7 @@ export const logFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	// required attributs
 	{
@@ -251,7 +251,7 @@ export const logFields: INodeProperties[] = [
 								name: 'binaryProperty',
 								type: 'string',
 								default: 'data',
-								description: 'Object property name which holds binary data.',
+								description: 'Object property name which holds binary data',
 							},
 						],
 					},

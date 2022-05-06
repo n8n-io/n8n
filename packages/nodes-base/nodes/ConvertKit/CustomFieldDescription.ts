@@ -59,7 +59,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of your custom field.',
+		description: 'The ID of your custom field',
 	},
 	{
 		displayName: 'Label',
@@ -78,7 +78,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The label of the custom field.',
+		description: 'The label of the custom field',
 	},
 	{
 		displayName: 'Return All',
@@ -119,6 +119,6 @@ export const customFieldFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

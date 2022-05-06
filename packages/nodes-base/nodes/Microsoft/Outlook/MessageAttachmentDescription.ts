@@ -121,7 +121,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 
@@ -131,7 +131,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 	{
 		displayName: 'Binary Property',
 		name: 'binaryPropertyName',
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 		type: 'string',
 		required: true,
 		default: 'data',
@@ -207,7 +207,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query.',
+				description: 'Microsoft Graph API OData $filter query',
 			},
 		],
 	},

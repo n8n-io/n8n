@@ -141,7 +141,7 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: 'standard',
-				description: 'Amazon S3 storage classes.',
+				description: 'Amazon S3 storage classes',
 			},
 		],
 	},
@@ -241,7 +241,7 @@ export const folderFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -265,7 +265,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
-				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true.',
+				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
 				displayName: 'Folder Key',

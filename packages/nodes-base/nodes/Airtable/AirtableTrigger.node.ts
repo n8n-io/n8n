@@ -45,14 +45,14 @@ export class AirtableTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of this base.',
+				description: 'The ID of this base',
 			},
 			{
 				displayName: 'Table ID',
 				name: 'tableId',
 				type: 'string',
 				default: '',
-				description: 'The ID of the table to access.',
+				description: 'The ID of the table to access',
 				required: true,
 			},
 			{
@@ -68,7 +68,7 @@ export class AirtableTrigger implements INodeType {
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
-				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded.',
+				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 			},
 			{
 				displayName: 'Download Fields',
@@ -97,6 +97,7 @@ export class AirtableTrigger implements INodeType {
 						name: 'fields',
 						type: 'string',
 						default: '',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 						description: 'Fields to be included in the response. Multiple ones can be set separated by comma. Example: <code>name, id</code>. By default just the trigger field will be included.',
 					},
 					{

@@ -23,7 +23,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team.',
+		description: 'The Mattermost Team',
 	},
 	{
 		displayName: 'Channel ID',
@@ -48,7 +48,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team.',
+		description: 'The Mattermost Team',
 	},
 	{
 		displayName: 'Resolve Data',
@@ -106,7 +106,7 @@ export const channelMembersDescription: ChannelProperties = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];
 

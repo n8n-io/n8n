@@ -63,7 +63,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the group.',
+		description: 'Name of the group',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -108,7 +108,7 @@ export const groupFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -130,7 +130,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group to update.',
+		description: 'ID of the group to update',
 	},
 	{
 		displayName: 'Name',
@@ -148,6 +148,6 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'New name of the group.',
+		description: 'New name of the group',
 	},
 ];

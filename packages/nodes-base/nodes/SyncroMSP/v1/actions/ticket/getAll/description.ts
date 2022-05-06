@@ -64,7 +64,7 @@ export const ticketGetAllDescription: TicketProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'John Doe',
-				description: 'Search query, it can be anything related to ticket data like user etc.',
+				description: 'Search query, it can be anything related to ticket data like user etc',
 			},
 			{
 				displayName: 'Status',

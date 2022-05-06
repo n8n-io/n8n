@@ -194,7 +194,7 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this opportunity.',
+				description: 'ID of the account associated with this opportunity',
 			},
 			{
 				displayName: 'Amount',
@@ -214,7 +214,7 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: 'ID of the campaign that needs to be fetched.',
+				description: 'ID of the campaign that needs to be fetched',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -239,14 +239,14 @@ export const opportunityFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -274,7 +274,7 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained.',
+				description: 'Source from which the lead was obtained',
 			},
 			{
 				displayName: 'Next Step',
@@ -291,14 +291,14 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the opportunity.',
+				description: 'The owner of the opportunity',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the opportunity.',
+				description: 'Phone number for the opportunity',
 			},
 			{
 				displayName: 'Pricebook2 ID',
@@ -356,7 +356,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of opportunity that needs to be fetched.',
+		description: 'ID of opportunity that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -383,7 +383,7 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this opportunity.',
+				description: 'ID of the account associated with this opportunity',
 			},
 			{
 				displayName: 'Amount',
@@ -393,7 +393,7 @@ export const opportunityFields: INodeProperties[] = [
 					numberPrecision: 2,
 				},
 				default: '',
-				description: 'Estimated total sale amount.',
+				description: 'Estimated total sale amount',
 			},
 			{
 				displayName: 'Campaign',
@@ -403,7 +403,7 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: 'ID of the campaign that needs to be fetched.',
+				description: 'ID of the campaign that needs to be fetched',
 			},
 			{
 				displayName: 'Close Date',
@@ -435,14 +435,14 @@ export const opportunityFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -460,7 +460,7 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'forecastCategoryName',
 				type: 'string',
 				default: '',
-				description: 'It is implied, but not directly controlled, by the StageName field.',
+				description: 'It is implied, but not directly controlled, by the StageName field',
 			},
 			{
 				displayName: 'Lead Source',
@@ -470,7 +470,7 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained.',
+				description: 'Source from which the lead was obtained',
 			},
 			{
 				displayName: 'Name',
@@ -494,14 +494,14 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the opportunity.',
+				description: 'The owner of the opportunity',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the opportunity.',
+				description: 'Phone number for the opportunity',
 			},
 			{
 				displayName: 'Pricebook2 ID',
@@ -518,7 +518,7 @@ export const opportunityFields: INodeProperties[] = [
 					numberPrecision: 1,
 				},
 				default: '',
-				description: 'Percentage of estimated confidence in closing the opportunity.',
+				description: 'Percentage of estimated confidence in closing the opportunity',
 			},
 			{
 				displayName: 'Stage Name',
@@ -569,7 +569,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of opportunity that needs to be fetched.',
+		description: 'ID of opportunity that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -591,7 +591,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of opportunity that needs to be fetched.',
+		description: 'ID of opportunity that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -636,7 +636,7 @@ export const opportunityFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Options',
@@ -663,7 +663,7 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -747,7 +747,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of opportunity that needs to be fetched.',
+		description: 'ID of opportunity that needs to be fetched',
 	},
 	{
 		displayName: 'Title',
@@ -765,7 +765,7 @@ export const opportunityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Title of the note.',
+		description: 'Title of the note',
 	},
 	{
 		displayName: 'Options',
@@ -809,7 +809,7 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note.',
+				description: 'ID of the user who owns the note',
 			},
 		],
 	},

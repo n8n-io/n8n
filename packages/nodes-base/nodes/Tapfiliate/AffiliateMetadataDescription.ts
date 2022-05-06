@@ -56,7 +56,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Metadata',
@@ -88,14 +88,14 @@ export const affiliateMetadataFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the metadata key to add.',
+						description: 'Name of the metadata key to add',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the metadata key.',
+						description: 'Value to set for the metadata key',
 					},
 				],
 			},
@@ -121,7 +121,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Key',
@@ -138,7 +138,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the metadata key to remove.',
+		description: 'Name of the metadata key to remove',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -160,7 +160,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Key',
@@ -177,7 +177,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the metadata key to update.',
+		description: 'Name of the metadata key to update',
 	},
 	{
 		displayName: 'Value',
@@ -194,6 +194,6 @@ export const affiliateMetadataFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Value to set for the metadata key.',
+		description: 'Value to set for the metadata key',
 	},
 ];

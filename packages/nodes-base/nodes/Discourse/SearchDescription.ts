@@ -47,7 +47,7 @@ export const searchFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Term to search for.',
+		description: 'Term to search for',
 	},
 	{
 		displayName: 'Simplify Response',
@@ -64,6 +64,6 @@ export const searchFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 ];

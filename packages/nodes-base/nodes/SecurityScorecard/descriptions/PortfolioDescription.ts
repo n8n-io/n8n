@@ -81,7 +81,7 @@ export const portfolioFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Number of results to return',
 	},
 	{
 		displayName: 'Portfolio ID',

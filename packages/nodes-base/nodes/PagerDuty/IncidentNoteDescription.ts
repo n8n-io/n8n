@@ -52,7 +52,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Content',
@@ -91,7 +91,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email address of a valid user associated with the account making the request.',
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 incidentNote:getAll                        */
@@ -112,7 +112,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Return All',
@@ -153,6 +153,6 @@ export const incidentNoteFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];

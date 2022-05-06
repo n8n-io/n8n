@@ -342,7 +342,7 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'portal',
-				description: 'The channel through which the ticket was created.',
+				description: 'The channel through which the ticket was created',
 			},
 			// {
 			// 	displayName: 'JSON Parameters',
@@ -414,7 +414,7 @@ export class Freshdesk implements INodeType {
 							rows: 5,
 							alwaysOpenEditWindow: true,
 						},
-						description: 'HTML content of the ticket.',
+						description: 'HTML content of the ticket',
 					},
 					{
 						displayName: 'Due By',
@@ -471,7 +471,7 @@ export class Freshdesk implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'Subject of the ticket.',
+						description: 'Subject of the ticket',
 					},
 					{
 						displayName: 'Tags',
@@ -485,7 +485,7 @@ export class Freshdesk implements INodeType {
 						name: 'type',
 						type: 'options',
 						default: 'Question',
-						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
+						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with',
 						options: [
 							{
 								name: 'Feature Request',
@@ -827,7 +827,7 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'portal',
-						description: 'The channel through which the ticket was created.',
+						description: 'The channel through which the ticket was created',
 					},
 					{
 						displayName: 'Tags',
@@ -841,7 +841,7 @@ export class Freshdesk implements INodeType {
 						name: 'type',
 						type: 'options',
 						default: 'Question',
-						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
+						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with',
 						options: [
 							{
 								name: 'Feature Request',
@@ -923,7 +923,7 @@ export class Freshdesk implements INodeType {
 					maxValue: 10,
 				},
 				default: 5,
-				description: 'How many results to return.',
+				description: 'How many results to return',
 			},
 			{
 				displayName: 'Options',
@@ -987,7 +987,7 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'desc',
-						description: 'Order sort attribute ascending or descending.',
+						description: 'Order sort attribute ascending or descending',
 					},
 					{
 						displayName: 'Order By',
@@ -1008,7 +1008,7 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Sort collection by object attribute.',
+						description: 'Sort collection by object attribute',
 					},
 					{
 						displayName: 'Requester Email',

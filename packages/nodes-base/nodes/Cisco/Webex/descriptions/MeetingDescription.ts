@@ -410,7 +410,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'sendEmail',
 				type: 'boolean',
 				default: true,
-				description: 'Whether or not to send emails to host and invitees.',
+				description: 'Whether or not to send emails to host and invitees',
 			},
 		],
 	},

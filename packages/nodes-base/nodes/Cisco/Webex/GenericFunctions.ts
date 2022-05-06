@@ -157,7 +157,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Label for button or link that represents this action.',
+			description: 'Label for button or link that represents this action',
 		},
 		{
 			displayName: 'Icon URL',
@@ -185,7 +185,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 				},
 			],
 			default: 'default',
-			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc.',
+			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
 		},
 	];
 }
@@ -445,7 +445,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					],
 				},
 			},
-			description: 'When true, draw a separating line at the top of the element.',
+			description: 'When true, draw a separating line at the top of the element',
 		},
 		{
 			displayName: 'Spacing',

@@ -47,7 +47,7 @@ export const fields: INodeProperties[] = [
 			},
 		},
 		default: 'master',
-		description: 'The id for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
+		description: 'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
 		displayName: 'Content Type ID',
@@ -88,7 +88,7 @@ export const fields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed.',
+				description: 'If the data should be returned RAW instead of parsed',
 			},
 		],
 	},

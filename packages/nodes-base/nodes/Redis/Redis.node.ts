@@ -41,12 +41,17 @@ export class Redis implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a key from Redis.',
+						description: 'Delete a key from Redis',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the value of a key from Redis.',
+						description: 'Get the value of a key from Redis',
+					},
+					{
+						name: 'Info',
+						value: 'info',
+						description: 'Returns generic information about the Redis instance',
 					},
 					{
 						name: 'Increment',
@@ -61,12 +66,17 @@ export class Redis implements INodeType {
 					{
 						name: 'Keys',
 						value: 'keys',
-						description: 'Returns all the keys matching a pattern.',
+						description: 'Returns all the keys matching a pattern',
+					},
+					{
+						name: 'Set',
+						value: 'set',
+						description: 'Set the value of a key in redis',
 					},
 					{
 						name: 'Publish',
 						value: 'publish',
-						description: 'Publish message to redis channel.',
+						description: 'Publish message to redis channel',
 					},
 					{
 						name: 'Set',
@@ -109,7 +119,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the key to delete from Redis.',
+				description: 'Name of the key to delete from Redis',
 			},
 			{
 				displayName: 'Key',
@@ -124,7 +134,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the key to get from Redis.',
+				description: 'Name of the key to get from Redis',
 			},
 			{
 				displayName: 'Key Type',
@@ -141,31 +151,31 @@ export class Redis implements INodeType {
 					{
 						name: 'Automatic',
 						value: 'automatic',
-						description: 'Requests the type before requesting the data (slower).',
+						description: 'Requests the type before requesting the data (slower)',
 					},
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type \'hash\'.',
-					},
-					{
-						name: 'List',
-						value: 'list',
-						description: 'Data in key is of type \'lists\'.',
-					},
-					{
-						name: 'Sets',
-						value: 'sets',
-						description: 'Data in key is of type \'sets\'.',
+						description: 'Data in key is of type "hash"',
 					},
 					{
 						name: 'String',
 						value: 'string',
-						description: 'Data in key is of type \'string\'.',
+						description: 'Data in key is of type "string"',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Data in key is of type "lists"',
+					},
+					{
+						name: 'Sets',
+						value: 'sets',
+						description: 'Data in key is of type "sets"',
 					},
 				],
 				default: 'automatic',
-				description: 'The type of the key to get.',
+				description: 'The type of the key to get',
 			},
 
 			{
@@ -209,7 +219,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the key to increment.',
+				description: 'Name of the key to increment',
 			},
 			{
 				displayName: 'Expire',
@@ -243,7 +253,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: 60,
-				description: 'Number of seconds before key expiration.',
+				description: 'Number of seconds before key expiration',
 			},
 
 			// ----------------------------------
@@ -262,7 +272,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The key pattern for the keys to return.',
+				description: 'The key pattern for the keys to return',
 			},
 
 			// ----------------------------------
@@ -281,7 +291,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the key to set in Redis.',
+				description: 'Name of the key to set in Redis',
 			},
 			{
 				displayName: 'Value',
@@ -295,7 +305,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The value to write in Redis.',
+				description: 'The value to write in Redis',
 			},
 			{
 				displayName: 'Key Type',
@@ -312,31 +322,31 @@ export class Redis implements INodeType {
 					{
 						name: 'Automatic',
 						value: 'automatic',
-						description: 'Tries to figure out the type automatically depending on the data.',
+						description: 'Tries to figure out the type automatically depending on the data',
 					},
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type \'hash\'.',
-					},
-					{
-						name: 'List',
-						value: 'list',
-						description: 'Data in key is of type \'lists\'.',
-					},
-					{
-						name: 'Sets',
-						value: 'sets',
-						description: 'Data in key is of type \'sets\'.',
+						description: 'Data in key is of type "hash"',
 					},
 					{
 						name: 'String',
 						value: 'string',
-						description: 'Data in key is of type \'string\'.',
+						description: 'Data in key is of type "string"',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Data in key is of type "lists"',
+					},
+					{
+						name: 'Sets',
+						value: 'sets',
+						description: 'Data in key is of type "sets"',
 					},
 				],
 				default: 'automatic',
-				description: 'The type of the key to set.',
+				description: 'The type of the key to set',
 			},
 
 			{
@@ -372,7 +382,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: 60,
-				description: 'Number of seconds before key expiration.',
+				description: 'Number of seconds before key expiration',
 			},
 			// ----------------------------------
 			//         publish
@@ -390,7 +400,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Channel name.',
+				description: 'Channel name',
 			},
 			{
 				displayName: 'Data',
@@ -408,7 +418,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Data to publish.',
+				description: 'Data to publish',
 			},
 		],
 	};

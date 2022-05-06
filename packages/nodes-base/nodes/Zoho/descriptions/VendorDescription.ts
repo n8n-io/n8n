@@ -171,7 +171,7 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to delete.',
+		description: 'ID of the vendor to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -193,7 +193,7 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to retrieve.',
+		description: 'ID of the vendor to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -220,7 +220,7 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to update.',
+		description: 'ID of the vendor to update',
 		type: 'string',
 		required: true,
 		default: '',

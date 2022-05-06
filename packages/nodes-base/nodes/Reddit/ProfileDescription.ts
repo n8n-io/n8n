@@ -33,7 +33,7 @@ export const profileFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: 'identity',
-		description: 'Details of my account to retrieve.',
+		description: 'Details of my account to retrieve',
 		options: [
 			{
 				name: 'Blocked Users',
@@ -107,7 +107,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
