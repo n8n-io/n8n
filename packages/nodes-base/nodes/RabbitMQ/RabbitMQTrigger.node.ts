@@ -58,7 +58,7 @@ export class RabbitMQTrigger implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'Using \'Respond to Trigger\' node',
+						name: 'Using \'RabbitMQ Respond to Trigger\' node',
 						value: 'acknowledgeNode',
 						description: 'Acknowledge when acknowledge node executes',
 					},
@@ -67,7 +67,7 @@ export class RabbitMQTrigger implements INodeType {
 				description: 'When and how to acknowledge to the trigger.',
 			},
 			{
-				displayName: 'Insert a \'Respond to Trigger\' node to control when and how you acknowledge. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToTrigger" target="_blank">More details</a>',
+				displayName: 'Insert a \'RabbitMQ Respond to Trigger\' node to control when and how you acknowledge. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.rabbitmqRespondToTrigger" target="_blank">More details</a>',
 				name: 'triggerNotice',
 				type: 'notice',
 				displayOptions: {
@@ -189,7 +189,7 @@ export class RabbitMQTrigger implements INodeType {
 									channel.nack(message);
 								}
 							})
-							.catch(async (error) => {
+							.catch(async () => {
 								channel.nack(message);
 							});
 
@@ -227,5 +227,4 @@ export class RabbitMQTrigger implements INodeType {
 			manualTriggerFunction,
 		};
 	}
-
 }

@@ -11,16 +11,16 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-export class RespondToTrigger implements INodeType {
+export class RabbitMQRespondToTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Respond to Trigger',
-		icon: 'file:trigger.svg',
-		name: 'respondToTrigger',
+		displayName: 'RabbitMQ Respond to Trigger',
+		icon: 'file:rabbitmq.png',
+		name: 'rabbitmqRespondToTrigger',
 		group: ['transform'],
 		version: 1,
 		description: 'Returns data for Trigger',
 		defaults: {
-			name: 'Respond to Trigger',
+			name: 'RabbitMQ Respond to Trigger',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
