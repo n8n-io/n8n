@@ -178,11 +178,11 @@ export const boardMemberFields: INodeProperties[] = [
 		description: 'Determines the type of membership the user being added should have.',
 	},
 	{
-		displayName: 'Allow billable guest',
-		name: 'allowBillableGuest',
-		type: 'boolean',
-		default: false,
-		required: false,
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				operation: [
@@ -190,10 +190,18 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 				resource: [
 					'boardMember',
-				],
+			],
 			},
 		},
-		description: 'Allows organization admins to add multi-board guests onto a board.',
+		options: [
+			{
+				displayName: 'Allow Billable Guest',
+				name: 'allowBillableGuest',
+				type: 'boolean',
+				default: false,
+				description: 'Allows organization admins to add multi-board guests onto a board',
+			},
+		],
 	},
 
 	// ----------------------------------

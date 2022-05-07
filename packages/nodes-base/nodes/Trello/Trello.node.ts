@@ -256,7 +256,7 @@ export class Trello implements INodeType {
 						endpoint = `boards/${id}/members/${idMember}`;
 
 						qs.type = this.getNodeParameter('type', i) as string;
-						qs.allowBillableGuest = this.getNodeParameter('allowBillableGuest', i) as boolean;
+						qs.allowBillableGuest = this.getNodeParameter('additionalFields.allowBillableGuest', i, false) as boolean;
 
 					} else if (operation === 'invite') {
 						// ----------------------------------
