@@ -1,6 +1,5 @@
 import { render } from '@testing-library/vue';
 import N8nBadge from '../Badge.vue';
-import N8nText from '../../N8nText/Text.vue'
 
 describe('components', () => {
 	describe('N8nBadge', () => {
@@ -10,7 +9,7 @@ describe('components', () => {
 					props: {
 						theme: 'default',
 						size: 'large',
-						bold: true
+						bold: true,
 					},
 					slots: {
 						default: '<n8n-text>Default badge</n8n-text>',
@@ -24,7 +23,7 @@ describe('components', () => {
 					props: {
 						theme: 'secondary',
 						size: 'medium',
-						bold: false
+						bold: false,
 					},
 					slots: {
 						default: '<n8n-text>Secondary badge</n8n-text>',
@@ -42,6 +41,6 @@ describe('components', () => {
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
-		})
+		});
 	});
 });
