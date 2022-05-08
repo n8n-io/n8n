@@ -441,36 +441,7 @@ export class Xata implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		if (operation === 'append') {
-			/*
-				const startIndex = index * bulkSize;
-				const endIndex = (1 + index) * bulkSize;
-				const records = [];
-				const returnData: IDataObject[] = [];
 
-				for (let i = startIndex; i < endIndex && i < items.length; i++) {
-
-					try {
-
-						const item = getItem.call(this, i, items[i].json, sendAll);
-						records.push(item);
-
-					} catch (error) {
-
-						if (this.continueOnFail()) {
-
-							returnData.push({ error: error.message });
-							continue;
-
-						} else {
-
-							throw error;
-
-						}
-
-					}
-
-				}
-				return {"records":records,"returnData":returnData}; */
 			const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
 			const bulkSize: number = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] as number : items.length;
 			const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
