@@ -94,23 +94,6 @@ export function filterItemsColumns(item: IDataObject, filterColumns: string[], i
 	return returnData;
 
 }
-
-export function getRecordsBulk(this: IExecuteFunctions, index: number, items: INodeExecutionData[], sendAll: boolean, bulkSize: number) {
-
-	const startIndex = index * bulkSize;
-	const endIndex = (1 + index) * bulkSize;
-	const records = [];
-
-	for (let i = startIndex; i < endIndex && i < items.length; i++) {
-
-		const item = getItem.call(this, i, items[i].json, sendAll);
-		records.push(item);
-
-	}
-	return records;
-}
-
-
 export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, option: IDataObject = {}, url?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const options: IHttpRequestOptions = {

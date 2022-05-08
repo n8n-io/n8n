@@ -441,32 +441,68 @@ export class Xata implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		if (operation === 'append') {
+			/*
+				const startIndex = index * bulkSize;
+				const endIndex = (1 + index) * bulkSize;
+				const records = [];
+				const returnData: IDataObject[] = [];
 
-			try {
+				for (let i = startIndex; i < endIndex && i < items.length; i++) {
 
-				const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
-				const bulkSize: number = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] as number : items.length;
-				const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
-				const bulkCount = Math.ceil(items.length / bulkSize);
+					try {
 
-				for (let i = 0; i < bulkCount; i++) {
+						const item = getItem.call(this, i, items[i].json, sendAll);
+						records.push(item);
 
-					const records = getRecordsBulk.call(this, i, items, sendAll,bulkSize);
-					const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
-					responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
+					} catch (error) {
+
+						if (this.continueOnFail()) {
+
+							returnData.push({ error: error.message });
+							continue;
+
+						} else {
+
+							throw error;
+
+						}
+
+					}
 
 				}
+				return {"records":records,"returnData":returnData}; */
+			const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
+			const bulkSize: number = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] as number : items.length;
+			const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
+			const records = [];
 
-			} catch (error) {
+			for (let i = 0; i < items.length; i++) {
 
-				if (this.continueOnFail()) {
+				try {
 
-					returnData.push({ error: error.message });
+					const item = getItem.call(this, i, items[i].json, sendAll);
+					records.push(item);
 
-				} else {
+					if (records.length === bulkSize || i === items.length - 1) {
 
-					throw error;
+						const responseData = await xataApiRequest.call(this, apiKey, 'POST', slug, database, branch, table, 'bulk', { 'records': records });
+						responseData['recordIDs'].forEach((el: string) => returnData.push({ 'id': el }));
+						records.length = 0;
 
+					}
+
+				} catch (error) {
+
+					if (this.continueOnFail()) {
+
+						returnData.push({ error: error.message });
+						continue;
+
+					} else {
+
+						throw error;
+
+					}
 				}
 			}
 
