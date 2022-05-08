@@ -94,6 +94,7 @@ export function filterItemsColumns(item: IDataObject, filterColumns: string[], i
 	return returnData;
 
 }
+
 export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, option: IDataObject = {}, url?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const options: IHttpRequestOptions = {

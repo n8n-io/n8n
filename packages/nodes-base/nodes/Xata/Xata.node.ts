@@ -14,7 +14,6 @@ import {
 import {
 	getAdditionalOptions,
 	getItem,
-	getRecordsBulk,
 	xataApiList,
 	xataApiRequest,
 
