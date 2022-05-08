@@ -52,27 +52,27 @@ export class Xata implements INodeType {
 					{
 						name: 'Append',
 						value: 'append',
-						description: 'Append records to a table.',
+						description: 'Append records to a table',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete records from a table.',
+						description: 'Delete records from a table',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List records from a table.',
+						description: 'List records from a table',
 					},
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Read records from a table.',
+						description: 'Read records from a table',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update records in a table.',
+						description: 'Update records in a table',
 					},
 
 
@@ -92,7 +92,7 @@ export class Xata implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The Slug of your workspace.',
+				description: 'The Slug of your workspace',
 			},
 			{
 				displayName: 'Database Name',
@@ -100,7 +100,7 @@ export class Xata implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The Database you want to access.',
+				description: 'The Database you want to access',
 			},
 			{
 				displayName: 'Branch Name',
@@ -108,7 +108,7 @@ export class Xata implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The Branch you want to access.',
+				description: 'The Branch you want to access',
 			},
 			{
 				displayName: 'Table Name',
@@ -116,7 +116,7 @@ export class Xata implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The Table you want to access.',
+				description: 'The Table you want to access',
 			},
 			//-------------------------
 			//         Append
@@ -140,7 +140,7 @@ export class Xata implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to delete.',
+				description: 'ID of the record to delete',
 			},
 			//-------------------------
 			//         List
@@ -157,7 +157,7 @@ export class Xata implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all records should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -178,7 +178,7 @@ export class Xata implements INodeType {
 					maxValue: 200,
 				},
 				default: 200,
-				description: 'Number of records to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Options',
@@ -192,7 +192,7 @@ export class Xata implements INodeType {
 					},
 				},
 				default: {},
-				description: 'Filter records and choose the columns to return.',
+				description: 'Filter records and choose the columns to return',
 				placeholder: 'Add Option',
 				options: [
 					{
@@ -205,7 +205,7 @@ export class Xata implements INodeType {
 						},
 						default: [],
 						placeholder: 'Name',
-						description: 'Only data for columns whose names are in this list will be included in the records.',
+						description: 'Only data for columns whose names are in this list will be included in the records',
 					},
 					{
 						displayName: 'Filter (JSON) as string',
@@ -249,7 +249,7 @@ export class Xata implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to return.',
+				description: 'ID of the record to return',
 			},
 
 			{
@@ -264,7 +264,7 @@ export class Xata implements INodeType {
 					},
 				},
 				default: true,
-				description: `If set to true it returns all the record's columns.`,
+				description: 'If set to true it returns all the record\'s columns',
 			},
 
 			{
@@ -288,7 +288,7 @@ export class Xata implements INodeType {
 					},
 				},
 				placeholder: 'Name',
-				description: 'Only data for columns whose names are in this list will be included in the record.',
+				description: 'Only data for columns whose names are in this list will be included in the record',
 			}
 			,
 
@@ -309,7 +309,7 @@ export class Xata implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to update',
+				description: 'ID of the record to update',
 			},
 			//-------------------------
 			//        update + append
@@ -320,7 +320,7 @@ export class Xata implements INodeType {
 				type: 'boolean',
 				default: true,
 
-				description: 'Send all the columns to Xata.',
+				description: 'Send all the columns to Xata',
 				displayOptions: {
 					show: {
 						operation: [
@@ -350,7 +350,7 @@ export class Xata implements INodeType {
 
 				default: [],
 				placeholder: 'Name',
-				description: 'Columns in this list will be pushed to the table.',
+				description: 'Columns in this list will be pushed to the table',
 
 			},
 			{
@@ -366,7 +366,6 @@ export class Xata implements INodeType {
 					},
 				},
 				default: {},
-				description: 'Additional Options',
 				placeholder: 'Add option',
 				options: [
 
@@ -393,13 +392,13 @@ export class Xata implements INodeType {
 
 						default: [],
 						placeholder: 'Name',
-						description: 'Columns in this list will be not pushed to the table.',
+						description: 'Columns in this list will be not pushed to the table',
 
 					},
 					{
 						displayName: 'Bulk Size',
 						name: 'bulkSize',
-						description: 'Number of records to process at once.',
+						description: 'Number of records to process at once',
 						type: 'number',
 						typeOptions: {
 							minValue: 1,
