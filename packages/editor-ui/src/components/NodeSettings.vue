@@ -42,7 +42,7 @@
 								adjustToNumber: scopes.length,
 								interpolate: {
 									activeCredential,
-									scopes: scopes.join(' '),
+									scopes: scopesText,
 								},
 							},
 						)"
@@ -191,6 +191,9 @@ export default mixins(
 				}
 
 				return this.nodeType.properties;
+			},
+			scopesText(): string {
+				return this.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>');
 			},
 		},
 		props: {
