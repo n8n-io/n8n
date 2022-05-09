@@ -314,8 +314,8 @@ export class Xata implements INodeType {
 			//        update + append
 			//-------------------------
 			{
-				displayName: 'Send All',
-				name: 'sendAll',
+				displayName: 'Send All Columns',
+				name: 'sendAllColumns',
 				type: 'boolean',
 				default: true,
 
@@ -340,7 +340,7 @@ export class Xata implements INodeType {
 				displayOptions: {
 					show: {
 						'operation': ['append', 'update'],
-						'sendAll': [
+						'sendAllColumns': [
 							false,
 						],
 					},
@@ -382,7 +382,7 @@ export class Xata implements INodeType {
 									'append',
 									'update',
 								],
-								'/sendAll': [
+								'/sendAllColumns': [
 									true,
 								],
 							},
@@ -443,14 +443,14 @@ export class Xata implements INodeType {
 
 			const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
 			const bulkSize: number = additionalOptions['bulkSize'] ? additionalOptions['bulkSize'] as number : items.length;
-			const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
+			const sendAllColumns = this.getNodeParameter('sendAllColumns', 0) as boolean;
 			const records = [];
 
 			for (let i = 0; i < items.length; i++) {
 
 				try {
 
-					const item = getItem.call(this, i, items[i].json, sendAll);
+					const item = getItem.call(this, i, items[i].json, sendAllColumns);
 					records.push(item);
 
 					if (records.length === bulkSize || i === items.length - 1) {
@@ -565,14 +565,14 @@ export class Xata implements INodeType {
 			}
 		} else if (operation === 'update') {
 
-			const sendAll = this.getNodeParameter('sendAll', 0) as boolean;
+			const sendAllColumns = this.getNodeParameter('sendAllColumns', 0) as boolean;
 
 			for (let i = 0; i < items.length; i++) {
 
 				try {
 
 					const id = this.getNodeParameter('id', i) as string;
-					const item = getItem.call(this, i, items[i].json, sendAll);
+					const item = getItem.call(this, i, items[i].json, sendAllColumns);
 					const responseData = await xataApiRequest.call(this, apiKey, 'PATCH', slug, database, branch, table, `data/${id}`, item);
 					returnData.push(responseData);
 

@@ -43,9 +43,9 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 	return body;
 }
 
-export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, sendAll: boolean) {
+export function getItem(this: IExecuteFunctions, index: number, item: IDataObject, sendAllColumns: boolean) {
 
-	if (!sendAll) {
+	if (!sendAllColumns) {
 
 		const columns = (this.getNodeParameter('columns', index, []) as string[])?.map(el => typeof el === 'string' ? el.trim() : null) as string[];
 		const ignore = false;
