@@ -136,6 +136,8 @@ export default mixins(
 			indexToShowSlotAt (): number {
 				if (this.isHttpRequestNodeV2(this.node)) return 2;
 
+				if (this.node.type === 'n8n-nodes-base.webhook') return 1;
+
 				return 0;
 			},
 		},
