@@ -345,7 +345,9 @@ export default mixins(
 
 				this.scopes = await this.restApi().getScopes(activeCredentialType);
 
-				this.activeCredential = this.getCredentialTypeByName(activeCredentialType).displayName;
+				const credentialType = this.getCredentialTypeByName(activeCredentialType);
+
+				this.activeCredential = credentialType.displayName.split(' ').shift() || '';
 			},
 			onNodeExecute () {
 				this.$emit('execute');
