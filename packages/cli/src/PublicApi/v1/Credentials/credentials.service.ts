@@ -1,10 +1,10 @@
 import { FindOneOptions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { Db, ICredentialsDb } from '../..';
-import { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { validateEntity } from '../../GenericHelpers';
-import { User } from '../../databases/entities/User';
+import { Db, ICredentialsDb } from '../../..';
+import { CredentialsEntity } from '../../../databases/entities/CredentialsEntity';
+import { SharedCredentials } from '../../../databases/entities/SharedCredentials';
+import { validateEntity } from '../../../GenericHelpers';
+import { User } from '../../../databases/entities/User';
 
 export async function getCredentials(
 	credentialId: number | string,

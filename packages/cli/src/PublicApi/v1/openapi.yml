@@ -26,76 +26,9 @@ tags:
     description: Operations about credentials
 paths:
   /credentials:
-    post:
-      x-eov-operation-id: createCredential
-      x-eov-operation-handler: v1/handlers/credentials
-      tags:
-        - credentials
-      summary: Create a credential
-      description: Creates a credential that can be used by nodes of the specified type.
-      requestBody:
-        description: Credential to be created.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/createCredentialRequest'
-      responses:
-        '200':
-          description: Operation successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Credential'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '415':
-          description: Unsupported media type.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+    $ref: './Credentials/spec/paths/credentials.yml'
   /credentials/{id}:
-    delete:
-      x-eov-operation-id: deleteCredential
-      x-eov-operation-handler: v1/handlers/credentials
-      tags:
-        - credentials
-      summary: Delete credential by ID
-      description: Deletes a credential from your instance. You must be the owner of the credentials
-      operationId: deleteCredential
-      parameters:
-        - name: id
-          in: path
-          description: The credential ID that needs to be deleted
-          required: true
-          schema:
-            type: number
-      responses:
-        '200':
-          description: Operation successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CredentialDeleteResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden. You are not allowed to delete this credential.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Credential not found
+    $ref: './Credentials/spec/paths/credentials.id.yml'
   /users:
     $ref: './spec/paths/Users.yml'
   /users/{identifier}:
@@ -113,90 +46,6 @@ paths:
   /workflows/{workflowId}/deactivate:
     $ref: './spec/paths/WorkflowByIdDeactivate.yml'
 components:
-  schemas:
-    $ref: './spec/schemas/_index.yml'
-    Error:
-      required:
-        - code
-        - description
-        - message
-      type: object
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-        description:
-          type: string
-    Credential:
-      required:
-        - name
-        - type
-      type: object
-      properties:
-        id:
-          type: number
-          readOnly: true
-          example: 42
-        name:
-          type: string
-          example: Joe's Github Credentials
-        type:
-          type: string
-          example: github
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-    createCredentialRequest:
-      required:
-        - name
-        - type
-        - data
-      type: object
-      properties:
-        name:
-          type: string
-          example: Joe's Github Credentials
-        type:
-          type: string
-          example: github
-        data:
-          type: object
-          example: { token: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' }
-    CredentialDeleteResponse:
-      required:
-        - name
-        - type
-      type: object
-      properties:
-        name:
-          type: string
-          example: Joe's Github Credentials
-        type:
-          type: string
-          readOnly: true
-          example: github
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2022-04-29T11:02:29.842Z'
-  responses:
-    $ref: './spec/responses/_index.yml'
-  parameters:
-    $ref: './spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

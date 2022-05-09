@@ -1,11 +1,9 @@
 import express = require('express');
 
-import { ResponseHelper } from '../../..';
 import { CredentialsEntity } from '../../../databases/entities/CredentialsEntity';
 import { CredentialRequest } from '../../../requests';
 import { externalHooks } from '../../../Server';
 
-import { middlewares } from '../../middlewares';
 import {
 	createCredential,
 	encryptCredential,
@@ -14,7 +12,7 @@ import {
 	removeCredential,
 	sanitizeCredentials,
 	saveCredential,
-} from '../../services/credentials';
+} from './credentials.service';
 
 export = {
 	createCredential: [
@@ -81,9 +79,10 @@ export = {
 				});
 			}
 
-			// await externalHooks.run('credentials.delete', [credentialId]);
+			await externalHooks.run('credentials.delete', [credentialId]);
 
 			await removeCredential(credentials);
+			credentials.id = Number(credentialId);
 
 			return res.json(sanitizeCredentials(credentials));
 		},
