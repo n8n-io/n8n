@@ -105,12 +105,13 @@ export default Vue.extend({
 	display: flex;
 	color: var(--custom-font-black);
 	margin: 0;
-	padding: var(--spacing-xs);
+	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;
 	border-style: solid;
 	border-color: var(--border-color);
 	border-radius: var(--border-radius-small);
+	line-height: var(--font-line-height-compact);
 
 	a {
 		font-weight: var(--font-weight-bold);
