@@ -757,7 +757,7 @@ export function whereClause({
 }): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	if (user?.globalRole?.name !== 'owner') {
+	if (user.globalRole.name !== 'owner') {
 		where.user = { id: user.id };
 	}
 
