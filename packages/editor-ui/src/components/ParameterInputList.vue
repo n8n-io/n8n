@@ -178,6 +178,13 @@ export default mixins(
 					return false;
 				}
 
+				if (
+					this.isCustomActionSelected(this.nodeValues) &&
+					this.mustHideDuringCustomAction(parameter, this.nodeValues)
+				) {
+					return false;
+				}
+
 				if (parameter.displayOptions === undefined) {
 					// If it is not defined no need to do a proper check
 					return true;

@@ -47,6 +47,23 @@ export const nodeHelpers = mixins(
 				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
 			},
 
+			isCustomActionSelected (nodeValues: INodeParameters): boolean {
+				const { parameters } = nodeValues;
+
+				return (
+					isObjectLiteral(parameters) &&
+					(parameters.resource === 'customAction' || parameters.operation === 'customAction')
+				);
+			},
+
+			mustHideDuringCustomAction (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			// Returns the parameter value
 			getParameterValue (nodeValues: INodeParameters, parameterName: string, path: string) {
 				return get(
@@ -57,6 +74,9 @@ export const nodeHelpers = mixins(
 
 			// Returns if the given parameter should be displayed or not
 			displayParameter (nodeValues: INodeParameters, parameter: INodeProperties | INodeCredentialDescription, path: string, node: INodeUi | null) {
+				// TODO: If enabled, cannot select operation // If disabled (per original), cannot hide displayOptions.hide
+				// if (this.isCustomActionSelected(nodeValues)) return false;
+
 				return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
 			},
 
@@ -494,4 +514,8 @@ declare namespace HttpRequestNode {
 			nodeCredentialType: string;
 		};
 	}
+}
+
+function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
+	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
 }
