@@ -109,20 +109,18 @@ export default mixins(
 				this.node.parameters.authenticateWith === 'genericAuth';
 		},
 		credentialTypesNode (): string[] {
-			return this.credentialTypesNodeDescription
+			const nodeCredentialTypes = this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
+
+			this.$emit('nodeCredentialTypes', nodeCredentialTypes);
+
+			return nodeCredentialTypes;
 		},
 		credentialTypesNodeDescriptionDisplayed (): INodeCredentialDescription[] {
-			const descriptions = this.credentialTypesNodeDescription
+			return this.credentialTypesNodeDescription
 				.filter((credentialTypeDescription) => {
 					return this.displayCredentials(credentialTypeDescription);
 				});
-
-			if (descriptions.length === 1) {
-				this.$emit('newActiveCredentialType', descriptions[0].name);
-			}
-
-			return descriptions;
 		},
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;

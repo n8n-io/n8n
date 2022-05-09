@@ -50,8 +50,8 @@
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
-						@newActiveCredentialType="checkIfSupportedByHttpRequestNode"
-						@newHttpRequestNodeCredentialType="loadScopesNoticeData"
+						@nodeCredentialTypes="checkHttpRequestNodeSupport"
+						@newHttpRequestNodeCredentialType="prepareScopesNotice"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -319,30 +319,31 @@ export default mixins(
 		},
 		methods: {
 			/**
-			 * Check if the node's currently active credential type may be used to make a request with the HTTP Request node v2.
+			 * Check if any of the node's credential types may be used to make a request with the HTTP Request node v2.
 			 */
-			checkIfSupportedByHttpRequestNode(activeCredentialTypeName: string) {
-				const credentialType = this.getCredentialTypeByName(activeCredentialTypeName);
-
-				this.isSupportedByHttpRequestNode = (
-					credentialType.name.slice(0, -4).endsWith('OAuth') ||
-					credentialType.authenticate !== undefined
-				);
-			},
-			async loadScopesNoticeData(activeCredentialType: string) {
+			checkHttpRequestNodeSupport(credentialTypeNames: string[]) {
 				if (!this.isHttpRequestNodeV2(this.node)) return;
 
-				if (
-					!activeCredentialType ||
-					!activeCredentialType.endsWith('OAuth2Api')
-				) {
+				this.isSupportedByHttpRequestNode = credentialTypeNames.some(name => {
+					const credentialType = this.getCredentialTypeByName(name);
+
+					return (
+						credentialType.name.slice(0, -4).endsWith('OAuth') ||
+						credentialType.authenticate !== undefined
+					);
+				});
+			},
+			async prepareScopesNotice(activeCredentialType: string) {
+				if (!this.isHttpRequestNodeV2(this.node)) return;
+
+				if (!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')) {
 					this.scopes = [];
 					return;
 				}
 
-				this.activeCredential = this.getCredentialTypeByName(activeCredentialType).displayName;
-
 				this.scopes = await this.restApi().getScopes(activeCredentialType);
+
+				this.activeCredential = this.getCredentialTypeByName(activeCredentialType).displayName;
 			},
 			onNodeExecute () {
 				this.$emit('execute');
