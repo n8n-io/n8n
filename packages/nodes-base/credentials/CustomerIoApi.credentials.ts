@@ -18,6 +18,24 @@ export class CustomerIoApi implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Tracking API endpoint',
+			name: 'trackingEndpoint',
+			type: 'options',
+			options: [
+				{
+					name: 'EU region',
+					value: 'track-eu.customer.io',
+				},
+				{
+					name: 'Global region',
+					value: 'track.customer.io',
+				},
+			],
+			default: 'track.customer.io',
+			description: 'Should be set based on your account region',
+			required: true,
+		},
+		{
 			displayName: 'Tracking Site ID',
 			name: 'trackingSiteId',
 			type: 'string',
