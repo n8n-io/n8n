@@ -69,7 +69,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization for which the teams should be listed.',
+		description: 'The slug of the organization for which the teams should be listed',
 	},
 	{
 		displayName: 'Return All',
@@ -86,7 +86,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -110,7 +110,7 @@ export const teamFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -135,7 +135,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The slug of the organization the team belongs to',
 	},
 	{
 		displayName: 'Team Slug',
@@ -159,7 +159,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to get.',
+		description: 'The slug of the team to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -184,7 +184,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The slug of the organization the team belongs to',
 	},
 	{
 		displayName: 'Name',
@@ -202,7 +202,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the team.',
+		description: 'The name of the team',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -253,7 +253,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The slug of the organization the team belongs to',
 	},
 	{
 		displayName: 'Team Slug',
@@ -277,7 +277,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to update.',
+		description: 'The slug of the team to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -301,7 +301,7 @@ export const teamFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The new name of the team.',
+				description: 'The new name of the team',
 			},
 			{
 				displayName: 'Slug',
@@ -335,7 +335,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The slug of the organization the team belongs to',
 	},
 	{
 		displayName: 'Team Slug',
@@ -359,6 +359,6 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to delete.',
+		description: 'The slug of the team to delete',
 	},
 ];

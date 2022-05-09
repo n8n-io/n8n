@@ -20,12 +20,12 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an estimate`,
+				description: 'Create an estimate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an estimate`,
+				description: 'Delete an estimate',
 			},
 			{
 				name: 'Get',
@@ -40,7 +40,7 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update an estimate`,
+				description: 'Update an estimate',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +68,7 @@ export const estimateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your estimates.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,7 +90,7 @@ export const estimateFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -112,14 +112,14 @@ export const estimateFields: INodeProperties[] = [
 				name: 'client_id',
 				type: 'string',
 				default: '',
-				description: 'Only return time entries belonging to the client with the given ID.',
+				description: 'Only return time entries belonging to the client with the given ID',
 			},
 			{
 				displayName: 'From',
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries with a spent_date on or after the given date.',
+				description: 'Only return time entries with a spent_date on or after the given date',
 			},
 			{
 				displayName: 'State',
@@ -133,14 +133,14 @@ export const estimateFields: INodeProperties[] = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries with a spent_date on or before the given date.',
+				description: 'Only return time entries with a spent_date on or before the given date',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries that have been updated since the given date and time.',
+				description: 'Only return time entries that have been updated since the given date and time',
 			},
 			{
 				displayName: 'Page',
@@ -172,7 +172,7 @@ export const estimateFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the estimate you are retrieving.',
+		description: 'The ID of the estimate you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -192,7 +192,7 @@ export const estimateFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the estimate want to delete.',
+		description: 'The ID of the estimate want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -212,7 +212,7 @@ export const estimateFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the client this estimate belongs to.',
+		description: 'The ID of the client this estimate belongs to',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -255,28 +255,28 @@ export const estimateFields: INodeProperties[] = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Any additional notes to include on the estimate.',
+				description: 'Any additional notes to include on the estimate',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.',
+				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.',
+				description: 'The purchase order number',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The estimate subject.',
+				description: 'The estimate subject',
 			},
 			{
 				displayName: 'Tax',
@@ -312,7 +312,7 @@ export const estimateFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the invoice want to update.',
+		description: 'The ID of the invoice want to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -334,7 +334,7 @@ export const estimateFields: INodeProperties[] = [
 				name: 'client_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the retainer associated with this invoice..',
+				description: 'The ID of the retainer associated with this invoice',
 			},
 			{
 				displayName: 'Currency',
@@ -362,28 +362,28 @@ export const estimateFields: INodeProperties[] = [
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.',
+				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Any additional notes to include on the estimate.',
+				description: 'Any additional notes to include on the estimate',
 			},
 			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.',
+				description: 'The purchase order number',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The estimate subject.',
+				description: 'The estimate subject',
 			},
 			{
 				displayName: 'Tax',

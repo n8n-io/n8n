@@ -64,7 +64,7 @@ export const siteFields: INodeProperties[] = [
 		name: 'selectOption',
 		type: 'boolean',
 		default: false,
-		description: 'Whether client can be selected by id',
+		description: 'Whether client can be selected by ID',
 		displayOptions: {
 			show: {
 				resource: ['site'],

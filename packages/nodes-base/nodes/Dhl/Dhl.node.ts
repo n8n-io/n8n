@@ -92,7 +92,7 @@ export class Dhl implements INodeType {
 						name: 'recipientPostalCode',
 						type: 'string',
 						default: '',
-						description: `DHL will return more detailed information on the shipment when you provide the Recipient's Postal Code - it acts as a verification step`,
+						description: 'DHL will return more detailed information on the shipment when you provide the Recipient\'s Postal Code - it acts as a verification step',
 					},
 				],
 			},

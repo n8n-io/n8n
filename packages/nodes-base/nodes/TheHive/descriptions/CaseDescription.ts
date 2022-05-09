@@ -45,7 +45,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -69,7 +69,7 @@ export const caseFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// Required fields
 	{
@@ -328,7 +328,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 		default: {},
 		options: [
 			{
@@ -432,7 +431,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 		default: {},
 		options: [
 			{
@@ -709,7 +707,6 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add a Filter',
 		displayOptions: {
@@ -905,7 +902,6 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{
