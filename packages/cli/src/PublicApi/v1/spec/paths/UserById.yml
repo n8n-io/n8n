@@ -27,9 +27,9 @@ delete:
     - name: transferId
       in: query
       description: ID of the user to transfer workflows and credentials to. Must not be equal to the to-be-deleted user.
-      required: false
       schema:
         type: string
+        format: identifier
   responses:
     '200':
       $ref: '../responses/UserInformation.yml'

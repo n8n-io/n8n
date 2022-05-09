@@ -114,6 +114,7 @@ export async function saveUsersWithRole(
 					globalRole: role?.id,
 				});
 				const savedUser = await transactionManager.save<User>(newUser);
+				savedUser.isPending = true;
 				return savedUser;
 			}),
 		);

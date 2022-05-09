@@ -15,8 +15,9 @@ import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 import { categorize } from './utils';
 
 import type { Role } from '../../../src/databases/entities/Role';
-import type { User } from '../../../src/databases/entities/User';
+import { User } from '../../../src/databases/entities/User';
 import type { CollectionName, CredentialPayload } from './types';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -210,7 +211,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
-		apiKey: apiKey?? randomApiKey(),
+		apiKey: apiKey ?? randomApiKey(),
 		...rest,
 	};
 
@@ -270,6 +271,42 @@ export function getAllRoles() {
 		getWorkflowOwnerRole(),
 		getCredentialOwnerRole(),
 	]);
+}
+
+// ----------------------------------
+//          Workflow helpers
+// ----------------------------------
+
+/**
+ * Store a workflow in the DB and optionally assigns it to a user.
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflow(attributes: Partial<WorkflowEntity>, user?: User) {
+	const { active, name, nodes, connections } = attributes;
+
+	const workflow = await Db.collections.Workflow.save({
+		active: active ?? false,
+		name: name ?? 'test workflow',
+		nodes: nodes ?? [
+			{
+				name: 'Start',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+			},
+		],
+		connections: connections ?? {},
+	});
+
+	if (user) {
+		await Db.collections.SharedWorkflow.save({
+			user,
+			workflow,
+			role: await getWorkflowOwnerRole(),
+		});
+	}
+	return workflow;
 }
 
 // ----------------------------------

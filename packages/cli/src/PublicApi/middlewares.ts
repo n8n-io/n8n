@@ -24,7 +24,7 @@ export const instanceOwnerSetup = (
 	next();
 };
 
-const emailSetup = (
+export const emailSetup = (
 	req: express.Request,
 	res: express.Response,
 	next: express.NextFunction,
@@ -49,12 +49,12 @@ export const authorize =
 		});
 	};
 
-const deletingOwnUser = (
+export const deletingOwnUser = (
 	req: UserRequest.Delete,
 	res: express.Response,
 	next: express.NextFunction,
 ): any => {
-	if (req.user.id === req.params.identifier) {
+	if (req.user.id === req.params.identifier || req.user.email === req.params.identifier) {
 		return res.status(400).json({
 			message: `Cannot delete your own user`,
 		});
@@ -62,7 +62,7 @@ const deletingOwnUser = (
 	next();
 };
 
-const transferingToDeletedUser = (
+export const transferingToDeletedUser = (
 	req: UserRequest.Delete,
 	res: express.Response,
 	next: express.NextFunction,
@@ -100,7 +100,7 @@ export const validCursor = (
 	next();
 };
 
-const getMailerInstance = async (
+export const getMailerInstance = async (
 	req: UserRequest.Invite,
 	res: express.Response,
 	next: express.NextFunction,
@@ -119,7 +119,7 @@ const getMailerInstance = async (
 	next();
 };
 
-const globalMemberRoleSetup = async (
+export const globalMemberRoleSetup = async (
 	req: UserRequest.Invite,
 	res: express.Response,
 	next: express.NextFunction,

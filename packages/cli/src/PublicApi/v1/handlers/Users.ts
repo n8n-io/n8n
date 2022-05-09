@@ -23,14 +23,25 @@ import {
 	transferWorkflowsAndCredentials,
 } from '../../helpers';
 
-import { ResponseHelper } from '../../..';
-
-import { middlewares } from '../../middlewares';
+import {
+	authorize,
+	instanceOwnerSetup,
+	getMailerInstance,
+	emailSetup,
+	globalMemberRoleSetup,
+	deletingOwnUser,
+	transferingToDeletedUser,
+	validCursor,
+} from '../../middlewares';
 
 export = {
 	createUsers: [
-		...middlewares.createUsers,
-		ResponseHelper.send(async (req: UserRequest.Invite, res: express.Response) => {
+		instanceOwnerSetup,
+		emailSetup,
+		authorize(['owner']),
+		getMailerInstance,
+		globalMemberRoleSetup,
+		async (req: UserRequest.Invite, res: express.Response) => {
 			const tokenOwnerId = req.user.id;
 			const emailsInBody = req.body.map((data) => data.email);
 			const { mailer, globalMemberRole: role } = req;
@@ -52,10 +63,13 @@ export = {
 			await inviteUsers(userstoInvite, mailer, tokenOwnerId);
 
 			return res.json(clean(userstoInvite));
-		}),
+		},
 	],
 	deleteUser: [
-		...middlewares.deleteUsers,
+		instanceOwnerSetup,
+		deletingOwnUser,
+		transferingToDeletedUser,
+		authorize(['owner']),
 		async (req: UserRequest.Delete, res: express.Response) => {
 			const { identifier: idToDelete } = req.params;
 			const { transferId = '', includeRole = false } = req.query;
@@ -66,14 +80,8 @@ export = {
 				includeRole,
 			});
 
-			if (apiKeyUserOwner.id === idToDelete) {
-				return res.status(400).json({
-					message: 'Cannot delete your own user',
-				});
-			}
-
 			if (!users?.length || (transferId !== '' && users.length !== 2)) {
-				return res.status(400).json({
+				return res.status(404).json({
 					message:
 						'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
 				});
@@ -93,7 +101,7 @@ export = {
 					toUser: transferee,
 				});
 
-				return clean(userToDelete);
+				return res.json(clean(userToDelete, { includeRole }));
 			}
 
 			await deleteDataAndSendTelemetry({
@@ -102,11 +110,12 @@ export = {
 				transferId,
 			});
 
-			return clean(userToDelete, { includeRole });
+			return res.json(clean(userToDelete, { includeRole }));
 		},
 	],
 	getUser: [
-		...middlewares.getUser,
+		instanceOwnerSetup,
+		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { identifier } = req.params;
@@ -123,7 +132,9 @@ export = {
 		},
 	],
 	getUsers: [
-		...middlewares.getUsers,
+		instanceOwnerSetup,
+		validCursor,
+		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false } = req.query;
 
