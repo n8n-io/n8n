@@ -322,7 +322,8 @@ export default mixins(
 		},
 		methods: {
 			/**
-			 * Check if any of the node's credential types may be used to make a request with the HTTP Request node v2.
+			 * Check if any of the node's credential types may be used to
+			 * make a request with the HTTP Request node v2.
 			 */
 			checkHttpRequestNodeSupport(credentialTypeNames: string[]) {
 				this.isSupportedByHttpRequestNode = credentialTypeNames.some(name => {
