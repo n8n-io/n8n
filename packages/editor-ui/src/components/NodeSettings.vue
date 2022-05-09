@@ -325,8 +325,6 @@ export default mixins(
 			 * Check if any of the node's credential types may be used to make a request with the HTTP Request node v2.
 			 */
 			checkHttpRequestNodeSupport(credentialTypeNames: string[]) {
-				if (!this.isHttpRequestNodeV2(this.node)) return;
-
 				this.isSupportedByHttpRequestNode = credentialTypeNames.some(name => {
 					const credentialType = this.getCredentialTypeByName(name);
 
