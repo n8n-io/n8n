@@ -86,7 +86,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events.',
+				description: 'The repository of which to listen to the events',
 			},
 			{
 				displayName: 'Events',
@@ -105,7 +105,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 			{
 				displayName: 'Repository',
@@ -126,7 +126,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events.',
+				description: 'The repository of which to listen to the events',
 			},
 			{
 				displayName: 'Events',
@@ -145,7 +145,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 		],
 

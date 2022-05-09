@@ -281,7 +281,7 @@ export const chargeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the charge to retrieve.',
+		description: 'ID of the charge to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -319,7 +319,7 @@ export const chargeFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

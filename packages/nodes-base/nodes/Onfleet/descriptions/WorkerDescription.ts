@@ -486,7 +486,7 @@ export const workerFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -510,7 +510,7 @@ export const workerFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -677,7 +677,6 @@ export const workerFields: INodeProperties[] = [
 				name: 'analytics',
 				type: 'boolean',
 				default: true,
-				required: false,
 				description: 'Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics',
 			},
 			{

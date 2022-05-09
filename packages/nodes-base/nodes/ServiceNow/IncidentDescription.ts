@@ -306,7 +306,7 @@ export const incidentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

@@ -57,7 +57,7 @@ export const logFields: INodeProperties[] = [
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the period.',
+				description: 'The end of the period',
 			},
 			{
 				displayName: 'Entity ID',
@@ -70,7 +70,7 @@ export const logFields: INodeProperties[] = [
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The beginning of the period.',
+				description: 'The beginning of the period',
 			},
 		],
 	},

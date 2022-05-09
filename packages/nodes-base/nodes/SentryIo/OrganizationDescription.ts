@@ -60,7 +60,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -84,7 +84,7 @@ export const organizationFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -108,14 +108,14 @@ export const organizationFields: INodeProperties[] = [
 				name: 'member',
 				type: 'boolean',
 				default: true,
-				description: 'Restrict results to organizations which you have membership.',
+				description: 'Restrict results to organizations which you have membership',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'boolean',
 				default: true,
-				description: 'Restrict results to organizations which you are the owner.',
+				description: 'Restrict results to organizations which you are the owner',
 			},
 		],
 	},
@@ -142,7 +142,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for.',
+		description: 'The slug of the organization the team should be created for',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -164,7 +164,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for.',
+		description: 'The slug of the organization the team should be created for',
 	},
 	{
 		displayName: 'Agree to Terms',
@@ -181,7 +181,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Signaling you agree to the applicable terms of service and privacy policy of Sentry.io.',
+		description: 'Signaling you agree to the applicable terms of service and privacy policy of Sentry.io',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -232,7 +232,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization to update.',
+		description: 'The slug of the organization to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -256,14 +256,14 @@ export const organizationFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The new name of the organization.',
+				description: 'The new name of the organization',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The new URL slug for this organization.',
+				description: 'The new URL slug for this organization',
 			},
 		],
 	},

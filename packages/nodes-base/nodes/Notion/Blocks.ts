@@ -315,7 +315,7 @@ const typeText: INodeProperties[] = [
 		},
 		type: 'string',
 		default: '',
-		description: 'Text content. This field contains the actual content of your text and is probably the field you\'ll use most often',
+		description: 'Text content. This field contains the actual content of your text and is probably the field you\'ll use most often.',
 	},
 	{
 		displayName: 'Is Link',

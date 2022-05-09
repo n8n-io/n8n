@@ -63,14 +63,14 @@ export class WufooTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'The form upon which will trigger this node when a new entry is made.',
+				description: 'The form upon which will trigger this node when a new entry is made',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Returns only the answers of the form and not any of the other data',
 			},
 		],
 	};
