@@ -74,7 +74,7 @@ export class MailjetTrigger implements INodeType {
 						value: 'unsub',
 					},
 				],
-				description: 'Determines which resource events the webhook is triggered for.',
+				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
 

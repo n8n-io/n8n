@@ -102,7 +102,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Assistant',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact’s assistant.',
+				description: 'Name of the contact’s assistant',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
@@ -116,7 +116,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Department',
 				type: 'string',
 				default: '',
-				description: 'Company department to which the contact belongs.',
+				description: 'Company department to which the contact belongs',
 			},
 			{
 				displayName: 'Description',
@@ -173,7 +173,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Phone (Home)',
@@ -204,7 +204,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -257,7 +257,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Assistant',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact’s assistant.',
+				description: 'Name of the contact’s assistant',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
@@ -271,7 +271,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Department',
 				type: 'string',
 				default: '',
-				description: 'Company department to which the contact belongs.',
+				description: 'Company department to which the contact belongs',
 			},
 			{
 				displayName: 'Description',
@@ -329,7 +329,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Phone (Home)',
@@ -360,7 +360,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -377,7 +377,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to delete.',
+		description: 'ID of the contact to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -399,7 +399,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to retrieve.',
+		description: 'ID of the contact to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -426,7 +426,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to update.',
+		description: 'ID of the contact to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -469,14 +469,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('contact'),
@@ -577,7 +577,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',

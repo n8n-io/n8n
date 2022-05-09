@@ -51,7 +51,7 @@ export class NotionTrigger implements INodeType {
 						value: 'pageAddedToDatabase',
 					},
 					{
-						name: 'Paged Updated in Database',
+						name: 'Page Updated in Database',
 						value: 'pagedUpdatedInDatabase',
 					},
 				],

@@ -80,7 +80,7 @@ export class Mailcheck implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address to check.',
+				description: 'Email address to check',
 			},
 		],
 	};
