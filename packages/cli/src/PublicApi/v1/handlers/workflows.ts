@@ -1,11 +1,15 @@
 import express = require('express');
+import { FindManyOptions, In } from 'typeorm';
 import { ActiveWorkflowRunner, Db } from '../../..';
+import config = require('../../../../config');
 import { SharedWorkflow } from '../../../databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../../databases/entities/WorkflowEntity';
 import { replaceInvalidCredentials } from '../../../WorkflowHelpers';
-import { authorize, instanceOwnerSetup } from '../../middlewares';
+import { encodeNextCursor } from '../../helpers';
+import { authorize, instanceOwnerSetup, validCursor } from '../../middlewares';
 import { WorkflowRequest } from '../../publicApiRequest';
 import { getWorkflowOwnerRole } from '../../services/role';
+import { isInstanceOwner } from '../../services/user';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -14,6 +18,9 @@ import {
 	updateWorkflow,
 	hasStartNode,
 	getStartNode,
+	getWorkflows,
+	getSharedWorkflows,
+	getWorkflowsCount,
 } from '../../services/workflow';
 
 export = {
@@ -51,9 +58,98 @@ export = {
 			return res.json(workflow);
 		},
 	],
-	deleteWorkflow: [],
-	getWorkflow: [],
-	getWorkflows: [],
+	deleteWorkflow: [
+		instanceOwnerSetup,
+		authorize(['owner', 'member']),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { workflowId } = req.params;
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow he does not own
+				// or workflow does not exist
+				return res.status(404).json();
+			}
+
+			const workflowRunner = ActiveWorkflowRunner.getInstance();
+
+			if (sharedWorkflow.workflow.active) {
+				// deactivate before deleting
+				await workflowRunner.remove(workflowId.toString());
+			}
+
+			await Db.collections.Workflow.delete(workflowId);
+
+			return res.json(sharedWorkflow.workflow);
+		},
+	],
+	getWorkflow: [
+		instanceOwnerSetup,
+		authorize(['owner', 'member']),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { workflowId } = req.params;
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow he does not own
+				// or workflow does not exist
+				return res.status(404).json();
+			}
+
+			return res.json(sharedWorkflow.workflow);
+		},
+	],
+	getWorkflows: [
+		instanceOwnerSetup,
+		authorize(['owner', 'member']),
+		validCursor,
+		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
+			const { offset = 0, limit = 100, active = undefined } = req.query;
+
+			let workflows: WorkflowEntity[];
+			let count: number;
+
+			const query: FindManyOptions<WorkflowEntity> = {
+				skip: offset,
+				take: limit,
+				where: {
+					...(active !== undefined && { active }),
+				},
+				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+			};
+
+			if (isInstanceOwner(req.user)) {
+				workflows = await getWorkflows(query);
+
+				count = await getWorkflowsCount(query);
+			} else {
+				const shareWorkflows = await getSharedWorkflows(req.user);
+
+				if (!shareWorkflows.length) {
+					return res.status(404).json();
+				}
+
+				const workflowsIds = shareWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
+
+				Object.assign(query.where, { id: In(workflowsIds) });
+
+				workflows = await getWorkflows(query);
+
+				count = await getWorkflowsCount(query);
+			}
+
+			return res.json({
+				data: workflows,
+				nextCursor: encodeNextCursor({
+					offset,
+					limit,
+					numberOfTotalRecords: count,
+				}),
+			});
+		},
+	],
 	updateWorkflow: [
 		instanceOwnerSetup,
 		authorize(['owner', 'member']),
