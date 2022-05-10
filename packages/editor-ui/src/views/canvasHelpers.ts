@@ -48,6 +48,20 @@ export const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
+export const WELCOME_STICKY_NODE = {
+	name: "Note1",
+	type: STICKY_NODE_TYPE,
+	typeVersion: 1,
+	position: [
+		-240,
+		140,
+	] as XYPosition,
+	parameters: {
+		height: 440,
+		width: 380,
+	},
+};
+
 export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
 	cornerRadius: 12,
 	stub: JSPLUMB_FLOWCHART_STUB + 10,

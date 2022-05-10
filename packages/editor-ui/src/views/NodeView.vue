@@ -1836,7 +1836,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				await this.$store.dispatch('workflows/setNewWorkflowName');
+				const newWorkflow = await this.$store.dispatch('workflows/setNewWorkflowName');
+
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
@@ -1848,6 +1849,26 @@ export default mixins(
 				this.setZoomLevel(1);
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+					// For novice users (onboardingFlowEnabled == true)
+					// Inject welcome sticky note and zoom to fit
+					if(newWorkflow.onboardingFlowEnabled) {
+						this.$nextTick(async () => {
+							await this.addNodes([
+								{
+									...CanvasHelpers.WELCOME_STICKY_NODE,
+									parameters: {
+										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+										content: this.$locale.baseText(
+											'onboardingWorkflow.stickyContent',
+											{
+												interpolate: { imgURL: `/static/n8n-quickstart-v5-thumbnail.webp` },
+											}),
+									},
+								},
+							]);
+							this.zoomToFit();
+						});
+					}
 				}, 0);
 			},
 			async initView (): Promise<void> {
