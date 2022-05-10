@@ -42,7 +42,7 @@
 					:immediateNodeName="parentNode"
 					:sessionId="sessionId"
 					@linkRun="onLinkRunToInput"
-					@unlinkRun="onUnlinkRun"
+					@unlinkRun="() => onUnlinkRun('input')"
 					@runChange="onRunInputIndexChange"
 					@openSettings="openSettings"
 					@select="onInputSelect"
@@ -56,7 +56,7 @@
 					:linkedRuns="linked"
 					:sessionId="sessionId"
 					@linkRun="onLinkRunToOutput"
-					@unlinkRun="onUnlinkRun"
+					@unlinkRun="() => onUnlinkRun('output')"
 					@runChange="onRunOutputIndexChange"
 					@openSettings="openSettings"
 				/>
@@ -415,13 +415,24 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		onLinkRunToInput() {
 			this.runOutputIndex = this.runInputIndex;
 			this.linkedRuns = true;
+			this.trackLinking('input');
 		},
 		onLinkRunToOutput() {
 			this.linkedRuns = true;
+			this.trackLinking('output');
 		},
-		onUnlinkRun() {
+		onUnlinkRun(pane: string) {
 			this.runInputIndex = this.runOutputIndex;
 			this.linkedRuns = false;
+			this.trackLinking(pane);
+		},
+		trackLinking(pane: string) {
+			this.$telemetry.track('User changed ndv run linking', {
+				node_type: this.activeNodeType ? this.activeNodeType.name : '',
+				session_id: this.sessionId,
+				linked: this.linked,
+				pane,
+			});
 		},
 		onNodeExecute() {
 			setTimeout(() => {
