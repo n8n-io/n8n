@@ -6,6 +6,7 @@ export const documentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 				show: {
@@ -19,6 +20,11 @@ export const documentOperations: INodeProperties[] = [
 						name: 'Create',
 						value: 'createDoc',
 						description: 'Create a document in collection',
+				},
+				{
+					name: 'Delete',
+					value: 'deleteDoc',
+					description: 'Delete document in collection',
 				},
 				{
 					name: 'Get',
@@ -35,14 +41,9 @@ export const documentOperations: INodeProperties[] = [
 					value: 'updateDoc',
 					description: 'Get all documents in collection',
 				},
-				{
-					name: 'Delete',
-					value: 'deleteDoc',
-					description: 'Delete document in collection',
-				},
 		],
 		default: 'getAllDocs',
-		description: 'The operation to perform.',
+		description: 'Select the operation to perform on the collection of documents',
 	}
 ];
 
@@ -127,32 +128,36 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 				{
-						displayName: 'limit',
+						displayName: 'Limit',
 						name: 'limit',
 						type: 'number',
-						default: '',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 1000,
+						},
+						default: 50,
 						description: 'Maximum number of documents to return in response. By default will return maximum 25 results. Maximum of 100 results allowed per request.'
 				},
 				{
-						displayName: 'offset',
+						displayName: 'Offset',
 						name: 'offset',
 						type: 'number',
-						default: '',
-						description: 'Offset value. The default value is 0. Use this value to manage pagination. [learn more about pagination](https://appwrite.io/docs/pagination)'
+						default: 0,
+						description: 'Offset value. The default value is 0. Use this value to manage pagination. [learn more about pagination](https://appwrite.io/docs/pagination).'
 				},
 				{
-					displayName: 'cursor',
+					displayName: 'Cursor',
 					name: 'cursor',
 					type: 'string',
 					default: '',
-					description: 'ID of the document used as the starting point for the query, excluding the document itself. Should be used for efficient pagination when working with large sets of data. [learn more about pagination](https://appwrite.io/docs/pagination)',
+					description: 'ID of the document used as the starting point for the query, excluding the document itself. Should be used for efficient pagination when working with large sets of data. [learn more about pagination](https://appwrite.io/docs/pagination).',
 				},
 				{
-					displayName: 'cursorDirection',
+					displayName: 'Cursor Direction',
 					name: 'cursorDirection',
 					type: 'string',
 					default: '',
-					description: 'Direction of the cursor.',
+					description: 'Direction of the cursor',
 				},
 			],
 	}

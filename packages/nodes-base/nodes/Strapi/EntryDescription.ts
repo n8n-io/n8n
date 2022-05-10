@@ -27,14 +27,14 @@ export const entryOperations: INodeProperties[] = [
 				description: 'Delete an entry',
 			},
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get an entry',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all entries',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an entry',
 			},
 			{
 				name: 'Update',
