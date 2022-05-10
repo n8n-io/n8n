@@ -338,7 +338,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setSubtitle() {
 			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 
-			this.nodeSubtitle = nodeSubtitle.includes('customAction')
+			this.nodeSubtitle = nodeSubtitle.includes('somethingElse')
 				? ''
 				: nodeSubtitle;
 		},

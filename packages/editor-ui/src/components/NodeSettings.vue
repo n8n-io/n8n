@@ -35,17 +35,11 @@
 				>
 					<n8n-notice
 						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
+						:content="scopesContent"
 						:truncate="true"
-						:content="$locale.baseText(
-							'nodeSettings.scopes',
-							{
-								adjustToNumber: scopes.length,
-								interpolate: {
-									activeCredential,
-									scopes: scopesText,
-								},
-							},
-						)"
+						:truncateAt="scopesContent.indexOf('<br>')"
+						:expandFromContent="true"
+						:expansionTextPattern="/\d+ scopes/"
 					/>
 					<node-credentials
 						:node="node"
@@ -60,7 +54,7 @@
 					</n8n-text>
 				</div>
 
-				<div v-if="isCustomActionSelected(nodeValues)" class="parameter-item parameter-notice">
+				<div v-if="isSomethingElseSelected(nodeValues)" class="parameter-item parameter-notice">
 					<n8n-notice
 						:content="$locale.baseText(
 							'nodeSettings.useTheHttpRequestNode',
@@ -192,8 +186,23 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			scopesText(): string {
-				return this.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>');
+			scopesContent (): string {
+				return this.$locale.baseText(
+					'nodeSettings.scopes',
+					{
+						adjustToNumber: this.scopes.length,
+						interpolate: {
+							activeCredential: this.activeCredential,
+							scopes: this.scopesToDisplay,
+						},
+					},
+				);
+			},
+			scopesToDisplay(): string {
+				return this.scopes
+					.map(scope => scope.replace(/\//g, '/<wbr>'),
+					)
+					.join('<br>');
 			},
 		},
 		props: {

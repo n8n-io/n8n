@@ -2,7 +2,39 @@
 	<div :id="id" :class="classes" role="alert">
 		<div class="notice-content">
 			<n8n-text size="small">
-				<slot>
+				<slot v-if="expandFromContent">
+					<span
+						:class="expanded ? $style['expanded'] : $style['truncated']"
+						:id="`${id}-content`"
+						role="region"
+						v-html="preExpansionText"
+					/>
+					<a
+						role="button"
+						:aria-controls="`${id}-content`"
+						:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
+						@click="toggleExpanded"
+					>
+						{{ expansionText }}
+					</a>
+					<span
+						:class="expanded ? $style['expanded'] : $style['truncated']"
+						:id="`${id}-content`"
+						role="region"
+						v-html="postExpansionText"
+					/>
+					<span v-if="canTruncate">
+						<a
+							role="button"
+							:aria-controls="`${id}-content`"
+							:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
+							@click="toggleExpanded"
+						>
+							{{ expanded ? t('notice.showLess') : '' }}
+						</a>
+					</span>
+				</slot>
+				<slot v-else>
 					<span
 						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
@@ -61,6 +93,14 @@ export default Vue.extend({
 			type: String,
 			default: '',
 		},
+		expandFromContent: {
+			type: Boolean,
+			default: false,
+		},
+		expansionTextPattern: {
+			type: RegExp,
+			default: () => /./,
+		},
 	},
 	components: {
 		N8nText,
@@ -91,6 +131,25 @@ export default Vue.extend({
 		sanitizedContent(): string {
 			return sanitizeHtml(this.truncatedContent);
 		},
+		expansionText(): string {
+			const match = this.truncatedContent.match(this.expansionTextPattern);
+
+			if (match.length !== 1) {
+				throw new Error('Expansion text must appear once in content');
+			}
+
+			return match[0];
+		},
+		preExpansionText(): string {
+			const pre = this.truncatedContent.split(this.expansionTextPattern).shift();
+
+			return sanitizeHtml(pre);
+		},
+		postExpansionText(): string {
+			const post = this.truncatedContent.split(this.expansionTextPattern).pop();
+
+			return sanitizeHtml(post);
+		},
 	},
 	methods: {
 		toggleExpanded() {
@@ -115,6 +174,10 @@ export default Vue.extend({
 
 	a {
 		font-weight: var(--font-weight-bold);
+	}
+
+	span {
+		line-height: var(--font-line-height-compact);
 	}
 }
 

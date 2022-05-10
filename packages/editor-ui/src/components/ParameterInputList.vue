@@ -181,8 +181,8 @@ export default mixins(
 				}
 
 				if (
-					this.isCustomActionSelected(this.nodeValues) &&
-					this.mustHideDuringCustomAction(parameter, this.nodeValues)
+					this.isSomethingElseSelected(this.nodeValues) &&
+					this.mustHideDuringSomethingElse(parameter, this.nodeValues)
 				) {
 					return false;
 				}

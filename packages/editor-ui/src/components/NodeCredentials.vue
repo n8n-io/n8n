@@ -102,11 +102,11 @@ export default mixins(
 		}),
 		isProxyAuth(): boolean {
 			return this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authenticateWith === 'nodeCredential';
+				this.node.parameters.authentication === 'existingCredentialType';
 		},
 		isGenericAuth(): boolean {
 			return this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authenticateWith === 'genericAuth';
+				this.node.parameters.authentication === 'genericCredentialType';
 		},
 		credentialTypesNode (): string[] {
 			const nodeCredentialTypes = this.credentialTypesNodeDescription

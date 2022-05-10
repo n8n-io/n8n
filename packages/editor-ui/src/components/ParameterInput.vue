@@ -134,13 +134,13 @@
 			</n8n-option>
 			<n8n-option
 				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
-				:key="'customAction'"
-				:value="'customAction'"
-				:label="$locale.baseText('parameterInput.customAction')"
+				:key="'somethingElse'"
+				:value="'somethingElse'"
+				:label="$locale.baseText('parameterInput.somethingElse')"
 			>
 				<div class="list-option">
 					<div class="option-headline">
-						{{ $locale.baseText('parameterInput.customAction') }}
+						{{ $locale.baseText('parameterInput.somethingElse') }}
 					</div>
 				</div>
 			</n8n-option>
@@ -499,7 +499,7 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
-						if (checkValue === 'customAction') continue;
+						if (checkValue === 'somethingElse') continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
