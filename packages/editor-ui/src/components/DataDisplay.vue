@@ -123,7 +123,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			settingsEventBus: new Vue(),
 			runInputIndex: -1,
 			runOutputIndex: -1,
-			linkedRuns: true,
+			isLinkingEnabled: true,
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
 			windowWidth: 0,
@@ -263,7 +263,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return 0;
 		},
 		inputRun(): number {
-			if (this.linkedRuns && this.maxOutputRun === this.maxInputRun) {
+			if (this.isLinkingEnabled && this.maxOutputRun === this.maxInputRun) {
 				return this.outputRun;
 			}
 			if (this.runInputIndex === -1) {
@@ -276,7 +276,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return this.maxOutputRun > 0 && this.maxOutputRun === this.maxInputRun;
 		},
 		linked(): boolean {
-			return this.linkedRuns && this.canLinkRuns;
+			return this.isLinkingEnabled && this.canLinkRuns;
 		},
 		inputPanelMargin(): number {
 			return this.isTriggerNode ? 0: 80;
@@ -334,7 +334,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			if (node && !oldNode && !this.isActiveStickyNode) {
 				this.runInputIndex = -1;
 				this.runOutputIndex = -1;
-				this.linkedRuns = true;
+				this.isLinkingEnabled = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
 				this.setTotalWidth();
@@ -414,16 +414,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		onLinkRunToInput() {
 			this.runOutputIndex = this.runInputIndex;
-			this.linkedRuns = true;
+			this.isLinkingEnabled = true;
 			this.trackLinking('input');
 		},
 		onLinkRunToOutput() {
-			this.linkedRuns = true;
+			this.isLinkingEnabled = true;
 			this.trackLinking('output');
 		},
 		onUnlinkRun(pane: string) {
 			this.runInputIndex = this.runOutputIndex;
-			this.linkedRuns = false;
+			this.isLinkingEnabled = false;
 			this.trackLinking(pane);
 		},
 		trackLinking(pane: string) {
@@ -475,7 +475,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		onInputSelect(value: string, index: number) {
 			this.runInputIndex = -1;
-			this.linkedRuns = true;
+			this.isLinkingEnabled = true;
 			this.selectedInput = value !== IMMEDIATE_INPUT_KEY ? value : undefined;
 
 			this.$telemetry.track('User changed ndv input dropdown', {
