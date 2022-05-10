@@ -55,7 +55,7 @@ export class ConvertKitTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'The events that can trigger the webhook and whether they are enabled.',
+				description: 'The events that can trigger the webhook and whether they are enabled',
 				options: [
 					{
 						name: 'Form Subscribe',

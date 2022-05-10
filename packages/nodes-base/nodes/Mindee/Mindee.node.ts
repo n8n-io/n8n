@@ -103,14 +103,14 @@ export class Mindee implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property which containsthe data for the file to be uploaded.',
+				description: 'Name of the binary property which containsthe data for the file to be uploaded',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 		],
 	};

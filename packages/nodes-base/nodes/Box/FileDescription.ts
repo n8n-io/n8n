@@ -124,14 +124,14 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'An optional new name for the copied file.',
+				description: 'An optional new name for the copied file',
 			},
 			{
 				displayName: 'Version',
 				name: 'version',
 				type: 'string',
 				default: '',
-				description: 'An optional ID of the specific file version to copy.',
+				description: 'An optional ID of the specific file version to copy',
 			},
 		],
 	},
@@ -192,7 +192,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -277,7 +277,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -301,7 +301,7 @@ export const fileFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -387,7 +387,7 @@ export const fileFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'pdf,png,gif',
-				description: 'Limits search results to a comma-separated list of file extensions.',
+				description: 'Limits search results to a comma-separated list of file extensions',
 			},
 			{
 				displayName: 'Folder IDs',
@@ -411,7 +411,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Limits search results to a user scope.',
+				description: 'Limits search results to a user scope',
 			},
 			{
 				displayName: 'Size Range',
@@ -436,7 +436,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'relevance',
-				description: 'returns the results ordered in descending order by date at which the item was last modified.',
+				description: 'returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
 				displayName: 'Trash Content',
@@ -453,7 +453,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'non_trashed_only',
-				description: 'Controls if search results include the trash.',
+				description: 'Controls if search results include the trash',
 			},
 			{
 				displayName: 'Update At Range',
@@ -513,7 +513,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the file to share.',
+		description: 'The ID of the file to share',
 	},
 	{
 		displayName: 'Accessible By',
@@ -540,7 +540,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The type of object the file will be shared with.',
+		description: 'The type of object the file will be shared with',
 	},
 	{
 		displayName: 'Use Email',
@@ -560,7 +560,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether identify the user by email or ID.',
+		description: 'Whether identify the user by email or ID',
 	},
 	{
 		displayName: 'Email',
@@ -583,7 +583,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's email address to share the file with.`,
+		description: 'The user\'s email address to share the file with',
 	},
 	{
 		displayName: 'User ID',
@@ -606,7 +606,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's ID to share the file with.`,
+		description: 'The user\'s ID to share the file with',
 	},
 	{
 		displayName: 'Group ID',
@@ -626,7 +626,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The group's ID to share the file with.`,
+		description: 'The group\'s ID to share the file with',
 	},
 	{
 		displayName: 'Role',
@@ -680,7 +680,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: 'editor',
-		description: 'The level of access granted.',
+		description: 'The level of access granted',
 	},
 	{
 		displayName: 'Options',
@@ -704,7 +704,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: `Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
+				description: 'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
 			},
 			{
 				displayName: 'Expires At',
@@ -725,7 +725,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'notify',
 				type: 'boolean',
 				default: false,
-				description: 'Whether if users should receive email notification for the action performed.',
+				description: 'Whether if users should receive email notification for the action performed',
 			},
 		],
 	},
@@ -749,7 +749,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name the file should be saved as.',
+		description: 'The name the file should be saved as',
 	},
 	{
 		displayName: 'Binary Data',
@@ -767,7 +767,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field.',
+		description: 'If the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -789,7 +789,7 @@ export const fileFields: INodeProperties[] = [
 			},
 
 		},
-		description: 'The text content of the file.',
+		description: 'The text content of the file',
 	},
 	{
 		displayName: 'Binary Property',
@@ -811,7 +811,7 @@ export const fileFields: INodeProperties[] = [
 			},
 
 		},
-		description: 'Name of the binary property which contains the data for the file.',
+		description: 'Name of the binary property which contains the data for the file',
 	},
 	{
 		displayName: 'Parent ID',

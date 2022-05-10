@@ -101,7 +101,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -259,7 +259,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -433,7 +433,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 company:getAll                             */
@@ -453,7 +453,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -477,7 +477,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -517,14 +517,14 @@ export const companyFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to return.',
+				description: 'Comma-separated list of fields to return',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by.',
+				description: 'The field to sort by',
 			},
 			{
 				displayName: 'Sort Order',
@@ -682,7 +682,7 @@ export const companyFields: INodeProperties[] = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 									{
 										displayName: 'Value',

@@ -42,7 +42,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		default: '',
-		description: 'Email to add to the unsubscribes.',
+		description: 'Email to add to the unsubscribes',
 		displayOptions: {
 			show: {
 				resource: [
@@ -63,7 +63,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		default: '',
-		description: 'Email to delete from the unsubscribes.',
+		description: 'Email to delete from the unsubscribes',
 		displayOptions: {
 			show: {
 				resource: [
@@ -84,7 +84,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -101,7 +101,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

@@ -53,27 +53,27 @@ export class GumroadTrigger implements INodeType {
 					{
 						name: 'Sale',
 						value: 'sale',
-						description: `When subscribed to this resource, you will be notified of the user's sales`,
+						description: 'When subscribed to this resource, you will be notified of the user\'s sales',
 					},
 					{
 						name: 'Refund',
 						value: 'refund',
-						description: `When subscribed to this resource, you will be notified of refunds to the user's sales`,
+						description: 'When subscribed to this resource, you will be notified of refunds to the user\'s sales',
 					},
 					{
 						name: 'Dispute',
 						value: 'dispute',
-						description: `When subscribed to this resource, you will be notified of the disputes raised against user's sales`,
+						description: 'When subscribed to this resource, you will be notified of the disputes raised against user\'s sales',
 					},
 					{
 						name: 'Dispute Won',
 						value: 'dispute_won',
-						description: `When subscribed to this resource, you will be notified of the sale disputes won`,
+						description: 'When subscribed to this resource, you will be notified of the sale disputes won',
 					},
 					{
 						name: 'Cancellation',
 						value: 'cancellation',
-						description: `When subscribed to this resource, you will be notified of cancellations of the user's subscribers`,
+						description: 'When subscribed to this resource, you will be notified of cancellations of the user\'s subscribers',
 					},
 				],
 				description: 'The resource is gonna fire the event',

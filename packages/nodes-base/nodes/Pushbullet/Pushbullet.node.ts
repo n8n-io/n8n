@@ -141,7 +141,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `Title of the push.`,
+				description: 'Title of the push',
 			},
 			{
 				displayName: 'Body',
@@ -164,7 +164,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `Body of the push.`,
+				description: 'Body of the push',
 			},
 			{
 				displayName: 'URL',
@@ -185,7 +185,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `URL of the push.`,
+				description: 'URL of the push',
 			},
 			{
 				displayName: 'Binary Property',
@@ -207,7 +207,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created',
 			},
 			{
 				displayName: 'Target',
@@ -222,7 +222,7 @@ export class Pushbullet implements INodeType {
 					{
 						name: 'Default',
 						value: 'default',
-						description: `Broadcast it to all of the user's devices`,
+						description: 'Broadcast it to all of the user\'s devices',
 					},
 					{
 						name: 'Device ID',
@@ -247,7 +247,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: 'default',
-				description: 'Define the medium that will be used to send the push.',
+				description: 'Define the medium that will be used to send the push',
 			},
 			{
 				displayName: 'Value',
@@ -271,7 +271,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.`,
+				description: 'The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.',
 			},
 			{
 				displayName: 'Value',
@@ -329,7 +329,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -353,7 +353,7 @@ export class Pushbullet implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -377,14 +377,14 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: `Don't return deleted pushes.`,
+						description: 'Don\'t return deleted pushes',
 					},
 					{
 						displayName: 'Modified After',
 						name: 'modified_after',
 						type: 'dateTime',
 						default: '',
-						description: `Request pushes modified after this timestamp.`,
+						description: 'Request pushes modified after this timestamp',
 					},
 				],
 			},
@@ -421,7 +421,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible.',
+				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
 			},
 		],
 	};
