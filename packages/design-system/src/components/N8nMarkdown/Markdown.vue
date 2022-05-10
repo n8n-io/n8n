@@ -287,6 +287,10 @@ export default {
 
 	img {
 		object-fit: contain;
+
+		&[src*="#full-width"] {
+			width: 100%;
+		}
 	}
 }
 
