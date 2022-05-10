@@ -35,7 +35,6 @@ properties:
   staticData:
     type: string
     nullable: true
-    readOnly: true
     example: "{ iterationId: 2 }"
   tags:
     type: array

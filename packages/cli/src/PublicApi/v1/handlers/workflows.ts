@@ -120,7 +120,6 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			};
 
-
 			if (isInstanceOwner(req.user)) {
 				workflows = await getWorkflows(query);
 
@@ -256,15 +255,18 @@ export = {
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
 
 			if (sharedWorkflow.workflow.active) {
+
 				await workflowRunner.remove(sharedWorkflow.workflowId.toString());
 
 				await desactiveWorkflow(sharedWorkflow.workflow);
+
+				sharedWorkflow.workflow.active = false;
 
 				return res.json(sharedWorkflow.workflow);
 			}
 
 			// nothing to do as the wokflow is already inactive
-			return res.json(sharedWorkflow);
+			return res.json(sharedWorkflow.workflow);
 		},
 	],
 };
