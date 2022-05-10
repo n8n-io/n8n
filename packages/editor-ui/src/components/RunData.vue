@@ -27,7 +27,7 @@
 		</div>
 
 		<div v-if="maxOutputIndex > 0 && overrideOutputIndex === undefined" :class="{[$style.tabs]: displayMode === 'table'}">
-			<n8n-tabs v-model="currentOutputIndex" :options="branches" />
+			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
 		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
@@ -477,6 +477,16 @@ export default mixins(
 			},
 		},
 		methods: {
+			onBranchChange(value: number) {
+				this.currentOutputIndex = value;
+
+				this.$telemetry.track('User changed ndv branch', {
+					session_id: this.sessionId,
+					branch_index: value,
+					node_type: this.activeNode.type,
+					pane: this.paneType,
+				});
+			},
 			showTooMuchData() {
 				this.showData = true;
 				this.$telemetry.track('User clicked ndv button', {
