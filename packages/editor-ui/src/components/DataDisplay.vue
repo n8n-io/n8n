@@ -466,12 +466,22 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
+			this.trackRunChange(run, 'output');
 		},
 		onRunInputIndexChange(run: number) {
 			this.runInputIndex = run;
 			if (this.linked) {
 				this.runOutputIndex = run;
 			}
+			this.trackRunChange(run, 'input');
+		},
+		trackRunChange(run: number, pane: string) {
+			this.$telemetry.track('User changed ndv run dropdown', {
+				session_id: this.sessionId,
+				run_index: run,
+				node_type: this.activeNodeType? this.activeNodeType.name: '',
+				pane,
+			});
 		},
 		onInputSelect(value: string, index: number) {
 			this.runInputIndex = -1;
