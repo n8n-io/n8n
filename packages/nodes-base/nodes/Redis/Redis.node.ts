@@ -37,6 +37,7 @@ export class Redis implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Delete',
@@ -49,14 +50,14 @@ export class Redis implements INodeType {
 						description: 'Get the value of a key from Redis',
 					},
 					{
-						name: 'Info',
-						value: 'info',
-						description: 'Returns generic information about the Redis instance',
-					},
-					{
 						name: 'Increment',
 						value: 'incr',
 						description: 'Atomically increments a key by 1. Creates the key if it does not exist.',
+					},
+					{
+						name: 'Info',
+						value: 'info',
+						description: 'Returns generic information about the Redis instance',
 					},
 					{
 						name: 'Keys',
@@ -64,9 +65,9 @@ export class Redis implements INodeType {
 						description: 'Returns all the keys matching a pattern',
 					},
 					{
-						name: 'Set',
-						value: 'set',
-						description: 'Set the value of a key in redis',
+						name: 'Pop',
+						value: 'pop',
+						description: 'Pop data from a redis list',
 					},
 					{
 						name: 'Publish',
@@ -79,13 +80,12 @@ export class Redis implements INodeType {
 						description: 'Push data to a redis list',
 					},
 					{
-						name: 'Pop',
-						value: 'pop',
-						description: 'Pop data from a redis list',
+						name: 'Set',
+						value: 'set',
+						description: 'Set the value of a key in redis',
 					},
 				],
 				default: 'info',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -104,7 +104,7 @@ export class Redis implements INodeType {
 				},
 				default: 'propertyName',
 				required: true,
-				description: 'Name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name"',
+				description: 'Name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name".',
 			},
 			{
 				displayName: 'Key',
@@ -159,11 +159,6 @@ export class Redis implements INodeType {
 						description: 'Data in key is of type "hash"',
 					},
 					{
-						name: 'String',
-						value: 'string',
-						description: 'Data in key is of type "string"',
-					},
-					{
 						name: 'List',
 						value: 'list',
 						description: 'Data in key is of type "lists"',
@@ -172,6 +167,11 @@ export class Redis implements INodeType {
 						name: 'Sets',
 						value: 'sets',
 						description: 'Data in key is of type "sets"',
+					},
+					{
+						name: 'String',
+						value: 'string',
+						description: 'Data in key is of type "string"',
 					},
 				],
 				default: 'automatic',
@@ -233,7 +233,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Set a timeout on key?',
+				description: 'Whether to set a timeout on key?',
 			},
 			{
 				displayName: 'TTL',
@@ -286,7 +286,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Get the value of matching keys',
+				description: 'Whether to get the value of matching keys',
 			},
 			// ----------------------------------
 			//         set
@@ -343,11 +343,6 @@ export class Redis implements INodeType {
 						description: 'Data in key is of type "hash"',
 					},
 					{
-						name: 'String',
-						value: 'string',
-						description: 'Data in key is of type "string"',
-					},
-					{
 						name: 'List',
 						value: 'list',
 						description: 'Data in key is of type "lists"',
@@ -356,6 +351,11 @@ export class Redis implements INodeType {
 						name: 'Sets',
 						value: 'sets',
 						description: 'Data in key is of type "sets"',
+					},
+					{
+						name: 'String',
+						value: 'string',
+						description: 'Data in key is of type "string"',
 					},
 				],
 				default: 'automatic',
@@ -374,7 +374,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Set a timeout on key ?',
+				description: 'Whether to set a timeout on key?',
 			},
 
 			{
@@ -484,7 +484,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Operate on data at the tail of the list',
+				description: 'Whether to operate on data at the tail of the list',
 			},
 			{
 				displayName: 'Overwrite',
@@ -498,7 +498,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Overwrite item data with returned data',
+				description: 'Whether to overwrite item data with returned data',
 			},
 			{
 				displayName: 'Name',
@@ -515,7 +515,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: 'data',
-				description: 'Optional name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name"',
+				description: 'Optional name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name".',
 			},
 			{
 				displayName: 'Options',
@@ -776,7 +776,9 @@ export class Redis implements INodeType {
 
 								const action = tail ? client.rpushx : client.lpushx;
 								const clientPush = util.promisify(action).bind(client);
-								await clientPush(redisList, messageData.trim());
+
+								await clientPush(redisList, messageData);
+								throw Error;
 								returnItems.push(items[itemIndex]);
 							} else if (operation === 'pop'){
 								const redisList = this.getNodeParameter('list', itemIndex) as string;
