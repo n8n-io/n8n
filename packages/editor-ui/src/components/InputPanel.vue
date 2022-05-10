@@ -51,14 +51,14 @@
 
 <script lang="ts">
 import { INodeUi } from '@/Interface';
-import { Workflow } from 'n8n-workflow';
+import { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
+import { IMMEDIATE_INPUT_KEY } from '@/constants';
 
-const IMMEDIATE_INPUT_KEY = '__IMMEDIATE_INPUT__';
 
 export default mixins(
 	workflowHelpers,
@@ -85,6 +85,9 @@ export default mixins(
 		},
 		canLinkRuns: {
 			type: Boolean,
+		},
+		sessionId: {
+			type: String,
 		},
 	},
 	data() {
@@ -142,7 +145,8 @@ export default mixins(
 			this.$emit('unlinkRun');
 		},
 		onSelect(value: string) {
-			this.$emit('select', value === IMMEDIATE_INPUT_KEY ? undefined : value);
+			const index = value === IMMEDIATE_INPUT_KEY ? 0 : this.parentNodes.findIndex((node) => node.name === value) + 1;
+			this.$emit('select', value, index);
 		},
 	},
 });

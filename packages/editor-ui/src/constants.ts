@@ -236,3 +236,5 @@ export enum VIEWS {
 	PERSONAL_SETTINGS = "PersonalSettings",
 	NOT_FOUND = "NotFoundView",
 }
+
+export const IMMEDIATE_INPUT_KEY = '__IMMEDIATE_INPUT__';

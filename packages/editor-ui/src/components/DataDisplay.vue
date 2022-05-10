@@ -40,6 +40,7 @@
 					:currentNodeName="inputNodeName"
 					:immediate="!selectedInput"
 					:immediateNodeName="parentNode"
+					:sessionId="sessionId"
 					@linkRun="onLinkRunToInput"
 					@unlinkRun="onUnlinkRun"
 					@runChange="onRunInputIndexChange"
@@ -94,7 +95,7 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
-import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { IMMEDIATE_INPUT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { isNumber } from './helpers';
 import { editor } from 'monaco-editor';
 import PanelDragButton from './PanelDragButton.vue';
@@ -168,8 +169,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		inputNodeName(): string | undefined {
 			return this.selectedInput || this.parentNode;
 		},
-		inputNode(): INodeUi {
-			return this.$store.getters.getNodeByName(this.inputNodeName);
+		inputNode(): INodeUi | null {
+			if (this.inputNodeName) {
+				return this.$store.getters.getNodeByName(this.inputNodeName);
+			}
+
+			return null;
 		},
 		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
@@ -433,10 +438,18 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.runOutputIndex = run;
 			}
 		},
-		onInputSelect(value: string) {
+		onInputSelect(value: string, index: number) {
 			this.runInputIndex = -1;
 			this.linkedRuns = true;
-			this.selectedInput = value;
+			this.selectedInput = value !== IMMEDIATE_INPUT_KEY ? value : undefined;
+
+			this.$telemetry.track('User changed ndv input dropdown', {
+				node_type: this.activeNode ? this.activeNode.type : '',
+				session_id: this.sessionId,
+				workflow_id: this.$store.getters.workflowId,
+				selection_value: index,
+				input_node_type: this.inputNode? this.inputNode.type: '',
+			});
 		},
 	},
 });
