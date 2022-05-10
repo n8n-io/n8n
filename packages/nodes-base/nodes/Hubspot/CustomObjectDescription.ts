@@ -67,7 +67,7 @@ export const customObjectOperations: INodeProperties[] = [
 	},
 	{
 		displayName: 'Custom Object Type',
-		name: 'customObjectType',
+		name: 'objectType',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -120,6 +120,7 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: ['objectType'],
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
@@ -384,7 +385,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
-			loadOptionsDependsOn: ['customObjectType'],
+			loadOptionsDependsOn: ['objectType'],
 		},
 		displayOptions: {
 			show: {
@@ -442,6 +443,7 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: ['objectType'],
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
@@ -468,7 +470,7 @@ export const customObjectFields: INodeProperties[] = [
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: ['customObjectType'],
+			loadOptionsDependsOn: ['objectType'],
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
 		displayOptions: {
@@ -527,6 +529,7 @@ export const customObjectFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: ['objectType'],
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
@@ -554,7 +557,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
-			loadOptionsDependsOn: ['customObjectType'],
+			loadOptionsDependsOn: ['objectType'],
 		},
 		displayOptions: {
 			show: {
@@ -598,6 +601,7 @@ export const customObjectFields: INodeProperties[] = [
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
+					loadOptionsDependsOn: ['objectType'],
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
@@ -608,6 +612,7 @@ export const customObjectFields: INodeProperties[] = [
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
+					loadOptionsDependsOn: ['objectType'],
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
@@ -619,6 +624,7 @@ export const customObjectFields: INodeProperties[] = [
 			//     type: 'multiOptions',
 			//     typeOptions: {
 			//         loadOptionsMethod: 'getCustomObjectAssociations',
+			//		   loadOptionsDependsOn: ['objectType'],
 			//     },
 			//     default: '',
 			//     description: 'A list of object types to retrieve associated IDs for.',
@@ -641,7 +647,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
-			loadOptionsDependsOn: ['customObjectType'],
+			loadOptionsDependsOn: ['objectType'],
 		},
 		displayOptions: {
 			show: {
@@ -686,6 +692,7 @@ export const customObjectFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
+					loadOptionsDependsOn: ['objectType'],
 				},
 				default: [],
 				description: 'A list of the properties to be returned in the response',
@@ -696,6 +703,7 @@ export const customObjectFields: INodeProperties[] = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomObjectProperties',
+					loadOptionsDependsOn: ['objectType'],
 				},
 				default: [],
 				description: 'A list of the properties to be returned along with their history of previous values',
@@ -764,6 +772,7 @@ export const customObjectFields: INodeProperties[] = [
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
+					loadOptionsDependsOn: ['objectType'],
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
@@ -804,6 +813,7 @@ export const customObjectFields: INodeProperties[] = [
 												name: 'propertyName',
 												type: 'options',
 												typeOptions: {
+													loadOptionsDependsOn: ['objectType'],
 													loadOptionsMethod: 'getCustomObjectProperties',
 												},
 												default: '',
@@ -946,6 +956,7 @@ export const customObjectFields: INodeProperties[] = [
 				name: 'sortBy',
 				type: 'options',
 				typeOptions: {
+					loadOptionsDependsOn: ['objectType'],
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: '',
@@ -969,7 +980,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjectIdProperties',
-			loadOptionsDependsOn: ['customObjectType'],
+			loadOptionsDependsOn: ['objectType'],
 		},
 		required: true,
 		displayOptions: {
