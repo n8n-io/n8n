@@ -1383,7 +1383,10 @@ export class EditImage implements INodeType {
 								return reject(error);
 							}
 
-							newItem.binary![dataPropertyName as string].data = (await this.helpers.prepareBinaryData(Buffer.from(buffer))).data;
+							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
+							newItem.binary![dataPropertyName as string] = {
+								...newItem.binary![dataPropertyName as string], ...binaryData
+							}
 
 							return resolve(newItem);
 						});
