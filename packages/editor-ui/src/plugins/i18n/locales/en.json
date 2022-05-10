@@ -480,6 +480,7 @@
 	"nodeWebhooks.showMessage.title": "URL copied",
 	"nodeWebhooks.testUrl": "Test URL",
 	"nodeWebhooks.webhookUrls": "Webhook URLs",
+	"onboardingWorkflow.stickyContent": "## 👇 Get started faster \n\n### ▶️ Quickstart video\n[![n8n quickstart video]({imgURL})](https://www.youtube.com/watch?v=RpjQTGKm-ok)\nCovers key concepts really quickly\n\n\n### 🎁 Template library\nGet inspiration and learn useful techniques from our pre-built [Workflow Templates](/templates).",
 	"openWorkflow.workflowImportError": "Could not import workflow",
 	"openWorkflow.workflowNotFoundError": "Could not find workflow",
 	"parameterInput.addExpression": "Add Expression",
