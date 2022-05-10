@@ -44,7 +44,7 @@ export const documentOperations: INodeProperties[] = [
 		],
 		default: 'getAllDocs',
 		description: 'Select the operation to perform on the collection of documents',
-	}
+	},
 ];
 
 export const documentFields: INodeProperties[] = [
@@ -136,14 +136,14 @@ export const documentFields: INodeProperties[] = [
 							maxValue: 1000,
 						},
 						default: 50,
-						description: 'Maximum number of documents to return in response. By default will return maximum 25 results. Maximum of 100 results allowed per request.'
+						description: 'Max number of results to return',
 				},
 				{
 						displayName: 'Offset',
 						name: 'offset',
 						type: 'number',
 						default: 0,
-						description: 'Offset value. The default value is 0. Use this value to manage pagination. [learn more about pagination](https://appwrite.io/docs/pagination).'
+						description: 'Offset value. The default value is 0. Use this value to manage pagination. [learn more about pagination](https://appwrite.io/docs/pagination).',
 				},
 				{
 					displayName: 'Cursor',
@@ -160,5 +160,5 @@ export const documentFields: INodeProperties[] = [
 					description: 'Direction of the cursor',
 				},
 			],
-	}
+	},
 ];

@@ -59,7 +59,7 @@ export class Appwrite implements INodeType {
 					description: 'Resource to consume',
 			},
 			...documentOperations,
-			...documentFields
+			...documentFields,
 		],
 	};
 
@@ -109,7 +109,7 @@ export class Appwrite implements INodeType {
 					const collectionId = this.getNodeParameter('collectionId', 0) as string;
 
 					const body: IDataObject = {
-						documentId: "unique()",
+						documentId: 'unique()',
 						data: this.getNodeParameter('body', 0) as IDataObject,
 					};
 
