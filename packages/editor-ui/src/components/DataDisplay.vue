@@ -83,7 +83,7 @@
 </template>
 
 <script lang="ts">
-import { INodeTypeDescription, IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
+import { INodeConnections, INodeTypeDescription, IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
 import { IExecutionResponse, INodeUi, IUpdateInformation } from '../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -191,12 +191,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		workflow(): Workflow {
 			return this.getWorkflow();
 		},
+		parentNodes(): string[] {
+			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1) || [];
+		},
 		parentNode(): string | undefined {
-			if (!this.activeNode) {
-				return undefined;
-			}
-
-			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1)[0];
+			return this.parentNodes[0];
 		},
 		isTriggerNode(): boolean {
 			return (
@@ -345,7 +344,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
 				});
+
 				setTimeout(() => {
+					const outogingConnections = (this.$store.getters.outgoingConnectionsByNodeName(this.activeNode.name) as INodeConnections).main;
+
 					this.$telemetry.track('User opened node modal', {
 						node_type: this.activeNodeType ? this.activeNodeType.name : '',
 						workflow_id: this.$store.getters.workflowId,
@@ -355,10 +357,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						output_first_connector_runs: this.maxOutputRun,
 						selected_view_inputs: this.isTriggerNode? 'trigger': this.$store.getters['ui/inputPanelDispalyMode'],
 						selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
+						input_connectors: this.parentNodes.length,
+						output_connectors: outogingConnections.length,
 						// todo
 						// input_state with the following events: node has no connection, no input data yet, no input data
-						// input_connectors (# of connectors attached to the node, independent of how many ways of connecting there are)
-						// output_connectors(# of connectors attached to the node, independent of how many ways of connecting there are)
 						// input_first_connector_first_run_rows int
 						// input_first_connector_first_run_columns int
 						// output_state with the following events: no output data returned, output data is too large, execute node to output data
