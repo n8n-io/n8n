@@ -352,7 +352,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	methods: {
 		resetSessionId() {
-			this.sessionId = `ndv-${Date.now()}`;
+			this.sessionId = `ndv-${Math.random().toString(36).slice(-8)}`;
 		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
@@ -420,7 +420,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return;
 			}
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-			this.$telemetry.track('User closed node modal', { node_type: this.activeNodeType ? this.activeNodeType.name : '', session_id: this.sessionId });
+			this.$telemetry.track('User closed node modal', { node_type: this.activeNodeType ? this.activeNodeType.name : '', session_id: this.sessionId, workflow_id: this.$store.getters.workflowId });
 			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
 		},
