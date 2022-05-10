@@ -301,6 +301,12 @@ export default mixins(
 			executingMessage: {
 				type: String,
 			},
+			sessionId: {
+				type: String,
+			},
+			paneType: {
+				type: String,
+			},
 		},
 		data () {
 			return {
@@ -328,6 +334,9 @@ export default mixins(
 			this.init();
 		},
 		computed: {
+			activeNode(): INodeUi {
+				return this.$store.getters.activeNode;
+			},
 			outputIndex(): number {
 				return this.overrideOutputIndex !== undefined ? this.overrideOutputIndex : this.currentOutputIndex;
 			},
@@ -495,9 +504,15 @@ export default mixins(
 
 				this.closeBinaryDataDisplay();
 				this.$externalHooks().run('runData.displayModeChanged', { newValue: displayMode, oldValue: previous });
-				if(this.node) {
-					const nodeType = this.node ? this.node.type : '';
-					this.$telemetry.track('User changed node output view mode', { old_mode: previous, new_mode: displayMode, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
+				if(this.activeNode) {
+					this.$telemetry.track('User changed ndv item view', {
+						previous_view: previous,
+						new_view: displayMode,
+						node_type: this.activeNode.type,
+						workflow_id: this.$store.getters.workflowId,
+						session_id: this.sessionId,
+						pane: this.paneType,
+					});
 				}
 			},
 			getRunLabel(option: number) {

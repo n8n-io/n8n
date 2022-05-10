@@ -9,6 +9,8 @@
 		:noDataInBranchMessage="$locale.baseText('ndv.output.noOutputDataInBranch')"
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
+		:sessionId="sessionId"
+		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -72,6 +74,9 @@ export default Vue.extend({
 		},
 		canLinkRuns: {
 			type: Boolean,
+		},
+		sessionId: {
+			type: String,
 		},
 	},
 	computed: {

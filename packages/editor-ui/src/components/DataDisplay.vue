@@ -54,6 +54,7 @@
 					:canLinkRuns="canLinkRuns"
 					:runIndex="outputRun"
 					:linkedRuns="linked"
+					:sessionId="sessionId"
 					@linkRun="onLinkRunToOutput"
 					@unlinkRun="onUnlinkRun"
 					@runChange="onRunOutputIndexChange"

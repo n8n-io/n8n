@@ -11,6 +11,8 @@
 		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		:isExecuting="isExecutingPrevious"
 		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
+		:sessionId="sessionId"
+		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange">
