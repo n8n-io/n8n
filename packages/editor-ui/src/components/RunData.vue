@@ -489,7 +489,7 @@ export default mixins(
 					this.currentPage = maxPage;
 				}
 
-				this.$telemetry.track('User changed ndv item page', {
+				this.$telemetry.track('User changed ndv page size', {
 					node_type: this.activeNode.type,
 					workflow_id: this.$store.getters.workflowId,
 					session_id: this.sessionId,
