@@ -484,6 +484,7 @@ export default mixins(
 					session_id: this.sessionId,
 					branch_index: value,
 					node_type: this.activeNode.type,
+					node_type_input_selection: this.nodeType? this.nodeType.name: '',
 					pane: this.paneType,
 				});
 			},
