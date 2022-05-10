@@ -39,7 +39,7 @@
 						:truncate="true"
 						:truncateAt="scopesContent.indexOf('<br>')"
 						:expandFromContent="true"
-						:expansionTextPattern="/\d+ scopes/"
+						:expansionTextPattern="/\d+ scopes?/"
 					/>
 					<node-credentials
 						:node="node"
@@ -199,10 +199,7 @@ export default mixins(
 				);
 			},
 			scopesToDisplay(): string {
-				return this.scopes
-					.map(scope => scope.replace(/\//g, '/<wbr>'),
-					)
-					.join('<br>');
+				return this.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>');
 			},
 		},
 		props: {
