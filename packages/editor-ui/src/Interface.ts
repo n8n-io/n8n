@@ -841,6 +841,8 @@ export interface IModalState {
 	activeId?: string | null;
 }
 
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -851,6 +853,12 @@ export interface IUiState {
 	currentView: string;
 	ndv: {
 		sessionId: string;
+		input: {
+			displayMode: IRunDataDisplayMode;
+		};
+		output: {
+			displayMode: IRunDataDisplayMode;
+		};
 	};
 }
 

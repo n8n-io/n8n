@@ -22,6 +22,7 @@ import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
+	IRunDataDisplayMode,
 	IUiState,
 } from '../Interface';
 
@@ -90,6 +91,12 @@ const module: Module<IUiState, IRootState> = {
 		currentView: '',
 		ndv: {
 			sessionId: '',
+			input: {
+				displayMode: 'table',
+			},
+			output: {
+				displayMode: 'table',
+			},
 		},
 	},
 	getters: {
@@ -113,6 +120,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
+		getPanelDisplayMode: (state: IUiState)  => {
+			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+		},
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -152,6 +162,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		resetNDVSessionId: (state: IUiState) => {
 			Vue.set(state.ndv, 'sessionId', '');
+		},
+		setPanelDisplayMode: (state: IUiState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
+			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
 		},
 	},
 	actions: {

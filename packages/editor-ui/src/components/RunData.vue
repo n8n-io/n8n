@@ -230,6 +230,7 @@ import {
 	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
+	IRunDataDisplayMode,
 	ITab,
 	ITableData,
 } from '@/Interface';
@@ -314,7 +315,6 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: 'table',
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
@@ -337,6 +337,9 @@ export default mixins(
 		computed: {
 			activeNode(): INodeUi {
 				return this.$store.getters.activeNode;
+			},
+			displayMode(): IRunDataDisplayMode {
+				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
 			},
 			outputIndex(): number {
 				return this.overrideOutputIndex !== undefined ? this.overrideOutputIndex : this.currentOutputIndex;
@@ -532,9 +535,9 @@ export default mixins(
 					items_total: this.dataCount,
 				});
 			},
-			onDisplayModeChange(displayMode: string) {
+			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.displayMode = displayMode;
+				this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {
@@ -600,11 +603,12 @@ export default mixins(
 				// Reset the selected output index every time another node gets selected
 				this.currentOutputIndex = 0;
 				this.refreshDataSize();
-				if (this.displayMode === 'binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'table';
-					}
+				this.closeBinaryDataDisplay();
+				if (this.binaryData.length > 0) {
+					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'binary'});
+				}
+				else if (this.displayMode === 'binary') {
+					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'table'});
 				}
 			},
 			closeBinaryDataDisplay () {
