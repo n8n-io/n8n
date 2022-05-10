@@ -126,11 +126,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			triggerWaitingWarningEnabled: false,
 			windowWidth: 0,
 			isDragging: false,
+			dragStartPosition: 0,
 			sessionId: '',
 		};
 	},
 	mounted() {
 		this.setTotalWidth();
+		this.resetSessionId();
 		window.addEventListener('resize', this.setTotalWidth);
 	},
 	destroyed() {
@@ -362,10 +364,17 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
 		},
+		getRelativePosition() {
+			const current = this.mainPanelFinalPositionPx + MAIN_PANEL_WIDTH / 2 - this.windowWidth / 2;
+
+			return Math.floor(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2) * 100);
+		},
 		onDragStart(e: MouseEvent) {
 			e.preventDefault();
 			e.stopPropagation();
 			this.isDragging = true;
+
+			this.dragStartPosition = this.getRelativePosition();
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
@@ -384,6 +393,15 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
+
+			this.$telemetry.track('User moved parameters pane', {
+				window_width: this.windowWidth,
+				start_position: this.dragStartPosition,
+				end_position: this.getRelativePosition(),
+				node_type: this.activeNodeType ? this.activeNodeType.name : '',
+				session_id: this.sessionId,
+				workflow_id: this.$store.getters.workflowId,
+			});
 
 			setTimeout(() => {
 				this.isDragging = false;
@@ -425,7 +443,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return;
 			}
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-			this.$telemetry.track('User closed node modal', { node_type: this.activeNodeType ? this.activeNodeType.name : '', session_id: this.sessionId, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User closed node modal', {
+				node_type: this.activeNodeType ? this.activeNodeType.name : '',
+				session_id: this.sessionId,
+				workflow_id: this.$store.getters.workflowId,
+			});
 			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
 		},
