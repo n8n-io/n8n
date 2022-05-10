@@ -10,6 +10,7 @@ import {
 	matchMissingPackages,
 	matchPackagesWithUpdates,
 	executeCommand,
+	checkPackageStatus,
 } from '../CommunityNodes/helpers';
 import {
 	getAllInstalledPackages,
@@ -74,6 +75,15 @@ nodesController.post(
 			);
 		}
 
+		const packageStatus = await checkPackageStatus(name);
+		if (packageStatus.status !== 'OK') {
+			throw new ResponseHelper.ResponseError(
+				`Package "${name}" has been banned from n8n's repository and will not be installed`,
+				undefined,
+				400,
+			);
+		}
+
 		try {
 			const nodes = await LoadNodesAndCredentials().loadNpmModule(name);
 
@@ -122,8 +132,12 @@ nodesController.get(
 			}
 		}
 		let hydratedPackages = matchPackagesWithUpdates(packages, pendingUpdates);
-		if (config.get('nodes.packagesMissing')) {
-			hydratedPackages = matchMissingPackages(packages, config.get('nodes.packagesMissing'));
+		try {
+			if (config.get('nodes.packagesMissing')) {
+				hydratedPackages = matchMissingPackages(packages, config.get('nodes.packagesMissing'));
+			}
+		} catch (error) {
+			// Do nothing if setting is missing
 		}
 		return hydratedPackages;
 	}),

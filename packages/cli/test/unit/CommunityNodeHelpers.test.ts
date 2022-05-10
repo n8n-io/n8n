@@ -1,5 +1,5 @@
-import { matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages } from '../../src/CommunityNodes/helpers';
-import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_NOT_FOUND_ERROR, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
+import { checkPackageStatus, matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages } from '../../src/CommunityNodes/helpers';
+import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_NOT_FOUND_ERROR, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 jest.mock('fs/promises');
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
@@ -10,6 +10,10 @@ import { InstalledPackages } from '../../src/databases/entities/InstalledPackage
 import { installedNodePayload, installedPackagePayload } from '../integration/shared/utils';
 import { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
 import { NpmUpdatesAvailable } from '../../src/Interfaces';
+import { randomName } from '../integration/shared/random';
+
+jest.mock('axios');
+import axios from 'axios';
 
 describe('CommunityNodesHelper', () => {
 
@@ -217,6 +221,34 @@ describe('CommunityNodesHelper', () => {
 
 			expect(matchedPackages[0].failedLoading).toBe(true);
 			expect(matchedPackages[1].failedLoading).toBeUndefined();
+		});
+	});
+
+	describe('checkPackageStatus', () => {
+		it('Should call axios.post', async () => {
+			const packageName = NODE_PACKAGE_PREFIX + randomName();
+			await checkPackageStatus(packageName);
+			expect(axios.post).toHaveBeenCalled();
+		});
+
+		it('Should not fail if request fails', async () => {
+			const packageName = NODE_PACKAGE_PREFIX + randomName();
+			axios.post = jest.fn(() => {
+				throw new Error('Something went wrong');
+			});
+			const result = await checkPackageStatus(packageName);
+			expect(result.status).toBe(NPM_PACKAGE_STATUS_GOOD);
+		});
+
+		it('Should warn if package is banned', async () => {
+			const packageName = NODE_PACKAGE_PREFIX + randomName();
+			// @ts-ignore
+			axios.post = jest.fn(() => {
+				return { data: { status: 'Banned', reason: 'Not good' } };
+			});
+			const result = await checkPackageStatus(packageName);
+			expect(result.status).toBe('Banned');
+			expect(result.reason).toBe('Not good');
 		});
 	});
 });
