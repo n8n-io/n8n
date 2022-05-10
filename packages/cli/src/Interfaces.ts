@@ -678,3 +678,8 @@ export type NpmUpdatesAvailable = {
 		location: string;
 	};
 };
+
+export type NpmPackageStatusCheck = {
+	status: 'OK' | 'Banned';
+	reason?: string;
+};

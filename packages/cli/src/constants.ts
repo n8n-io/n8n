@@ -18,3 +18,5 @@ export const RESPONSE_ERROR_MESSAGES = {
 export const AUTH_COOKIE_NAME = 'n8n-auth';
 
 export const NPM_PACKAGE_NOT_FOUND_ERROR = '404 Not Found';
+
+export const NPM_PACKAGE_STATUS_GOOD = 'OK';
