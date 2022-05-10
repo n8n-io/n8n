@@ -116,6 +116,8 @@ export default mixins(
 					workflow_id: this.$store.getters.workflowId,
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
+					has_mapping: this.value.includes('$'),
+					has_parameter: this.value.includes('$parameter'),
 				});
 			}
 		},
