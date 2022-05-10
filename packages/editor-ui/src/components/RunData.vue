@@ -186,6 +186,7 @@
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
+				@current-change="onCurrentPageChange"
 				:total="dataCount">
 			</el-pagination>
 
@@ -481,6 +482,17 @@ export default mixins(
 			},
 			unlinkRun() {
 				this.$emit('unlinkRun');
+			},
+			onCurrentPageChange() {
+				this.$telemetry.track('User changed ndv page', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					page_selected: this.currentPage,
+					page_size: this.pageSize,
+					items_total: this.dataCount,
+				});
 			},
 			onPageSizeChange(pageSize: number) {
 				this.pageSize = pageSize;
