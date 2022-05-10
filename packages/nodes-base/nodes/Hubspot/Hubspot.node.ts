@@ -1102,9 +1102,6 @@ export class Hubspot implements INodeType {
 
 		if (resource === 'customObject' && operation.includes('batch')) {
 			const objectType = this.getNodeParameter('objectType', 0, '') as string;
-			if (!this.continueOnFail()) {
-				throw new Error('Batch operations only work with continue on fail set to true.');
-			}
 
 			// The maximum batch size is 10 for contacts and 100 for everything else.
 			// https://developers.hubspot.com/docs/api/crm/understanding-the-crm
@@ -1131,10 +1128,13 @@ export class Hubspot implements INodeType {
 
 						const results = response.results;
 
-						results.push(...getErrorsFromBatchResponse(response));
-
-						return results;
+						// results.push(...getErrorsFromBatchResponse(response));
+						if(response.errors && !this.continueOnFail()) {
+							throw new NodeApiError(this.getNode(), response.errors);
+						}
+						return [...results, ...response.errors];
 					}
+
 					if (operation === 'batchDelete') {
 						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
 						const errors: Array<{ error: string, errorDetails: unknown }> = [];
@@ -1248,53 +1248,16 @@ export class Hubspot implements INodeType {
 
 				} catch (error) {
 					if (this.continueOnFail()) {
-						if (resource === 'customObject') {
-							const errorDetails: Record<string, unknown> = {
-								httpCode: (error as JsonObject).httpCode,
-								timestamp: (error as JsonObject).timestamp,
-								message: (error as JsonObject).message,
-							};
-
-							try {
-								const cause = (error as NodeApiError).cause as Error;
-								errorDetails.response = cause?.message;
-								const causeJsonString = cause.message?.split(' - ')[1];
-								errorDetails.response = causeJsonString;
-								const responseJson = JSON.parse(causeJsonString);
-								errorDetails.response = responseJson;
-
-								// This does not always work, because sometimes the response contains a javascript object as a string and not JSON
-								const parseMessage = (errorMessage: string) => {
-									try {
-										const responseMessageText = errorMessage?.slice(0, errorMessage?.indexOf(': '));
-										const responseMessageDataString = errorMessage?.slice(errorMessage?.indexOf(': ') + 2);
-										const responseMessageData = JSON.parse(responseMessageDataString);
-										const responseMessageObject = {
-											text: responseMessageText,
-											data: responseMessageData,
-										};
-
-										responseMessageObject.data.map((data: { message?: string } & unknown) => typeof data.message === 'string' ? { ...data, message: parseMessage(data.message) } : data);
-										return responseMessageObject;
-									} catch (e) {
-										return errorMessage;
-									}
-								};
-
-								const errorMessage = (errorDetails.response as { message: string })?.message;
-								(errorDetails.response as { message: unknown }).message = parseMessage(errorMessage);
-							} catch (e) { }
-
-							return [{ error: (error as JsonObject).message, errorDetails }];
-						}
-						return [{ error: (error as JsonObject).message }];
+						returnData.push({ error: (error as JsonObject).message });
 					}
 					throw error;
 				}
 			});
 
-			const results = await Promise.all(resultsPromises);
-			return [this.helpers.returnJsonArray(results.flat())];
+			const results = (await Promise.all(resultsPromises)).flat();
+			results.forEach(item => returnData.push(item));
+			return [this.helpers.returnJsonArray(returnData)];
+
 		}
 		else if (resource === 'contactList') {
 			try {

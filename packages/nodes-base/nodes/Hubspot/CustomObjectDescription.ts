@@ -787,7 +787,6 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				required: false,
 				options: [
 					{
 						name: 'filterGroupsValues',
@@ -802,7 +801,6 @@ export const customObjectFields: INodeProperties[] = [
 								typeOptions: {
 									multipleValues: true,
 								},
-								required: false,
 								options: [
 									{
 										name: 'filterValues',
