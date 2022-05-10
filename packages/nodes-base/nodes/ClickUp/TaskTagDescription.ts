@@ -94,7 +94,7 @@ export const taskTagFields: INodeProperties[] = [
 				name: 'custom_task_ids',
 				type: 'boolean',
 				default: false,
-				description: `If you want to reference a task by it's custom task id, this value must be true`,
+				description: 'If you want to reference a task by it\'s custom task ID, this value must be true',
 			},
 			{
 				displayName: 'Team ID',
@@ -104,7 +104,7 @@ export const taskTagFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTeams',
 				},
 				default: '',
-				description: `Only used when the parameter is set to custom_task_ids=true`,
+				description: 'Only used when the parameter is set to custom_task_ids=true',
 			},
 		],
 	},

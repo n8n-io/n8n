@@ -23,7 +23,7 @@ export const channelSearchDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team.',
+		description: 'The Mattermost Team',
 	},
 	{
 		displayName: 'Search Term',
@@ -49,7 +49,7 @@ export const channelSearchDescription: ChannelProperties = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				operation: [
@@ -66,7 +66,7 @@ export const channelSearchDescription: ChannelProperties = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

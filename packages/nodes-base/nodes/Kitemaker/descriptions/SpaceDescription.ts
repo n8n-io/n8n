@@ -13,7 +13,7 @@ export const spaceOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Retrieve data on all the spaces in the logged-in user's organization.`,
+				description: 'Retrieve data on all the spaces in the logged-in user\'s organization',
 			},
 		],
 		displayOptions: {
@@ -32,7 +32,7 @@ export const spaceFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -49,7 +49,7 @@ export const spaceFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

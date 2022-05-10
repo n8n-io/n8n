@@ -20,12 +20,12 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a task`,
+				description: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a task`,
+				description: 'Delete a task',
 			},
 			{
 				name: 'Get',
@@ -40,7 +40,7 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a task`,
+				description: 'Update a task',
 			},
 		],
 		default: 'getAll',
@@ -67,7 +67,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your tasks.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -89,7 +89,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -111,7 +111,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active tasks and false to return inactive tasks.',
+				description: 'Pass true to only return active tasks and false to return inactive tasks',
 			},
 			{
 				displayName: 'Page',
@@ -121,14 +121,14 @@ export const taskFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination.',
+				description: 'The page number to use in pagination',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return tasks belonging to the task with the given ID.',
+				description: 'Only return tasks belonging to the task with the given ID',
 			},
 		],
 	},
@@ -150,7 +150,7 @@ export const taskFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the task you are retrieving.',
+		description: 'The ID of the task you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -170,7 +170,7 @@ export const taskFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the task you want to delete.',
+		description: 'The ID of the task you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -190,7 +190,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the task.',
+		description: 'The name of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -255,7 +255,7 @@ export const taskFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the task you want to update.',
+		description: 'The ID of the task you want to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -306,7 +306,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the task.',
+				description: 'Name of the task',
 			},
 		],
 	},

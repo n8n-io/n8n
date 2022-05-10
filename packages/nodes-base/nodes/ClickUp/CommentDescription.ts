@@ -137,7 +137,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
-				description: 'If true, creation notifications will be sent to everyone including the creator of the comment.',
+				description: 'If true, creation notifications will be sent to everyone including the creator of the comment',
 			},
 		],
 	},
@@ -232,7 +232,7 @@ export const commentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
