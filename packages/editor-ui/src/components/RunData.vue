@@ -86,7 +86,7 @@
 				<n8n-button
 					type="outline"
 					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
-					@click="showData = true"
+					@click="showTooMuchData"
 				/>
 			</div>
 
@@ -477,6 +477,16 @@ export default mixins(
 			},
 		},
 		methods: {
+			showTooMuchData() {
+				this.showData = true;
+				this.$telemetry.track('User clicked ndv button', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					type: 'showTooMuchData',
+				});
+			},
 			linkRun() {
 				this.$emit('linkRun');
 			},

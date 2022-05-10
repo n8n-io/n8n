@@ -179,7 +179,7 @@ export default Vue.extend({
 				node_type: this.node.type,
 				workflow_id: this.$store.getters.workflowId,
 				session_id: this.sessionId,
-				pane: 'main',
+				pane: 'output',
 				type: 'settings',
 			});
 		},

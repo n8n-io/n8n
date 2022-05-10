@@ -141,6 +141,15 @@ export default mixins(
 	methods: {
 		onNodeExecute() {
 			this.$emit('execute');
+			if (this.activeNode) {
+				this.$telemetry.track('User clicked ndv button', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: 'input',
+					type: 'executePrevious',
+				});
+			}
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
@@ -161,7 +170,7 @@ export default mixins(
 					node_type: this.activeNode.type,
 					workflow_id: this.$store.getters.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: 'input',
 					type: 'notConnectedHelp',
 				});
 			}
