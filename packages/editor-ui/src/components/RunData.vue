@@ -488,6 +488,16 @@ export default mixins(
 				if (maxPage < this.currentPage) {
 					this.currentPage = maxPage;
 				}
+
+				this.$telemetry.track('User changed ndv item page', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					page_selected: this.currentPage,
+					page_size: this.pageSize,
+					items_total: this.dataCount,
+				});
 			},
 			onDisplayModeChange(displayMode: string) {
 				const previous = this.displayMode;
