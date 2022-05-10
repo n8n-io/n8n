@@ -137,7 +137,7 @@ export class Ghost implements INodeType {
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
-						value: tag.id,
+						value: tag.name,
 					});
 				}
 				return returnData;

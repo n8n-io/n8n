@@ -303,7 +303,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -892,7 +892,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
