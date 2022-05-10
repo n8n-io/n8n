@@ -849,6 +849,9 @@ export interface IUiState {
 	};
 	isPageLoading: boolean;
 	currentView: string;
+	ndv: {
+		sessionId: string;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';

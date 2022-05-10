@@ -88,6 +88,9 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
+		ndv: {
+			sessionId: '',
+		},
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -109,6 +112,7 @@ const module: Module<IUiState, IRootState> = {
 			return (name: string) => state.modals[name].mode;
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
+		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -142,6 +146,12 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
+		},
+		setNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
+		},
+		resetNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', '');
 		},
 	},
 	actions: {

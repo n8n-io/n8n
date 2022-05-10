@@ -129,12 +129,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			windowWidth: 0,
 			isDragging: false,
 			dragStartPosition: 0,
-			sessionId: '',
 		};
 	},
 	mounted() {
 		this.setTotalWidth();
-		this.resetSessionId();
+		this.$store.commit('ui/setNDVSessionId');
 		window.addEventListener('resize', this.setTotalWidth);
 	},
 	destroyed() {
@@ -142,6 +141,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
+		sessionId(): string {
+			return this.$store.getters['ui/ndvSessionId'];
+		},
 		mainPanelPosition(): number {
 			if (this.isTriggerNode) {
 				return 0;
@@ -339,7 +341,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.triggerWaitingWarningEnabled = false;
 				this.setTotalWidth();
 
-				this.resetSessionId();
+				this.$store.commit('ui/setNDVSessionId');
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
 				});
@@ -375,9 +377,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
-		resetSessionId() {
-			this.sessionId = `ndv-${Math.random().toString(36).slice(-8)}`;
-		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
 		},
@@ -478,6 +477,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			});
 			this.triggerWaitingWarningEnabled = false;
 			this.$store.commit('setActiveNode', null);
+			this.$store.commit('ui/resetNDVSessionId');
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
