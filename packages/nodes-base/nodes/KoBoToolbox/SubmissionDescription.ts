@@ -167,13 +167,12 @@ export const submissionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		required: false,
 		typeOptions: {
 			maxValue: 3000,
 		},
@@ -191,7 +190,7 @@ export const submissionFields: INodeProperties[] = [
 			},
 		},
 		default: 100,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

@@ -274,7 +274,7 @@ export const entryFields: INodeProperties[] = [
 				},
 				default: '',
 				placeholder: 'name:asc',
-				description: `Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.`,
+				description: 'Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.',
 			},
 			{
 				displayName: 'Where (JSON)',
@@ -326,6 +326,7 @@ export const entryFields: INodeProperties[] = [
 		},
 		default: 'id',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 		description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 	},
 	{

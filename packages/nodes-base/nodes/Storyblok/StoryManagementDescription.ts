@@ -334,7 +334,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space.',
+		description: 'The name of the space',
 	},
 	{
 		displayName: 'Story ID',
@@ -355,7 +355,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story.',
+		description: 'Numeric ID of the story',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -383,7 +383,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space.',
+		description: 'The name of the space',
 	},
 	{
 		displayName: 'Story ID',
@@ -404,7 +404,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story.',
+		description: 'Numeric ID of the story',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -452,7 +452,7 @@ export const storyManagementFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -479,7 +479,7 @@ export const storyManagementFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -506,7 +506,7 @@ export const storyManagementFields: INodeProperties[] = [
 				name: 'starts_with',
 				type: 'string',
 				default: '',
-				description: 'Filter by slug.',
+				description: 'Filter by slug',
 			},
 		],
 	},
@@ -536,7 +536,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space.',
+		description: 'The name of the space',
 	},
 	{
 		displayName: 'Story ID',
@@ -557,7 +557,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story.',
+		description: 'Numeric ID of the story',
 	},
 	{
 		displayName: 'Options',
@@ -584,14 +584,14 @@ export const storyManagementFields: INodeProperties[] = [
 				name: 'releaseId',
 				type: 'string',
 				default: '',
-				description: 'Numeric ID of release.',
+				description: 'Numeric ID of release',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: 'Language code to publish the story individually (must be enabled in the space settings).',
+				description: 'Language code to publish the story individually (must be enabled in the space settings)',
 			},
 		],
 	},
@@ -621,7 +621,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space.',
+		description: 'The name of the space',
 	},
 	{
 		displayName: 'Story ID',
@@ -642,6 +642,6 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story.',
+		description: 'Numeric ID of the story',
 	},
 ];

@@ -78,7 +78,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -102,7 +102,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to create the row in.',
+		description: 'The table to create the row in',
 	},
 	{
 		displayName: 'Options',
@@ -126,14 +126,14 @@ export const tableFields: INodeProperties[] = [
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
-				description: `If true, the API will not attempt to parse the data in any way.`,
+				description: 'If true, the API will not attempt to parse the data in any way',
 			},
 			{
 				displayName: 'Key Columns',
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,)',
+				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,).',
 			},
 		],
 	},
@@ -159,7 +159,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -183,7 +183,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Row ID',
@@ -225,14 +225,14 @@ export const tableFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
+				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -253,7 +253,7 @@ export const tableFields: INodeProperties[] = [
 						value: 'rich',
 					},
 				],
-				description: `The format that cell values are returned as.`,
+				description: 'The format that cell values are returned as',
 			},
 		],
 	},
@@ -279,7 +279,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -303,7 +303,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from.',
+		description: 'The table to get the rows from',
 	},
 	{
 		displayName: 'Return All',
@@ -320,7 +320,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -344,7 +344,7 @@ export const tableFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -371,14 +371,14 @@ export const tableFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
+				description: 'Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you\'d like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you\'d like to use a string, you must surround it in quotes (e.g., "groceries").',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Sort By',
@@ -395,14 +395,14 @@ export const tableFields: INodeProperties[] = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.`,
+				description: 'Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.',
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
+				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -423,14 +423,14 @@ export const tableFields: INodeProperties[] = [
 						value: 'rich',
 					},
 				],
-				description: `The format that cell values are returned as.`,
+				description: 'The format that cell values are returned as',
 			},
 			{
 				displayName: 'Visible Only',
 				name: 'visibleOnly',
 				type: 'boolean',
 				default: false,
-				description: `If true, returns only visible rows and columns for the table.`,
+				description: 'If true, returns only visible rows and columns for the table',
 			},
 		],
 	},
@@ -456,7 +456,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -480,7 +480,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to delete the row in.',
+		description: 'The table to delete the row in',
 	},
 	{
 		displayName: 'Row ID',
@@ -498,7 +498,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Row IDs to delete.',
+		description: 'Row IDs to delete',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:pushButton                         */
@@ -522,7 +522,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -546,7 +546,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Row ID',
@@ -612,7 +612,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -636,7 +636,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Column ID',
@@ -654,7 +654,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:getAllColumns                      */
@@ -678,7 +678,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Table',
@@ -702,7 +702,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from.',
+		description: 'The table to get the row from',
 	},
 	{
 		displayName: 'Return All',
@@ -719,7 +719,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -743,6 +743,6 @@ export const tableFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

@@ -42,7 +42,6 @@ export class Discord implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				required: false,
 				placeholder: 'Hello World!',
 			},
 			{
@@ -71,7 +70,6 @@ export class Discord implements INodeType {
 						name: 'avatarUrl',
 						type: 'string',
 						default: '',
-						required: false,
 					},
 					{
 						displayName: 'Components',
@@ -86,7 +84,6 @@ export class Discord implements INodeType {
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
-						required: false,
 					},
 					{
 						displayName: 'Flags',
@@ -106,7 +103,6 @@ export class Discord implements INodeType {
 						name: 'username',
 						type: 'string',
 						default: '',
-						required: false,
 						placeholder: 'User',
 					},
 					{
@@ -114,7 +110,6 @@ export class Discord implements INodeType {
 						name: 'tts',
 						type: 'boolean',
 						default: false,
-						required: false,
 						description: 'Should this message be sent as a Text To Speech message?',
 					},
 				],

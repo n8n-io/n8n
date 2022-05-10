@@ -19,6 +19,6 @@ export const userGetByEmailDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: `User's email`,
+		description: 'User\'s email',
 	},
 ];

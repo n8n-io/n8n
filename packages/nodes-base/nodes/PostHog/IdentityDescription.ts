@@ -46,7 +46,7 @@ export const identityFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The identity's distinct ID.`,
+		description: 'The identity\'s distinct ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -106,7 +106,7 @@ export const identityFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: `If not set, it'll automatically be set to the current time.`,
+				description: 'If not set, it\'ll automatically be set to the current time',
 			},
 		],
 	},

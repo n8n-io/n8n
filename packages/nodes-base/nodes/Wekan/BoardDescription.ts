@@ -66,7 +66,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The title of the board.',
+		description: 'The title of the board',
 	},
 	{
 		displayName: 'Owner',
@@ -87,7 +87,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The user ID in Wekan.',
+		description: 'The user ID in Wekan',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -111,14 +111,14 @@ export const boardFields: INodeProperties[] = [
 				name: 'isActive',
 				type: 'boolean',
 				default: false,
-				description: 'Set the board active.',
+				description: 'Set the board active',
 			},
 			{
 				displayName: 'Admin',
 				name: 'isAdmin',
 				type: 'boolean',
 				default: false,
-				description: 'Set the owner an admin of the board.',
+				description: 'Set the owner an admin of the board',
 			},
 			{
 				displayName: 'Color',
@@ -151,21 +151,21 @@ export const boardFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The color of the board.',
+				description: 'The color of the board',
 			},
 			{
 				displayName: 'Comment only',
 				name: 'isCommentOnly',
 				type: 'boolean',
 				default: false,
-				description: 'Only enable comments.',
+				description: 'Only enable comments',
 			},
 			{
 				displayName: 'No comments',
 				name: 'isNoComments',
 				type: 'boolean',
 				default: false,
-				description: 'Disable comments.',
+				description: 'Disable comments',
 			},
 			{
 				displayName: 'Permission',
@@ -182,14 +182,14 @@ export const boardFields: INodeProperties[] = [
 					},
 				],
 				default: 'private',
-				description: 'Set the board permission.',
+				description: 'Set the board permission',
 			},
 			{
 				displayName: 'Worker',
 				name: 'isWorker',
 				type: 'boolean',
 				default: false,
-				description: 'Only move cards, assign himself to card and comment.',
+				description: 'Only move cards, assign himself to card and comment',
 			},
 		],
 	},
@@ -213,7 +213,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to delete.',
+		description: 'The ID of the board to delete',
 	},
 
 	// ----------------------------------
@@ -235,7 +235,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to get.',
+		description: 'The ID of the board to get',
 	},
 
 	// ----------------------------------
@@ -260,7 +260,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the user that boards are attached.',
+		description: 'The ID of the user that boards are attached',
 	},
 	{
 		displayName: 'Return All',
@@ -277,7 +277,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -301,7 +301,7 @@ export const boardFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 ];

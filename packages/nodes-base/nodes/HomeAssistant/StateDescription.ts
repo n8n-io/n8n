@@ -79,7 +79,7 @@ export const stateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -103,7 +103,7 @@ export const stateFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -128,7 +128,7 @@ export const stateFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which a state will be created.',
+		description: 'The entity ID for which a state will be created',
 	},
 	{
 		displayName: 'State',
@@ -176,14 +176,14 @@ export const stateFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the attribute.',
+						description: 'Name of the attribute',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the attribute.',
+						description: 'Value of the attribute',
 					},
 				],
 			},

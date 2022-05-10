@@ -82,7 +82,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: '',
-				description: `The name or number the message should be sent from`,
+				description: 'The name or number the message should be sent from',
 			},
 			{
 				displayName: 'To',
@@ -99,7 +99,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: '',
-				description: `The number that the message should be sent to. Numbers are specified in E.164 format.`,
+				description: 'The number that the message should be sent to. Numbers are specified in E.164 format.',
 			},
 			// {
 			// 	displayName: 'Type',
@@ -284,7 +284,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: '',
-				description: `The body of the message being sent`,
+				description: 'The body of the message being sent',
 			},
 			// {
 			// 	displayName: 'VCard',
@@ -362,7 +362,7 @@ export class Vonage implements INodeType {
 						name: 'client-ref',
 						type: 'string',
 						default: '',
-						description: 'You can optionally include your own reference of up to 40 characters.',
+						description: 'You can optionally include your own reference of up to 40 characters',
 					},
 					{
 						displayName: 'Message Class',
@@ -401,7 +401,7 @@ export class Vonage implements INodeType {
 						name: 'status-report-req',
 						type: 'boolean',
 						default: false,
-						description: 'Boolean indicating if you like to receive a Delivery Receipt.',
+						description: 'Boolean indicating if you like to receive a Delivery Receipt',
 					},
 					{
 						displayName: 'TTL (in minutes)',

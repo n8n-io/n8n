@@ -35,7 +35,7 @@ export class RenameKeys implements INodeType {
 				displayName: 'Keys',
 				name: 'keys',
 				placeholder: 'Add new key',
-				description: 'Adds a key which should be renamed.',
+				description: 'Adds a key which should be renamed',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,

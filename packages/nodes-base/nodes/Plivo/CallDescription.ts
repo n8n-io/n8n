@@ -36,7 +36,7 @@ export const callFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: '+14156667777',
-		description: 'Caller ID for the call to make.',
+		description: 'Caller ID for the call to make',
 		required: true,
 		displayOptions: {
 			show: {
@@ -56,7 +56,7 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		placeholder: '+14156667778',
 		required: true,
-		description: 'Phone number to make the call to.',
+		description: 'Phone number to make the call to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +73,7 @@ export const callFields: INodeProperties[] = [
 		name: 'answer_method',
 		type: 'options',
 		required: true,
-		description: 'HTTP verb to be used when invoking the Answer URL.',
+		description: 'HTTP verb to be used when invoking the Answer URL',
 		default: 'POST',
 		options: [
 			{

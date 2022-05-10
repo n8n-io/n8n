@@ -72,13 +72,12 @@ export const formFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		required: false,
 		typeOptions: {
 			maxValue: 3000,
 		},
@@ -96,7 +95,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: 1000,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -140,7 +139,6 @@ export const formFields: INodeProperties[] = [
 								displayName: 'Order By',
 								name: 'ordering',
 								type: 'options',
-								required: false,
 								default: 'date_modified',
 								options: [
 									{
@@ -194,7 +192,6 @@ export const formFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: 'asset_type:survey',
-				required: false,
 				description: 'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see <a href="https://github.com/kobotoolbox/kpi#searching" target="_blank">docs</a> for more details',
 			},
 		],
