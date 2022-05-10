@@ -16,7 +16,7 @@ import {
 	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
 
-import * as pgPromise from 'pg-promise';
+import pgPromise from 'pg-promise';
 
 export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +28,6 @@ export class TimescaleDb implements INodeType {
 		description: 'Add and update data in TimescaleDB',
 		defaults: {
 			name: 'TimescaleDB',
-			color: '#fdb515',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -116,7 +115,7 @@ export class TimescaleDb implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -131,8 +130,7 @@ export class TimescaleDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -181,8 +179,8 @@ export class TimescaleDb implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -197,8 +195,7 @@ export class TimescaleDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 			// ----------------------------------
 			//         insert,update
@@ -213,7 +210,7 @@ export class TimescaleDb implements INodeType {
 					},
 				},
 				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
+				description: 'Comma-separated list of the fields that the operation will return',
 			},
 			// ----------------------------------
 			//         additional fields
@@ -262,7 +259,7 @@ export class TimescaleDb implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},
@@ -271,10 +268,6 @@ export class TimescaleDb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('timescaleDb');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const pgp = pgPromise();
 

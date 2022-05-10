@@ -15,6 +15,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.circleCi/"
 			}
+		],
+		"generic": [
+			{
+				"label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI",
+				"icon": "🎡",
+				"url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/"
+			}
 		]
 	}
 }

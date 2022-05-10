@@ -13,6 +13,7 @@ import { INode, IStatusCodeMessages, JsonObject } from '.';
  * Top-level properties where an error message can be found in an API response.
  */
 const ERROR_MESSAGE_PROPERTIES = [
+	'cause',
 	'error',
 	'message',
 	'Message',

@@ -53,7 +53,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Control ID',
@@ -71,7 +71,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The control to get the row from.',
+		description: 'The control to get the row from',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   control:getAll                           */
@@ -95,7 +95,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Return All',
@@ -112,7 +112,7 @@ export const controlFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -136,6 +136,6 @@ export const controlFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

@@ -47,7 +47,7 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		onResize() {
-			this.callDebounced("onResizeEnd", 50);
+			this.callDebounced("onResizeEnd", { debounceTime: 50 });
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;

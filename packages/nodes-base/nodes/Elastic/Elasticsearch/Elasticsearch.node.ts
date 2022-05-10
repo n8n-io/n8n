@@ -40,7 +40,6 @@ export class Elasticsearch implements INodeType {
 		description: 'Consume the Elasticsearch API',
 		defaults: {
 			name: 'Elasticsearch',
-			color: '#f3d337',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	FormatDueDatetime,
 	todoistApiRequest,
 } from './GenericFunctions';
 
@@ -42,7 +43,6 @@ export class Todoist implements INodeType {
 		description: 'Consume Todoist API',
 		defaults: {
 			name: 'Todoist',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -96,7 +96,7 @@ export class Todoist implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-						description: 'Task resource.',
+						description: 'Task resource',
 					},
 				],
 				default: 'task',
@@ -173,7 +173,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The project you want to operate on.',
+				description: 'The project you want to operate on',
 			},
 			{
 				displayName: 'Labels',
@@ -193,8 +193,6 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: [],
-				required: false,
-				description: 'Labels',
 			},
 			{
 				displayName: 'Content',
@@ -260,14 +258,14 @@ export class Todoist implements INodeType {
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'A description for the task.',
+						description: 'A description for the task',
 					},
 					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
 						type: 'dateTime',
 						default: '',
-						description: 'Specific date and time in RFC3339 format in UTC.',
+						description: 'Specific date and time in RFC3339 format in UTC',
 					},
 					{
 						displayName: 'Due String',
@@ -277,16 +275,22 @@ export class Todoist implements INodeType {
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
+						displayName: 'Due String Locale',
+						name: 'dueLang',
+						type: 'string',
+						default: '',
+						description: '2-letter code specifying language in case due_string is not written in English',
+					},
+					{
 						displayName: 'Priority',
 						name: 'priority',
 						type: 'number',
 						typeOptions: {
-							numberStepSize: 1,
 							maxValue: 4,
 							minValue: 1,
 						},
 						default: 1,
-						description: 'Task priority from 1 (normal) to 4 (urgent).',
+						description: 'Task priority from 1 (normal) to 4 (urgent)',
 					},
 					{
 						displayName: 'Section',
@@ -299,7 +303,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: {},
-						description: 'The section you want to operate on.',
+						description: 'The section you want to operate on',
 					},
 				],
 			},
@@ -318,7 +322,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -342,7 +346,7 @@ export class Todoist implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -373,7 +377,7 @@ export class Todoist implements INodeType {
 						name: 'ids',
 						type: 'string',
 						default: '',
-						description: 'A list of the task IDs to retrieve, this should be a comma separated list.',
+						description: 'A list of the task IDs to retrieve, this should be a comma-separated list',
 					},
 					{
 						displayName: 'Label ID',
@@ -383,7 +387,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: {},
-						description: 'Filter tasks by label.',
+						description: 'Filter tasks by label',
 					},
 					{
 						displayName: 'Lang',
@@ -400,7 +404,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'Filter tasks by project id.',
+						description: 'Filter tasks by project ID',
 					},
 				],
 			},
@@ -433,14 +437,14 @@ export class Todoist implements INodeType {
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'A description for the task.',
+						description: 'A description for the task',
 					},
 					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
 						type: 'dateTime',
 						default: '',
-						description: 'Specific date and time in RFC3339 format in UTC.',
+						description: 'Specific date and time in RFC3339 format in UTC',
 					},
 					{
 						displayName: 'Due String',
@@ -450,6 +454,13 @@ export class Todoist implements INodeType {
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
+						displayName: 'Due String Locale',
+						name: 'dueLang',
+						type: 'string',
+						default: '',
+						description: '2-letter code specifying language in case due_string is not written in English',
+					},
+					{
 						displayName: 'Labels',
 						name: 'labels',
 						type: 'multiOptions',
@@ -457,20 +468,17 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: [],
-						required: false,
-						description: 'Labels',
 					},
 					{
 						displayName: 'Priority',
 						name: 'priority',
 						type: 'number',
 						typeOptions: {
-							numberStepSize: 1,
 							maxValue: 4,
 							minValue: 1,
 						},
 						default: 1,
-						description: 'Task priority from 1 (normal) to 4 (urgent).',
+						description: 'Task priority from 1 (normal) to 4 (urgent)',
 					},
 				],
 			},
@@ -544,7 +552,7 @@ export class Todoist implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 
@@ -573,11 +581,15 @@ export class Todoist implements INodeType {
 						}
 
 						if (options.dueDateTime) {
-							body.due_datetime = options.dueDateTime as string;
+							body.due_datetime = FormatDueDatetime(options.dueDateTime as string);
 						}
 
 						if (options.dueString) {
 							body.due_string = options.dueString as string;
+						}
+
+						if (options.dueLang) {
+							body.due_lang = options.dueLang as string;
 						}
 
 						if (labels !== undefined && labels.length !== 0) {
@@ -670,11 +682,15 @@ export class Todoist implements INodeType {
 						}
 
 						if (updateFields.dueDateTime) {
-							body.due_datetime = updateFields.dueDateTime as string;
+							body.due_datetime = FormatDueDatetime(updateFields.dueDateTime as string);
 						}
 
 						if (updateFields.dueString) {
 							body.due_string = updateFields.dueString as string;
+						}
+
+						if (updateFields.dueLang) {
+							body.due_lang = updateFields.dueLang as string;
 						}
 
 						if (updateFields.labels !== undefined &&

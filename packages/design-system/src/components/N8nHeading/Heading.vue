@@ -1,5 +1,5 @@
 <template functional>
-	<component :is="props.tag" :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
+	<component :is="props.tag" :class="$options.methods.getClasses(props, $style)" :style="$options.methods.getStyles(props)">
 		<slot></slot>
 	</component>
 </template>
@@ -25,15 +25,22 @@ export default {
 			type: String,
 			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'].includes(value),
 		},
+		align: {
+			type: String,
+			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
+		},
 	},
 	methods: {
-		getClass(props: {size: string, bold: boolean}) {
-			return `heading-${props.size}${props.bold ? '-bold' : '-regular'}`;
+		getClasses(props: {size: string, bold: boolean}, $style: any) {
+			return {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
 		},
 		getStyles(props: {color: string}) {
 			const styles = {} as any;
 			if (props.color) {
 				styles.color = `var(--color-${props.color})`;
+			}
+			if (props.align) {
+				styles['text-align'] = props.align;
 			}
 			return styles;
 		},
@@ -50,79 +57,29 @@ export default {
 	font-weight: var(--font-weight-regular);
 }
 
-.heading-2xlarge {
+.size-2xlarge {
 	font-size: var(--font-size-2xl);
 	line-height: var(--font-line-height-compact);
 }
 
-.heading-2xlarge-regular {
-	composes: regular;
-	composes: heading-2xlarge;
-}
-
-.heading-2xlarge-bold {
-	composes: bold;
-	composes: heading-2xlarge;
-}
-
-.heading-xlarge {
+.size-xlarge {
 	font-size: var(--font-size-xl);
 	line-height: var(--font-line-height-compact);
 }
 
-.heading-xlarge-regular {
-	composes: regular;
-	composes: heading-xlarge;
-}
-
-.heading-xlarge-bold {
-	composes: bold;
-	composes: heading-xlarge;
-}
-
-.heading-large {
+.size-large {
 	font-size: var(--font-size-l);
 	line-height: var(--font-line-height-loose);
 }
 
-.heading-large-regular {
-	composes: regular;
-	composes: heading-large;
-}
-
-.heading-large-bold {
-	composes: bold;
-	composes: heading-large;
-}
-
-.heading-medium {
+.size-medium {
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-loose);
 }
 
-.heading-medium-regular {
-	composes: regular;
-	composes: heading-medium;
-}
-
-.heading-medium-bold {
-	composes: bold;
-	composes: heading-medium;
-}
-
-.heading-small {
+.size-small {
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-regular);
-}
-
-.heading-small-regular {
-	composes: regular;
-	composes: heading-small;
-}
-
-.heading-small-bold {
-	composes: bold;
-	composes: heading-small;
 }
 
 </style>

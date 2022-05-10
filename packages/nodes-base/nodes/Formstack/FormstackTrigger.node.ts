@@ -29,7 +29,6 @@ export class FormstackTrigger implements INodeType {
 		description: 'Starts the workflow on a Formstack form submission.',
 		defaults: {
 			name: 'Formstack Trigger',
-			color: '#21b573',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -81,7 +80,6 @@ export class FormstackTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: '',
 			},
 			{
 				displayName: 'Form Name/ID',
@@ -99,7 +97,7 @@ export class FormstackTrigger implements INodeType {
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'When set to true a simplify version of the response will be used else the raw data',
 			},
 		],
 	};

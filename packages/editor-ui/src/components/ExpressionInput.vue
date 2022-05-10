@@ -123,9 +123,7 @@ export default mixins(
 					autoformat: {},
 					keyboard: {
 						bindings: {
-							'list autofill': {
-								prefix: /^$/,
-							},
+							'list autofill': null,
 						},
 					},
 				},

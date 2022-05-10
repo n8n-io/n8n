@@ -40,7 +40,6 @@ export class Storyblok implements INodeType {
 		description: 'Consume Storyblok API',
 		defaults: {
 			name: 'Storyblok',
-			color: '#09b3af',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -180,7 +179,7 @@ export class Storyblok implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const source = this.getNodeParameter('source', 0) as string;

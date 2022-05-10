@@ -47,7 +47,6 @@ export class Autopilot implements INodeType {
 		description: 'Consume Autopilot API',
 		defaults: {
 			name: 'Autopilot',
-			color: '#6ad7b9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -154,7 +153,7 @@ export class Autopilot implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

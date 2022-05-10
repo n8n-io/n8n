@@ -23,7 +23,6 @@ export class Msg91 implements INodeType {
 		description: 'Sends transactional SMS via MSG91',
 		defaults: {
 			name: 'Msg91',
-			color: '#0000ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -85,7 +84,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message.',
+				description: 'The number from which to send the message',
 			},
 			{
 				displayName: 'To',
@@ -104,7 +103,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number, with coutry code, to which to send the message.',
+				description: 'The number, with coutry code, to which to send the message',
 			},
 			{
 				displayName: 'Message',

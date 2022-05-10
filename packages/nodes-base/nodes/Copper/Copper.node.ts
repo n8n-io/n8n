@@ -48,7 +48,6 @@ export class Copper implements INodeType {
 		description: 'Consume the Copper API',
 		defaults: {
 			name: 'Copper',
-			color: '#ff2564',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -58,7 +58,7 @@ export const transactionFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Filters',
@@ -102,7 +102,7 @@ export const transactionFields: INodeProperties[] = [
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				description: 'Columns to return',
 				options: TRANSACTION_REPORT_COLUMNS,
 			},

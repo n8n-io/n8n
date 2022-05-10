@@ -18,6 +18,16 @@
 		],
 		"generic": [
 			{
+				"label": "How to synchronize data between two systems (one-way vs. two-way sync",
+				"icon": "🏬",
+				"url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/"
+			},
+			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
 				"label": "Hey founders! Your business doesn't need you to operate",
 				"icon": " 🖥️",
 				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"

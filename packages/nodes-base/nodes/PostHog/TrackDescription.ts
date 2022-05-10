@@ -71,7 +71,7 @@ export const trackFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's distinct ID.`,
+		description: 'The user\'s distinct ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -168,7 +168,7 @@ export const trackFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: `If not set, it'll automatically be set to the current time.`,
+				description: 'If not set, it\'ll automatically be set to the current time',
 			},
 		],
 	},

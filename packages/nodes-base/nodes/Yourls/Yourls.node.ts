@@ -29,7 +29,6 @@ export class Yourls implements INodeType {
 		description: 'Consume Yourls API',
 		defaults: {
 			name: 'Yourls',
-			color: '#336498',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -61,7 +60,7 @@ export class Yourls implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

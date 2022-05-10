@@ -3,7 +3,6 @@ import {
 } from 'request';
 
 import {
-	ParsedMail,
 	simpleParser,
 } from 'mailparser';
 
@@ -25,9 +24,16 @@ import {
 	IEmail,
 } from './Gmail.node';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
 
 const mailComposer = require('nodemailer/lib/mail-composer');
 
@@ -43,7 +49,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
-		qsStringifyOptions:{
+		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
 		json: true,
@@ -59,11 +65,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -150,6 +152,7 @@ export async function encodeEmail(email: IEmail) {
 		references: email.reference,
 		subject: email.subject,
 		text: email.body,
+		keepBcc: true,
 	} as IDataObject;
 	if (email.htmlBody) {
 		mailOptions.html = email.htmlBody;
@@ -166,14 +169,15 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
+	const mail = new mailComposer(mailOptions).compile();
 
-	const mail = new mailComposer(mailOptions);
+	// by default the bcc headers are deleted when the mail is built.
+	// So add keepBcc flag to averride such behaviour. Only works when
+	// the flag is set after the compilation.
+	//https://nodemailer.com/extras/mailcomposer/#bcc
+	mail.keepBcc = true;
 
-	mailBody = await new Promise((resolve) => {
-		mail.compile().build(async (err: string, result: Buffer) => {
-			resolve(result);
-		});
-	});
+	mailBody = await mail.build();
 
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
@@ -202,7 +206,7 @@ export function extractEmail(s: string) {
 	return data.substring(0, data.length - 1);
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -216,6 +220,9 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const now = moment().unix();
 
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
@@ -225,11 +232,11 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
@@ -252,4 +259,3 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//@ts-ignore
 	return this.helpers.request(options);
 }
-

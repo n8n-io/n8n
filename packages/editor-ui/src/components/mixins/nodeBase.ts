@@ -4,7 +4,7 @@ import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
-import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
+import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
 
@@ -179,6 +179,7 @@ export const nodeBase = mixins(
 							hover: false,
 							showOutputLabel: nodeTypeData.outputs.length === 1,
 							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+							hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 						},
 						endpointHoverStyle: {
 							fill: getStyleTokenValue('--color-primary'),
@@ -220,7 +221,15 @@ export const nodeBase = mixins(
 					// @ts-ignore
 					this.dragging = true;
 
-					if (params.e && !this.$store.getters.isNodeSelected(this.data.name)) {
+					const isSelected = this.$store.getters.isNodeSelected(this.data.name);
+					const nodeName = this.data.name;
+					if (this.data.type === STICKY_NODE_TYPE && !isSelected) {
+						setTimeout(() => {
+							this.$emit('nodeSelected', nodeName, false, true);
+						}, 0);
+					}
+
+					if (params.e && !isSelected) {
 						// Only the node which gets dragged directly gets an event, for all others it is
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.
@@ -278,7 +287,7 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+			let nodeTypeData = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
 				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE) as INodeTypeDescription;

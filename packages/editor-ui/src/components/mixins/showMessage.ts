@@ -5,20 +5,23 @@ import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { MessageType } from 'element-ui/types/message';
+import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
-		$showMessage(messageData: ElNotificationOptions, track = true) {
+		$showMessage(
+			messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
+			track = true,
+		) {
 			messageData.dangerouslyUseHTMLString = true;
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
 
-			const notification = this.$notify(messageData);
+			const notification = this.$notify(messageData as ElNotificationOptions);
 
 			if (messageData.duration === 0) {
 				stickyNotificationQueue.push(notification);
@@ -89,6 +92,10 @@ export const showMessage = mixins(externalHooks).extend({
 			return notification;
 		},
 
+		$showAlert(config: ElMessageOptions): ElMessageComponent {
+			return this.$message(config);
+		},
+
 		$getExecutionError(error?: ExecutionError) {
 			// There was a problem with executing the workflow
 			let errorMessage = 'There was a problem executing the workflow!';
@@ -131,11 +138,11 @@ export const showMessage = mixins(externalHooks).extend({
 			this.$telemetry.track('Instance FE emitted error', { error_title: title, error_description: message, error_message: error.message, workflow_id: this.$store.getters.workflowId });
 		},
 
-		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
+		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
 			try {
 				const options: ElMessageBoxOptions  = {
-					confirmButtonText,
-					cancelButtonText,
+					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
 					dangerouslyUseHTMLString: true,
 					...(type && { type }),
 				};
@@ -144,6 +151,23 @@ export const showMessage = mixins(externalHooks).extend({
 				return true;
 			} catch (e) {
 				return false;
+			}
+		},
+
+		async confirmModal (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string, showClose = false): Promise<string> {
+			try {
+				const options: ElMessageBoxOptions  = {
+					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
+					dangerouslyUseHTMLString: true,
+					showClose,
+					...(type && { type }),
+				};
+
+				await this.$confirm(message, headline, options);
+				return 'confirmed';
+			} catch (e) {
+				return e as string;
 			}
 		},
 
@@ -173,7 +197,7 @@ export const showMessage = mixins(externalHooks).extend({
 					<summary
 						style="color: #ff6d5a; font-weight: bold; cursor: pointer;"
 					>
-						Show Details
+						${this.$locale.baseText('showMessage.showDetails')}
 					</summary>
 					<p>${node.name}: ${errorDescription}</p>
 				</details>

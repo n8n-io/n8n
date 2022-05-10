@@ -6,6 +6,8 @@ import {
 	TopicMessages,
 } from 'kafkajs';
 
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -28,7 +30,6 @@ export class Kafka implements INodeType {
 		description: 'Sends messages to a Kafka topic',
 		defaults: {
 			name: 'Kafka',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -45,14 +46,14 @@ export class Kafka implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic-name',
-				description: 'Name of the queue of topic to publish to.',
+				description: 'Name of the queue of topic to publish to',
 			},
 			{
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON to Kafka.',
+				description: 'Send the the data the node receives as JSON to Kafka',
 			},
 			{
 				displayName: 'Message',
@@ -66,13 +67,51 @@ export class Kafka implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The message to be sent.',
+				description: 'The message to be sent',
 			},
 			{
 				displayName: 'JSON Parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
+			},
+			{
+				displayName: 'Use Schema Registry',
+				name: 'useSchemaRegistry',
+				type: 'boolean',
+				default: false,
+				description: 'Use Confluent Schema Registry',
+			},
+			{
+				displayName: 'Schema Registry URL',
+				name: 'schemaRegistryUrl',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [
+							true,
+						],
+					},
+				},
+				placeholder: 'https://schema-registry-domain:8081',
+				default: '',
+				description: 'URL of the schema registry',
+			},
+			{
+				displayName: 'Event Name',
+				name: 'eventName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: 'Namespace and Name of Schema in Schema Registry (namespace.name)',
 			},
 			{
 				displayName: 'Headers',
@@ -123,7 +162,7 @@ export class Kafka implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Header parameters as JSON (flat object).',
+				description: 'Header parameters as JSON (flat object)',
 			},
 			{
 				displayName: 'Options',
@@ -137,21 +176,21 @@ export class Kafka implements INodeType {
 						name: 'acks',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not producer must wait for acknowledgement from all replicas.',
+						description: 'Whether or not producer must wait for acknowledgement from all replicas',
 					},
 					{
 						displayName: 'Compression',
 						name: 'compression',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data in a compressed format using the GZIP codec.',
+						description: 'Send the data in a compressed format using the GZIP codec',
 					},
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						type: 'number',
 						default: 30000,
-						description: 'The time to await a response in ms.',
+						description: 'The time to await a response in ms',
 					},
 				],
 			},
@@ -161,7 +200,7 @@ export class Kafka implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const topicMessages: TopicMessages[] = [];
 
@@ -170,6 +209,8 @@ export class Kafka implements INodeType {
 		try {
 			const options = this.getNodeParameter('options', 0) as IDataObject;
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
+
+			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 			const timeout = options.timeout as number;
 
@@ -181,7 +222,7 @@ export class Kafka implements INodeType {
 				compression = CompressionTypes.GZIP;
 			}
 
-			const credentials = await this.getCredentials('kafka') as IDataObject;
+			const credentials = await this.getCredentials('kafka');
 
 			const brokers = (credentials.brokers as string || '').split(',').map(item => item.trim()) as string[];
 
@@ -212,13 +253,27 @@ export class Kafka implements INodeType {
 
 			await producer.connect();
 
-			let message: string;
+			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
 				if (sendInputData === true) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
+				}
+
+				if (useSchemaRegistry) {
+					try {
+						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
+						const eventName = this.getNodeParameter('eventName', 0) as string;
+
+						const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+						const id = await registry.getLatestSchemaId(eventName);
+
+						message = await registry.encode(id, JSON.parse(message));
+					} catch (exception) {
+						throw new NodeOperationError(this.getNode(), 'Verify your Schema Registry configuration');
+					}
 				}
 
 				const topic = this.getNodeParameter('topic', i) as string;

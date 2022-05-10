@@ -42,7 +42,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -66,7 +66,7 @@ export const alertFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -176,7 +176,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Severity of the alert. Default=Medium',
+		description: 'Severity of the alert. Default=Medium.',
 	},
 	{
 		displayName: 'Date',
@@ -248,7 +248,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Traffict Light Protocol (TLP). Default=Amber',
+		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
 		displayName: 'Status',
@@ -363,7 +363,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'artifactUi',
 		type: 'fixedCollection',
 		placeholder: 'Add Artifact',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -404,7 +404,6 @@ export const alertFields: INodeProperties[] = [
 							},
 						},
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Binary Property',
@@ -418,21 +417,18 @@ export const alertFields: INodeProperties[] = [
 							},
 						},
 						default: 'data',
-						description: '',
 					},
 					{
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Case Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -492,8 +488,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
-		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -510,7 +505,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -576,8 +571,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
-		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -594,7 +588,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 		],
 	},
@@ -604,7 +598,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -621,7 +615,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Artifact',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -741,24 +735,22 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Case Template',
 				name: 'caseTemplate',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true.',
+				description: 'if true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',
@@ -779,7 +771,7 @@ export const alertFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Status',
@@ -816,15 +808,13 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Title of the alert.',
+				description: 'Title of the alert',
 			},
 			{
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{
@@ -844,7 +834,7 @@ export const alertFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},
@@ -932,7 +922,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
@@ -960,7 +950,7 @@ export const alertFields: INodeProperties[] = [
 					},
 				],
 				default: 2,
-				description: 'Severity of the alert. Default=Medium',
+				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
 				displayName: 'Tags',
@@ -998,7 +988,7 @@ export const alertFields: INodeProperties[] = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
+				description: 'Traffict Light Protocol (TLP). Default=Amber.',
 			},
 		],
 	},

@@ -32,7 +32,6 @@ export class AsanaTrigger implements INodeType {
 		description: 'Starts the workflow when Asana events occur.',
 		defaults: {
 			name: 'Asana-Trigger',
-			color: '#FC636B',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -103,7 +102,6 @@ export class AsanaTrigger implements INodeType {
 				},
 				options: [],
 				default: '',
-				required: false,
 				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks.',
 			},
 		],

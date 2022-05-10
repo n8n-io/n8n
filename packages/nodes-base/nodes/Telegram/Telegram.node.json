@@ -23,9 +23,19 @@
 				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
 			},
 			{
+				"label": "Create a toxic language detector for Telegram in 4 step",
+				"icon": "🤬",
+				"url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/"
+			},
+			{
 				"label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n",
 				"icon": "🧾",
 				"url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/"
+			},
+			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
 			},
 			{
 				"label": "Celebrating World Poetry Day with a daily poem in Telegram",
@@ -38,6 +48,11 @@
 				"url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/"
 			},
 			{
+				"label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI",
+				"icon": "🎡",
+				"url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/"
+			},
+			{
 				"label": "Creating scheduled text affirmations with n8n",
 				"icon": "🤟",
 				"url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/"
@@ -46,6 +61,10 @@
 				"label": "Creating Telegram Bots with n8n, a No-Code Platform",
 				"icon": "💬",
 				"url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	}

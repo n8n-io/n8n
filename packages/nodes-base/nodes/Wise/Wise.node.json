@@ -16,5 +16,8 @@
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.wise/"
 			}
 		]
-	}
+	},
+	"alias": [
+		"Currency"
+	]
 }

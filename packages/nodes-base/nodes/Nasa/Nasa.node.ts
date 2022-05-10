@@ -15,7 +15,7 @@ import {
 	nasaApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +28,6 @@ export class Nasa implements INodeType {
 		description: 'Retrieve data from the NASA API',
 		defaults: {
 			name: 'NASA',
-			color: '#0B3D91',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -601,7 +600,7 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default just the url of the image is returned. When set to true the image will be downloaded',
+				description: 'By default just the url of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -896,12 +895,13 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
 					show: {

@@ -44,7 +44,7 @@ import {
 	simplify,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class SecurityScorecard implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,7 +57,6 @@ export class SecurityScorecard implements INodeType {
 		description: 'Consume SecurityScorecard API',
 		defaults: {
 			name: 'SecurityScorecard',
-			color: '#619e73',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -126,7 +125,7 @@ export class SecurityScorecard implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

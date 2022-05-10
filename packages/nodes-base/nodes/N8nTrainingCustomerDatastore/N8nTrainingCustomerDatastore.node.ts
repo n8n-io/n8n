@@ -63,7 +63,6 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		description: 'Dummy node used for n8n training',
 		defaults: {
 			name: 'Customer Datastore',
-			color: '#ff6d5a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -99,7 +98,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -120,7 +119,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					maxValue: 10,
 				},
 				default: 5,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 		],
 	};
@@ -128,7 +127,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let responseData;
 

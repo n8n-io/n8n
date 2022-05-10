@@ -25,7 +25,6 @@ export class FlowTrigger implements INodeType {
 		description: 'Handle Flow events via webhooks',
 		defaults: {
 			name: 'Flow Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -80,7 +79,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Lists ids, perhaps known better as "Projects" separated by a comma (,)`,
+				description: 'Lists IDs, perhaps known better as "Projects" separated by a comma (,)',
 			},
 			{
 				displayName: 'Task ID',
@@ -100,7 +99,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Task ids separated by a comma (,)`,
+				description: 'Task IDs separated by a comma (,)',
 			},
 		],
 
@@ -110,10 +109,6 @@ export class FlowTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const credentials = await this.getCredentials('flowApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				let webhooks;
 				const qs: IDataObject = {};
@@ -144,10 +139,6 @@ export class FlowTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const credentials = await this.getCredentials('flowApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				let resourceIds, body, responseData;
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -188,10 +179,6 @@ export class FlowTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const credentials = await this.getCredentials('flowApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				const qs: IDataObject = {};
 				const webhookData = this.getWorkflowStaticData('node');

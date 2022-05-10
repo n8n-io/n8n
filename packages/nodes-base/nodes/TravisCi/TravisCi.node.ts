@@ -30,7 +30,6 @@ export class TravisCi implements INodeType {
 		description: 'Consume TravisCI API',
 		defaults: {
 			name: 'TravisCI',
-			color: '#666666',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -62,7 +61,7 @@ export class TravisCi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

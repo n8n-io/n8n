@@ -25,7 +25,6 @@ export class Gotify implements INodeType {
 		description: 'Consume Gotify API',
 		defaults: {
 			name: 'Gotify',
-			color: '#71c8ec',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -93,7 +92,7 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: '',
-				description: `The message. Markdown (excluding html) is allowed.`,
+				description: 'The message. Markdown (excluding html) is allowed.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -117,14 +116,14 @@ export class Gotify implements INodeType {
 						name: 'priority',
 						type: 'number',
 						default: 1,
-						description: 'The priority of the message.',
+						description: 'The priority of the message',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: `The title of the message.`,
+						description: 'The title of the message',
 					},
 				],
 			},
@@ -144,7 +143,6 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: '',
-				description: `The message id.`,
 			},
 			{
 				displayName: 'Return All',
@@ -161,12 +159,13 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
 					show: {
@@ -188,7 +187,7 @@ export class Gotify implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

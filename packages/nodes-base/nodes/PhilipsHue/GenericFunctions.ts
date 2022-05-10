@@ -19,7 +19,7 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.meethue.com${resource}`,
+		uri: uri || `https://api.meethue.com/route${resource}`,
 		json: true,
 	};
 	try {
@@ -36,14 +36,15 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 		}
 
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, { tokenType: 'Bearer' });
+		const response = await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, { tokenType: 'Bearer' });
+		return response;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
 export async function getUser(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
-	const { whitelist } = await philipsHueApiRequest.call(this, 'GET', '/bridge/0/config', {}, {});
+	const { whitelist } = await philipsHueApiRequest.call(this, 'GET', '/api/0/config', {}, {});
 	//check if there is a n8n user
 	for (const user of Object.keys(whitelist)) {
 		if (whitelist[user].name === 'n8n') {
@@ -51,7 +52,7 @@ export async function getUser(this: IExecuteFunctions | ILoadOptionsFunctions): 
 		}
 	}
 	// n8n user was not fount then create the user
-	await philipsHueApiRequest.call(this, 'PUT', '/bridge/0/config', { linkbutton: true });
-	const { success } = await philipsHueApiRequest.call(this, 'POST', '/bridge', { devicetype: 'n8n' });
+	await philipsHueApiRequest.call(this, 'PUT', '/api/0/config', { linkbutton: true });
+	const { success } = await philipsHueApiRequest.call(this, 'POST', '/api', { devicetype: 'n8n' });
 	return success.username;
 }

@@ -23,7 +23,6 @@ export class Disqus implements INodeType {
 		description: 'Access data on Disqus',
 		defaults: {
 			name: 'Disqus',
-			color: '#22BB44',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -107,7 +106,7 @@ export class Disqus implements INodeType {
 						],
 					},
 				},
-				description: 'The short name(aka ID) of the forum to get.',
+				description: 'The short name(aka ID) of the forum to get',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -206,7 +205,7 @@ export class Disqus implements INodeType {
 						],
 					},
 				},
-				description: 'The short name(aka ID) of the forum to get.',
+				description: 'The short name(aka ID) of the forum to get',
 			},
 			{
 				displayName: 'Return All',
@@ -223,7 +222,7 @@ export class Disqus implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -247,7 +246,7 @@ export class Disqus implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -317,7 +316,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'You may specify filters for your response.',
+						description: 'You may specify filters for your response',
 					},
 					{
 						displayName: 'Include',
@@ -330,7 +329,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'You may specify relations to include with your response.',
+						description: 'You may specify relations to include with your response',
 					},
 					{
 						displayName: 'Order',
@@ -347,14 +346,14 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: 'asc',
-						description: 'You may specify order to sort your response.',
+						description: 'You may specify order to sort your response',
 					},
 					{
 						displayName: 'Query',
 						name: 'query',
 						type: 'string',
 						default: '',
-						description: 'You may specify query forChoices: asc, desc your response.',
+						description: 'You may specify query forChoices: asc, desc your response',
 					},
 					{
 						displayName: 'Related',
@@ -398,7 +397,7 @@ export class Disqus implements INodeType {
 						],
 					},
 				},
-				description: 'The short name(aka ID) of the forum to get Categories.',
+				description: 'The short name(aka ID) of the forum to get Categories',
 			},
 			{
 				displayName: 'Return All',
@@ -415,7 +414,7 @@ export class Disqus implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -439,7 +438,7 @@ export class Disqus implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -473,7 +472,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: 'asc',
-						description: 'You may specify order to sort your response.',
+						description: 'You may specify order to sort your response',
 					},
 				],
 			},
@@ -497,7 +496,7 @@ export class Disqus implements INodeType {
 						],
 					},
 				},
-				description: 'The short name(aka ID) of the forum to get Threads.',
+				description: 'The short name(aka ID) of the forum to get Threads',
 			},
 			{
 				displayName: 'Return All',
@@ -514,7 +513,7 @@ export class Disqus implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -538,7 +537,7 @@ export class Disqus implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -593,7 +592,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'You may specify relations to include with your response.',
+						description: 'You may specify relations to include with your response',
 					},
 					{
 						displayName: 'Order',
@@ -610,7 +609,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: 'asc',
-						description: 'You may specify order to sort your response.',
+						description: 'You may specify order to sort your response',
 					},
 					{
 						displayName: 'Since',

@@ -35,7 +35,7 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		required: true,
-		description: 'Whether to return details on the logged-in user.',
+		description: 'Whether to return details on the logged-in user',
 		displayOptions: {
 			show: {
 				resource: [
@@ -53,7 +53,7 @@ export const userFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the user to retrieve.',
+		description: 'The ID of the user to retrieve',
 		displayOptions: {
 			show: {
 				resource: [

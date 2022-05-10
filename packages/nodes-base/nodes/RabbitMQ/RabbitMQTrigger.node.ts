@@ -26,7 +26,6 @@ export class RabbitMQTrigger implements INodeType {
 		description: 'Listens to RabbitMQ messages',
 		defaults: {
 			name: 'RabbitMQ Trigger',
-			color: '#ff6600',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -43,7 +42,7 @@ export class RabbitMQTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'queue-name',
-				description: 'Name of the queue to publish to.',
+				description: 'Name of the queue to publish to',
 			},
 
 			{
@@ -58,7 +57,7 @@ export class RabbitMQTrigger implements INodeType {
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
-						description: 'Saves the content as binary.',
+						description: 'Saves the content as binary',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -72,7 +71,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Parse the body to an object.',
+						description: 'Parse the body to an object',
 					},
 					{
 						displayName: 'Only Content',
@@ -86,7 +85,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Returns only the content property.',
+						description: 'Returns only the content property',
 					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {

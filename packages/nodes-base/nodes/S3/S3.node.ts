@@ -3,18 +3,11 @@ import {
 	snakeCase,
 } from 'change-case';
 
-import {
-	createHash,
-} from 'crypto';
+import { createHash } from 'crypto';
 
-import {
-	Builder,
-} from 'xml2js';
+import { Builder } from 'xml2js';
 
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -58,7 +51,6 @@ export class S3 implements INodeType {
 		description: 'Sends data to any S3-compatible service',
 		defaults: {
 			name: 'S3',
-			color: '#d05b4b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

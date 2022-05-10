@@ -28,8 +28,7 @@ export class Drift implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Drift API',
 		defaults: {
-			name: 'Drift ',
-			color: '#404040',
+			name: 'Drift',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -96,7 +95,7 @@ export class Drift implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

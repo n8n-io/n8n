@@ -29,7 +29,6 @@ export class WooCommerceTrigger implements INodeType {
 		description: 'Handle WooCommerce events via webhooks',
 		defaults: {
 			name: 'WooCommerce Trigger',
-			color: '#96588a',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -104,7 +103,7 @@ export class WooCommerceTrigger implements INodeType {
 						value: 'product.deleted',
 					},
 				],
-				description: 'Determines which resource events the webhook is triggered for.',
+				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
 
@@ -136,7 +135,7 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const secret = getAutomaticSecret(credentials!);
+				const secret = getAutomaticSecret(credentials);
 				const endpoint = '/webhooks';
 				const body: IDataObject = {
 					delivery_url: webhookUrl,

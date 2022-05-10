@@ -6,10 +6,10 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable no-console */
-import * as fs from 'fs';
+import fs from 'fs';
 import { Command, flags } from '@oclif/command';
 
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
@@ -36,6 +36,9 @@ import {
 	NodeTypes,
 	WorkflowRunner,
 } from '../src';
+import config from '../config';
+import { User } from '../src/databases/entities/User';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -56,6 +59,8 @@ export class ExecuteBatch extends Command {
 
 	static executionTimeout = 3 * 60 * 1000;
 
+	static instanceOwner: User;
+
 	static examples = [
 		`$ n8n executeBatch`,
 		`$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt`,
@@ -71,7 +76,8 @@ export class ExecuteBatch extends Command {
 			description: 'Toggles on displaying all errors and debug messages.',
 		}),
 		ids: flags.string({
-			description: 'Specifies workflow IDs to get executed, separated by a comma.',
+			description:
+				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
 		}),
 		concurrency: flags.integer({
 			default: 1,
@@ -190,6 +196,8 @@ export class ExecuteBatch extends Command {
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
@@ -237,16 +245,25 @@ export class ExecuteBatch extends Command {
 		}
 
 		if (flags.ids !== undefined) {
-			const paramIds = flags.ids.split(',');
-			const re = /\d+/;
-			const matchedIds = paramIds.filter((id) => re.exec(id)).map((id) => parseInt(id.trim(), 10));
+			if (fs.existsSync(flags.ids)) {
+				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
+				ids.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+			} else {
+				const paramIds = flags.ids.split(',');
+				const re = /\d+/;
+				const matchedIds = paramIds
+					.filter((id) => re.exec(id))
+					.map((id) => parseInt(id.trim(), 10));
 
-			if (matchedIds.length === 0) {
-				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
-				return;
+				if (matchedIds.length === 0) {
+					console.log(
+						`The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.`,
+					);
+					return;
+				}
+
+				ids.push(...matchedIds);
 			}
-
-			ids.push(...matchedIds);
 		}
 
 		if (flags.skipList !== undefined) {
@@ -276,9 +293,11 @@ export class ExecuteBatch extends Command {
 		// Wait till the database is ready
 		await startDbInitPromise;
 
+		ExecuteBatch.instanceOwner = await getInstanceOwner();
+
 		let allWorkflows;
 
-		const query = Db.collections.Workflow!.createQueryBuilder('workflows');
+		const query = Db.collections.Workflow.createQueryBuilder('workflows');
 
 		if (ids.length > 0) {
 			query.andWhere(`workflows.id in (:...ids)`, { ids });
@@ -305,15 +324,15 @@ export class ExecuteBatch extends Command {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
-
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);
@@ -663,6 +682,7 @@ export class ExecuteBatch extends Command {
 					executionMode: 'cli',
 					startNodes: [startNode!.name],
 					workflowData,
+					userId: ExecuteBatch.instanceOwner.id,
 				};
 
 				const workflowRunner = new WorkflowRunner();

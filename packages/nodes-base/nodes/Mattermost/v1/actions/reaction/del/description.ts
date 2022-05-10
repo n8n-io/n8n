@@ -23,7 +23,7 @@ export const reactionDeleteDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'ID of the user whose reaction to delete.',
+		description: 'ID of the user whose reaction to delete',
 	},
 	{
 		displayName: 'Post ID',
@@ -60,6 +60,6 @@ export const reactionDeleteDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'Name of the emoji to delete.',
+		description: 'Name of the emoji to delete',
 	},
 ];

@@ -39,7 +39,6 @@ export class CloudFirestore implements INodeType {
 		description: 'Interact with Google Firebase - Cloud Firestore API',
 		defaults: {
 			name: 'Google Cloud Firestore',
-			color: '#ffcb2d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

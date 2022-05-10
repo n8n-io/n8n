@@ -32,7 +32,6 @@ export class Bitly implements INodeType {
 		description: 'Consume Bitly API',
 		defaults: {
 			name: 'Bitly',
-			color: '#d3643b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -135,7 +134,7 @@ export class Bitly implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

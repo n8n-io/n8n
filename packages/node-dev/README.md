@@ -224,13 +224,12 @@ All properties are optional. However, most only work when the node-property is o
  - **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
  - **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" got set
  - **numberPrecision** [type: number]: The precision of the number. By default it is "0" and will so only allow integers.
- - **numberStepSize** [type: number]: If step size in the UI if "numberPrecision" got set
  - **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and get saved in clear-text)
  - **rows** [type: string]: Number of rows the input field should have. By default it is "1"
 
 
 ## License
 
-[Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/node-dev/LICENSE.md)
+n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)
+Additional information on the license can be found in the [FAQ](https://docs.n8n.io/reference/faq.html#license)
