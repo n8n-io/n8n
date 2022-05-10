@@ -345,25 +345,27 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
 				});
-				this.$telemetry.track('User opened node modal', {
-					node_type: this.activeNodeType ? this.activeNodeType.name : '',
-					workflow_id: this.$store.getters.workflowId,
-					session_id: this.sessionId,
-					parameters_pane_position: this.getRelativePosition(),
-					input_first_connector_runs: this.maxInputRun,
-					output_first_connector_runs: this.maxOutputRun,
-					// todo
-					// input_state with the following events: node has no connection, no input data yet, no input data
-					// input_connectors (# of connectors attached to the node, independent of how many ways of connecting there are)
-					// output_connectors(# of connectors attached to the node, independent of how many ways of connecting there are)
-					// input_first_connector_first_run_rows int
-					// input_first_connector_first_run_columns int
-					// output_state with the following events: no output data returned, output data is too large, execute node to output data
-					// output_first_connector_first_run_rows int
-					// output_first_connector_first_run_columns int
-					// selected_view_inputs table, json, binary
-					// selected_view_outputs table, json, binary
-				});
+				setTimeout(() => {
+					this.$telemetry.track('User opened node modal', {
+						node_type: this.activeNodeType ? this.activeNodeType.name : '',
+						workflow_id: this.$store.getters.workflowId,
+						session_id: this.sessionId,
+						parameters_pane_position: this.getRelativePosition(),
+						input_first_connector_runs: this.maxInputRun,
+						output_first_connector_runs: this.maxOutputRun,
+						selected_view_inputs: this.isTriggerNode? 'trigger': this.$store.getters['ui/inputPanelDispalyMode'],
+						selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
+						// todo
+						// input_state with the following events: node has no connection, no input data yet, no input data
+						// input_connectors (# of connectors attached to the node, independent of how many ways of connecting there are)
+						// output_connectors(# of connectors attached to the node, independent of how many ways of connecting there are)
+						// input_first_connector_first_run_rows int
+						// input_first_connector_first_run_columns int
+						// output_state with the following events: no output data returned, output data is too large, execute node to output data
+						// output_first_connector_first_run_rows int
+						// output_first_connector_first_run_columns int
+					});
+				}, 0); // wait for display mode to be set correctly
 			}
 			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');

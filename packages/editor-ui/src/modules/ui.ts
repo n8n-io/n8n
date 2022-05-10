@@ -123,6 +123,8 @@ const module: Module<IUiState, IRootState> = {
 		getPanelDisplayMode: (state: IUiState)  => {
 			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
 		},
+		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
+		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
