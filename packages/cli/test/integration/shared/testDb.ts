@@ -278,10 +278,10 @@ export function getAllRoles() {
 // ----------------------------------
 
 /**
- * Store a workflow in the DB and optionally assigns it to a user.
+ * Store a workflow in the DB (without a trigger) and optionally assigns it to a user.
  * @param user user to assign the workflow to
  */
-export async function createWorkflow(attributes: Partial<WorkflowEntity>, user?: User) {
+export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
 	const { active, name, nodes, connections } = attributes;
 
 	const workflow = await Db.collections.Workflow.save({
@@ -306,6 +306,43 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity>, user?:
 			role: await getWorkflowOwnerRole(),
 		});
 	}
+	return workflow;
+}
+
+/**
+ * Store a workflow in the DB (with a trigger) and optionally assigns it to a user.
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflowWithTrigger(user?: User) {
+	const workflow = await createWorkflow(
+		{
+			nodes: [
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+				{
+					parameters: { options: {} },
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [780, 300],
+				},
+			],
+			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+		},
+		user,
+	);
 	return workflow;
 }
 
