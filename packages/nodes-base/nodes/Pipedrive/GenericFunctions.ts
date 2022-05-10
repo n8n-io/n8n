@@ -18,6 +18,7 @@ import {
 export interface ICustomInterface {
 	name: string;
 	key: string;
+	field_type: string;
 	options?: Array<{
 		id: number;
 		label: string;
@@ -171,7 +172,6 @@ export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecu
 	for (const customPropertyData of responseData.data) {
 		customProperties[customPropertyData.key] = customPropertyData;
 	}
-
 	return customProperties;
 }
 
@@ -229,18 +229,27 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 		if (customProperties[key] !== undefined) {
 			// Is a custom property
 			customPropertyData = customProperties[key];
-
 			// Check if also the value has to be resolved or just the key
 			if (item[key] !== null && item[key] !== undefined && customPropertyData.options !== undefined && Array.isArray(customPropertyData.options)) {
 				// Has an option key so get the actual option-value
-				const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
+				if (customPropertyData.field_type === 'set') {
+					const tempArray = (item[key] as string)!.split(',');
+					const setPropertyArray = [];
+					for (let i = 0; i < tempArray.length; i++) {
+						const propertyOption = customPropertyData.options.find(option => option.id.toString() === tempArray[i]!.toString());
+						setPropertyArray.push(propertyOption?.label);
+					}
+					item[customPropertyData.name as string] = setPropertyArray;
+				} else {
+					const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
 
-				if (propertyOption !== undefined) {
-					item[customPropertyData.name as string] = propertyOption.label;
-					delete item[key];
+					if (propertyOption !== undefined) {
+						item[customPropertyData.name as string] = propertyOption.label;
+					}
 				}
+				delete item[key];
 			} else {
-				// Does already represent the actual value or is null
+				// Does already represent the actual value or is
 				item[customPropertyData.name as string] = item[key];
 				delete item[key];
 			}
