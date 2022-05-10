@@ -129,7 +129,7 @@ export default {
 							const id = value.split('fileId:')[1];
 							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
 						}
-						if (!value.startsWith('https://')) {
+						if (!value.startsWith('https://') && !value.startsWith('/static/')) {
 							return '';
 						}
 					}
