@@ -9,7 +9,7 @@
 					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
 				</div>
 			</div>
-			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
+			<NodeTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -153,6 +153,9 @@ export default mixins(
 			},
 			dragging: {
 				type: Boolean,
+			},
+			sessionId: {
+				type: String,
 			},
 		},
 		data () {

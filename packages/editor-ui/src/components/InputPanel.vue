@@ -41,7 +41,12 @@
 					<WireMeUp />
 				</div>
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.notConnected.title') }}</n8n-text>
-				<n8n-text tag="div"><span v-html="$locale.baseText('ndv.input.notConnected.message')"></span></n8n-text>
+				<n8n-text tag="div">
+					{{ $locale.baseText('ndv.input.notConnected.message') }}
+					<a href="https://docs.n8n.io/workflows/connections/#connection" target="_blank" @click="onConnectionHelpClick">
+						{{$locale.baseText('ndv.input.notConnected.learnMore')}}
+					</a>
+				</n8n-text>
 			</div>
 		</template>
 
@@ -149,6 +154,17 @@ export default mixins(
 		onSelect(value: string) {
 			const index = value === IMMEDIATE_INPUT_KEY ? 0 : this.parentNodes.findIndex((node) => node.name === value) + 1;
 			this.$emit('select', value, index);
+		},
+		onConnectionHelpClick() {
+			if (this.activeNode) {
+				this.$telemetry.track('User clicked ndv input or output pane link', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: 'main',
+					type: 'notConnectedHelp',
+				});
+			}
 		},
 	},
 });

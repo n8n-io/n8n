@@ -73,6 +73,7 @@
 				<NodeSettings
 					:eventBus="settingsEventBus"
 					:dragging="isDragging"
+					:sessionId="sessionId"
 					@valueChanged="valueChanged"
 					@execute="onNodeExecute"
 				/>
