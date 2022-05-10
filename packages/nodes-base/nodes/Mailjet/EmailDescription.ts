@@ -79,7 +79,7 @@ export const emailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'My subject line',
-		description: 'Subject line of the email.',
+		description: 'Subject line of the email',
 	},
 	{
 		displayName: 'Text',
@@ -99,7 +99,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Plain text message of email.',
+		description: 'Plain text message of email',
 	},
 	{
 		displayName: 'HTML',
@@ -119,7 +119,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'HTML text message of email.',
+		description: 'HTML text message of email',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -214,7 +214,7 @@ export const emailFields: INodeProperties[] = [
 						description: 'Enable tracking for this message',
 					},
 				],
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
 			{
@@ -238,7 +238,7 @@ export const emailFields: INodeProperties[] = [
 						description: 'Enable tracking for this message',
 					},
 				],
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
 		],
@@ -264,7 +264,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'HTML text message of email.',
+		description: 'HTML text message of email',
 	},
 	{
 		displayName: 'Variables',
@@ -407,14 +407,14 @@ export const emailFields: INodeProperties[] = [
 				displayName: 'Bcc Email',
 				name: 'bccEmail',
 				type: 'string',
-				description: 'BCC Recipients of the email separated by ,.',
+				description: 'BCC Recipients of the email separated by ,',
 				default: '',
 			},
 			{
 				displayName: 'Cc Email',
 				name: 'ccEmail',
 				type: 'string',
-				description: 'Cc recipients of the email separated by ,.',
+				description: 'Cc recipients of the email separated by ,',
 				default: '',
 			},
 			{
@@ -446,14 +446,14 @@ export const emailFields: INodeProperties[] = [
 				displayName: 'Track Opens',
 				name: 'trackOpens',
 				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: '',
 			},
 			{
 				displayName: 'Track Clicks',
 				name: 'trackClicks',
 				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: '',
 			},
 			{
@@ -528,6 +528,6 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'HTML text message of email.',
+		description: 'HTML text message of email',
 	},
 ];

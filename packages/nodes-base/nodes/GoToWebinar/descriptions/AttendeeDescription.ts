@@ -46,7 +46,7 @@ export const attendeeFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Key of the webinar that the attendee attended.',
+		description: 'Key of the webinar that the attendee attended',
 		displayOptions: {
 			show: {
 				resource: [
@@ -67,7 +67,7 @@ export const attendeeFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Key of the session that the attendee attended.',
+		description: 'Key of the session that the attendee attended',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,7 +86,7 @@ export const attendeeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Registrant key of the attendee at the webinar session.',
+		description: 'Registrant key of the attendee at the webinar session',
 		displayOptions: {
 			show: {
 				resource: [
@@ -108,7 +108,7 @@ export const attendeeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Registrant key of the attendee at the webinar session.',
+		description: 'Registrant key of the attendee at the webinar session',
 		displayOptions: {
 			show: {
 				resource: [
@@ -126,22 +126,22 @@ export const attendeeFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: '',
-		description: 'The details to retrieve for the attendee.',
+		description: 'The details to retrieve for the attendee',
 		options: [
 			{
 				name: 'Polls',
 				value: 'polls',
-				description: 'Poll answers from the attendee in a webinar session.',
+				description: 'Poll answers from the attendee in a webinar session',
 			},
 			{
 				name: 'Questions',
 				value: 'questions',
-				description: 'Questions asked by the attendee in a webinar session.',
+				description: 'Questions asked by the attendee in a webinar session',
 			},
 			{
 				name: 'Survey Answers',
 				value: 'surveyAnswers',
-				description: 'Survey answers from the attendee in a webinar session.',
+				description: 'Survey answers from the attendee in a webinar session',
 			},
 		],
 		displayOptions: {
@@ -164,7 +164,7 @@ export const attendeeFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -181,7 +181,7 @@ export const attendeeFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

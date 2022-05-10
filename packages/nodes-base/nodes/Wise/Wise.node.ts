@@ -281,7 +281,7 @@ export class Wise implements INodeType {
 						if (range !== undefined && time === undefined) {
 							qs.from = moment.tz(range.rangeProperties.from, timezone).utc().format();
 							qs.to = moment.tz(range.rangeProperties.to, timezone).utc().format();
-						} else {
+						} else if (time === undefined) {
 							qs.from = moment().subtract(1, 'months').utc().format();
 							qs.to = moment().format();
 						}
@@ -439,7 +439,7 @@ export class Wise implements INodeType {
 
 						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
 
-						const { environment } = await this.getCredentials('wiseApi') as IDataObject;
+						const { environment } = await this.getCredentials('wiseApi');
 
 						if (environment === 'test') {
 							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {

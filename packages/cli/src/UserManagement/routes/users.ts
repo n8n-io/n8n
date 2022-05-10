@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Response } from 'express';
 import { In } from 'typeorm';
 import validator from 'validator';
@@ -13,6 +12,7 @@ import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
+	isUserManagementDisabled,
 	sanitizeUser,
 	validatePassword,
 } from '../UserManagementHelper';
@@ -56,7 +56,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// TODO: this should be checked in the middleware rather than here
-			if (config.getEnv('userManagement.disabled')) {
+			if (isUserManagementDisabled()) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
@@ -105,10 +105,10 @@ export function usersNamespace(this: N8nApp): void {
 						400,
 					);
 				}
-				createUsers[invite.email] = null;
+				createUsers[invite.email.toLowerCase()] = null;
 			});
 
-			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
+			const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
 
 			if (!role) {
 				Logger.error(
@@ -122,7 +122,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// remove/exclude existing users from creation
-			const existingUsers = await Db.collections.User!.find({
+			const existingUsers = await Db.collections.User.find({
 				where: { email: In(Object.keys(createUsers)) },
 			});
 			existingUsers.forEach((user) => {
@@ -190,6 +190,7 @@ export function usersNamespace(this: N8nApp): void {
 					};
 					if (result?.success) {
 						void InternalHooksManager.getInstance().onUserTransactionalEmail({
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							user_id: id!,
 							message_type: 'New user invite',
 						});
@@ -249,7 +250,7 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			}
 
-			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
+			const users = await Db.collections.User.find({ where: { id: In([inviterId, inviteeId]) } });
 
 			if (users.length !== 2) {
 				Logger.debug(
@@ -317,7 +318,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(password);
 
-			const users = await Db.collections.User!.find({
+			const users = await Db.collections.User.find({
 				where: { id: In([inviterId, inviteeId]) },
 				relations: ['globalRole'],
 			});
@@ -351,7 +352,7 @@ export function usersNamespace(this: N8nApp): void {
 			invitee.lastName = lastName;
 			invitee.password = await hashPassword(validPassword);
 
-			const updatedUser = await Db.collections.User!.save(invitee);
+			const updatedUser = await Db.collections.User.save(invitee);
 
 			await issueCookie(res, updatedUser);
 
@@ -366,7 +367,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User!.find({ relations: ['globalRole'] });
+			const users = await Db.collections.User.find({ relations: ['globalRole'] });
 
 			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
 		}),
@@ -398,7 +399,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const users = await Db.collections.User!.find({
+			const users = await Db.collections.User.find({
 				where: { id: In([transferId, idToDelete]) },
 			});
 
@@ -432,11 +433,11 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-				Db.collections.SharedWorkflow!.find({
+				Db.collections.SharedWorkflow.find({
 					relations: ['workflow'],
 					where: { user: userToDelete },
 				}),
-				Db.collections.SharedCredentials!.find({
+				Db.collections.SharedCredentials.find({
 					relations: ['credentials'],
 					where: { user: userToDelete },
 				}),
@@ -494,7 +495,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const reinvitee = await Db.collections.User!.findOne({ id: idToReinvite });
+			const reinvitee = await Db.collections.User.findOne({ id: idToReinvite });
 
 			if (!reinvitee) {
 				Logger.debug(

@@ -15,7 +15,7 @@ export const tagFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the tag to create.',
+		description: 'The name of the tag to create',
 		required: true,
 	},
 ];

@@ -39,9 +39,6 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('nextCloudApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			options.auth = {
 				user: credentials.user as string,
@@ -56,9 +53,6 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 			return await this.helpers.request(options);
 		} else {
 			const credentials = await this.getCredentials('nextCloudOAuth2Api');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
 

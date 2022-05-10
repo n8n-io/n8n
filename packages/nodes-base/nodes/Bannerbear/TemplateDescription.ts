@@ -52,6 +52,6 @@ export const templateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the template.',
+		description: 'Unique identifier for the template',
 	},
 ];

@@ -4,6 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -52,6 +53,7 @@ export class Webhook implements INodeType {
 		defaults: {
 			name: 'Webhook',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
@@ -113,7 +115,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'HTTP Method',
@@ -146,7 +148,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to listen to.',
+				description: 'The HTTP method to listen to',
 			},
 			{
 				displayName: 'Path',
@@ -155,7 +157,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to.',
+				description: 'The path to listen to',
 			},
 			{
 				displayName: 'Respond',
@@ -179,7 +181,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'onReceived',
-				description: 'When and how to respond to the webhook.',
+				description: 'When and how to respond to the webhook',
 			},
 			{
 				displayName: 'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook" target="_blank">More details</a>',
@@ -242,7 +244,7 @@ export class Webhook implements INodeType {
 					{
 						name: 'No Response Body',
 						value: 'noData',
-						description: 'Returns without a body.',
+						description: 'Returns without a body',
 					},
 				],
 				default: 'firstEntryJson',
@@ -284,7 +286,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data.',
+						description: 'Set to true if webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
@@ -299,9 +301,7 @@ export class Webhook implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to write the data of
-									the received file to. If the data gets received via "Form-Data Multipart"
-									it will be the prefix and a number starting with 0 will be attached to it.`,
+						description: 'Name of the binary property to write the data of the received file to. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 					},
 					{
 						displayName: 'Ignore Bots',
@@ -364,7 +364,7 @@ export class Webhook implements INodeType {
 						},
 						default: '',
 						placeholder: 'success',
-						description: 'Custom response data to send.',
+						description: 'Custom response data to send',
 					},
 					{
 						displayName: 'Response Content-Type',
@@ -382,13 +382,13 @@ export class Webhook implements INodeType {
 						},
 						default: '',
 						placeholder: 'application/xml',
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
 						displayName: 'Response Headers',
 						name: 'responseHeaders',
 						placeholder: 'Add Response Header',
-						description: 'Add headers to the webhook response.',
+						description: 'Add headers to the webhook response',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -404,14 +404,14 @@ export class Webhook implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the header.',
+										description: 'Name of the header',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the header.',
+										description: 'Value of the header',
 									},
 								],
 							},
@@ -432,7 +432,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: 'data',
-						description: 'Name of the property to return the data of instead of the whole JSON.',
+						description: 'Name of the property to return the data of instead of the whole JSON',
 					},
 				],
 			},
@@ -454,7 +454,12 @@ export class Webhook implements INodeType {
 
 		if (authentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -474,7 +479,13 @@ export class Webhook implements INodeType {
 			}
 		} else if (authentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (error) {
+				// Do nothing
+			}
+
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate

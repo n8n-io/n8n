@@ -41,18 +41,18 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		if (authenticationMethod === 'apiKey') {
 			const credentials = await this.getCredentials('hubspotApi');
 
-			options.qs.hapikey = credentials!.apiKey as string;
+			options.qs.hapikey = credentials.apiKey as string;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'appToken') {
 			const credentials = await this.getCredentials('hubspotAppToken');
 
-			options.headers!['Authorization'] = `Bearer ${credentials!.appToken}`;
+			options.headers!['Authorization'] = `Bearer ${credentials.appToken}`;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
 
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
-				options.qs.hapikey = credentials!.apiKey as string;
+				options.qs.hapikey = credentials.apiKey as string;
 				return await this.helpers.request!(options);
 
 			} else {

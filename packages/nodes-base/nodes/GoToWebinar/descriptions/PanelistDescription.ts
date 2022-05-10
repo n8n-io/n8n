@@ -47,7 +47,7 @@ export const panelistFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Name of the panelist to create.',
+		description: 'Name of the panelist to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,7 +65,7 @@ export const panelistFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Email address of the panelist to create.',
+		description: 'Email address of the panelist to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,7 +86,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar that the panelist will present at.',
+		description: 'Key of the webinar that the panelist will present at',
 		displayOptions: {
 			show: {
 				resource: [
@@ -111,7 +111,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to retrieve all panelists from.',
+		description: 'Key of the webinar to retrieve all panelists from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -128,7 +128,7 @@ export const panelistFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -145,7 +145,7 @@ export const panelistFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -177,7 +177,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to delete the panelist from.',
+		description: 'Key of the webinar to delete the panelist from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -195,7 +195,7 @@ export const panelistFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the panelist to delete.',
+		description: 'Key of the panelist to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -220,7 +220,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to reinvite the panelist to.',
+		description: 'Key of the webinar to reinvite the panelist to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -238,7 +238,7 @@ export const panelistFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the panelist to reinvite.',
+		description: 'Key of the panelist to reinvite',
 		displayOptions: {
 			show: {
 				resource: [

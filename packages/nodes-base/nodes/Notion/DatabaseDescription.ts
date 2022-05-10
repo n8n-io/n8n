@@ -87,7 +87,7 @@ export const databaseFields = [
 				],
 			},
 		},
-		description: `The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Database URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -107,7 +107,7 @@ export const databaseFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -131,7 +131,7 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -213,7 +213,7 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -291,7 +291,7 @@ export const databaseFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},

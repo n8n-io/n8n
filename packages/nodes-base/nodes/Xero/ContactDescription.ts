@@ -115,7 +115,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Address',
 				options: [
 					{
@@ -257,7 +257,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				options: [
 					{
@@ -431,7 +431,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -455,7 +455,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -479,7 +479,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: `Contacts with a status of ARCHIVED will be included in the response`,
+				description: 'Contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',
@@ -504,7 +504,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Where',
@@ -515,7 +514,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
+				description: 'The where parameter allows you to filter on endpoints and elements that don\'t have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>.',
 			},
 		],
 	},
@@ -590,7 +589,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Address',
 				options: [
 					{
@@ -739,7 +738,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				options: [
 					{

@@ -70,10 +70,6 @@ export class TrelloTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const credentials = await this.getCredentials('trelloApi');
 
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
-
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
@@ -98,9 +94,6 @@ export class TrelloTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				const credentials = await this.getCredentials('trelloApi');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				const idModel = this.getNodeParameter('id') as string;
 
@@ -129,9 +122,6 @@ export class TrelloTrigger implements INodeType {
 
 				if (webhookData.webhookId !== undefined) {
 					const credentials = await this.getCredentials('trelloApi');
-					if (credentials === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-					}
 
 					const endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
 
@@ -170,10 +160,6 @@ export class TrelloTrigger implements INodeType {
 		const bodyData = this.getBodyData();
 
 		const credentials = await this.getCredentials('trelloApi');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		// TODO: Check why that does not work as expected even though it gets done as described
 		//       https://developers.trello.com/page/webhooks

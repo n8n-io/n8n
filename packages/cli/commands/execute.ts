@@ -108,8 +108,7 @@ export class Execute extends Command {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			workflowData = await Db.collections.Workflow!.findOne(workflowId);
+			workflowData = await Db.collections.Workflow.findOne(workflowId);
 			if (workflowData === undefined) {
 				console.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);

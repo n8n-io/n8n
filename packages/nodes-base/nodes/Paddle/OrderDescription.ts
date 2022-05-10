@@ -47,6 +47,6 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The identifier of the buyer’s checkout.',
+		description: 'The identifier of the buyer’s checkout',
 	},
 ];
