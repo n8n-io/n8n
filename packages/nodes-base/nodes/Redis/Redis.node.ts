@@ -450,7 +450,7 @@ export class Redis implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the list in Redis.',
+				description: 'Name of the list in Redis',
 			},
 			{
 				displayName: 'Data',
@@ -469,6 +469,7 @@ export class Redis implements INodeType {
 				default: '',
 				required: true,
 				description: 'Data to push',
+				hint: 'Value or a string of comma separated values',
 			},
 			{
 				displayName: 'Tail',
@@ -514,7 +515,6 @@ export class Redis implements INodeType {
 					},
 				},
 				default: 'data',
-				required: false,
 				description: 'Optional name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name"',
 			},
 			{
@@ -539,8 +539,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
-						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>
-						`,
+						description: '<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>.',
 					},
 				],
 			},
@@ -777,9 +776,7 @@ export class Redis implements INodeType {
 
 								const action = tail ? client.rpushx : client.lpushx;
 								const clientPush = util.promisify(action).bind(client);
-
-								await clientPush(redisList, messageData);
-
+								await clientPush(redisList, messageData.trim());
 								returnItems.push(items[itemIndex]);
 							} else if (operation === 'pop'){
 								const redisList = this.getNodeParameter('list', itemIndex) as string;
