@@ -3,12 +3,6 @@ import {
 } from 'request';
 
 import {
-	IAnalyzer,
-	IJob,
-	IResponder,
-} from './AnalyzerInterface';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -24,11 +18,7 @@ import moment from 'moment';
 export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('cortexApi');
-
-	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
-
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
 		method,
 		qs: query,
 		uri: uri || `${credentials.host}/api${resource}`,
