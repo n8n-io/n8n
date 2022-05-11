@@ -136,11 +136,11 @@
 				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
 				:key="SOMETHING_ELSE_KEY"
 				:value="SOMETHING_ELSE_KEY"
-				:label="$locale.baseText('parameterInput.somethingElse')"
+				:label="$locale.baseText('parameterInput.customApiCall')"
 			>
 				<div class="list-option">
 					<div class="option-headline">
-						{{ $locale.baseText('parameterInput.somethingElse') }}
+						{{ $locale.baseText('parameterInput.customApiCall') }}
 					</div>
 				</div>
 			</n8n-option>

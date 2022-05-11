@@ -72,6 +72,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		trailingEllispsis: {
+			type: Boolean,
+			default: false,
+		},
 		content: {
 			type: String,
 			default: '',
@@ -109,7 +113,7 @@ export default Vue.extend({
 				return this.content;
 			}
 
-			return this.content.slice(0, this.truncateAt as number) + '...';
+			return this.content.slice(0, this.truncateAt as number) + (this.trailingEllipsis ? '...' : '');
 		},
 		sanitizedContent(): string {
 			return sanitizeHtml(this.truncatedContent);

@@ -38,6 +38,7 @@
 						:content="scopesContent"
 						:truncate="true"
 						:truncateAt="scopesContent.indexOf('<br>')"
+						:trailingEllispsis="false"
 						:expandFromContent="true"
 						:expansionTextPattern="/\d+ scopes?/"
 					/>
@@ -54,7 +55,7 @@
 					</n8n-text>
 				</div>
 
-				<div v-if="isSomethingElseSelected(nodeValues)" class="parameter-item parameter-notice">
+				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
 					<n8n-notice
 						:content="$locale.baseText(
 							'nodeSettings.useTheHttpRequestNode',
@@ -353,7 +354,7 @@ export default mixins(
 
 				const credentialType = this.getCredentialTypeByName(activeCredentialType);
 
-				this.activeCredential = credentialType.displayName.split(' ').shift() || '';
+				this.activeCredential = credentialType.displayName.replace(' OAuth2 API', '');
 			},
 			onNodeExecute () {
 				this.$emit('execute');

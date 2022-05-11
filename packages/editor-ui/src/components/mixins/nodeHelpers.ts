@@ -48,7 +48,7 @@ export const nodeHelpers = mixins(
 				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
 			},
 
-			isSomethingElseSelected (nodeValues: INodeParameters): boolean {
+			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
 				const { parameters } = nodeValues;
 
 				if (!isObjectLiteral(parameters)) return false;
@@ -59,7 +59,7 @@ export const nodeHelpers = mixins(
 				);
 			},
 
-			mustHideDuringSomethingElse (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
 				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
 
 				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
