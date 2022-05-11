@@ -1,4 +1,4 @@
-import { In, Equal, Not, ObjectLiteral, LessThan } from 'typeorm';
+import { In, Not, ObjectLiteral, LessThan } from 'typeorm';
 import { Db, IExecutionFlattedDb } from '../..';
 import { ExecutionStatus } from '../publicApiRequest';
 
@@ -7,12 +7,11 @@ function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 
 	if (status === 'success') {
 		condition.finished = true;
-	} else if (status === 'running') {
-		condition.stoppedAt = Equal(null);
 	} else if (status === 'waiting') {
 		condition.waitTill = Not(null);
 	} else if (status === 'error') {
 		condition.stoppedAt = Not(null);
+		condition.finished = false;
 	}
 	return condition;
 }
@@ -36,6 +35,7 @@ export async function getExecutions(data: {
 	lastId?: number;
 	workflowIds?: number[];
 	status?: ExecutionStatus;
+	excludedWorkflowIds?: number[];
 }): Promise<IExecutionFlattedDb[]> {
 	const executions = await Db.collections.Execution.find({
 		select: getExecutionSelectableProperties(),
@@ -43,6 +43,7 @@ export async function getExecutions(data: {
 			...(data.lastId && { id: LessThan(data.lastId) }),
 			...(data.status && { ...getStatusCondition(data.status) }),
 			...(data.workflowIds && { workflowId: In(data.workflowIds) }),
+			...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
 		},
 		order: { id: 'DESC' },
 		take: data.limit,
@@ -55,12 +56,14 @@ export async function getExecutionsCount(data: {
 	lastId?: number;
 	workflowIds?: number[];
 	status?: ExecutionStatus;
+	excludedWorkflowIds?: number[];
 }): Promise<number> {
 	const executions = await Db.collections.Execution.count({
 		where: {
 			id: LessThan(data.lastId),
 			...(data.status && { ...getStatusCondition(data.status) }),
 			...(data.workflowIds && { workflowId: In(data.workflowIds) }),
+			...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
 		},
 		take: data.limit,
 	});

@@ -11,6 +11,7 @@ import {
 	getExecutionsCount,
 } from '../../Services/execution';
 import { getSharedWorkflowIds } from '../../Services/workflow';
+import { ActiveExecutions } from '../../..';
 
 export = {
 	deleteExecution: [
@@ -89,11 +90,17 @@ export = {
 				return res.status(404).json();
 			}
 
+			// get running workflows so we exclude them from the result
+			const runningWorkflowsIds = ActiveExecutions.getInstance()
+				.getActiveExecutions()
+				.map(({ id }) => Number(id));
+
 			const filters = {
 				status,
 				limit,
 				lastId,
 				...(workflowId && { workflowIds: [workflowId] }),
+				excludedWorkflowIds: runningWorkflowsIds,
 			};
 
 			const executions = await getExecutions(filters);

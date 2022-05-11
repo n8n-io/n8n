@@ -18,6 +18,8 @@ import type { Role } from '../../../src/databases/entities/Role';
 import { User } from '../../../src/databases/entities/User';
 import type { CollectionName, CredentialPayload } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
+import { now } from 'lodash';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -273,6 +275,81 @@ export function getAllRoles() {
 	]);
 }
 
+// ----------------------------------
+//          Execution helpers
+// ----------------------------------
+
+/**
+ * Store a execution in the DB and assigns it to a workflow.
+ * @param user user to assign the workflow to
+ */
+export async function createExecution(
+	attributes: Partial<ExecutionEntity> = {},
+	workflow: WorkflowEntity,
+) {
+	const {
+		data,
+		finished,
+		mode,
+		startedAt,
+		stoppedAt,
+		waitTill,
+	} = attributes;
+
+	const execution = await Db.collections.Execution.save({
+		data: data ?? '[]',
+		finished: finished ?? true,
+		mode: mode ?? 'manual',
+		startedAt: startedAt ?? new Date(),
+		...(workflow && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		stoppedAt: stoppedAt ?? new Date(),
+		waitTill: waitTill ?? new Date(),
+	});
+
+	return execution;
+}
+
+/**
+ * Store a execution in the DB and assigns it to a workflow.
+ * @param user user to assign the workflow to
+ */
+ export async function createSuccessfullExecution(
+	workflow: WorkflowEntity,
+) {
+	const execution = await createExecution({
+		finished: true,
+	}, workflow)
+
+	return execution;
+}
+
+/**
+ * Store a execution in the DB and assigns it to a workflow.
+ * @param user user to assign the workflow to
+ */
+ export async function createErrorExecution(
+	workflow: WorkflowEntity,
+) {
+	const execution = await createExecution({
+		finished: false,
+		stoppedAt: new Date(),
+	}, workflow)
+	return execution;
+}
+
+/**
+ * Store a execution in the DB and assigns it to a workflow.
+ * @param user user to assign the workflow to
+ */
+ export async function createWaitingExecution(
+	workflow: WorkflowEntity,
+) {
+	const execution = await createExecution({
+		finished: false,
+		waitTill: new Date(),
+	}, workflow)
+	return execution;
+}
 // ----------------------------------
 //          Workflow helpers
 // ----------------------------------
