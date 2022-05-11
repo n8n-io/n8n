@@ -596,7 +596,7 @@ export default mixins(
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
@@ -1836,7 +1836,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				await this.$store.dispatch('workflows/setNewWorkflowName');
+				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
+
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
@@ -1848,6 +1849,23 @@ export default mixins(
 				this.setZoomLevel(1);
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+					// For novice users (onboardingFlowEnabled == true)
+					// Inject welcome sticky note and zoom to fit
+					if(newWorkflow.onboardingFlowEnabled) {
+						this.$nextTick(async () => {
+							await this.addNodes([
+								{
+									...CanvasHelpers.WELCOME_STICKY_NODE,
+									parameters: {
+										// Use parameters from the template but add translated content
+										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+									},
+								},
+							]);
+							this.zoomToFit();
+						});
+					}
 				}, 0);
 			},
 			async initView (): Promise<void> {
