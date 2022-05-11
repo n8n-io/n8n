@@ -18,7 +18,7 @@ import {
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let data; let domain;
+	let domain;
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
@@ -29,17 +29,10 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		jiraCredentials = await this.getCredentials('jiraSoftwareCloudApi');
 	}
 
-	if (jiraVersion === 'server') {
-		domain = jiraCredentials!.domain;
-		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.password}`).toString('base64');
-	} else {
-		domain = jiraCredentials!.domain;
-		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.apiToken}`).toString('base64');
-	}
+	domain = jiraCredentials!.domain;
 
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Basic ${data}`,
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			'X-Atlassian-Token': 'no-check',
@@ -62,6 +55,8 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
+
+	console.log('JIRA', options);
 
 	try {
 		return await this.helpers.request!(options);
