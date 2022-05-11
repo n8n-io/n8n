@@ -18,9 +18,6 @@ export async function homeAssistantApiRequest(this: IExecuteFunctions | ILoadOpt
 	const credentials = await this.getCredentials('homeAssistantApi');
 
 	let options: OptionsWithUri = {
-		headers: {
-			Authorization: `Bearer ${credentials.accessToken}`,
-		},
 		method,
 		qs,
 		body,
