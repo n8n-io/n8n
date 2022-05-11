@@ -1,4 +1,5 @@
 import {
+	IAuthenticateHeaderAuth,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -33,4 +34,11 @@ export class HomeAssistantApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate = {
+		type: 'headerAuth',
+		properties: {
+			name: 'Authorization',
+			value: '=Bearer {{$credentials.accessToken}}',
+		},
+	} as IAuthenticateHeaderAuth;
 }
