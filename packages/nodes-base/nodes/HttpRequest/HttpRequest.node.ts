@@ -1234,8 +1234,6 @@ export class HttpRequest implements INodeType {
 					);
 				}
 			} else if (authentication === 'existingCredentialType' && nodeCredentialType) {
-				console.log(nodeCredentialType);
-				console.log(requestOptions);
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
 					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
