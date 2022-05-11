@@ -9,8 +9,6 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IHookFunctions,
 	JsonObject,
@@ -34,19 +32,22 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
+	let credentialType = '';
 	if (emailApiCredentials !== undefined) {
 		const { sandboxMode } = emailApiCredentials;
-		Object.assign(body, { SandboxMode: sandboxMode });
-		options.auth = {
-			username: emailApiCredentials.apiKey,
-			password: emailApiCredentials.secretKey,
-		};
+		credentialType = 'mailjetEmailApi';
+
+		//Disable for trigger node as callback URL has no property "SandboxMode"
+		if (!resource.includes('eventcallbackurl')) {
+			Object.assign(body, { SandboxMode: sandboxMode });
+		}
 	} else {
-		const smsApiCredentials = await this.getCredentials('mailjetSmsApi');
-		options.headers!['Authorization'] = `Bearer ${smsApiCredentials.token}`;
+		credentialType = 'mailjetSmsApi';
 	}
+
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -69,37 +70,6 @@ export async function mailjetApiRequestAllItems(this: IExecuteFunctions | IHookF
 		responseData.length !== 0
 	);
 	return returnData;
-}
-
-export async function validateCredentials(
-	this: ICredentialTestFunctions,
-	decryptedCredentials: ICredentialDataDecryptedObject,
-): Promise<any> { // tslint:disable-line:no-any
-	const credentials = decryptedCredentials;
-
-	const {
-		apiKey,
-		secretKey,
-	} = credentials as {
-		apiKey: string,
-		secretKey: string,
-	};
-
-	const options: OptionsWithUri = {
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-		},
-		auth: {
-			username: apiKey,
-			password: secretKey,
-		},
-		method: 'GET',
-		uri: `https://api.mailjet.com/v3/REST/template`,
-		json: true,
-	};
-
-	return await this.helpers.request(options);
 }
 
 export function validateJSON(json: string | undefined): IDataObject | undefined { // tslint:disable-line:no-any
