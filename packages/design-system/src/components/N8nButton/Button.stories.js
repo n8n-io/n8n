@@ -13,7 +13,7 @@ export default {
 		},
 		type: {
 			control: 'select',
-			options: ['primary', 'outline', 'light', 'text'],
+			options: ['primary', 'outline', 'light', 'text', 'tertiary'],
 		},
 		size: {
 			control: {
