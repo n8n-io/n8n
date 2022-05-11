@@ -20,7 +20,6 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
 				:truncateAt="parameter.typeOptions && parameter.typeOptions.truncateAt"
 			/>
 

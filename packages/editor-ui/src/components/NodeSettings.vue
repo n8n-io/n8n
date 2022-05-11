@@ -36,7 +36,6 @@
 					<n8n-notice
 						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
 						:content="scopesContent"
-						:truncate="true"
 						:truncateAt="scopesContent.indexOf('<br>')"
 						:trailingEllipsis="false"
 						:expandFromContent="true"
@@ -65,7 +64,6 @@
 								},
 							},
 						)"
-						:truncate="false"
 					/>
 				</div>
 

@@ -68,10 +68,6 @@ export default Vue.extend({
 			type: Number,
 			default: 150,
 		},
-		truncate: {
-			type: Boolean,
-			default: false,
-		},
 		trailingEllipsis: {
 			type: Boolean,
 			default: false,
@@ -106,7 +102,7 @@ export default Vue.extend({
 			];
 		},
 		canTruncate(): boolean {
-			return this.truncate && this.content.length > this.truncateAt;
+			return this.truncateAt !== undefined && this.content.length > this.truncateAt;
 		},
 		truncatedContent(): string {
 			if (!this.canTruncate || this.expanded) {
