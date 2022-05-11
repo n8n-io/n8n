@@ -6,10 +6,10 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
+	INodeCredentialTestResult,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import { versionDescription } from './actions/versionDescription';
@@ -31,7 +31,7 @@ export class SyncroMspV1 implements INodeType {
 	methods = {
 		loadOptions,
 		credentialTest: {
-			async syncroMspApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async syncroMspApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {

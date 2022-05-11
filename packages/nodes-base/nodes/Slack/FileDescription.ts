@@ -21,12 +21,12 @@ export const fileOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get & filters team files.',
+				description: 'Get & filters team files',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
-				description: 'Create or upload an existing file.',
+				description: 'Create or upload an existing file',
 			},
 		],
 		default: 'upload',
@@ -54,7 +54,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field.',
+		description: 'If the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -76,7 +76,7 @@ export const fileFields: INodeProperties[] = [
 
 		},
 		placeholder: '',
-		description: 'The text content of the file to upload.',
+		description: 'The text content of the file to upload',
 	},
 	{
 		displayName: 'Binary Property',
@@ -99,7 +99,7 @@ export const fileFields: INodeProperties[] = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded',
 	},
 	{
 		displayName: 'Options',
@@ -127,35 +127,35 @@ export const fileFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'The channels to send the file to.',
+				description: 'The channels to send the file to',
 			},
 			{
 				displayName: 'File Name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				description: 'Filename of file.',
+				description: 'Filename of file',
 			},
 			{
 				displayName: 'Initial Comment',
 				name: 'initialComment',
 				type: 'string',
 				default: '',
-				description: 'The message text introducing the file in specified channels.',
+				description: 'The message text introducing the file in specified channels',
 			},
 			{
 				displayName: 'Thread TS',
 				name: 'threadTs',
 				type: 'string',
 				default: '',
-				description: `Provide another message's ts value to upload this file as a reply. Never use a reply's ts value; use its parent instead.`,
+				description: 'Provide another message\'s ts value to upload this file as a reply. Never use a reply\'s ts value; use its parent instead.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of file.',
+				description: 'Title of file',
 			},
 		],
 	},
@@ -178,7 +178,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -202,7 +202,7 @@ export const fileFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -229,28 +229,28 @@ export const fileFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
-				description: 'Channel containing the file to be listed.',
+				description: 'Channel containing the file to be listed',
 			},
 			{
 				displayName: 'Show Files Hidden By Limit',
 				name: 'showFilesHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit.',
+				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
 			},
 			{
 				displayName: 'Timestamp From',
 				name: 'tsFrom',
 				type: 'string',
 				default: '',
-				description: 'Filter files created after this timestamp (inclusive).',
+				description: 'Filter files created after this timestamp (inclusive)',
 			},
 			{
 				displayName: 'Timestamp To',
 				name: 'tsTo',
 				type: 'string',
 				default: '',
-				description: 'Filter files created before this timestamp (inclusive).',
+				description: 'Filter files created before this timestamp (inclusive)',
 			},
 			{
 				displayName: 'Types',
@@ -297,7 +297,7 @@ export const fileFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'Filter files created by a single user.',
+				description: 'Filter files created by a single user',
 			},
 		],
 	},

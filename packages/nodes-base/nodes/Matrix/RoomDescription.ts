@@ -138,7 +138,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID or alias',
 		required: true,
 	},
 
@@ -163,7 +162,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 
@@ -188,7 +186,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 
@@ -207,7 +204,7 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The fully qualified user ID of the invitee.',
+		description: 'The fully qualified user ID of the invitee',
 		placeholder: '@cheeky_monkey:matrix.org',
 		required: true,
 	},
@@ -234,7 +231,6 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 	{
@@ -252,7 +248,7 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The fully qualified user ID.',
+		description: 'The fully qualified user ID',
 		placeholder: '@cheeky_monkey:matrix.org',
 		required: true,
 	},

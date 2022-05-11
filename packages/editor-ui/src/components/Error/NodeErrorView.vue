@@ -104,7 +104,6 @@ export default mixins(
 		copySuccess() {
 			this.$showMessage({
 				title: this.$locale.baseText('nodeErrorView.showMessage.title'),
-				message: this.$locale.baseText('nodeErrorView.showMessage.message'),
 				type: 'info',
 			});
 		},

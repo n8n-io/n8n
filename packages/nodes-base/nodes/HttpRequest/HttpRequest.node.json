@@ -70,6 +70,11 @@
 				"url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/"
 			},
 			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
+			},
+			{
 				"label": "Building an expense tracking app in 10 minutes",
 				"icon": "📱",
 				"url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"
@@ -90,9 +95,19 @@
 				"url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/"
 			},
 			{
+				"label": "How a Membership Development Manager automates his work and investments",
+				"icon": "📈",
+				"url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/"
+			},
+			{
 				"label": "A low-code bitcoin ticker built with QuestDB and n8n.io",
 				"icon": "📈",
 				"url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/"
+			},
+			{
+				"label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI",
+				"icon": "🎡",
+				"url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/"
 			},
 			{
 				"label": "How Common Knowledge use workflow automation for activism",
@@ -108,6 +123,10 @@
 				"label": "How Goomer automated their operations with over 200 n8n workflows",
 				"icon": "🛵",
 				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	},

@@ -23,7 +23,7 @@ export const channelStatisticsDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The ID of the channel to get the statistics from.',
+		description: 'The ID of the channel to get the statistics from',
 	},
 ];
 

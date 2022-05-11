@@ -151,9 +151,24 @@ export class Twilio implements INodeType {
 				},
 				description: 'The message to send',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Status Callback',
+						name: 'statusCallback',
+						type: 'string',
+						default: '',
+						description: 'Status Callbacks allow you to receive events related to the REST resources managed by Twilio: Rooms, Recordings and Compositions',
+					},
+				],
+			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -192,6 +207,7 @@ export class Twilio implements INodeType {
 						body.From = this.getNodeParameter('from', i) as string;
 						body.To = this.getNodeParameter('to', i) as string;
 						body.Body = this.getNodeParameter('message', i) as string;
+						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
 

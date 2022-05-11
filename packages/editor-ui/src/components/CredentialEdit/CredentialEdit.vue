@@ -54,10 +54,10 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection" :class="$style.credTab"
+						<n8n-menu-item index="connection"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
-						<n8n-menu-item index="details" :class="$style.credTab"
+						<n8n-menu-item index="details"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
@@ -108,10 +108,10 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -279,7 +279,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			});
 
-			return !!nodesThatCanTest.length;
+			return !!nodesThatCanTest.length || (!!this.credentialType && !!this.credentialType.test);
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
@@ -395,6 +395,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				parameter,
 				'',
+				null,
 			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
@@ -456,7 +457,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.message'),
 				);
 				this.closeDialog();
 
@@ -566,7 +566,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			const result: INodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
 				this.testedSuccessfully = false;
@@ -599,6 +599,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				false,
 				false,
+				null,
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {
@@ -658,7 +659,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.message'),
 				);
 
 				return null;
@@ -687,7 +687,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.message'),
 				);
 
 				return null;
@@ -728,7 +727,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.message'),
 				);
 				this.isDeleting = false;
 
@@ -741,10 +739,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
-				message: this.$locale.baseText(
-					'credentialEdit.credentialEdit.showMessage.message',
-					{ interpolate: { savedCredentialName } },
-				),
 				type: 'success',
 			});
 			this.closeDialog();
@@ -851,10 +845,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
-}
-
-.credTab {
-	padding-left: 12px !important;
 }
 
 .credActions {

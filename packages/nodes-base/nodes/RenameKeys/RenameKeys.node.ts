@@ -35,7 +35,7 @@ export class RenameKeys implements INodeType {
 				displayName: 'Keys',
 				name: 'keys',
 				placeholder: 'Add new key',
-				description: 'Adds a key which should be renamed.',
+				description: 'Adds a key which should be renamed',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -53,7 +53,7 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'currentKey',
-								description: 'The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey"',
+								description: 'The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 							},
 							{
 								displayName: 'New Key Name',
@@ -61,7 +61,7 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'newKey',
-								description: 'the name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey"',
+								description: 'the name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 							},
 						],
 					},

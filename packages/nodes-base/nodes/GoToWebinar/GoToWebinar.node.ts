@@ -43,7 +43,7 @@ import {
 	omit,
 } from 'lodash';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {

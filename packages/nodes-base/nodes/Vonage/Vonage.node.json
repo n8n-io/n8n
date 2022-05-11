@@ -23,5 +23,8 @@
 				"url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/"
 			}
 		]
-	}
+	},
+	"alias": [
+		"SMS"
+	]
 }

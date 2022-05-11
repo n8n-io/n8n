@@ -5,14 +5,10 @@ import {
 } from 'n8n-core';
 
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodePropertyOptions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -28,39 +24,23 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
+export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: object, query?: IDataObject, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
 		body: { data: body },
 		qs: query,
-		uri: uri || `https://app.asana.com/api/1.0${endpoint}`,
+		url: uri || `https://app.asana.com/api/1.0${endpoint}`,
 		json: true,
 	};
 
-	try {
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('asanaApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'asanaOAuth2Api', options);
-		}
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	const credentialType = authenticationMethod === 'accessToken' ? 'asanaApi' : 'asanaOAuth2Api';
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
-export async function asanaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function asanaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -104,6 +84,36 @@ export async function getWorkspaces(this: ILoadOptionsFunctions): Promise<INodeP
 	});
 
 	return returnData;
+}
+
+
+export function getColorOptions(): INodePropertyOptions[] {
+	return [
+		'dark-blue',
+		'dark-brown',
+		'dark-green',
+		'dark-orange',
+		'dark-pink',
+		'dark-purple',
+		'dark-red',
+		'dark-teal',
+		'dark-warm-gray',
+		'light-blue',
+		'light-green',
+		'light-orange',
+		'light-pink',
+		'light-purple',
+		'light-red',
+		'light-teal',
+		'light-warm-gray',
+		'light-yellow',
+		'none',
+	].map(value => {
+		return {
+			name: value,
+			value,
+		};
+	});
 }
 
 export function getTaskFields() {

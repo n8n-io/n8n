@@ -79,7 +79,7 @@ export default Vue.extend({
 
 			const trigger = foundTriggers[0];
 
-			const triggerNodeType = this.$store.getters.nodeType(trigger.type);
+			const triggerNodeType = this.$store.getters.nodeType(trigger.type, trigger.typeVersion);
 			if (triggerNodeType.activationMessage) {
 				return triggerNodeType.activationMessage;
 			}

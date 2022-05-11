@@ -123,7 +123,7 @@ export const deployFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	// ---- Create Site Deploy ---- //
 	{

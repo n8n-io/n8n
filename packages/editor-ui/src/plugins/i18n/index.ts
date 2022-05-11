@@ -10,10 +10,14 @@ import {
 	normalize,
 	insertOptionsAndValues,
 } from "./utils";
+import {
+	locale,
+} from 'n8n-design-system';
 
-const englishBaseText = require('./locales/en');
+import englishBaseText from './locales/en.json';
 
 Vue.use(VueI18n);
+locale.use('en');
 
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
@@ -58,9 +62,13 @@ export class I18nClass {
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
 	baseText(
-		key: string,
-		options?: { interpolate: { [key: string]: string } },
+		key: BaseTextKey,
+		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
+		if (options && options.adjustToNumber) {
+			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
+		}
+
 		return this.i18n.t(key, options && options.interpolate).toString();
 	}
 
@@ -99,7 +107,7 @@ export class I18nClass {
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
-						key: `reusableDynamicText.oauth2.${parameterName}`,
+						key: `_reusableDynamicText.oauth2.${parameterName}`,
 						fallback: displayName,
 					});
 				}
@@ -107,6 +115,18 @@ export class I18nClass {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.displayName`,
 					fallback: displayName,
+				});
+			},
+
+			/**
+			 * Hint for a top-level param.
+			 */
+			hint(
+				{ name: parameterName, hint }: { name: string; hint: string; },
+			) {
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.hint`,
+					fallback: hint,
 				});
 			},
 
@@ -149,16 +169,14 @@ export class I18nClass {
 			},
 
 			/**
-			 * Placeholder for a `string` or `collection` or `fixedCollection` param.
-			 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
-			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
+			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: displayName,
+					fallback: placeholder,
 				});
 			},
 		};
@@ -202,6 +220,21 @@ export class I18nClass {
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.description`,
 					fallback: parameter.description,
+				});
+			},
+
+			/**
+			 * Hint for an input, whether top-level or nested.
+			 */
+			hint(
+				parameter: { name: string; hint: string; type: string },
+				path: string,
+			) {
+				const middleKey = deriveMiddleKey(path, parameter);
+
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.hint`,
+					fallback: parameter.hint,
 				});
 			},
 
@@ -329,12 +362,17 @@ const i18nInstance = new VueI18n({
 	silentTranslationWarn: true,
 });
 
+locale.i18n((key: string, options?: {interpolate: object}) => i18nInstance.t(key, options && options.interpolate));
+
 const loadedLanguages = ['en'];
 
 function setLanguage(language: string) {
 	i18nInstance.locale = language;
 	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
+
+	// update n8n design system and element ui
+	locale.use(language);
 
 	return language;
 }
@@ -431,3 +469,23 @@ export function addHeaders(
 		Object.assign(i18nInstance.messages[language], { headers }),
 	);
 }
+
+// ----------------------------------
+//             typings
+// ----------------------------------
+
+declare module 'vue/types/vue' {
+	interface Vue {
+		$locale: I18nClass;
+	}
+}
+
+type GetBaseTextKey<T> = T extends `_${string}` ? never :  T;
+
+export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
+
+type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}`
+	? C
+	: never;
+
+export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;

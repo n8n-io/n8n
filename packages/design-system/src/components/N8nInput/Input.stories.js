@@ -8,7 +8,7 @@ export default {
 	argTypes: {
 		type: {
 			control: 'select',
-			options: ['text', 'textarea'],
+			options: ['text', 'textarea', 'number', 'password', 'email'],
 		},
 		placeholder: {
 			control: 'text',
@@ -30,8 +30,8 @@ export default {
 
 const methods = {
 	onInput: action('input'),
-	onFocus: action('input'),
-	onChange: action('input'),
+	onFocus: action('focus'),
+	onChange: action('change'),
 };
 
 const Template = (args, { argTypes }) => ({
