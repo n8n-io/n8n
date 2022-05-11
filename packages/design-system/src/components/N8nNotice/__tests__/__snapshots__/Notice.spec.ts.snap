@@ -1,11 +1,11 @@
 // Vitest Snapshot v1
 
 exports[`components > N8nNotice > props > content > should render HTML 1`] = `
-"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_12mks_1 _warning_12mks_20\\">
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_1h8e0_1 _warning_1h8e0_21\\">
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">
       <!---->
-      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_12mks_45\\"><strong>Hello world!</strong> This is a notice.</span>
+      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_1h8e0_46\\"><strong>Hello world!</strong> This is a notice.</span>
       <!---->
     </n8n-text-stub>
   </div>
@@ -13,11 +13,11 @@ exports[`components > N8nNotice > props > content > should render HTML 1`] = `
 `;
 
 exports[`components > N8nNotice > props > content > should render correctly with content prop 1`] = `
-"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_12mks_1 _warning_12mks_20\\">
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_1h8e0_1 _warning_1h8e0_21\\">
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">
       <!---->
-      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_12mks_45\\">This is a notice.</span>
+      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_1h8e0_46\\">This is a notice.</span>
       <!---->
     </n8n-text-stub>
   </div>
@@ -25,11 +25,11 @@ exports[`components > N8nNotice > props > content > should render correctly with
 `;
 
 exports[`components > N8nNotice > props > content > should sanitize rendered HTML 1`] = `
-"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_12mks_1 _warning_12mks_20\\">
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_1h8e0_1 _warning_1h8e0_21\\">
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">
       <!---->
-      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_12mks_45\\"> This is a notice.</span>
+      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_1h8e0_46\\"> This is a notice.</span>
       <!---->
     </n8n-text-stub>
   </div>
@@ -37,7 +37,7 @@ exports[`components > N8nNotice > props > content > should sanitize rendered HTM
 `;
 
 exports[`components > N8nNotice > should render correctly 1`] = `
-"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_12mks_1 _warning_12mks_20\\">
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_1h8e0_1 _warning_1h8e0_21\\">
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a notice.</n8n-text-stub>
   </div>
