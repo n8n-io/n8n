@@ -49,7 +49,7 @@ export const DEFAULT_START_NODE = {
 };
 
 export const WELCOME_STICKY_NODE = {
-	name: "Note1",
+	name: "QuickstartNote",
 	type: STICKY_NODE_TYPE,
 	typeVersion: 1,
 	position: [

@@ -10,7 +10,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {},
 	actions: {
-		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<object> => {
+		getNewWorkflowData: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<object> => {
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
