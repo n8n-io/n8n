@@ -1,7 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	SOMETHING_ELSE_KEY,
+	CUSTOM_API_CALL_KEY,
 } from '@/constants';
 
 import {
@@ -54,8 +54,8 @@ export const nodeHelpers = mixins(
 				if (!isObjectLiteral(parameters)) return false;
 
 				return (
-					parameters.resource === SOMETHING_ELSE_KEY ||
-					parameters.operation === SOMETHING_ELSE_KEY
+					parameters.resource === CUSTOM_API_CALL_KEY ||
+					parameters.operation === CUSTOM_API_CALL_KEY
 				);
 			},
 
