@@ -1,5 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -74,4 +77,18 @@ export class TwilioApi implements ICredentialType {
 			},
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		if (credentials.authType === 'apiKey') {
+			requestOptions.auth = {
+				username: credentials.apiKeySid as string,
+				password: credentials.apiKeySecret as string,
+			};
+		} else if (credentials.authType === 'authToken') {
+			requestOptions.auth = {
+				username: credentials.accountSid as string,
+				password: credentials.authToken as string,
+			};
+		}
+		return requestOptions;
+	}
 }
