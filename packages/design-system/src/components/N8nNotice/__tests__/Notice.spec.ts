@@ -58,7 +58,7 @@ describe('components', () => {
 		});
 
 		describe('truncation', () => {
-			it('should truncate content longer than 150 characters', async () => {
+			it('should truncate content longer than 150 characters - with trailing ellipsis', async () => {
 				const wrapper = render(N8nNotice, {
 					props: {
 						id: 'notice',
@@ -69,10 +69,10 @@ describe('components', () => {
 					stubs: ['n8n-text'],
 				});
 
-				const region = await wrapper.findByRole('post-expansion-region');
+				const post = await wrapper.findByRole('post-expansion-region');
 
-				expect(region).toBeVisible();
-				expect(region.textContent!.endsWith('...')).toBeTruthy();
+				expect(post).toBeVisible();
+				expect(post.textContent!.endsWith('...')).toBeTruthy();
 			});
 
 			it('should expand truncated text when clicking \'Show more\'', async () => {
@@ -87,63 +87,189 @@ describe('components', () => {
 				});
 
 				const button = await wrapper.findByRole('button');
-				const region = await wrapper.findByRole('post-expansion-region');
+				const post = await wrapper.findByRole('post-expansion-region');
 
 				await fireEvent.click(button);
 
 				expect(button).toHaveTextContent('Show less');
-				expect(region.textContent!.endsWith('...')).not.toBeTruthy();
+				expect(post.textContent!.endsWith('...')).not.toBeTruthy();
 			});
 		});
 
 		describe('expansion text', () => {
-			it('should expand from content - multiple scopes', async () => {
+
+			describe('should expand from content', () => {
+
+				it('expansion text at start - without trailing ellipsis', async () => {
+					const wrapper = render(N8nNotice, {
+						props: {
+							id: 'notice',
+							truncate: true,
+							expandFromContent: true,
+							expansionTextPattern: /\d+ scopes?/,
+							content: '2 scopes available for Google Calendar credentials<br>user.profile<br>user.contacts',
+						},
+						stubs: ['n8n-text'],
+					});
+
+					const pre = await wrapper.findByRole('pre-expansion-region');
+					const expansionRegion = await wrapper.findByRole('expansion-region');
+					const post = await wrapper.findByRole('post-expansion-region');
+
+					expect(pre).toBeVisible();
+					expect(expansionRegion).toBeVisible();
+					expect(post).toBeVisible();
+
+					expect(pre).toBeEmptyDOMElement();
+					expect(expansionRegion).toHaveTextContent('2 scopes');
+					expect(post).toHaveTextContent('available for Google Calendar credentials');
+					expect(post.textContent?.endsWith('...')).toBe(false);
+				});
+
+				it('expansion text at start - with trailing ellipsis', async () => {
+					const content = '2 scopes available for Google Calendar credentials<br>user.profile<br>user.contacts';
+
+					const wrapper = render(N8nNotice, {
+						props: {
+							id: 'notice',
+							truncate: true,
+							truncateAt: content.indexOf('<br>'),
+							trailingEllipsis: true,
+							expandFromContent: true,
+							expansionTextPattern: /\d+ scopes?/,
+							content,
+						},
+						stubs: ['n8n-text'],
+					});
+
+					const pre = await wrapper.findByRole('pre-expansion-region');
+					const expansionRegion = await wrapper.findByRole('expansion-region');
+					const post = await wrapper.findByRole('post-expansion-region');
+
+					expect(pre).toBeVisible();
+					expect(expansionRegion).toBeVisible();
+					expect(post).toBeVisible();
+
+					expect(pre).toBeEmptyDOMElement();
+					expect(expansionRegion).toHaveTextContent('2 scopes');
+					expect(post).toHaveTextContent('available for Google Calendar credentials');
+					expect(post.textContent?.endsWith('...')).toBe(true);
+				});
+
+				it('expansion text at middle - without trailing ellipsis', async () => {
+					const wrapper = render(N8nNotice, {
+						props: {
+							id: 'notice',
+							truncate: true,
+							expandFromContent: true,
+							expansionTextPattern: /\d+ scopes?/,
+							content: 'Google Books has 1 scope available<br>user.books',
+						},
+						stubs: ['n8n-text'],
+					});
+
+					const pre = await wrapper.findByRole('pre-expansion-region');
+					const expansion = await wrapper.findByRole('expansion-region');
+					const post = await wrapper.findByRole('post-expansion-region');
+
+					expect(pre).toBeVisible();
+					expect(expansion).toBeVisible();
+					expect(post).toBeVisible();
+
+					expect(pre).toHaveTextContent('Google Books has');
+					expect(expansion).toHaveTextContent('1 scope');
+					expect(post).toHaveTextContent('available');
+					expect(post.textContent?.endsWith('...')).toBe(false);
+				});
+			});
+
+			it('expansion text at middle - with trailing ellipsis', async () => {
+				const content = 'Google Books has 1 scope available<br>user.books';
+
 				const wrapper = render(N8nNotice, {
 					props: {
 						id: 'notice',
 						truncate: true,
+						truncateAt: content.indexOf('<br>'),
+						trailingEllipsis: true,
 						expandFromContent: true,
 						expansionTextPattern: /\d+ scopes?/,
-						content: '2 scopes available for Google Calendar credentials<br>user.profile<br>user.contacts',
+						content,
 					},
 					stubs: ['n8n-text'],
 				});
 
-				const preRegion = await wrapper.findByRole('pre-expansion-region');
-				const expansionRegion = await wrapper.findByRole('expansion-text-region');
-				const postRegion = await wrapper.findByRole('post-expansion-region');
+				const pre = await wrapper.findByRole('pre-expansion-region');
+				const expansion = await wrapper.findByRole('expansion-region');
+				const post = await wrapper.findByRole('post-expansion-region');
 
-				expect(preRegion.textContent).toBe('');
-				expect(expansionRegion).toBeVisible();
-				expect(postRegion).toBeVisible();
+				expect(pre).toBeVisible();
+				expect(expansion).toBeVisible();
+				expect(post).toBeVisible();
 
-				expect(expansionRegion).toHaveTextContent('2 scopes');
-				expect(postRegion).toHaveTextContent('available for Google Calendar credentials');
+				expect(pre).toHaveTextContent('Google Books has');
+				expect(expansion).toHaveTextContent('1 scope');
+				expect(post).toHaveTextContent('available');
+				expect(post.textContent?.endsWith('...')).toBe(true);
+			});
+		});
+
+		it('expansion text at end - without trailing ellipsis', async () => {
+			const content = 'Google Calendar credentials have 1 scope<br>user.profile';
+
+			const wrapper = render(N8nNotice, {
+				props: {
+					id: 'notice',
+					truncate: true,
+					truncateAt: content.indexOf('<br>'),
+					expandFromContent: true,
+					expansionTextPattern: /\d+ scopes?/,
+					content,
+				},
+				stubs: ['n8n-text'],
 			});
 
-			it('should expand from content - single scope', async () => {
-				const wrapper = render(N8nNotice, {
-					props: {
-						id: 'notice',
-						truncate: true,
-						expandFromContent: true,
-						expansionTextPattern: /\d+ scopes?/,
-						content: '1 scope available for Google Books credentials<br>user.books',
-					},
-					stubs: ['n8n-text'],
-				});
+			const pre = await wrapper.findByRole('pre-expansion-region');
+			const expansionRegion = await wrapper.findByRole('expansion-region');
+			const post = await wrapper.findByRole('post-expansion-region');
 
-				const preRegion = await wrapper.findByRole('pre-expansion-region');
-				const expansionRegion = await wrapper.findByRole('expansion-text-region');
-				const postRegion = await wrapper.findByRole('post-expansion-region');
+			expect(pre).toBeVisible();
+			expect(expansionRegion).toBeVisible();
+			expect(post).toBeVisible();
 
-				expect(preRegion.textContent).toBe('');
-				expect(expansionRegion).toBeVisible();
-				expect(postRegion).toBeVisible();
+			expect(pre).toHaveTextContent('Google Calendar credentials have');
+			expect(expansionRegion).toHaveTextContent('1 scope');
+			expect(post).toBeEmptyDOMElement();
+			expect(post.textContent?.endsWith('...')).toBe(false);
+		});
 
-				expect(expansionRegion).toHaveTextContent('1 scope');
-				expect(postRegion).toHaveTextContent('available for Google Books credentials');
+		it('expansion text at end - with trailing ellipsis', async () => {
+			const content = 'Google Calendar credentials have 1 scope<br>user.profile';
+
+			const wrapper = render(N8nNotice, {
+				props: {
+					id: 'notice',
+					truncate: true,
+					truncateAt: content.indexOf('<br>'),
+					trailingEllipsis: true,
+					expandFromContent: true,
+					expansionTextPattern: /\d+ scopes?/,
+					content,
+				},
+				stubs: ['n8n-text'],
 			});
+
+			const pre = await wrapper.findByRole('pre-expansion-region');
+			const expansionRegion = await wrapper.findByRole('expansion-region');
+			const post = await wrapper.findByRole('post-expansion-region');
+
+			expect(pre).toBeVisible();
+			expect(expansionRegion).toBeVisible();
+			expect(post).toBeVisible();
+
+			expect(pre).toHaveTextContent('Google Calendar credentials have');
+			expect(expansionRegion).toHaveTextContent('1 scope');
+			expect(post).toHaveTextContent('...');
 		});
 	});
 });

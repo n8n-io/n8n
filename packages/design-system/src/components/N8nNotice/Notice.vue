@@ -13,7 +13,7 @@
 					<a
 						v-if="expandFromContent"
 						v-html="expansionText"
-						role="expansion-text-region"
+						role="expansion-region"
 						:aria-controls="`${id}-content`"
 						:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
 						@click="toggleExpanded"
