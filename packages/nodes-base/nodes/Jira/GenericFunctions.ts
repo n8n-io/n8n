@@ -12,9 +12,10 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	JsonObject,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -30,16 +31,17 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 
 	domain = jiraCredentials!.domain;
+	const methodPlaceholder = method as IHttpRequestMethods;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			'X-Atlassian-Token': 'no-check',
 		},
-		method,
+		method: methodPlaceholder,
 		qs: query,
-		uri: uri || `${domain}/rest${endpoint}`,
+		url: `${domain}/rest${endpoint}`,
 		body,
 		json: true,
 	};
@@ -56,10 +58,12 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		delete options.qs;
 	}
 
-	console.log('JIRA', options);
-
 	try {
-		return await this.helpers.request!(options);
+		if (jiraVersion === 'server') {
+			return await this.helpers.httpRequestWithAuthentication.call(this, 'jiraSoftwareServerApi', options);
+		} else {
+			return await this.helpers.httpRequestWithAuthentication.call(this, 'jiraSoftwareCloudApi', options);
+		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
