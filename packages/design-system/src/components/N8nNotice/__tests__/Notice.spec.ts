@@ -96,30 +96,54 @@ describe('components', () => {
 			});
 		});
 
-		// @TODO
-		// describe('expansion text', () => {
-		// 	it('should expand from content', async () => {
-		// 		const wrapper = render(N8nNotice, {
-		// 			props: {
-		// 				id: 'notice',
-		// 				truncate: true,
-		// 				expandFromContent: true,
-		// 				expansionTextPattern: /\d+ scopes?/,
-		// 				content: 'Google credential has 2 scopes available<br>user.profile<br>user.contacts',
-		// 			},
-		// 			stubs: ['n8n-text'],
-		// 		});
+		describe('expansion text', () => {
+			it('should expand from content - multiple scopes', async () => {
+				const wrapper = render(N8nNotice, {
+					props: {
+						id: 'notice',
+						truncate: true,
+						expandFromContent: true,
+						expansionTextPattern: /\d+ scopes?/,
+						content: '2 scopes available for Google Calendar credentials<br>user.profile<br>user.contacts',
+					},
+					stubs: ['n8n-text'],
+				});
 
-		// 		const button = await wrapper.findByRole('pre-expansion-text-region');
-		// 		const region = await wrapper.findByRole('expansion-text-region');
+				const preRegion = await wrapper.findByRole('pre-expansion-region');
+				const expansionRegion = await wrapper.findByRole('expansion-text-region');
+				const postRegion = await wrapper.findByRole('post-expansion-region');
 
-		// 		expect(button).toBeVisible();
-		// 		expect(button).toHaveTextContent('2 scopes');
+				expect(preRegion.textContent).toBe('');
+				expect(expansionRegion).toBeVisible();
+				expect(postRegion).toBeVisible();
 
-		// 		expect(region).toBeVisible();
-		// 		expect(region.textContent!.endsWith('...')).toBeTruthy(); // TODO
-		// 	});
-		// });
+				expect(expansionRegion).toHaveTextContent('2 scopes');
+				expect(postRegion).toHaveTextContent('available for Google Calendar credentials');
+			});
 
+			it('should expand from content - single scope', async () => {
+				const wrapper = render(N8nNotice, {
+					props: {
+						id: 'notice',
+						truncate: true,
+						expandFromContent: true,
+						expansionTextPattern: /\d+ scopes?/,
+						content: '1 scope available for Google Books credentials<br>user.books',
+					},
+					stubs: ['n8n-text'],
+				});
+
+				const preRegion = await wrapper.findByRole('pre-expansion-region');
+				const expansionRegion = await wrapper.findByRole('expansion-text-region');
+				const postRegion = await wrapper.findByRole('post-expansion-region');
+
+				expect(preRegion.textContent).toBe('');
+				expect(expansionRegion).toBeVisible();
+				expect(postRegion).toBeVisible();
+
+				expect(expansionRegion).toHaveTextContent('1 scope');
+				expect(postRegion).toHaveTextContent('available for Google Books credentials');
+			});
+		});
 	});
 });
