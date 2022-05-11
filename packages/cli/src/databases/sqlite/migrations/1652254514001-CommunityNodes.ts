@@ -1,14 +1,12 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
 import {
-	loadSurveyFromDisk,
 	logMigrationEnd,
 	logMigrationStart,
 } from '../../utils/migrationHelpers';
 
-export class CommunityNodes1648135167001 implements MigrationInterface {
-	name = 'CommunityNodes1648135167001';
+export class CommunityNodes1652254514001 implements MigrationInterface {
+	name = 'CommunityNodes1652254514001';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);

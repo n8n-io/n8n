@@ -13,6 +13,7 @@ import { UpdateWorkflowCredentials1630451444017 } from './1630451444017-UpdateWo
 import { AddExecutionEntityIndexes1644424784709 } from './1644424784709-AddExecutionEntityIndexes';
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
+import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes.ts';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -30,4 +31,5 @@ export const mysqlMigrations = [
 	AddExecutionEntityIndexes1644424784709,
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
+	CommunityNodes1652254514003,
 ];
