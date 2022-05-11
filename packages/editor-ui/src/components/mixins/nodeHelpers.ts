@@ -1,6 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SOMETHING_ELSE_KEY,
 } from '@/constants';
 
 import {
@@ -50,9 +51,11 @@ export const nodeHelpers = mixins(
 			isSomethingElseSelected (nodeValues: INodeParameters): boolean {
 				const { parameters } = nodeValues;
 
+				if (!isObjectLiteral(parameters)) return false;
+
 				return (
-					isObjectLiteral(parameters) &&
-					(parameters.resource === 'somethingElse' || parameters.operation === 'somethingElse')
+					parameters.resource === SOMETHING_ELSE_KEY ||
+					parameters.operation === SOMETHING_ELSE_KEY
 				);
 			},
 
