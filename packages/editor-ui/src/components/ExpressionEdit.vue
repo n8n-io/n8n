@@ -51,6 +51,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 
+const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
+
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -117,6 +119,7 @@ export default mixins(
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
+					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
 				});
 			}
 		},
