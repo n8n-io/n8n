@@ -5,7 +5,7 @@ exports[`components > N8nNotice > props > content > should render HTML 1`] = `
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">
       <!---->
-      <!----><span id=\\"notice-content\\" role=\\"region\\" class=\\"_truncated_12mks_45\\"><strong>Hello world!</strong> This is a notice.</span>
+      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_12mks_45\\"><strong>Hello world!</strong> This is a notice.</span>
       <!---->
     </n8n-text-stub>
   </div>
@@ -17,7 +17,7 @@ exports[`components > N8nNotice > props > content > should render correctly with
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">
       <!---->
-      <!----><span id=\\"notice-content\\" role=\\"region\\" class=\\"_truncated_12mks_45\\">This is a notice.</span>
+      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_12mks_45\\">This is a notice.</span>
       <!---->
     </n8n-text-stub>
   </div>
@@ -29,7 +29,7 @@ exports[`components > N8nNotice > props > content > should sanitize rendered HTM
   <div class=\\"notice-content\\">
     <n8n-text-stub size=\\"small\\" tag=\\"span\\">
       <!---->
-      <!----><span id=\\"notice-content\\" role=\\"region\\" class=\\"_truncated_12mks_45\\"> This is a notice.</span>
+      <!----><span id=\\"notice-content\\" role=\\"post-expansion-region\\" class=\\"_truncated_12mks_45\\"> This is a notice.</span>
       <!---->
     </n8n-text-stub>
   </div>

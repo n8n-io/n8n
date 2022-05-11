@@ -38,7 +38,7 @@
 						:content="scopesContent"
 						:truncate="true"
 						:truncateAt="scopesContent.indexOf('<br>')"
-						:trailingEllispsis="false"
+						:trailingEllipsis="false"
 						:expandFromContent="true"
 						:expansionTextPattern="/\d+ scopes?/"
 					/>
@@ -655,9 +655,6 @@ export default mixins(
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
 
-		.notice[role=alert] {
-			margin: var(--spacing-s) 0;
-		}
 	}
 }
 

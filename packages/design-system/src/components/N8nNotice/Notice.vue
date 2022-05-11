@@ -8,7 +8,7 @@
 						v-html="preExpansionText"
 						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
-						role="pre-expansion-text-region"
+						role="pre-expansion-region"
 					/>
 					<a
 						v-if="expandFromContent"
@@ -21,7 +21,7 @@
 					<span
 						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
-						role="region"
+						role="post-expansion-region"
 						v-html="expandFromContent ? postExpansionText : sanitizedContent"
 					/>
 					<span v-if="canTruncate">
@@ -72,7 +72,7 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
-		trailingEllispsis: {
+		trailingEllipsis: {
 			type: Boolean,
 			default: false,
 		},
@@ -148,9 +148,10 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .notice {
+	font-size: var(--font-size-2xs);
 	display: flex;
 	color: var(--custom-font-black);
-	margin: 0;
+	margin: var(--spacing-s) 0;
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;

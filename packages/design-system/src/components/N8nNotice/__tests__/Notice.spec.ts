@@ -63,16 +63,13 @@ describe('components', () => {
 					props: {
 						id: 'notice',
 						truncate: true,
+						trailingEllipsis: true,
 						content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
 					},
 					stubs: ['n8n-text'],
 				});
 
-				const button = await wrapper.findByRole('button');
-				const region = await wrapper.findByRole('region');
-
-				expect(button).toBeVisible();
-				expect(button).toHaveTextContent('Show more');
+				const region = await wrapper.findByRole('post-expansion-region');
 
 				expect(region).toBeVisible();
 				expect(region.textContent!.endsWith('...')).toBeTruthy();
@@ -83,13 +80,14 @@ describe('components', () => {
 					props: {
 						id: 'notice',
 						truncate: true,
+						trailingEllipsis: true,
 						content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
 					},
 					stubs: ['n8n-text'],
 				});
 
 				const button = await wrapper.findByRole('button');
-				const region = await wrapper.findByRole('region');
+				const region = await wrapper.findByRole('post-expansion-region');
 
 				await fireEvent.click(button);
 
@@ -98,7 +96,7 @@ describe('components', () => {
 			});
 		});
 
-
+		// @TODO
 		// describe('expansion text', () => {
 		// 	it('should expand from content', async () => {
 		// 		const wrapper = render(N8nNotice, {
