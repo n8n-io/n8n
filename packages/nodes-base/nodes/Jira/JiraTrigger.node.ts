@@ -500,14 +500,11 @@ export class JiraTrigger implements INodeType {
 
 			try {
 				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (error) {
-				// Do nothing
-			}
+			} catch (error) {	}
 
 			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
-				// Data is not defined on node so can not authenticate
 				return {
-					webhookResponse: 'Bad Auth',
+					webhookResponse: 'Auth settings are not valid, some data are missing',
 				};
 			}
 
@@ -515,16 +512,18 @@ export class JiraTrigger implements INodeType {
 			const paramValue = Buffer.from(httpQueryAuth.value as string).toString('base64');
 
 			if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
-				// Provided authentication data is wrong
 				return {
-					webhookResponse: 'Bad Auth',
+					webhookResponse: 'Provided authentication data is not valid',
 				};
 			}
 
 			delete queryData[paramName];
-		}
 
-		Object.assign(bodyData, queryData);
+			Object.assign(bodyData, queryData);
+
+		} else {
+			Object.assign(bodyData, queryData);
+		}
 
 		return {
 			workflowData: [
