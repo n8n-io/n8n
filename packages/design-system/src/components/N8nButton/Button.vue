@@ -69,7 +69,6 @@ export default {
 			default: false,
 		},
 		icon: {
-			type: String,
 		},
 		round: {
 			type: Boolean,

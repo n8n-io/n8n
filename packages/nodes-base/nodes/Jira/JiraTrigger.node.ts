@@ -279,7 +279,7 @@ export class JiraTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 			{
 				displayName: 'Additional Fields',

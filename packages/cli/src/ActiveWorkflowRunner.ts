@@ -83,7 +83,7 @@ export class ActiveWorkflowRunner {
 			// This is not officially supported but there is no reason
 			// it should not work.
 			// Clear up active workflow table
-			await Db.collections.Webhook?.clear();
+			await Db.collections.Webhook.clear();
 		}
 
 		this.activeWorkflows = new ActiveWorkflows();
@@ -189,7 +189,7 @@ export class ActiveWorkflowRunner {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = (await Db.collections.Webhook?.findOne({
+		let webhook = (await Db.collections.Webhook.findOne({
 			webhookPath: path,
 			method: httpMethod,
 		})) as IWebhookDb;
@@ -200,7 +200,7 @@ export class ActiveWorkflowRunner {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
-			const dynamicWebhooks = await Db.collections.Webhook?.find({
+			const dynamicWebhooks = await Db.collections.Webhook.find({
 				webhookId,
 				method: httpMethod,
 				pathLength: pathElements.length,
@@ -332,7 +332,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path });
+		const webhooks = await Db.collections.Webhook.find({ webhookPath: path });
 
 		// Gather all request methods in string array
 		const webhookMethods: string[] = webhooks.map((webhook) => webhook.method);
@@ -443,7 +443,7 @@ export class ActiveWorkflowRunner {
 
 			try {
 				// eslint-disable-next-line no-await-in-loop
-				await Db.collections.Webhook?.insert(webhook);
+				await Db.collections.Webhook.insert(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
 					'checkExists',
 					webhookData,
@@ -556,7 +556,7 @@ export class ActiveWorkflowRunner {
 			workflowId: workflowData.id,
 		} as IWebhookDb;
 
-		await Db.collections.Webhook?.delete(webhook);
+		await Db.collections.Webhook.delete(webhook);
 	}
 
 	/**

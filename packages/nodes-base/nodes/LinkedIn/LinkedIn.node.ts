@@ -15,6 +15,7 @@ import {
 } from './PostDescription';
 
 export class LinkedIn implements INodeType {
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',

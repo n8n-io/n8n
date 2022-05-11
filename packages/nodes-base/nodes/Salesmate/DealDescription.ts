@@ -104,7 +104,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Primary contact for the deal.',
+		description: 'Primary contact for the deal',
 		required: true,
 	},
 	{
@@ -232,7 +232,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -259,7 +259,7 @@ export const dealFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the deal.',
+				description: 'This field contains details related to the deal',
 			},
 			{
 				displayName: 'Tags',
@@ -357,7 +357,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -374,7 +373,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -491,7 +490,7 @@ export const dealFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the deal.',
+				description: 'This field contains details related to the deal',
 			},
 			{
 				displayName: 'Tags',
@@ -589,7 +588,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'deal ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -606,7 +604,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'If the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:getAll                                */
@@ -626,7 +624,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -650,14 +648,13 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -691,14 +688,14 @@ export const dealFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by.',
+				description: 'The field to sort by',
 			},
 			{
 				displayName: 'Sort Order',
@@ -715,7 +712,6 @@ export const dealFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
 			},
 		],
 	},
@@ -857,7 +853,7 @@ export const dealFields: INodeProperties[] = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 									{
 										displayName: 'Value',

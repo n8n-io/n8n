@@ -104,7 +104,6 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'support',
-				description: '',
 			},
 			{
 				displayName: 'Options',
@@ -122,7 +121,7 @@ export class ZendeskTrigger implements INodeType {
 					{
 						displayName: 'Fields',
 						name: 'fields',
-						description: 'The fields to return the values of.',
+						description: 'The fields to return the values of',
 						type: 'multiOptions',
 						default: [],
 						typeOptions: {
@@ -147,7 +146,7 @@ export class ZendeskTrigger implements INodeType {
 						],
 					},
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{

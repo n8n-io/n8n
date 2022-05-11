@@ -36,7 +36,7 @@ export class WriteBinaryFile implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '/data/example.jpg',
-				description: 'Path to which the file should be written.',
+				description: 'Path to which the file should be written',
 			},
 			{
 				displayName: 'Property Name',
@@ -44,7 +44,7 @@ export class WriteBinaryFile implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property which contains the data for the file to be written.',
+				description: 'Name of the binary property which contains the data for the file to be written',
 			},
 		],
 	};
@@ -55,7 +55,7 @@ export class WriteBinaryFile implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {

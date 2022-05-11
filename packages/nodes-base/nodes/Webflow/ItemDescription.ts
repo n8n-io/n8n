@@ -64,7 +64,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to add to.',
+		description: 'ID of the site containing the collection whose items to add to',
 	},
 	{
 		displayName: 'Collection ID',
@@ -88,7 +88,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection to add an item to.',
+		description: 'ID of the collection to add an item to',
 	},
 	{
 		displayName: 'Live',
@@ -106,7 +106,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether the item should be published on the live site.',
+		description: 'Whether the item should be published on the live site',
 	},
 	{
 		displayName: 'Fields',
@@ -143,14 +143,14 @@ export const itemFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'Field to set for the item to create.',
+						description: 'Field to set for the item to create',
 					},
 					{
 						displayName: 'Field Value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the item to create.',
+						description: 'Value to set for the item to create',
 					},
 				],
 			},
@@ -180,7 +180,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to operate on.',
+		description: 'ID of the site containing the collection whose items to operate on',
 	},
 	{
 		displayName: 'Collection ID',
@@ -205,7 +205,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection whose items to operate on.',
+		description: 'ID of the collection whose items to operate on',
 	},
 	{
 		displayName: 'Item ID',
@@ -224,7 +224,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the item to operate on.',
+		description: 'ID of the item to operate on',
 	},
 	// ----------------------------------
 	//         item: update
@@ -248,7 +248,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to update.',
+		description: 'ID of the site containing the collection whose items to update',
 	},
 	{
 		displayName: 'Collection ID',
@@ -272,7 +272,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection whose items to update.',
+		description: 'ID of the collection whose items to update',
 	},
 	{
 		displayName: 'Item ID',
@@ -290,7 +290,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the item to update.',
+		description: 'ID of the item to update',
 	},
 	{
 		displayName: 'Live',
@@ -308,7 +308,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether the item should be published on the live site.',
+		description: 'Whether the item should be published on the live site',
 	},
 	{
 		displayName: 'Fields',
@@ -345,14 +345,14 @@ export const itemFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'Field to set for the item to update.',
+						description: 'Field to set for the item to update',
 					},
 					{
 						displayName: 'Field Value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the item to update.',
+						description: 'Value to set for the item to update',
 					},
 				],
 			},
@@ -380,7 +380,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to retrieve.',
+		description: 'ID of the site containing the collection whose items to retrieve',
 	},
 	{
 		displayName: 'Collection ID',
@@ -404,7 +404,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection whose items to retrieve.',
+		description: 'ID of the collection whose items to retrieve',
 	},
 	{
 		displayName: 'Return All',
@@ -421,7 +421,7 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -445,6 +445,6 @@ export const itemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

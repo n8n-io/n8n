@@ -50,7 +50,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to create.',
+		description: 'Key of the webinar of the registrant to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -67,7 +67,7 @@ export const registrantFields: INodeProperties[] = [
 		name: 'firstName',
 		type: 'string',
 		default: '',
-		description: 'First name of the registrant to create.',
+		description: 'First name of the registrant to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -84,7 +84,7 @@ export const registrantFields: INodeProperties[] = [
 		name: 'lastName',
 		type: 'string',
 		default: '',
-		description: 'Last name of the registrant to create.',
+		description: 'Last name of the registrant to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -101,7 +101,7 @@ export const registrantFields: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		default: '',
-		description: 'Email address of the registrant to create.',
+		description: 'Email address of the registrant to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -135,7 +135,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'fullAddress',
 				placeholder: 'Add Address Fields',
 				type: 'fixedCollection',
-				description: 'Full address of the registrant to create.',
+				description: 'Full address of the registrant to create',
 				default: {},
 				options: [
 					{
@@ -181,7 +181,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'industry',
 				type: 'string',
 				default: '',
-				description: 'The type of industry the registrant\'s organization belongs to.',
+				description: 'The type of industry the registrant\'s organization belongs to',
 			},
 			{
 				displayName: 'Job Title',
@@ -197,7 +197,7 @@ export const registrantFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Set the answers to all questions.',
+				description: 'Set the answers to all questions',
 				default: {},
 				options: [
 					{
@@ -221,7 +221,7 @@ export const registrantFields: INodeProperties[] = [
 								name: 'AnswerKey',
 								type: 'string',
 								default: '',
-								description: 'Answer ID of the question.',
+								description: 'Answer ID of the question',
 							},
 						],
 					},
@@ -232,7 +232,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'numberOfEmployees',
 				type: 'string',
 				default: '',
-				description: 'The size in employees of the registrant\'s organization.',
+				description: 'The size in employees of the registrant\'s organization',
 			},
 			{
 				displayName: 'Organization',
@@ -251,21 +251,21 @@ export const registrantFields: INodeProperties[] = [
 				name: 'purchasingRole',
 				type: 'string',
 				default: '',
-				description: 'Registrant\'s role in purchasing the product.',
+				description: 'Registrant\'s role in purchasing the product',
 			},
 			{
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'string',
 				default: '',
-				description: 'Time frame within which the product will be purchased.',
+				description: 'Time frame within which the product will be purchased',
 			},
 			{
 				displayName: 'Questions and Comments',
 				name: 'questionsAndComments',
 				type: 'string',
 				default: '',
-				description: 'Questions or comments made by the registrant during registration.',
+				description: 'Questions or comments made by the registrant during registration',
 			},
 			{
 				displayName: 'Resend Confirmation',
@@ -281,7 +281,7 @@ export const registrantFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Set the answers to all questions.',
+				description: 'Set the answers to all questions',
 				default: {},
 				options: [
 					{
@@ -305,7 +305,7 @@ export const registrantFields: INodeProperties[] = [
 								name: 'responseText',
 								type: 'string',
 								default: '',
-								description: 'Text of the response to the question.',
+								description: 'Text of the response to the question',
 							},
 						],
 					},
@@ -316,7 +316,7 @@ export const registrantFields: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source that led to the registration.',
+				description: 'The source that led to the registration',
 			},
 		],
 	},
@@ -333,7 +333,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'The key of the webinar to retrieve registrants from.',
+		description: 'The key of the webinar to retrieve registrants from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -350,7 +350,7 @@ export const registrantFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -367,7 +367,7 @@ export const registrantFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -399,7 +399,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to delete.',
+		description: 'Key of the webinar of the registrant to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -417,7 +417,7 @@ export const registrantFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the registrant to delete.',
+		description: 'Key of the registrant to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -442,7 +442,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to retrieve.',
+		description: 'Key of the webinar of the registrant to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -460,7 +460,7 @@ export const registrantFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the registrant to retrieve.',
+		description: 'Key of the registrant to retrieve',
 		displayOptions: {
 			show: {
 				resource: [

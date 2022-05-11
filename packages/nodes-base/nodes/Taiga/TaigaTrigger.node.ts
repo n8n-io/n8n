@@ -59,7 +59,6 @@ export class TaigaTrigger implements INodeType {
 					loadOptionsMethod: 'getUserProjects',
 				},
 				default: '',
-				description: 'Project ID',
 				required: true,
 			},
 			{
