@@ -20,8 +20,11 @@
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
 
-			<n8n-icon-button v-if="canLinkRuns && linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
-			<n8n-icon-button v-else-if="canLinkRuns" icon="link" type="text" size="small" @click="linkRun" />
+
+			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" type="text" size="small" @click="linkRun" />
+			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
 		</div>
