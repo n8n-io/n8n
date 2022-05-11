@@ -144,7 +144,9 @@ export class RabbitMQTrigger implements INodeType {
 			});
 		};
 
-		startConsumer();
+		if (this.getMode() !== 'manual') {
+			startConsumer();
+		}
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -160,7 +162,10 @@ export class RabbitMQTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-			startConsumer();
+			// Avoid leaking messages when calling `manualTriggerFunction`.
+			channel.prefetch(1);
+
+			await startConsumer();
 		}
 
 		return {
