@@ -265,6 +265,7 @@
 	"mainSidebar.helpMenuItems.course": "Course",
 	"mainSidebar.helpMenuItems.documentation": "Documentation",
 	"mainSidebar.helpMenuItems.forum": "Forum",
+	"mainSidebar.helpMenuItems.quickstart": "Quickstart",
 	"mainSidebar.importFromFile": "Import from File",
 	"mainSidebar.importFromUrl": "Import from URL",
 	"mainSidebar.new": "New",
