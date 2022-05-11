@@ -99,7 +99,6 @@
 						<td>
 							<n8n-text>
 								{{ emptyOutputMessage }}
-								<span v-if="emptyOutputHint && index1 === 0" v-html="emptyOutputHint"></span>
 							</n8n-text>
 						</td>
 					</tr>
@@ -286,9 +285,6 @@ export default mixins(
 				type: Boolean,
 			},
 			emptyOutputMessage: {
-				type: String,
-			},
-			emptyOutputHint: {
 				type: String,
 			},
 			tooMuchDataTitle: {

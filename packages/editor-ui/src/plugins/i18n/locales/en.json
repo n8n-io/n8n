@@ -301,7 +301,6 @@
 	"ndv.input": "Input",
 	"ndv.input.immediate": "Immediate",
 	"ndv.input.emptyOutput": "This input item is empty.",
-	"ndv.input.emptyOutput.hint": "<b>{nodeName}</b> will still execute when it recieves an empty item.",
 	"ndv.input.tooMuchData.title": "Input data is huge",
 	"ndv.input.noOutputDataInBranch": "No input data in this branch",
 	"ndv.input.noOutputDataInNode": "Node did not output any data. n8n stops executing the workflow when a node has no output data.",
