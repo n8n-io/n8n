@@ -484,13 +484,6 @@ export const store = new Vuex.Store({
 			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
-		setNodeMainPanelRelativePosition(state, {nodeName, relativePosition}: {nodeName: string, relativePosition: number}) {
-			if (!state.nodeMetadata[nodeName]) {
-				Vue.set(state.nodeMetadata, nodeName, {});
-			}
-			Vue.set(state.nodeMetadata[nodeName], 'mainPanelRelativePosition', relativePosition);
-		},
-
 		// Node-Index
 		addToNodeIndex (state, nodeName: string) {
 			state.nodeIndex.push(nodeName);
@@ -683,10 +676,6 @@ export const store = new Vuex.Store({
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
-		},
-
-		getNodeMainPanelPosition: (state): ((name: string) => number | undefined) => {
-			return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].mainPanelRelativePosition;
 		},
 
 		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {

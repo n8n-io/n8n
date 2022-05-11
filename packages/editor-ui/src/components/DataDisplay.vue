@@ -149,13 +149,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return 0;
 			}
 
-			const relativePosition = this.$store.getters.getNodeMainPanelPosition(this.activeNode.name) as number | undefined;
+			const relativePosition = this.$store.getters['ui/mainPanelPosition'] as number;
 
-			if (isNumber(relativePosition)) {
-				return relativePosition * this.windowWidth;
-			}
-
-			return .5 * this.windowWidth;
+			return relativePosition * this.windowWidth;
 		},
 		workflowRunning(): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -405,7 +401,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 			const newPosition = e.pageX;
 			const relativePosition = newPosition / this.windowWidth;
-			this.$store.commit('setNodeMainPanelRelativePosition', {nodeName: this.activeNode.name, relativePosition });
+			this.$store.commit('ui/setMainPanelRelativePosition', relativePosition);
 		},
 		onDragEnd(e: MouseEvent) {
 			e.preventDefault();

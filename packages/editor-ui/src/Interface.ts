@@ -772,7 +772,6 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
-	mainPanelRelativePosition?: number;
 }
 
 export interface IRootState {
@@ -860,6 +859,7 @@ export interface IUiState {
 			displayMode: IRunDataDisplayMode;
 		};
 	};
+	mainPanelPosition: number;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
