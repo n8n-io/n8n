@@ -75,7 +75,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
+import { SOMETHING_ELSE_KEY, WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -338,7 +338,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		setSubtitle() {
 			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 
-			this.nodeSubtitle = nodeSubtitle.includes('somethingElse')
+			this.nodeSubtitle = nodeSubtitle.includes(SOMETHING_ELSE_KEY)
 				? ''
 				: nodeSubtitle;
 		},

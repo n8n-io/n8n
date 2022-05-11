@@ -2,53 +2,36 @@
 	<div :id="id" :class="classes" role="alert">
 		<div class="notice-content">
 			<n8n-text size="small">
-				<slot v-if="expandFromContent">
+				<slot>
 					<span
+						v-if="expandFromContent"
+						v-html="preExpansionText"
 						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
-						role="region"
-						v-html="preExpansionText"
+						role="pre-expansion-region"
 					/>
 					<a
-						role="button"
+						v-if="expandFromContent"
+						v-html="expansionText"
+						role="expansion-text-region"
 						:aria-controls="`${id}-content`"
 						:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
 						@click="toggleExpanded"
-					>
-						{{ expansionText }}
-					</a>
+					/>
 					<span
 						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
-						role="region"
-						v-html="postExpansionText"
+						role="post-expansion-region"
+						v-html="expandFromContent ? postExpansionText : sanitizedContent"
 					/>
 					<span v-if="canTruncate">
 						<a
 							role="button"
+							@click="toggleExpanded"
 							:aria-controls="`${id}-content`"
 							:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
-							@click="toggleExpanded"
 						>
-							{{ expanded ? t('notice.showLess') : '' }}
-						</a>
-					</span>
-				</slot>
-				<slot v-else>
-					<span
-						:class="expanded ? $style['expanded'] : $style['truncated']"
-						:id="`${id}-content`"
-						role="region"
-						v-html="sanitizedContent"
-					/>
-					<span v-if="canTruncate">
-						<a
-							role="button"
-							:aria-controls="`${id}-content`"
-							:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
-							@click="toggleExpanded"
-						>
-							{{ t(expanded ? 'notice.showLess' : 'notice.showMore') }}
+							{{ expanded ? t('notice.showLess') : expandFromContent ? '' : t('notice.showMore') }}
 						</a>
 					</span>
 				</slot>
@@ -89,6 +72,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		trailingEllipsis: {
+			type: Boolean,
+			default: false,
+		},
 		content: {
 			type: String,
 			default: '',
@@ -126,7 +113,7 @@ export default Vue.extend({
 				return this.content;
 			}
 
-			return this.content.slice(0, this.truncateAt as number) + '...';
+			return this.content.slice(0, this.truncateAt as number) + (this.trailingEllipsis ? '...' : '');
 		},
 		sanitizedContent(): string {
 			return sanitizeHtml(this.truncatedContent);
@@ -161,9 +148,10 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .notice {
+	font-size: var(--font-size-2xs);
 	display: flex;
 	color: var(--custom-font-black);
-	margin: 0;
+	margin: var(--spacing-s) 0;
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;

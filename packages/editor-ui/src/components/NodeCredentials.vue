@@ -77,7 +77,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
-import { HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
