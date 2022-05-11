@@ -153,40 +153,6 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data;
-				const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
-
-				const options: OptionsWithUri = {
-					headers: {
-						Authorization: `Basic ${data}`,
-						Accept: 'application/json',
-						'Content-Type': 'application/json',
-						'X-Atlassian-Token': 'no-check',
-					},
-					method: 'GET',
-					uri: `${credentials!.domain}/rest/api/2/project`,
-					qs: {
-						recent: 0,
-					},
-					json: true,
-					timeout: 5000,
-				};
-				try {
-					await this.helpers.request!(options);
-				} catch (err) {
-					return {
-						status: 'Error',
-						message: `Connection details not valid: ${(err as JsonObject).message}`,
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Authentication successful!',
-				};
-			},
-		},
 		loadOptions: {
 			// Get all the projects to display them to user so that he can
 			// select them easily
