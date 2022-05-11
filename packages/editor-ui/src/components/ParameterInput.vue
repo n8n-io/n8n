@@ -134,7 +134,7 @@
 			</n8n-option>
 			<n8n-option
 				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
-				:key="'somethingElse'"
+				:key="`somethingElse-${parameter.name}`"
 				:value="'somethingElse'"
 				:label="$locale.baseText('parameterInput.somethingElse')"
 			>
