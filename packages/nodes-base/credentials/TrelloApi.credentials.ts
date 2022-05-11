@@ -1,5 +1,9 @@
 import {
+	IAuthenticateQueryAuth,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -28,4 +32,13 @@ export class TrelloApi implements ICredentialType {
 			default: '',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		requestOptions.qs = {
+			key: credentials.apiKey,
+			token: credentials.apiToken,
+			...requestOptions.qs,
+		};
+		console.log(requestOptions.qs);
+		return requestOptions;
+	}
 }

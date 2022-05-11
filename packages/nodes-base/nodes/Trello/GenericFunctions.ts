@@ -5,11 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -22,25 +18,20 @@ import {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('trelloApi');
-
 	query = query || {};
-
-	query.key = credentials.apiKey;
-	query.token = credentials.apiToken;
-
-	const options: OptionsWithUri = {
+	const methodPlaceholder = method as IHttpRequestMethods;
+	const options: IHttpRequestOptions = {
 		headers: {
 		},
-		method,
-		body,
 		qs: query,
-		uri: `https://api.trello.com/1/${endpoint}`,
+		method: methodPlaceholder,
+		body,
+		url: `https://api.trello.com/1/${endpoint}`,
 		json: true,
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
