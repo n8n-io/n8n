@@ -301,9 +301,9 @@ export async function createExecution(
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id.toString() }),
 		stoppedAt: stoppedAt ?? new Date(),
-		waitTill: waitTill ?? new Date(),
+		waitTill: waitTill ?? null,
 	});
 
 	return execution;

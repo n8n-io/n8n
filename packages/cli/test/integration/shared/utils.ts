@@ -18,7 +18,7 @@ import {
 	ITriggerResponse,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { CronJob } from 'cron';
 
 import config = require('../../../config');
@@ -706,6 +706,15 @@ export async function initNodeTypes() {
  */
 export function initTestLogger() {
 	LoggerProxy.init(getLogger());
+}
+
+/**
+ * Initialize a BinaryManager for test runs.
+ */
+ export async function initBinaryManager() {
+	const binaryDataConfig = config.getEnv('binaryDataManager');
+	await BinaryDataManager.init(binaryDataConfig, true);
+	console.log('termine');
 }
 
 /**

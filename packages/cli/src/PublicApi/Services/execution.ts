@@ -1,4 +1,4 @@
-import { In, Not, ObjectLiteral, LessThan } from 'typeorm';
+import { In, Not, ObjectLiteral, LessThan, IsNull } from 'typeorm';
 import { Db, IExecutionFlattedDb } from '../..';
 import { ExecutionStatus } from '../publicApiRequest';
 
@@ -8,9 +8,9 @@ function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 	if (status === 'success') {
 		condition.finished = true;
 	} else if (status === 'waiting') {
-		condition.waitTill = Not(null);
+		condition.waitTill = Not(IsNull());
 	} else if (status === 'error') {
-		condition.stoppedAt = Not(null);
+		condition.stoppedAt = Not(IsNull());
 		condition.finished = false;
 	}
 	return condition;
@@ -27,6 +27,7 @@ function getExecutionSelectableProperties(): Array<keyof IExecutionFlattedDb> {
 		'stoppedAt',
 		'workflowId',
 		'waitTill',
+		'finished',
 	];
 }
 
@@ -37,6 +38,7 @@ export async function getExecutions(data: {
 	status?: ExecutionStatus;
 	excludedWorkflowIds?: number[];
 }): Promise<IExecutionFlattedDb[]> {
+
 	const executions = await Db.collections.Execution.find({
 		select: getExecutionSelectableProperties(),
 		where: {
@@ -60,7 +62,7 @@ export async function getExecutionsCount(data: {
 }): Promise<number> {
 	const executions = await Db.collections.Execution.count({
 		where: {
-			id: LessThan(data.lastId),
+			...(data.lastId && { id: LessThan(data.lastId) }),
 			...(data.status && { ...getStatusCondition(data.status) }),
 			...(data.workflowIds && { workflowId: In(data.workflowIds) }),
 			...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
@@ -75,6 +77,7 @@ export async function getExecutionInWorkflows(
 	workflows: number[],
 ): Promise<IExecutionFlattedDb | undefined> {
 	const execution = await Db.collections.Execution.findOne({
+		select: getExecutionSelectableProperties(),
 		where: {
 			id,
 			workflowId: In(workflows),

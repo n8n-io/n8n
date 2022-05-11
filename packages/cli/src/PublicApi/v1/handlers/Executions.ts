@@ -42,6 +42,8 @@ export = {
 
 			await deleteExecution(execution);
 
+			execution.id = executionId;
+
 			return res.json(execution);
 		},
 	],
@@ -105,12 +107,16 @@ export = {
 
 			const executions = await getExecutions(filters);
 
+			const newLastId = !executions.length ? 0 : (executions.slice(-1)[0].id as number);
+
+			filters.lastId = newLastId;
+
 			const count = await getExecutionsCount(filters);
 
 			return res.json({
 				data: executions,
 				nextCursor: encodeNextCursor({
-					lastId: executions.slice(-1)[0].id as number,
+					lastId: newLastId,
 					limit,
 					numberOfNextRecords: count,
 				}),
