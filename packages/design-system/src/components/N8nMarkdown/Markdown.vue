@@ -117,7 +117,7 @@ export default {
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			const imageFilesRegex = /\.(jpeg|jpg|gif|png|webp)$/;
+			const imageFilesRegex = /\.(jpeg|jpg|gif|png|webp|bmp|tif|tiff|apng|svg|avif)$/;
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
 				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
