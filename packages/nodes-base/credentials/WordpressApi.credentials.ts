@@ -50,3 +50,4 @@ export class WordpressApi implements ICredentialType {
 		},
 	};
 }
+
