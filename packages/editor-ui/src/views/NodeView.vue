@@ -1857,12 +1857,9 @@ export default mixins(
 								{
 									...CanvasHelpers.WELCOME_STICKY_NODE,
 									parameters: {
+										// Use parameters from the template but add translated content
 										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
-										content: this.$locale.baseText(
-											'onboardingWorkflow.stickyContent',
-											{
-												interpolate: { imgURL: `/static/n8n-quickstart-v5-thumbnail.webp` },
-											}),
+										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
 									},
 								},
 							]);
