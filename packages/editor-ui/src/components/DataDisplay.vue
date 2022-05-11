@@ -391,6 +391,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.isDragging = true;
 
 			this.dragStartPosition = this.getRelativePosition();
+			document.body.style.cursor = 'grabbing';
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
@@ -407,6 +408,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			e.preventDefault();
 			e.stopPropagation();
 
+			document.body.style.cursor = 'unset';
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
 
