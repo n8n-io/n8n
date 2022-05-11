@@ -33,7 +33,13 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 	];
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 		const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
+		if(requestOptions.headers) {
 		requestOptions.headers!['Authorization'] = `Basic ${data}`;
+		} else {
+			requestOptions.headers = {
+				Authorization: `Basic ${data}`,
+			};
+		}
 		return requestOptions;
 	}
 	test: ICredentialTestRequest = {

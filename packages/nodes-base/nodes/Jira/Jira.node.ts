@@ -82,7 +82,6 @@ export class Jira implements INodeType {
 						],
 					},
 				},
-				testedBy: 'jiraSoftwareApiTest',
 			},
 			{
 				name: 'jiraSoftwareServerApi',
@@ -94,7 +93,6 @@ export class Jira implements INodeType {
 						],
 					},
 				},
-				testedBy: 'jiraSoftwareApiTest',
 			},
 		],
 		properties: [
