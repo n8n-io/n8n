@@ -121,7 +121,7 @@ export class Twake implements INodeType {
 					},
 				},
 				default: '',
-				description: `Channel's ID`,
+				description: 'Channel\'s ID',
 			},
 			{
 				displayName: 'Content',

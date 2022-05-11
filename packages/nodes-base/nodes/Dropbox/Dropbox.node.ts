@@ -70,7 +70,7 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Means of authenticating with the service.',
+				description: 'Means of authenticating with the service',
 			},
 			{
 				displayName: 'Resource',
@@ -227,7 +227,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy.',
+				description: 'The path of file or folder to copy',
 			},
 			{
 				displayName: 'To Path',
@@ -247,7 +247,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder.',
+				description: 'The destination path of file or folder',
 			},
 
 			// ----------------------------------
@@ -296,7 +296,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move.',
+				description: 'The path of file or folder to move',
 			},
 			{
 				displayName: 'To Path',
@@ -316,7 +316,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder.',
+				description: 'The new path of file or folder',
 			},
 
 			// ----------------------------------
@@ -357,7 +357,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 
 			// ----------------------------------
@@ -397,7 +397,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field.',
+				description: 'If the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -419,7 +419,7 @@ export class Dropbox implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'The text content of the file to upload.',
+				description: 'The text content of the file to upload',
 			},
 			{
 				displayName: 'Binary Property',
@@ -442,7 +442,7 @@ export class Dropbox implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded',
 			},
 
 			// ----------------------------------
@@ -464,7 +464,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: ' The string to search for. May match across multiple fields based on the request arguments.',
+				description: 'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
 				displayName: 'File Status',
@@ -491,7 +491,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: ' The string to search for. May match across multiple fields based on the request arguments.',
+				description: 'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
 				displayName: 'Return All',
@@ -508,7 +508,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -528,7 +528,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Simple',
@@ -545,7 +545,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'When set to true a simplify version of the response will be used else the raw data',
 			},
 			{
 				displayName: 'Filters',
@@ -675,7 +675,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019/',
-				description: 'The path of which to list the content.',
+				description: 'The path of which to list the content',
 			},
 			{
 				displayName: 'Return All',
@@ -692,7 +692,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -712,7 +712,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',

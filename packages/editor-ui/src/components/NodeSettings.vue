@@ -31,10 +31,21 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				>
+					<n8n-notice
+						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
+						:content="scopesContent"
+						:truncate="true"
+						:truncateAt="scopesContent.indexOf('<br>')"
+						:expandFromContent="true"
+						:expansionTextPattern="/\d+ scopes?/"
+					/>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
+						@nodeCredentialTypes="checkHttpRequestNodeSupport"
+						@newHttpRequestNodeCredentialType="prepareScopesNotice"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -42,6 +53,21 @@
 						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+
+				<div v-if="isSomethingElseSelected(nodeValues)" class="parameter-item parameter-notice">
+					<n8n-notice
+						:content="$locale.baseText(
+							'nodeSettings.useTheHttpRequestNode',
+							{
+								interpolate: {
+									nodeTypeDisplayName: nodeType.displayName
+								},
+							},
+						)"
+						:truncate="false"
+					/>
+				</div>
+
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
@@ -80,6 +106,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -98,6 +125,7 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -158,6 +186,21 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
+			scopesContent (): string {
+				return this.$locale.baseText(
+					'nodeSettings.scopes',
+					{
+						adjustToNumber: this.scopes.length,
+						interpolate: {
+							activeCredential: this.activeCredential,
+							scopes: this.scopesToDisplay,
+						},
+					},
+				);
+			},
+			scopesToDisplay(): string {
+				return this.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>');
+			},
 		},
 		props: {
 			eventBus: {
@@ -180,6 +223,9 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
+				isSupportedByHttpRequestNode: false,
+				activeCredential: '',
+				scopes: [] as string[],
 
 				nodeSettings: [
 					{
@@ -281,6 +327,34 @@ export default mixins(
 			},
 		},
 		methods: {
+			/**
+			 * Check if any of the node's credential types may be used to
+			 * make a request with the HTTP Request node v2.
+			 */
+			checkHttpRequestNodeSupport(credentialTypeNames: string[]) {
+				this.isSupportedByHttpRequestNode = credentialTypeNames.some(name => {
+					const credentialType = this.getCredentialTypeByName(name);
+
+					return (
+						credentialType.name.slice(0, -4).endsWith('OAuth') ||
+						credentialType.authenticate !== undefined
+					);
+				});
+			},
+			async prepareScopesNotice(activeCredentialType: string) {
+				if (!this.isHttpRequestNodeV2(this.node)) return;
+
+				if (!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')) {
+					this.scopes = [];
+					return;
+				}
+
+				this.scopes = await this.restApi().getScopes(activeCredentialType);
+
+				const credentialType = this.getCredentialTypeByName(activeCredentialType);
+
+				this.activeCredential = credentialType.displayName.split(' ').shift() || '';
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},
@@ -579,6 +653,10 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+
+		.notice[role=alert] {
+			margin: var(--spacing-s) 0;
+		}
 	}
 }
 

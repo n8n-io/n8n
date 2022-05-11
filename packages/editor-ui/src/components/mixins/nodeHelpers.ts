@@ -47,6 +47,23 @@ export const nodeHelpers = mixins(
 				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
 			},
 
+			isSomethingElseSelected (nodeValues: INodeParameters): boolean {
+				const { parameters } = nodeValues;
+
+				return (
+					isObjectLiteral(parameters) &&
+					(parameters.resource === 'somethingElse' || parameters.operation === 'somethingElse')
+				);
+			},
+
+			mustHideDuringSomethingElse (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			// Returns the parameter value
 			getParameterValue (nodeValues: INodeParameters, parameterName: string, path: string) {
 				return get(
@@ -225,14 +242,14 @@ export const nodeHelpers = mixins(
 				let selectedCredentials: INodeCredentialsDetails;
 
 				const {
-					authenticateWith,
+					authentication,
 					genericAuthType,
 					nodeCredentialType,
 				} = node.parameters as HttpRequestNode.V2.AuthParams;
 
 				if (
 					this.isHttpRequestNodeV2(node) &&
-					authenticateWith === 'genericAuth' &&
+					authentication === 'genericCredentialType' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
 					const credential = this.getCredentialTypeByName(genericAuthType);
@@ -241,7 +258,7 @@ export const nodeHelpers = mixins(
 
 				if (
 					this.isHttpRequestNodeV2(node) &&
-					authenticateWith === 'nodeCredential' &&
+					authentication === 'existingCredentialType' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
@@ -255,7 +272,7 @@ export const nodeHelpers = mixins(
 
 				if (
 					this.isHttpRequestNodeV2(node) &&
-					authenticateWith === 'nodeCredential' &&
+					authentication === 'existingCredentialType' &&
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
@@ -489,9 +506,13 @@ function selectedCredsDoNotExist(
 declare namespace HttpRequestNode {
 	namespace V2 {
 		type AuthParams = {
-			authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
+			authentication: 'none' | 'genericCredentialType' | 'existingCredentialType';
 			genericAuthType: string;
 			nodeCredentialType: string;
 		};
 	}
+}
+
+function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
+	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
 }

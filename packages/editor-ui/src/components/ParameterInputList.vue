@@ -79,6 +79,7 @@
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
+					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				/>
 			</div>
 		</div>
@@ -120,6 +121,7 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'isSupportedByHttpRequestNode', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -133,6 +135,8 @@ export default mixins(
 			},
 			indexToShowSlotAt (): number {
 				if (this.isHttpRequestNodeV2(this.node)) return 2;
+
+				if (this.node.type === 'n8n-nodes-base.webhook') return 1;
 
 				return 0;
 			},
@@ -173,6 +177,13 @@ export default mixins(
 			},
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
+					return false;
+				}
+
+				if (
+					this.isSomethingElseSelected(this.nodeValues) &&
+					this.mustHideDuringSomethingElse(parameter, this.nodeValues)
+				) {
 					return false;
 				}
 
