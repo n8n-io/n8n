@@ -596,7 +596,7 @@ export default mixins(
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
@@ -1836,7 +1836,7 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				const newWorkflow = await this.$store.dispatch('workflows/setNewWorkflowName');
+				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
 
 				this.$store.commit('setStateDirty', false);
 
