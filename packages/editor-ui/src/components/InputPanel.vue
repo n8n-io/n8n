@@ -135,7 +135,9 @@ export default mixins(
 			const nodes: INodeUi[] = (this.workflow as Workflow).getParentNodes(this.activeNode.name)
 				.map((nodeName: string) => this.$store.getters.getNodeByName(nodeName))
 				.reverse();
-			return nodes.filter((node) => this.activeNode && (node.name !== this.activeNode.name));
+
+			// dedupe nodes and remove self
+			return nodes.filter((node, i) => (this.activeNode && (node.name !== this.activeNode.name)) && nodes.indexOf(node) === i);
 		},
 	},
 	methods: {
