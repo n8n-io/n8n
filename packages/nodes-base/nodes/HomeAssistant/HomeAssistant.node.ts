@@ -146,9 +146,6 @@ export class HomeAssistant implements INodeType {
 				const credentials = credential.data;
 				const options = {
 					method: 'GET',
-					headers: {
-						Authorization: `Bearer ${credentials!.accessToken}`,
-					},
 					uri: `${credentials!.ssl === true ? 'https' : 'http'}://${credentials!.host}:${ credentials!.port || '8123' }/api/`,
 					json: true,
 					timeout: 5000,
