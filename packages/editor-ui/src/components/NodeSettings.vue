@@ -554,7 +554,7 @@ export default mixins(
 	height: 100%;
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
-	box-shadow: 0px 4px 24px rgba(50, 61, 85, 0.06);
+	box-shadow: 0 4px 44px rgb(50 61 85 / 10%);
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);

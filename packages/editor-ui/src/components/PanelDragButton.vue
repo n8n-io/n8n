@@ -56,8 +56,8 @@ export default Vue.extend({
 	background-color: var(--color-background-base);
 	width: 64px;
 	height: 21px;
-	border-top-left-radius: var(--border-radius-large);
-	border-top-right-radius: var(--border-radius-large);
+	border-top-left-radius: var(--border-radius-base);
+	border-top-right-radius: var(--border-radius-base);
 	cursor: grab;
 	display: flex;
 	align-items: center;
@@ -85,6 +85,7 @@ export default Vue.extend({
 	color: var(--color-background-xlight);
 	font-size: var(--font-size-3xs);
 	visibility: hidden;
+	top: 0;
 }
 
 .leftArrow {

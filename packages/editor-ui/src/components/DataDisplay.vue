@@ -630,7 +630,7 @@ $--main-panel-width: 360px;
 .featureRequest {
 	position: absolute;
 	bottom: 0;
-	right: var(--spacing-l);
+	left: var(--spacing-l);
 	color: var(--color-text-xlight);
 	font-size: var(--font-size-2xs);
 
@@ -640,7 +640,7 @@ $--main-panel-width: 360px;
 }
 
 .draggable {
-	top: -20px;
+	top: -12px;
 	left: 40%;
 	position: absolute;
 	visibility: hidden;

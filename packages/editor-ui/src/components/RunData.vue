@@ -851,7 +851,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-light);
+	background-color: var(--color-background-base);
 	display: flex;
 	flex-direction: column;
 }
