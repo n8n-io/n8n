@@ -1,4 +1,6 @@
 import {
+	IAuthenticateBasicAuth,
+	IAuthenticateHeaderAuth,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -24,4 +26,11 @@ export class CortexApi implements ICredentialType {
 			placeholder: 'https://localhost:9001',
 		},
 	];
+	authenticate = {
+		type: 'headerAuth',
+		properties: {
+			name: 'Authorization',
+			value: '=Bearer {{$credentials.cortexApiKey}}',
+		},
+	} as IAuthenticateHeaderAuth;
 }
