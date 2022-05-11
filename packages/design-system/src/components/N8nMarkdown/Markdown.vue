@@ -117,6 +117,7 @@ export default {
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
+			const imageFilesRegex = /\.(jpeg|jpg|gif|png|webp)$/;
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
 				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
@@ -129,7 +130,10 @@ export default {
 							const id = value.split('fileId:')[1];
 							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
 						}
-						if (!value.startsWith('https://') && !value.startsWith('/static/')) {
+						// Only allow http requests to supported image files from the `static` directory
+						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
+						const isStaticImageFile = isImageFile && value.startsWith('/static/');
+						if (!value.startsWith('https://') && !isStaticImageFile) {
 							return '';
 						}
 					}
