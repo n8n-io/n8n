@@ -519,7 +519,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 <style lang="scss">
 .data-display-wrapper {
-	height: 90%;
+	height: 93%;
 	width: 100%;
 	margin-top: var(--spacing-xl) !important;
 	background: none;
