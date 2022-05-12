@@ -33,7 +33,7 @@ export class ReadBinaryFile implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '/data/example.jpg',
-				description: 'Path of the file to read.',
+				description: 'Path of the file to read',
 			},
 			{
 				displayName: 'Property Name',
@@ -41,7 +41,7 @@ export class ReadBinaryFile implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 		],
 	};
@@ -51,7 +51,7 @@ export class ReadBinaryFile implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {

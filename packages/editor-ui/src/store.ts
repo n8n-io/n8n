@@ -90,6 +90,7 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
+	nodeMetadata: {},
 };
 
 const modules = {
@@ -328,6 +329,9 @@ export const store = new Vuex.Store({
 			if (state.lastSelectedNode === nameData.old) {
 				state.lastSelectedNode = nameData.new;
 			}
+
+			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
+			Vue.delete(state.nodeMetadata, nameData.old);
 		},
 
 		resetAllNodesIssues (state) {
@@ -418,6 +422,8 @@ export const store = new Vuex.Store({
 			state.workflow.nodes.push(nodeData);
 		},
 		removeNode (state, node: INodeUi) {
+			Vue.delete(state.nodeMetadata, node.name);
+
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
@@ -470,6 +476,11 @@ export const store = new Vuex.Store({
 
 			state.stateIsDirty = true;
 			Vue.set(node, 'parameters', updateInformation.value);
+
+			if (!state.nodeMetadata[node.name]) {
+				Vue.set(state.nodeMetadata, node.name, {});
+			}
+			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
 		// Node-Index
@@ -634,7 +645,7 @@ export const store = new Vuex.Store({
 		},
 
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
@@ -664,6 +675,10 @@ export const store = new Vuex.Store({
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
+		},
+
+		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
+			return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
 		getBaseUrl: (state): string => {
@@ -835,9 +850,13 @@ export const store = new Vuex.Store({
 			}, []);
 		},
 
-		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
+				const typeVersion = Array.isArray(typeData.version)
+					? typeData.version
+					: [typeData.version];
+
+				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {

@@ -59,7 +59,7 @@ export const ecomOrderProductsFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the order whose products you\'d like returned.',
+		description: 'The ID of the order whose products you\'d like returned',
 	},
 
 	// ----------------------------------
@@ -80,7 +80,7 @@ export const ecomOrderProductsFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the product you\'d like returned.',
+		description: 'The ID of the product you\'d like returned',
 	},
 
 	// ----------------------------------

@@ -18,17 +18,17 @@ export const summaryOperations: INodeProperties[] = [
 			{
 				name: 'Get Activity Summary',
 				value: 'getActivity',
-				description: 'Get the user\'s activity summary.',
+				description: 'Get the user\'s activity summary',
 			},
 			{
 				name: 'Get Readiness Summary',
 				value: 'getReadiness',
-				description: 'Get the user\'s readiness summary.',
+				description: 'Get the user\'s readiness summary',
 			},
 			{
 				name: 'Get Sleep Periods',
 				value: 'getSleep',
-				description: 'Get the user\'s sleep summary.',
+				description: 'Get the user\'s sleep summary',
 			},
 		],
 		default: 'getSleep',
@@ -49,7 +49,7 @@ export const summaryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -70,7 +70,7 @@ export const summaryFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

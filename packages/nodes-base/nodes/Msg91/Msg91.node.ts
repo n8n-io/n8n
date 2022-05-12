@@ -84,7 +84,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message.',
+				description: 'The number from which to send the message',
 			},
 			{
 				displayName: 'To',
@@ -103,7 +103,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number, with coutry code, to which to send the message.',
+				description: 'The number, with coutry code, to which to send the message',
 			},
 			{
 				displayName: 'Message',

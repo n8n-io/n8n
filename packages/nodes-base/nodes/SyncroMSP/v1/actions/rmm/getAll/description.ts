@@ -19,7 +19,7 @@ export const rmmGetAllDescription: RmmProperties = [
 		},
 		default: false,
 		noDataExpression: true,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -39,7 +39,7 @@ export const rmmGetAllDescription: RmmProperties = [
 			},
 		},
 		default: 25,
-		description: 'Limit the number of rows returned',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

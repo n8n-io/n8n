@@ -35,14 +35,14 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

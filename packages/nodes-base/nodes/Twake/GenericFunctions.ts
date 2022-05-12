@@ -35,7 +35,7 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 	// if (authenticationMethod === 'cloud') {
 		const credentials = await this.getCredentials('twakeCloudApi');
-		options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
+		options.headers!.Authorization = `Bearer ${credentials.workspaceKey}`;
 
 	// } else {
 	// 	const credentials = await this.getCredentials('twakeServerApi');
