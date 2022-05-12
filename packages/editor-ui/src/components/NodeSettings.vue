@@ -365,6 +365,7 @@ export default mixins(
 					!this.isHttpRequestNodeV2(this.node) ||
 					!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')
 				) {
+					this.activeCredential.scopes = [];
 					return;
 				}
 
