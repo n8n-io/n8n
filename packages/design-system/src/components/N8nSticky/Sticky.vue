@@ -27,6 +27,7 @@
 						ref="stickyMarkdown"
 						:content="content"
 						:withMultiBreaks="true"
+						@markdown-link-click="onMarkdownLinkClick"
 					/>
 				</div>
 				<div
@@ -156,6 +157,9 @@ export default mixins(Locale).extend({
 			if (!this.readOnly) {
 				this.$emit('edit', true);
 			}
+		},
+		onMarkdownLinkClick(event) {
+			this.$emit('markdown-link-click', event)
 		},
 		onInputBlur(value) {
 			if (!this.isResizing) {

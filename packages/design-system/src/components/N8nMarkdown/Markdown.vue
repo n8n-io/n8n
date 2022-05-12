@@ -164,24 +164,14 @@ export default {
 		this.initLinkListeners();
 	},
 	methods: {
-		// Add click listeners to links
+		// Add click listeners that will emit a custom event to parent component
 		// This can be used to track telemetry data and provide additional control over link events
 		initLinkListeners() {
-			// Currently only react to sticky links and track telemetry events
-			if(this.theme === 'sticky' && this.$refs.editor) {
-				const links = this.$refs['editor'].getElementsByTagName('a');
-				for(var link of links) {
-					link.addEventListener('click', (event)=> {
-						const clickedURL = event.currentTarget.getAttribute('href');
-						const innerElement = event.currentTarget.firstChild;
-						// If it's a YT link and it contains a N8n quickstart thumbnail, it's a welcome video link
-						const isWelcomeVideo = clickedURL.startsWith('https://www.youtube.com/') &&
-							(innerElement.localName === 'img' && innerElement.alt === 'n8n quickstart video');
-						const type = isWelcomeVideo ? 'welcome_video' : clickedURL === '/templates' ? 'templates' : 'other';
-
-						this.$telemetry.track('User clicked note link', { type } );
-					});
-				}
+			const links = this.$refs['editor'].getElementsByTagName('a');
+			for(var link of links) {
+				link.addEventListener('click', (event)=> {
+					this.$emit('markdown-link-click', event);
+				});
 			}
 		}
 	}
