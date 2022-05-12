@@ -861,8 +861,6 @@ export interface INodePropertyTypeOptions {
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
-	truncate?: boolean; // Supported by: notice
-	truncateAt?: number; // Supported by: notice
 	[key: string]: any;
 }
 
