@@ -125,7 +125,6 @@ export class NotionTrigger implements INodeType {
 		const lastTimeChecked = webhookData.lastTimeChecked
 			? moment(webhookData.lastTimeChecked as string)
 			: moment().set({ second:0, millisecond:0 });  // Notion timestamp accuracy is only down to the minute
-		console.log('==>', lastTimeChecked.utc().format());
 
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
 		const possibleDuplicates = webhookData.possibleDuplicates as string[] ?? [];
@@ -188,8 +187,6 @@ export class NotionTrigger implements INodeType {
 			// Filter out already processed left over records:
 			// with a time strictly before the last record processed
 			// or from the same minute not present in the list of processed records
-			console.log('==>', possibleDuplicates);
-			console.log('==>', records.length);
 			records = records.filter((record: IDataObject) => !possibleDuplicates.includes(record.id as string));
 
 			// Save the time of the most recent record processed
