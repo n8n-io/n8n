@@ -1,0 +1,12 @@
+  required:
+  - code
+  - description
+  - message
+  type: object
+  properties:
+    code:
+      type: string
+    message:
+      type: string
+    description:
+      type: string

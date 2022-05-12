@@ -1,6 +1,0 @@
-NotFound:
-  $ref: './NotFound.yml'
-Unauthorized:
-  $ref: './Unauthorized.yml'
-UserInformation:
-  $ref: './UserInformation.yml'

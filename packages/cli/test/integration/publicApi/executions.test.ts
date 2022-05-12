@@ -119,8 +119,6 @@ test('GET /executions/:executionId should fail due no instance owner not setup',
 
 	const response = await authOwnerAgent.get('/executions/3');
 
-	console.log(response.body);
-
 	expect(response.statusCode).toBe(500);
 });
 

@@ -1,0 +1,18 @@
+post:
+  x-eov-operation-id: activateWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+  - Workflow
+  summary: Activate a workflow
+  description: Active a workflow.
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Workflow object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowInformation.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

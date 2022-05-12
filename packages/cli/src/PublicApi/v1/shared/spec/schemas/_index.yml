@@ -1,0 +1,22 @@
+Error:
+  $ref: './error.yml'
+ExecutionInformation:
+  $ref: './../../../handlers/executions/spec/schemas/executionInformation.yml'
+NodeInformation:
+  $ref: './../../../handlers/workflows/spec/schemas/nodeInformation.yml'
+RoleInformation:
+  $ref: './../../../handlers/users/spec/schemas/roleInformation.yml'
+TagInformation:
+  $ref: './../../../handlers/workflows/spec/schemas/tagInformation.yml'
+UserInformation:
+  $ref: './../../../handlers/users/spec/schemas/userInformation.yml'
+WorkflowInformation:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowInformation.yml'
+WorkflowSettingInformation:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowSettingInformation.yml'
+UserDetailsResponse:
+  $ref: './../../../handlers/users/spec/schemas/userDetailsResponse.yml'
+ExecutionDetailsResponse:
+  $ref: './../../../handlers/executions/spec/schemas/executionDetailsResponse.yml'
+WorkflowDetailsResponse:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowDetailsResponse.yml'

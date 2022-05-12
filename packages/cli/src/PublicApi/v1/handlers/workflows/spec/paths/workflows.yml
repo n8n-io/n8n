@@ -1,0 +1,54 @@
+post:
+  x-eov-operation-id: createWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+  - Workflow
+  summary: Create a workflow
+  description: Create a workflow in your instance.
+  requestBody:
+    description: Created user object.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/workflowInformation.yml'
+    required: true
+  responses:
+    '200':
+      description: A User object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowInformation.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+get:
+  x-eov-operation-id: getWorkflows
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+  - Workflow
+  summary: Retrieve all workflows
+  description: Retrieve all workflows from your instance.
+  parameters:
+    - name: active
+      in: query
+      schema:
+        type: boolean
+        example: true
+    - name: tags
+      in: query
+      required: false
+      explode: false
+      schema:
+        type: string
+        example: test,production
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowDetailsResponse.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

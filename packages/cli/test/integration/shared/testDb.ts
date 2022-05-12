@@ -3,11 +3,10 @@ import { Credentials, UserSettings } from 'n8n-core';
 
 import config from '../../../config';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
-import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import { Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
-import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';

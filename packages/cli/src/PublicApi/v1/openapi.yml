@@ -26,32 +26,32 @@ tags:
     description: Operations about credentials
 paths:
   /credentials:
-    $ref: './Credentials/spec/paths/credentials.yml'
+    $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
-    $ref: './Credentials/spec/paths/credentials.id.yml'
+    $ref: './handlers/credentials/spec/paths/credentials.id.yml'
   /users:
-    $ref: './spec/paths/Users.yml'
+    $ref: './handlers/users/spec/paths/users.yml'
   /users/{identifier}:
-    $ref: './spec/paths/UserById.yml'
+    $ref: './handlers/users/spec/paths/users.id.yml'
   /executions:
-    $ref: './spec/paths/Executions.yml'
+    $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{executionId}:
-    $ref: './spec/paths/ExecutionById.yml'
+    $ref: './handlers/executions/spec/paths/executions.id.yml'
   /workflows:
-    $ref: './spec/paths/Workflows.yml'
+    $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{workflowId}:
-    $ref: './spec/paths/WorkflowById.yml'
+    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{workflowId}/activate:
-    $ref: './spec/paths/WorkflowByIdActivate.yml'
+    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{workflowId}/deactivate:
-    $ref: './spec/paths/WorkflowByIdDeactivate.yml'
+    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
 components:
   schemas:
-    $ref: './spec/schemas/_index.yml'
+    $ref: './shared/spec/schemas/_index.yml'
   responses:
-    $ref: './spec/responses/_index.yml'
+    $ref: './shared/spec/responses/_index.yml'
   parameters:
-    $ref: './spec/parameters/_index.yml'
+    $ref: './shared/spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

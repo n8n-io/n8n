@@ -7,11 +7,13 @@ import express, { Router } from 'express';
 import * as OpenApiValidator from 'express-openapi-validator';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
+import { OpenAPIV3 } from 'openapi-types';
 import path from 'path';
 import * as swaggerUi from 'swagger-ui-express';
+import validator from 'validator';
 import * as YAML from 'yamljs';
+import { Db } from '..';
 import config from '../../config';
-import { authenticationHandler, specFormats } from './helpers';
 
 function createApiRouter(
 	version: string,
@@ -39,10 +41,42 @@ function createApiRouter(
 			operationHandlers: hanldersDirectory,
 			validateRequests: true,
 			validateApiSpec: true,
-			formats: specFormats(),
+			formats: [
+				{
+					name: 'email',
+					type: 'string',
+					validate: (email: string) => validator.isEmail(email),
+				},
+				{
+					name: 'identifier',
+					type: 'string',
+					validate: (identifier: string) =>
+						validator.isUUID(identifier) || validator.isEmail(identifier),
+				},
+			],
 			validateSecurity: {
 				handlers: {
-					ApiKeyAuth: authenticationHandler,
+					ApiKeyAuth: async (
+						req: express.Request,
+						_scopes: unknown,
+						schema: OpenAPIV3.ApiKeySecurityScheme,
+					): Promise<boolean> => {
+						const apiKey = req.headers[schema.name.toLowerCase()];
+						const user = await Db.collections.User?.findOne({
+							where: {
+								apiKey,
+							},
+							relations: ['globalRole'],
+						});
+
+						if (!user) {
+							return false;
+						}
+
+						req.user = user;
+
+						return true;
+					},
 				},
 			},
 		}),
