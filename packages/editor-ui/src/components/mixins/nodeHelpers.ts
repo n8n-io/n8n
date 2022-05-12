@@ -54,8 +54,8 @@ export const nodeHelpers = mixins(
 				if (!isObjectLiteral(parameters)) return false;
 
 				return (
-					parameters.resource === CUSTOM_API_CALL_KEY ||
-					parameters.operation === CUSTOM_API_CALL_KEY
+					parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY) ||
+					parameters.operation !== undefined && parameters.operation.includes(CUSTOM_API_CALL_KEY)
 				);
 			},
 

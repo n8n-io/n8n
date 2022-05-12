@@ -99,6 +99,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { mapGetters } from 'vuex';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -167,9 +168,25 @@ export default mixins(
 				});
 			},
 			parametersNoneSetting (): INodeProperties[] {
-				return this.parameters.filter((item) => {
-					return !item.isNodeSetting;
-				});
+				return this.parameters.reduce<INodeProperties[]>((acc, parameter) => {
+					if (parameter.isNodeSetting) return acc;
+
+					if (
+						['resource', 'operation'].includes(parameter.name) &&
+						this.isSupportedByHttpRequestNode
+					) {
+						const copy: INodeProperties & { options: [] } = JSON.parse(JSON.stringify(parameter));
+
+						copy.options.push({
+							name: this.$locale.baseText('parameterInput.customApiCall'),
+							value: `${CUSTOM_API_CALL_KEY}-${parameter.name}-${this.node}`,
+						 });
+
+						 return acc.push(copy), acc;
+					}
+
+					return acc.push(parameter), acc;
+				}, []);
 			},
 			parameters (): INodeProperties[] {
 				if (this.nodeType === null) {

@@ -132,18 +132,6 @@
 					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
-			<n8n-option
-				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
-				:key="CUSTOM_API_CALL_KEY"
-				:value="CUSTOM_API_CALL_KEY"
-				:label="$locale.baseText('parameterInput.customApiCall')"
-			>
-				<div class="list-option">
-					<div class="option-headline">
-						{{ $locale.baseText('parameterInput.customApiCall') }}
-					</div>
-				</div>
-			</n8n-option>
 		</n8n-select>
 
 		<n8n-select
@@ -501,7 +489,7 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
-						if (checkValue === CUSTOM_API_CALL_KEY) continue;
+						if (checkValue !== undefined && checkValue.includes(CUSTOM_API_CALL_KEY)) continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
