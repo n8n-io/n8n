@@ -3,7 +3,7 @@ import express = require('express');
 import { CredentialsEntity } from '../../../databases/entities/CredentialsEntity';
 import { CredentialRequest } from '../../../requests';
 import { externalHooks } from '../../../Server';
-import { validCredentialsProperties } from '../../middlewares';
+// import { validCredentialsProperties } from '../../middlewares';
 
 import {
 	createCredential,
@@ -40,8 +40,8 @@ export = {
 
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {
-				httpStatusCode ? res.status(httpStatusCode) : res.status(500);
-				return res.json({ message });
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				return res.status(httpStatusCode ?? 500).json({ message });
 			}
 		},
 	],
