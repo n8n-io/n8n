@@ -173,8 +173,11 @@ export default {
 				for(var link of links) {
 					link.addEventListener('click', (event)=> {
 						const clickedURL = event.currentTarget.getAttribute('href');
-						const type = clickedURL.startsWith('https://www.youtube.com/') ?
-							'welcome_video' : clickedURL === '/templates' ? 'templates' : 'other';
+						const innerElement = event.currentTarget.firstChild;
+						// If it's a YT link and it contains a N8n quickstart thumbnail, it's a welcome video link
+						const isWelcomeVideo = clickedURL.startsWith('https://www.youtube.com/') &&
+							(innerElement.localName === 'img' && innerElement.alt === 'n8n quickstart video');
+						const type = isWelcomeVideo ? 'welcome_video' : clickedURL === '/templates' ? 'templates' : 'other';
 
 						this.$telemetry.track('User clicked note link', { type } );
 					});
