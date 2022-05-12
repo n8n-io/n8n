@@ -16,13 +16,19 @@ externalDocs:
 servers:
   - url: /api/v1
 tags:
-- name: User
-  description: Operations about user
-- name: Execution
-  description: Operations about execution
-- name: Workflow
-  description: Operations about workflow
+  - name: User
+    description: Operations about user
+  - name: Execution
+    description: Operations about execution
+  - name: Workflow
+    description: Operations about workflow
+  - name: Credentials
+    description: Operations about credentials
 paths:
+  /credentials:
+    $ref: './Credentials/spec/paths/credentials.yml'
+  /credentials/{id}:
+    $ref: './Credentials/spec/paths/credentials.id.yml'
   /users:
     $ref: './spec/paths/Users.yml'
   /users/{identifier}:
@@ -40,12 +46,6 @@ paths:
   /workflows/{workflowId}/deactivate:
     $ref: './spec/paths/WorkflowByIdDeactivate.yml'
 components:
-  schemas:
-    $ref: './spec/schemas/_index.yml'
-  responses:
-    $ref: './spec/responses/_index.yml'
-  parameters:
-    $ref: './spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

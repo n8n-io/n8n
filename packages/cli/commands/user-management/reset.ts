@@ -18,6 +18,7 @@ export class Reset extends Command {
 		resetPasswordToken: null,
 	};
 
+	// TODO: does not reset the email address on postgres
 	async run(): Promise<void> {
 		const logger = getLogger();
 		LoggerProxy.init(logger);

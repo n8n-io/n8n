@@ -158,12 +158,13 @@ export function meNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			const ramdonToken = randomBytes(40).toString('hex');
-			const apiKey = `n8n_api_${ramdonToken}`;
+			const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
+
 			await Db.collections.User.update(req.user.id, {
 				apiKey,
 			});
-			return { apiKey, success: true };
+
+			return { apiKey };
 		}),
 	);
 
@@ -176,6 +177,7 @@ export function meNamespace(this: N8nApp): void {
 			await Db.collections.User.update(req.user.id, {
 				apiKey: null,
 			});
+
 			return { success: true };
 		}),
 	);

@@ -20,4 +20,3 @@ ExecutionDetailsResponse:
   $ref: './ExecutionDetailsResponse.yml'
 WorkflowDetailsResponse:
   $ref: './WorkflowDetailsResponse.yml'
-

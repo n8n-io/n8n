@@ -8,8 +8,8 @@ import { replaceInvalidCredentials } from '../../../WorkflowHelpers';
 import { encodeNextCursor } from '../../helpers';
 import { authorize, instanceOwnerSetup, validCursor } from '../../middlewares';
 import { WorkflowRequest } from '../../publicApiRequest';
-import { getWorkflowOwnerRole } from '../../Services/role';
-import { isInstanceOwner } from '../../Services/user';
+import { getWorkflowOwnerRole } from '../../services/role';
+import { isInstanceOwner } from '../../services/user';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -21,7 +21,7 @@ import {
 	getWorkflows,
 	getSharedWorkflows,
 	getWorkflowsCount,
-} from '../../Services/workflow';
+} from '../../services/workflow';
 
 export = {
 	createWorkflow: [

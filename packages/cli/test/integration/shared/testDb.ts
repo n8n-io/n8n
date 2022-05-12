@@ -234,6 +234,11 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	return Db.collections.User.save(shell);
 }
 
+export function addApiKey(user: User): Promise<User> {
+	user.apiKey = randomApiKey();
+	return Db.collections.User!.save(user);
+}
+
 // ----------------------------------
 //          role fetchers
 // ----------------------------------
