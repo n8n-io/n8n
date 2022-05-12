@@ -54,7 +54,6 @@ export const contactTagFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Tag ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -72,7 +71,6 @@ export const contactTagFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Contact ID',
 	},
 	// ----------------------------------
 	//         contactTag:delete
@@ -93,6 +91,6 @@ export const contactTagFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact tag to delete.',
+		description: 'ID of the contact tag to delete',
 	},
 ];

@@ -29,7 +29,7 @@ export class ReadPdf implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property from which to read the PDF file.',
+				description: 'Name of the binary property from which to read the PDF file',
 			},
 		],
 	};
@@ -38,7 +38,7 @@ export class ReadPdf implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {

@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import * as path from 'path';
+import path from 'path';
 import { v4 as uuid } from 'uuid';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';

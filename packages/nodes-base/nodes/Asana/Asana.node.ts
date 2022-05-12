@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -17,15 +15,14 @@ import {
 import {
 	asanaApiRequest,
 	asanaApiRequestAllItems,
+	getColorOptions,
 	getTaskFields,
 	getWorkspaces,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
 export class Asana implements INodeType {
 	description: INodeTypeDescription = {
@@ -179,7 +176,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The task to operate on.',
+				description: 'The task to operate on',
 			},
 			{
 				displayName: 'Name',
@@ -256,21 +253,21 @@ export class Asana implements INodeType {
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the subtask should be marked completed.',
+						description: 'If the subtask should be marked completed',
 					},
 					{
 						displayName: 'Due On',
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
-						description: 'Date on which the time is due.',
+						description: 'Date on which the time is due',
 					},
 					{
 						displayName: 'Liked',
 						name: 'liked',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is liked by the authorized user.',
+						description: 'If the task is liked by the authorized user',
 					},
 					{
 						displayName: 'Notes',
@@ -314,7 +311,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The task to operate on.',
+				description: 'The task to operate on',
 			},
 			{
 				displayName: 'Return All',
@@ -331,7 +328,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -355,7 +352,7 @@ export class Asana implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',
@@ -386,14 +383,14 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return.',
+						description: 'Defines fields to return',
 					},
 					{
 						displayName: 'Pretty',
 						name: 'opt_pretty',
 						type: 'boolean',
 						default: false,
-						description: 'Provides “pretty” output.',
+						description: 'Provides “pretty” output',
 					},
 				],
 			},
@@ -515,7 +512,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the task to delete.',
+				description: 'The ID of the task to delete',
 			},
 
 			// ----------------------------------
@@ -537,7 +534,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the task to get the data of.',
+				description: 'The ID of the task to get the data of',
 			},
 			// ----------------------------------
 			//         task:getAll
@@ -557,7 +554,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -581,7 +578,7 @@ export class Asana implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -623,14 +620,14 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return.',
+						description: 'Defines fields to return',
 					},
 					{
 						displayName: 'Pretty',
 						name: 'opt_pretty',
 						type: 'boolean',
 						default: false,
-						description: 'Provides “pretty” output.',
+						description: 'Provides “pretty” output',
 					},
 					{
 						displayName: 'Project',
@@ -640,7 +637,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'The project to filter tasks on.',
+						description: 'The project to filter tasks on',
 					},
 					{
 						displayName: 'Section',
@@ -650,7 +647,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getSections',
 						},
 						default: '',
-						description: 'The section to filter tasks on.',
+						description: 'The section to filter tasks on',
 					},
 					{
 						displayName: 'Workspace',
@@ -667,14 +664,14 @@ export class Asana implements INodeType {
 						name: 'completed_since',
 						type: 'dateTime',
 						default: '',
-						description: 'Only return tasks that are either incomplete or that have been completed since this time.',
+						description: 'Only return tasks that are either incomplete or that have been completed since this time',
 					},
 					{
 						displayName: 'Modified Since',
 						name: 'modified_since',
 						type: 'dateTime',
 						default: '',
-						description: 'Only return tasks that have been modified since the given time.',
+						description: 'Only return tasks that have been modified since the given time',
 					},
 				],
 			},
@@ -699,7 +696,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the task to be moved.',
+				description: 'The ID of the task to be moved',
 			},
 			{
 				displayName: 'Project',
@@ -721,7 +718,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'Project to show the sections of.',
+				description: 'Project to show the sections of',
 			},
 			{
 				displayName: 'Section',
@@ -768,7 +765,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the task to update the data of.',
+				description: 'The ID of the task to update the data of',
 			},
 
 			// ----------------------------------
@@ -819,7 +816,7 @@ export class Asana implements INodeType {
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is marked completed.',
+						description: 'If the task is marked completed',
 					},
 					{
 						displayName: 'Text',
@@ -830,7 +827,7 @@ export class Asana implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'Text to search for in name or notes.',
+						description: 'Text to search for in name or notes',
 					},
 				],
 			},
@@ -896,14 +893,14 @@ export class Asana implements INodeType {
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the task should be marked completed.',
+						description: 'If the task should be marked completed',
 					},
 					{
 						displayName: 'Due On',
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
-						description: 'Date on which the time is due.',
+						description: 'Date on which the time is due',
 					},
 					{
 						displayName: 'Name',
@@ -924,7 +921,7 @@ export class Asana implements INodeType {
 						name: 'liked',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is liked by the authorized user.',
+						description: 'If the task is liked by the authorized user',
 					},
 					{
 						displayName: 'Notes',
@@ -945,7 +942,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: [],
-						description: 'The project to filter tasks on.',
+						description: 'The project to filter tasks on',
 					},
 				],
 			},
@@ -1018,7 +1015,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If body is HTML or simple text.',
+				description: 'If body is HTML or simple text',
 			},
 			{
 				displayName: 'Text',
@@ -1091,7 +1088,7 @@ export class Asana implements INodeType {
 						name: 'is_pinned',
 						type: 'boolean',
 						default: false,
-						description: 'Pin the comment.',
+						description: 'Pin the comment',
 					},
 				],
 			},
@@ -1213,14 +1210,14 @@ export class Asana implements INodeType {
 						name: 'insert_after',
 						type: 'string',
 						default: '',
-						description: 'A task in the project to insert the task after, or null to insert at the beginning of the list.',
+						description: 'A task in the project to insert the task after, or null to insert at the beginning of the list',
 					},
 					{
 						displayName: 'Insert Before',
 						name: 'insert_before',
 						type: 'string',
 						default: '',
-						description: 'A task in the project to insert the task before, or null to insert at the end of the list.',
+						description: 'A task in the project to insert the task before, or null to insert at the end of the list',
 					},
 					{
 						displayName: 'Section',
@@ -1474,7 +1471,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which to get users.',
+				description: 'The workspace in which to get users',
 			},
 
 			// ----------------------------------
@@ -1494,6 +1491,16 @@ export class Asana implements INodeType {
 				},
 				options: [
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new project',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a project',
+					},
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a project',
@@ -1503,11 +1510,143 @@ export class Asana implements INodeType {
 						value: 'getAll',
 						description: 'Get all projects',
 					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a project',
+					},
 				],
 				default: 'get',
 				description: 'The operation to perform.',
 			},
 
+			// ----------------------------------
+			//         project:create
+			// ----------------------------------
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				description: 'The name of the project to create',
+			},
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				description: 'The workspace to create the project in',
+			},
+			{
+				displayName: 'Team',
+				name: 'team',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'workspace',
+					],
+					loadOptionsMethod: 'getTeams',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				default: '',
+				description: 'The team this project will be assigned to',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'project',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: {},
+				description: 'Other properties to set',
+				placeholder: 'Add Property',
+				options: [
+					{
+						displayName: 'Color',
+						name: 'color',
+						type: 'options',
+						options: getColorOptions(),
+						default: 'none',
+						description: 'Color of the project',
+					},
+					{
+						displayName: 'Due On',
+						name: 'due_on',
+						type: 'dateTime',
+						default: '',
+						description: 'The day on which this project is due. This takes a date with format YYYY-MM-DD.',
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						default: '',
+						description: 'Basic description or notes for the project',
+					},
+				],
+			},
+			// ----------------------------------
+			//         project:delete
+			// ----------------------------------
+			{
+				displayName: 'Project ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+			},
 			// ----------------------------------
 			//         project:get
 			// ----------------------------------
@@ -1552,7 +1691,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which to get users.',
+				description: 'The workspace in which to get users',
 			},
 			{
 				displayName: 'Return All',
@@ -1569,7 +1708,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -1593,7 +1732,7 @@ export class Asana implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1618,7 +1757,7 @@ export class Asana implements INodeType {
 						name: 'archived',
 						type: 'boolean',
 						default: false,
-						description: 'Only return projects whose archived field takes on the value of this parameter.',
+						description: 'Only return projects whose archived field takes on the value of this parameter',
 					},
 					{
 						displayName: 'Teams',
@@ -1632,6 +1771,118 @@ export class Asana implements INodeType {
 						},
 						default: '',
 						description: 'The new name of the task',
+					},
+				],
+			},
+			// ----------------------------------
+			//         project:update
+			// ----------------------------------
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				description: 'The workspace in which to get users',
+			},
+			{
+				displayName: 'Project ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				description: 'The ID of the project to update the data of',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'project',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				default: {},
+				description: 'Other properties to set',
+				placeholder: 'Add Property',
+				options: [
+					{
+						displayName: 'Color',
+						name: 'color',
+						type: 'options',
+						options: getColorOptions(),
+						default: 'none',
+						description: 'Color of the project',
+					},
+					{
+						displayName: 'Due On',
+						name: 'due_on',
+						type: 'dateTime',
+						default: '',
+						description: 'The day on which this project is due. This takes a date with format YYYY-MM-DD.',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the project',
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						default: '',
+						description: 'Basic description or notes for the project',
+					},
+					{
+						displayName: 'Owner',
+						name: 'owner',
+						type: 'string',
+						default: '',
+						description: 'The new assignee/cardinal for this project',
+					},
+					{
+						displayName: 'Team',
+						name: 'team',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'workspace',
+							],
+							loadOptionsMethod: 'getTeams',
+						},
+						default: '',
+						description: 'The team this project will be assigned to',
 					},
 				],
 			},
@@ -1905,7 +2156,7 @@ export class Asana implements INodeType {
 
 						responseData = responseData.data;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as boolean;
 							responseData = responseData.splice(0, limit);
 						}
@@ -2136,7 +2387,6 @@ export class Asana implements INodeType {
 				}
 				if (resource === 'taskProject') {
 					if (operation === 'add') {
-
 						// ----------------------------------
 						//         taskProject:add
 						// ----------------------------------
@@ -2207,6 +2457,48 @@ export class Asana implements INodeType {
 					}
 				}
 				if (resource === 'project') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         project:create
+						// ----------------------------------
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const teamId = this.getNodeParameter('team', i);
+
+						// request parameters
+						requestMethod = 'POST';
+						endpoint = `/teams/${teamId}/projects`;
+
+						// required parameters
+						body.name = this.getNodeParameter('name', i);
+						body.workspace = this.getNodeParameter('workspace', i);
+						// optional parameters
+						if (additionalFields.color) {
+							qs.color = additionalFields.color;
+						}
+						if (additionalFields.due_on) {
+							qs.due_on = additionalFields.due_on;
+						}
+						if (additionalFields.notes) {
+							qs.notes = additionalFields.notes;
+						}
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+					}
+
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         project:delete
+						// ----------------------------------
+						const projectId = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'DELETE';
+
+						endpoint = `/projects/${projectId}`;
+
+						asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
 
 					if (operation === 'get') {
 						// ----------------------------------
@@ -2257,6 +2549,42 @@ export class Asana implements INodeType {
 
 							responseData = responseData.data;
 						}
+					}
+
+					if (operation === 'update') {
+						// ----------------------------------
+						//        project:update
+						// ----------------------------------
+						const projectId = this.getNodeParameter('id', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						// request parameters
+						requestMethod = 'PUT';
+						endpoint = `/projects/${projectId}`;
+
+						// optional parameters
+						if (updateFields.color) {
+							qs.color = updateFields.color;
+						}
+						if (updateFields.due_on) {
+							qs.due_on = updateFields.due_on;
+						}
+						if (updateFields.name) {
+							body.name = updateFields.name;
+						}
+						if (updateFields.notes) {
+							qs.notes = updateFields.notes;
+						}
+						if (updateFields.owner) {
+							body.owner = updateFields.owner;
+						}
+						if (updateFields.team) {
+							body.team = updateFields.team;
+						}
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+
 					}
 				}
 

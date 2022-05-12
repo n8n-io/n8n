@@ -2,9 +2,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
 import { getConnection } from 'typeorm';
-import { validate } from 'class-validator';
-
-import { ResponseHelper } from '.';
 
 import { TagEntity } from './databases/entities/TagEntity';
 
@@ -15,43 +12,18 @@ import { ITagWithCountDb } from './Interfaces';
 // ----------------------------------
 
 /**
- * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
+ * Sort tags based on the order of the tag IDs in the request.
  */
-export function sortByRequestOrder(tagsDb: TagEntity[], tagIds: string[]) {
-	const tagMap = tagsDb.reduce((acc, tag) => {
-		// @ts-ignore
-		tag.id = tag.id.toString();
-		acc[tag.id] = tag;
+export function sortByRequestOrder(
+	tags: TagEntity[],
+	{ requestOrder }: { requestOrder: string[] },
+) {
+	const tagMap = tags.reduce<Record<string, TagEntity>>((acc, tag) => {
+		acc[tag.id.toString()] = tag;
 		return acc;
-	}, {} as { [key: string]: TagEntity });
+	}, {});
 
-	return tagIds.map((tagId) => tagMap[tagId]);
-}
-
-// ----------------------------------
-//           validators
-// ----------------------------------
-
-/**
- * Validate a new tag based on `class-validator` constraints.
- */
-export async function validateTag(newTag: TagEntity) {
-	const errors = await validate(newTag);
-
-	if (errors.length) {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
-		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
-	}
-}
-
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
-	}
-
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+	return requestOrder.map((tagId) => tagMap[tagId]);
 }
 
 // ----------------------------------

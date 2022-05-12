@@ -46,7 +46,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -70,7 +70,7 @@ export const salesOrderFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -95,14 +95,14 @@ export const salesOrderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX',
-				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs',
+				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.',
 			},
 			{
 				displayName: 'Customer Code',
 				name: 'customerCode',
 				type: 'string',
 				default: '',
-				description: 'Returns orders that start with the specific customer code.',
+				description: 'Returns orders that start with the specific customer code',
 			},
 			{
 				displayName: 'End Date',
@@ -116,7 +116,7 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns orders created or edited after a specified date, must be UTC format.',
+				description: 'Returns orders created or edited after a specified date, must be UTC format',
 			},
 			{
 				displayName: 'Order Number',
@@ -152,7 +152,6 @@ export const salesOrderFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				required: false,
 				description: 'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
 			},
 			{

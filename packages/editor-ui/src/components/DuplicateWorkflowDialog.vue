@@ -5,8 +5,7 @@
 		@enter="save"
 		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
-		minWidth="420px"
-		maxWidth="420px"
+		width="420px"
 	>
 		<template v-slot:content>
 			<div :class="$style.content">
@@ -17,6 +16,7 @@
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
+					v-if="areTagsEnabled"
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
@@ -46,6 +46,7 @@ import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
+import { mapGetters } from "vuex";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
@@ -69,6 +70,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 	async mounted() {
 		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
 		this.$nextTick(() => this.focusOnNameInput());
+	},
+	computed: {
+		...mapGetters('settings', ['areTagsEnabled']),
 	},
 	watch: {
 		isActive(active) {

@@ -14,11 +14,13 @@
 				/>
 			</div>
 
-			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
-				<n8n-text size="small">
-					<span v-html="$locale.nodeText().inputLabelDisplayName(parameter, path)"></span>
-				</n8n-text>
-			</div>
+			<n8n-notice
+				v-else-if="parameter.type === 'notice'"
+				class="parameter-item"
+				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
+				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
+			/>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -89,7 +91,7 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
-import { IUpdateInformation } from '@/Interface';
+import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -123,6 +125,9 @@ export default mixins(
 			},
 			filteredParameterNames (): string[] {
 				return this.filteredParameters.map(parameter => parameter.name);
+			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
 			},
 		},
 		methods: {
@@ -213,13 +218,13 @@ export default mixins(
 					if (this.path) {
 						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
 						set(rawValues, this.path, nodeValues);
-						return this.displayParameter(rawValues, parameter, this.path);
+						return this.displayParameter(rawValues, parameter, this.path, this.node);
 					} else {
-						return this.displayParameter(nodeValues, parameter, '');
+						return this.displayParameter(nodeValues, parameter, '', this.node);
 					}
 				}
 
-				return this.displayParameter(this.nodeValues, parameter, this.path);
+				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);

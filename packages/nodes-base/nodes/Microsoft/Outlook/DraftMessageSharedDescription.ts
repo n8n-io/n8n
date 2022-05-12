@@ -71,21 +71,21 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'BCC Recipients',
 				name: 'bccRecipients',
-				description: 'Email addresses of BCC recipients.',
+				description: 'Email addresses of BCC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Body Content',
 				name: 'bodyContent',
-				description: 'Message body content.',
+				description: 'Message body content',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Body Content Type',
 				name: 'bodyContentType',
-				description: 'Message body content type.',
+				description: 'Message body content type',
 				type: 'options',
 				options: [
 					{
@@ -111,7 +111,7 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'CC Recipients',
 				name: 'ccRecipients',
-				description: 'Email addresses of CC recipients.',
+				description: 'Email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
@@ -134,14 +134,14 @@ export const draftMessageSharedFields: INodeProperties[] = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the header.',
+								description: 'Name of the header',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the header.',
+								description: 'Value to set for the header',
 							},
 						],
 					},
@@ -157,7 +157,7 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'Importance',
 				name: 'importance',
-				description: 'The importance of the message.',
+				description: 'The importance of the message',
 				type: 'options',
 				options: [
 					{
@@ -178,14 +178,14 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'Is Read',
 				name: 'isRead',
-				description: 'Indicates whether the message has been read.',
+				description: 'Indicates whether the message has been read',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message.',
+				description: 'Indicates whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
@@ -199,14 +199,14 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'Reply To',
 				name: 'replyTo',
-				description: 'Email addresses to use when replying.',
+				description: 'Email addresses to use when replying',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
-				description: 'The subject of the message.',
+				description: 'The subject of the message',
 				type: 'string',
 				default: '',
 			},

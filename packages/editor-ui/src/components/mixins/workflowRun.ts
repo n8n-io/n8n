@@ -205,7 +205,6 @@ export const workflowRun = mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('workflowRun.showError.title'),
-					this.$locale.baseText('workflowRun.showError.message'),
 				);
 				return undefined;
 			}

@@ -171,7 +171,7 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Modal from '@/components/Modal.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY } from '@/constants';
+import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY, VIEWS } from '@/constants';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -339,14 +339,14 @@ export default mixins(
 		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({name: 'ExecutionById', params: {id: execution.id}});
+				const route = this.$router.resolve({name: VIEWS.EXECUTION, params: {id: execution.id}});
 				window.open(route.href, '_blank');
 
 				return;
 			}
 
 			this.$router.push({
-				name: 'ExecutionById',
+				name: VIEWS.EXECUTION,
 				params: { id: execution.id },
 			});
 			this.modalBus.$emit('closeAll');
@@ -409,7 +409,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
-					this.$locale.baseText('executionsList.showError.handleDeleteSelected.message'),
 				);
 
 				return;
@@ -418,7 +417,6 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
-				message: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -572,7 +570,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadMore.title'),
-					this.$locale.baseText('executionsList.showError.loadMore.message') + ':',
 				);
 				return;
 			}
@@ -612,7 +609,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
-					this.$locale.baseText('executionsList.showError.loadWorkflows.message') + ':',
 				);
 			}
 		},
@@ -625,13 +621,11 @@ export default mixins(
 				if (retrySuccessful === true) {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
@@ -641,7 +635,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-					this.$locale.baseText('executionsList.showError.retryExecution.message'),
 				);
 
 				this.isDataLoading = false;
@@ -658,7 +651,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.refreshData.title'),
-					this.$locale.baseText('executionsList.showError.refreshData.message') + ':',
 				);
 			}
 
@@ -731,7 +723,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
-					this.$locale.baseText('executionsList.showError.stopExecution.message'),
 				);
 			}
 		},

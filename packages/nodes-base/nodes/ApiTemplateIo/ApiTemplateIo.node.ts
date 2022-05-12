@@ -110,7 +110,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use.',
+				description: 'ID of the image template to use',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -131,7 +131,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use.',
+				description: 'ID of the PDF template to use',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
@@ -179,7 +179,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
 				displayName: 'Binary Property',
@@ -187,7 +187,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to.',
+				description: 'Name of the binary property to which to write to',
 				displayOptions: {
 					show: {
 						resource: [
@@ -296,7 +296,7 @@ export class ApiTemplateIo implements INodeType {
 												name: 'value',
 												type: 'string',
 												default: '',
-												description: 'Value to the property.',
+												description: 'Value to the property',
 											},
 										],
 									},
@@ -345,7 +345,7 @@ export class ApiTemplateIo implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to the property.',
+								description: 'Value to the property',
 							},
 						],
 					},
