@@ -59,14 +59,6 @@ export const nodeHelpers = mixins(
 				);
 			},
 
-			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
-				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
-
-				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
-
-				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
-			},
-
 			// Returns the parameter value
 			getParameterValue (nodeValues: INodeParameters, parameterName: string, path: string) {
 				return get(
