@@ -68,6 +68,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 		password,
 		resetPasswordToken,
 		isPending,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -80,6 +81,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(resetPasswordToken).toBeUndefined();
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const storedOwner = await Db.collections.User.findOneOrFail(id);
 	expect(storedOwner.password).not.toBe(newOwnerData.password);

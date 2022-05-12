@@ -55,6 +55,7 @@ describe('Owner shell', () => {
 			password,
 			resetPasswordToken,
 			isPending,
+			apiKey,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -67,6 +68,7 @@ describe('Owner shell', () => {
 		expect(isPending).toBe(true);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
+		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -88,6 +90,7 @@ describe('Owner shell', () => {
 				password,
 				resetPasswordToken,
 				isPending,
+				apiKey,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -100,6 +103,7 @@ describe('Owner shell', () => {
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
+			expect(apiKey).toBeUndefined();
 
 			const storedOwnerShell = await Db.collections.User.findOneOrFail(id);
 
@@ -209,6 +213,7 @@ describe('Member', () => {
 			password,
 			resetPasswordToken,
 			isPending,
+			apiKey,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -221,6 +226,7 @@ describe('Member', () => {
 		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
+		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -242,6 +248,7 @@ describe('Member', () => {
 				password,
 				resetPasswordToken,
 				isPending,
+				apiKey,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -254,6 +261,7 @@ describe('Member', () => {
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('member');
 			expect(globalRole.scope).toBe('global');
+			expect(apiKey).toBeUndefined();
 
 			const storedMember = await Db.collections.User.findOneOrFail(id);
 
@@ -364,6 +372,7 @@ describe('Owner', () => {
 			password,
 			resetPasswordToken,
 			isPending,
+			apiKey,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -376,6 +385,8 @@ describe('Owner', () => {
 		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
+		expect(apiKey).toBeUndefined();
+
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -397,6 +408,7 @@ describe('Owner', () => {
 				password,
 				resetPasswordToken,
 				isPending,
+				apiKey,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -409,6 +421,7 @@ describe('Owner', () => {
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
+			expect(apiKey).toBeUndefined();
 
 			const storedOwner = await Db.collections.User.findOneOrFail(id);
 

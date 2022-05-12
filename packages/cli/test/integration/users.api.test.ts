@@ -89,6 +89,7 @@ test('GET /users should return all users', async () => {
 				password,
 				resetPasswordToken,
 				isPending,
+				apiKey,
 			} = user;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -100,6 +101,7 @@ test('GET /users should return all users', async () => {
 			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole).toBeDefined();
+			expect(apiKey).not.toBeDefined();
 		}),
 	);
 });
@@ -354,6 +356,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 		resetPasswordToken,
 		globalRole,
 		isPending,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -365,6 +368,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	expect(resetPasswordToken).toBeUndefined();
 	expect(isPending).toBe(false);
 	expect(globalRole).toBeDefined();
+	expect(apiKey).not.toBeDefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
@@ -424,6 +428,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 			const storedUser = await Db.collections.User.findOneOrFail({
 				where: { email: memberShellEmail },
 			});
+
 			expect(storedUser.firstName).toBeNull();
 			expect(storedUser.lastName).toBeNull();
 			expect(storedUser.password).toBeNull();
