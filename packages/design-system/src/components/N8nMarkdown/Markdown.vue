@@ -158,6 +158,30 @@ export default {
 				.use(markdownTasklists, this.options.tasklists),
 		};
 	},
+	mounted() {
+		// Once the component is mounted and HTML is rendered,
+		// attach listeners to all link elements
+		this.initLinkListeners();
+	},
+	methods: {
+		// Add click listeners to links
+		// This can be used to track telemetry data and provide additional control over link events
+		initLinkListeners() {
+			// Currently only react to sticky links and track telemetry events
+			if(this.theme === 'sticky' && this.$refs.editor) {
+				const links = this.$refs['editor'].getElementsByTagName('a');
+				for(var link of links) {
+					link.addEventListener('click', (event)=> {
+						const clickedURL = event.currentTarget.getAttribute('href');
+						const type = clickedURL.startsWith('https://www.youtube.com/') ?
+							'welcome_video' : clickedURL === '/templates' ? 'templates' : 'other';
+
+						this.$telemetry.track('User clicked note link', { type } );
+					});
+				}
+			}
+		}
+	}
 };
 </script>
 

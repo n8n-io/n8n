@@ -24,6 +24,7 @@
 				>
 					<n8n-markdown
 						theme="sticky"
+						ref="stickyMarkdown"
 						:content="content"
 						:withMultiBreaks="true"
 					/>
@@ -178,6 +179,11 @@ export default mixins(Locale).extend({
 	},
 	watch: {
 		editMode(newMode, prevMode) {
+			if(newMode === false) {
+				// When exiting the edit mode, attach click listeners to links
+				// in case new links have been added
+				this.$refs.stickyMarkdown.initLinkListeners();
+			}
 			setTimeout(() => {
 				if (newMode && !prevMode && this.$refs.input && this.$refs.input.$refs && this.$refs.input.$refs.textarea) {
 					const textarea = this.$refs.input.$refs.textarea;
