@@ -31,7 +31,6 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
-					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				>
 					<n8n-notice
 						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"

@@ -246,7 +246,6 @@ export default mixins(
 			'hideIssues', // boolean
 			'errorHighlight',
 			'isForCredential', // boolean
-			'isSupportedByHttpRequestNode', // boolean
 		],
 		data () {
 			return {

@@ -12,7 +12,6 @@
 			:displayOptions="displayOptions"
 			:path="path"
 			:isReadOnly="isReadOnly"
-			:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 			@valueChanged="valueChanged"
 			@focus="focused = true"
 			@blur="focused = false"
@@ -49,7 +48,6 @@ export default Vue
 			'parameter',
 			'path',
 			'value',
-			'isSupportedByHttpRequestNode',
 		],
 		methods: {
 			getArgument (argumentName: string): string | number | boolean | undefined {
