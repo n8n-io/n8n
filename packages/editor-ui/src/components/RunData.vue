@@ -837,7 +837,7 @@ export default mixins(
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
 	text-align: center;
 
 	> * {
