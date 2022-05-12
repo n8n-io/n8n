@@ -51,40 +51,38 @@ test('POST /credentials should create credentials', async () => {
 		auth: true,
 		user: ownerShell,
 	});
-	const payloads = [credentialPayload(), credentialPayload()];
-	// @ts-ignore
-	delete payloads[1].nodesAccess;
+	const payload = {
+		name: 'test credential',
+		type: 'github',
+		data: {
+			accessToken: 'abcdefghijklmnopqrstuvwxyz',
+			user: 'test',
+			server: 'testServer',
+		},
+	};
 
-	// calls need to be in sequence for sqlite (cannot run multiple transactions in parallel)
-	const responses = [];
-	for (const payload of payloads) {
-		responses.push(await authOwnerAgent.post('/credentials').send(payload));
-	}
+	const response = await authOwnerAgent.post('/credentials').send(payload);
 
-	await Promise.all(
-		responses.map(async (response, index) => {
-			expect(response.statusCode).toBe(200);
+	expect(response.statusCode).toBe(200);
 
-			const { id, name, type } = response.body;
+	const { id, name, type } = response.body;
 
-			expect(name).toBe(payloads[index].name);
-			expect(type).toBe(payloads[index].type);
+	expect(name).toBe(payload.name);
+	expect(type).toBe(payload.type);
 
-			const credential = await Db.collections.Credentials!.findOneOrFail(id);
+	const credential = await Db.collections.Credentials!.findOneOrFail(id);
 
-			expect(credential.name).toBe(payloads[index].name);
-			expect(credential.type).toBe(payloads[index].type);
-			expect(credential.data).not.toBe(payloads[index].data);
+	expect(credential.name).toBe(payload.name);
+	expect(credential.type).toBe(payload.type);
+	expect(credential.data).not.toBe(payload.data);
 
-			const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
-				relations: ['user', 'credentials'],
-				where: { credentials: credential },
-			});
+	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+		relations: ['user', 'credentials'],
+		where: { credentials: credential },
+	});
 
-			expect(sharedCredential.user.id).toBe(ownerShell.id);
-			expect(sharedCredential.credentials.name).toBe(payloads[index].name);
-		}),
-	);
+	expect(sharedCredential.user.id).toBe(ownerShell.id);
+	expect(sharedCredential.credentials.name).toBe(payload.name);
 });
 
 test('POST /credentials should fail with invalid inputs', async () => {
@@ -162,7 +160,7 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 		user: ownerShell,
 	});
 
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(dbCredential(), { user: ownerShell });
 
 	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -195,7 +193,7 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
+	const savedCredential = await saveCredential(dbCredential(), { user: member });
 
 	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -219,7 +217,7 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 		user: member,
 	});
 
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
+	const savedCredential = await saveCredential(dbCredential(), { user: member });
 
 	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -248,7 +246,7 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 		auth: true,
 		user: member,
 	});
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(dbCredential(), { user: ownerShell });
 
 	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -282,9 +280,14 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 const credentialPayload = () => ({
 	name: randomName(),
 	type: randomName(),
-	nodesAccess: [{ nodeType: randomName() }],
 	data: { accessToken: randomString(6, 16) },
 });
+
+const dbCredential = () => {
+	const credential = credentialPayload();
+	credential.nodesAccess = [{ nodeType: credential.type }];
+	return credential;
+};
 
 const INVALID_PAYLOADS = [
 	{

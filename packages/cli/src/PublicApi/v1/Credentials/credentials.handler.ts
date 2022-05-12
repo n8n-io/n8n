@@ -17,13 +17,11 @@ import {
 
 export = {
 	createCredential: [
-		validCredentialsProperties,
+		// validCredentialsProperties,
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
-			delete req.body.id; // delete if sent
-
 			try {
 				const newCredential = await createCredential(req.body as Partial<CredentialsEntity>);
 
@@ -61,16 +59,14 @@ export = {
 					'role',
 				]);
 
-				if (shared && shared.role.name !== 'owner') {
+				if (shared?.role.name === 'owner') {
+					credentials = shared.credentials;
+				} else {
 					// LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
 					// 	credentialId,
 					// 	userId: req.user.id,
 					// });
-					return res.status(403).json({
-						message: `Credential was not deleted because you are not the owner.`,
-					});
 				}
-				credentials = shared?.credentials;
 			} else {
 				credentials = (await getCredentials(credentialId)) as CredentialsEntity;
 			}

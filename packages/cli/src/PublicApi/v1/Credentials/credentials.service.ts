@@ -4,7 +4,6 @@ import { IDataObject, INodeProperties } from 'n8n-workflow';
 import { Db, ICredentialsDb } from '../../..';
 import { CredentialsEntity } from '../../../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../../../databases/entities/SharedCredentials';
-import { validateEntity } from '../../../GenericHelpers';
 import { User } from '../../../databases/entities/User';
 import { CredentialsHelper } from '../../../CredentialsHelper';
 
@@ -55,7 +54,6 @@ export async function createCredential(
 		});
 	}
 
-	await validateEntity(newCredential);
 	return newCredential;
 }
 
