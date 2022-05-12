@@ -40,7 +40,6 @@
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
-						@newHttpRequestNodeCredentialType="prepareScopesNotice"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -458,6 +457,13 @@ export default mixins(
 				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
+				if (
+					this.isHttpRequestNodeV2(this.node) &&
+					parameterData.name === 'parameters.nodeCredentialType'
+				) {
+					this.prepareScopesNotice(parameterData.value as string);
+				}
+
 				let newValue: NodeParameterValue;
 				if (parameterData.hasOwnProperty('value')) {
 					// New value is given
@@ -644,6 +650,11 @@ export default mixins(
 					const credentialTypeNames = activeNodeType.credentials.map((c: { name: string }) => c.name);
 					this.checkHttpRequestNodeSupport(credentialTypeNames);
 				}
+			} else if (
+				this.isHttpRequestNodeV2(this.node) &&
+				this.node.parameters.authentication === 'existingCredentialType'
+			) {
+				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
 			}
 
 			if (this.eventBus) {
