@@ -73,7 +73,7 @@ export class VenafiTpp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -264,7 +264,7 @@ export class VenafiTpp implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: (error as IDataObject).message } });
 					continue;
 				}
 				throw error;
