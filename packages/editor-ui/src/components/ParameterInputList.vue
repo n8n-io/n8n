@@ -103,6 +103,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -135,7 +136,7 @@ export default mixins(
 			indexToShowSlotAt (): number {
 				if (this.isHttpRequestNodeV2(this.node)) return 2;
 
-				if (this.node.type === 'n8n-nodes-base.webhook') return 1;
+				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
 
 				return 0;
 			},
