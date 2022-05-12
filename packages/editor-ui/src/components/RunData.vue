@@ -68,7 +68,7 @@
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
 				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 			</div>
 
@@ -883,6 +883,11 @@ export default mixins(
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
+}
+
+.errorDisplay {
+	composes: dataDisplay;
+	padding-right: var(--spacing-s);
 }
 
 .jsonDisplay {
