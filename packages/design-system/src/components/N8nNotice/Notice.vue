@@ -1,7 +1,7 @@
 <template>
 	<div :id="id" :class="classes" role="alert" @click=onClick>
 		<div class="notice-content">
-			<n8n-text size="small">
+			<n8n-text size="small" :compact="true">
 				<slot>
 					<span
 						:class="showFullContent ? $style['expanded'] : $style['truncated']"
@@ -106,10 +106,6 @@ export default Vue.extend({
 
 	a {
 		font-weight: var(--font-weight-bold);
-	}
-
-	span {
-		line-height: var(--font-line-height-compact);
 	}
 }
 
