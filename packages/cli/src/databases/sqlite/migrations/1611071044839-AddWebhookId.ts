@@ -8,7 +8,7 @@ export class AddWebhookId1611071044839 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
 			`CREATE TABLE "temporary_webhook_entity" ("workflowId" integer NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, "webhookId" varchar, "pathLength" integer, PRIMARY KEY ("webhookPath", "method"))`,
@@ -28,7 +28,7 @@ export class AddWebhookId1611071044839 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}742496f199721a057051acf4c2"`);
 		await queryRunner.query(

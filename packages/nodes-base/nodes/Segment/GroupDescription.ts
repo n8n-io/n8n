@@ -46,7 +46,6 @@ export const groupFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Group ID',
@@ -95,14 +94,12 @@ export const groupFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -136,7 +133,7 @@ export const groupFields: INodeProperties[] = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -144,14 +141,14 @@ export const groupFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',

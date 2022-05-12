@@ -80,7 +80,7 @@ export class Mailcheck implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address to check.',
+				description: 'Email address to check',
 			},
 		],
 	};
@@ -88,7 +88,7 @@ export class Mailcheck implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0) as string;

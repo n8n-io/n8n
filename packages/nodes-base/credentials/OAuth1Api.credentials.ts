@@ -61,7 +61,7 @@ export class OAuth1Api implements ICredentialType {
 					value: 'HMAC-SHA512',
 				},
 			],
-			default: '',
+			default: 'HMAC-SHA1',
 			required: true,
 		},
 	];

@@ -127,7 +127,7 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -151,7 +151,7 @@ export const accountFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -178,7 +178,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Expand Fields',
@@ -187,7 +187,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getExpandableAccountFields',
 				},
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -213,7 +213,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Query to filter the results. Check <a href="https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results" target="_blank">filters</a>',
+				description: 'Query to filter the results. Check <a href="https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results" target="_blank">filters</a>.',
 			},
 		],
 	},
@@ -266,7 +266,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
-				default: '',
+				default: [],
 				description: 'Fields the response will include',
 			},
 		],

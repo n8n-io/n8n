@@ -9,10 +9,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, JsonObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+
+	const { region } = await this.getCredentials('googleFirebaseRealtimeDatabaseOAuth2Api') as IDataObject;
 
 	const options: OptionsWithUrl = {
 		headers: {
@@ -21,9 +23,10 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
-		url: uri || `https://${projectId}.firebaseio.com/${resource}.json`,
+		url: uri || `https://${projectId}.${region}/${resource}.json`,
 		json: true,
 	};
+
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
@@ -34,7 +37,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		return await this.helpers.requestOAuth2!.call(this, 'googleFirebaseRealtimeDatabaseOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

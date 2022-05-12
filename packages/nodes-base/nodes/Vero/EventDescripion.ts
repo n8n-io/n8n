@@ -16,7 +16,7 @@ export const eventOperations: INodeProperties[] = [
 			{
 				name: 'Track',
 				value: 'track',
-				description: `Track an event for a specific customer`,
+				description: 'Track an event for a specific customer',
 			},
 		],
 		default: 'track',
@@ -64,7 +64,6 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Email',
 	},
 	{
 		displayName: 'Event Name',
@@ -82,14 +81,13 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the event tracked.',
+		description: 'The name of the event tracked',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -134,14 +132,14 @@ export const eventFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
 				],
 			},
@@ -180,14 +178,14 @@ export const eventFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
 				],
 			},
@@ -198,7 +196,6 @@ export const eventFields: INodeProperties[] = [
 		name: 'dataAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -222,7 +219,6 @@ export const eventFields: INodeProperties[] = [
 		name: 'extraAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

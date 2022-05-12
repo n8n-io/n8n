@@ -116,7 +116,6 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -210,7 +209,7 @@ export const operationFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -297,37 +296,37 @@ export const operationFields: INodeProperties[] = [
 									{
 										name: 'Date Equal',
 										value: 'date_equal',
-										description: 'Field is date. Format: \'YYYY-MM-DD\'',
+										description: 'Field is date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
 										name: 'Date Not Equal',
 										value: 'date_not_equal',
-										description: 'Field is not date. Format: \'YYYY-MM-DD\'',
+										description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
 										name: 'Date Equals Today',
 										value: 'date_equals_today',
-										description: 'Field is today. Format: string',
+										description: 'Field is today. Format: string.',
 									},
 									{
 										name: 'Date Equals Month',
 										value: 'date_equals_month',
-										description: 'Field in this month. Format: string',
+										description: 'Field in this month. Format: string.',
 									},
 									{
 										name: 'Date Equals Year',
 										value: 'date_equals_year',
-										description: 'Field in this year. Format: string',
+										description: 'Field in this year. Format: string.',
 									},
 									{
 										name: 'Date Before Date',
 										value: 'date_before',
-										description: 'Field before this date. Format: \'YYYY-MM-DD\'',
+										description: 'Field before this date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
 										name: 'Date After Date',
 										value: 'date_after',
-										description: 'Field after this date. Format: \'YYYY-MM-DD\'',
+										description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
 										name: 'Filename Contains',

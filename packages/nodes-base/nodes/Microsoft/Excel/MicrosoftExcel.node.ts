@@ -63,12 +63,12 @@ export class MicrosoftExcel implements INodeType {
 					{
 						name: 'Table',
 						value: 'table',
-						description: 'Represents an Excel table.',
+						description: 'Represents an Excel table',
 					},
 					{
 						name: 'Workbook',
 						value: 'workbook',
-						description: 'Workbook is the top level object which contains related workbook objects such as worksheets, tables, ranges, etc.',
+						description: 'Workbook is the top level object which contains related workbook objects such as worksheets, tables, ranges, etc',
 					},
 					{
 						name: 'Worksheet',
@@ -153,7 +153,7 @@ export class MicrosoftExcel implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
 		let responseData;
