@@ -35,11 +35,8 @@
 				>
 					<n8n-notice
 						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
-						:content="scopesContent"
-						:truncateAt="scopesContent.indexOf('<br>')"
-						:trailingEllipsis="false"
-						:expandFromContent="true"
-						:expansionTextPattern="/\d+ scopes?/"
+						:content="scopesShortContent"
+						:fullContent="scopesFullContent"
 					/>
 					<node-credentials
 						:node="node"
@@ -58,11 +55,7 @@
 					<n8n-notice
 						:content="$locale.baseText(
 							'nodeSettings.useTheHttpRequestNode',
-							{
-								interpolate: {
-									nodeTypeDisplayName: nodeType.displayName
-								},
-							},
+							{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
 						)"
 					/>
 				</div>
@@ -185,9 +178,20 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			scopesContent (): string {
+			scopesShortContent (): string {
 				return this.$locale.baseText(
-					'nodeSettings.scopes',
+					'nodeSettings.scopes.shortContent',
+					{
+						adjustToNumber: this.scopes.length,
+						interpolate: {
+							activeCredential: this.activeCredential,
+						},
+					},
+				);
+			},
+			scopesFullContent (): string {
+				return this.$locale.baseText(
+					'nodeSettings.scopes.fullContent',
 					{
 						adjustToNumber: this.scopes.length,
 						interpolate: {
@@ -207,6 +211,8 @@ export default mixins(
 		},
 		data () {
 			return {
+				truncatedContent: 'Lorem ipsum <a data-key="toggle-expand">scopes</a> sit amet, consectetur adipiscing elit.',
+				fullContent: 'Lorem ipsum <a data-key="toggle-expand">scopes</a> sit amet, consectetur adipiscing elit. Vestibulum ornare euismod enim ac iaculis. Nulla lobortis, eros at consequat venenatis, elit turpis tempus lorem, feugiat consectetur sem metus ac nisl. Sed tincidunt lectus non lorem elementum posuere. Nunc velit purus, placerat id est eu, mollis volutpat arcu. Nunc interdum rutrum laoreet. Praesent ut dictum elit. Sed nisi libero, lacinia sit amet lectus in, pharetra varius enim. Maecenas in ante lectus. Proin blandit turpis id leo iaculis, at ultrices odio lobortis. <a data-key="show-less">Show less</a>',
 				nodeValid: true,
 				nodeColor: null,
 				openPanel: 'params',
