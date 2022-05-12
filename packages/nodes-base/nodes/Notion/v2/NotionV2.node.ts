@@ -34,7 +34,7 @@ import {
 	validateJSON,
 } from '../GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	versionDescription
@@ -217,7 +217,7 @@ export class NotionV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();

@@ -19,7 +19,7 @@ export const customerGetAllDescription: CustomerProperties = [
 		},
 		default: false,
 		noDataExpression: true,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -39,7 +39,7 @@ export const customerGetAllDescription: CustomerProperties = [
 			},
 		},
 		default: 25,
-		description: 'Limit the number of rows returned',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -94,7 +94,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'John Doe',
-				description: 'Search query, it can be anything related to customer data like name etc.',
+				description: 'Search query, it can be anything related to customer data like name etc',
 			},
 			{
 				displayName: 'Sort',
@@ -102,7 +102,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'firstname ASC',
-				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc.',
+				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc',
 			},
 		],
 	},

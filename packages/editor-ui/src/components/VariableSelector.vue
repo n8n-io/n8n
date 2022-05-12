@@ -386,7 +386,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.$store.getters.timezone, additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore

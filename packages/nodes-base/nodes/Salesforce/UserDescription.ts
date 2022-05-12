@@ -52,7 +52,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of user that needs to be fetched.',
+		description: 'ID of user that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -73,7 +73,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -97,7 +97,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -124,7 +124,7 @@ export const userFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -139,7 +139,7 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',

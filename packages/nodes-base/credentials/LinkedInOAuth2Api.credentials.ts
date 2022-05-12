@@ -17,7 +17,7 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			name: 'organizationSupport',
 			type: 'boolean',
 			default: true,
-			description: 'Request permissions to post as an orgaization.',
+			description: 'Whether to request permissions to post as an organization',
 		},
 		{
 			displayName: 'Authorization URL',

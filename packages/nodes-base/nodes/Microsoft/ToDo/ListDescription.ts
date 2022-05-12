@@ -61,7 +61,7 @@ export const listFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'List display name.',
+		description: 'List display name',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -85,7 +85,7 @@ export const listFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox.',
+		description: 'The identifier of the list, unique in the user\'s mailbox',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -106,7 +106,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -128,7 +128,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -150,6 +150,6 @@ export const listFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'List display name.',
+		description: 'List display name',
 	},
 ];

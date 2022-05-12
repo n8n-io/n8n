@@ -113,29 +113,29 @@ export class Pushcut implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getDevices',
 						},
-						default: '',
-						description: 'List of devices this notification is sent to. (default is all devices)',
+						default: [],
+						description: 'List of devices this notification is sent to. (default is all devices).',
 					},
 					{
 						displayName: 'Input',
 						name: 'input',
 						type: 'string',
 						default: '',
-						description: 'Value that is passed as input to the notification action.',
+						description: 'Value that is passed as input to the notification action',
 					},
 					{
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
 						default: '',
-						description: 'Text that is used instead of the one defined in the app.',
+						description: 'Text that is used instead of the one defined in the app',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'Title that is used instead of the one defined in the app.',
+						description: 'Title that is used instead of the one defined in the app',
 					},
 				],
 			},
@@ -176,7 +176,7 @@ export class Pushcut implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

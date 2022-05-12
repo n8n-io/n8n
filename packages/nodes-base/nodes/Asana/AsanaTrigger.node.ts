@@ -102,7 +102,6 @@ export class AsanaTrigger implements INodeType {
 				},
 				options: [],
 				default: '',
-				required: false,
 				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks.',
 			},
 		],

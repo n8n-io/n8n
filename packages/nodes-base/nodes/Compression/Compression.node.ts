@@ -96,7 +96,7 @@ export class Compression implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file(s) to be compress/decompress. Multiple can be used separated by a comma (,)',
+				description: 'Name of the binary property which contains the data for the file(s) to be compress/decompress. Multiple can be used separated by a comma (,).',
 			},
 			{
 				displayName: 'Output Format',
@@ -147,7 +147,6 @@ export class Compression implements INodeType {
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
-				required: false,
 				displayOptions: {
 					show: {
 						outputFormat: [
@@ -159,7 +158,7 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property to which to write the data of the compressed files.',
+				description: 'Name of the binary property to which to write the data of the compressed files',
 			},
 			{
 				displayName: 'Output Prefix',
@@ -199,7 +198,7 @@ export class Compression implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 

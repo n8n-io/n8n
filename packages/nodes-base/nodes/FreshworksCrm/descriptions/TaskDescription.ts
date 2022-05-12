@@ -272,7 +272,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -294,7 +294,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		default: false,
+		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
