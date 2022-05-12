@@ -357,11 +357,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						output_connectors: outogingConnections.length,
 						// todo
 						// input_state with the following events: node has no connection, no input data yet, no input data
-						// input_first_connector_first_run_rows int
-						// input_first_connector_first_run_columns int
+						// input_displayed_run_index
+						// input_displayed_run_rows int
+						// input_displayed_run_columns int
 						// output_state with the following events: no output data returned, output data is too large, execute node to output data
-						// output_first_connector_first_run_rows int
-						// output_first_connector_first_run_columns int
+						// output_displayed_run_index
+						// output_displayed_run_rows int
+						// output_displayed_run_columns int
 					});
 				}, 0); // wait for display mode to be set correctly
 			}
