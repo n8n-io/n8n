@@ -8,6 +8,7 @@ import { getCredentialTypes,
 	oAuth2CredentialAuthorize,
 	oAuth1CredentialAuthorize,
 	testCredential,
+	getScopes,
 } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -134,6 +135,9 @@ const module: Module<ICredentialsState, IRootState> = {
 			context.commit('setCredentials', credentials);
 
 			return credentials;
+		},
+		fetchScopes: async (context: ActionContext<ICredentialsState, IRootState>, credentialType: string): Promise<ICredentialsResponse[]> => {
+			return await getScopes(context.rootGetters.getRestApiContext, credentialType);
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);

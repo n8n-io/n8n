@@ -348,7 +348,7 @@ export default mixins(
 					return;
 				}
 
-				this.scopes = await this.restApi().getScopes(activeCredentialType);
+				this.scopes = await this.$store.dispatch('credentials/fetchScopes', activeCredentialType);
 
 				const credentialType = this.getCredentialTypeByName(activeCredentialType);
 
