@@ -20,7 +20,7 @@ export async function getAllCredentials(context: IRestApiContext): Promise<ICred
 	return await makeRestApiRequest(context, 'GET', '/credentials');
 }
 
-export async function getScopes(context: IRestApiContext, credentialType: string): Promise<ICredentialsResponse[]> {
+export async function getScopes(context: IRestApiContext, credentialType: string): Promise<string[]> {
 	return await makeRestApiRequest(context, 'GET', '/oauth2-credential/scopes', { credentialType });
 }
 

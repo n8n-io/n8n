@@ -33,7 +33,7 @@
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 				>
 					<n8n-notice
-						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
+						v-if="isHttpRequestNodeV2(node) && activeCredential.scopes.length > 0"
 						:content="scopesShortContent"
 						:fullContent="scopesFullContent"
 					/>
@@ -117,7 +117,7 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
+			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getScopesByCredentialType' ]),
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -198,9 +198,9 @@ export default mixins(
 				return this.$locale.baseText(
 					'nodeSettings.scopes.shortContent',
 					{
-						adjustToNumber: this.scopes.length,
+						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
-							activeCredential: this.activeCredential,
+							activeCredential: this.activeCredential.displayName,
 						},
 					},
 				);
@@ -209,16 +209,13 @@ export default mixins(
 				return this.$locale.baseText(
 					'nodeSettings.scopes.fullContent',
 					{
-						adjustToNumber: this.scopes.length,
+						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
-							activeCredential: this.activeCredential,
-							scopes: this.scopesToDisplay,
+							activeCredential: this.activeCredential.displayName,
+							scopes: this.activeCredential.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>'),
 						},
 					},
 				);
-			},
-			scopesToDisplay(): string {
-				return this.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>');
 			},
 		},
 		props: {
@@ -245,8 +242,10 @@ export default mixins(
 					parameters: {},
 				} as INodeParameters,
 				isSupportedByHttpRequestNode: false,
-				activeCredential: '',
-				scopes: [] as string[],
+				activeCredential: {
+					displayName: '',
+					scopes: [] as string[],
+				},
 
 				nodeSettings: [
 					{
@@ -363,18 +362,22 @@ export default mixins(
 				});
 			},
 			async prepareScopesNotice(activeCredentialType: string) {
-				if (!this.isHttpRequestNodeV2(this.node)) return;
-
-				if (!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')) {
-					this.scopes = [];
+				if (
+					!this.isHttpRequestNodeV2(this.node) ||
+					!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')
+				) {
 					return;
 				}
 
-				this.scopes = await this.$store.dispatch('credentials/fetchScopes', activeCredentialType);
-
 				const credentialType = this.getCredentialTypeByName(activeCredentialType);
 
-				this.activeCredential = credentialType.displayName.replace(' OAuth2 API', '');
+				this.activeCredential.displayName = credentialType.displayName.replace('OAuth2 API', '').trim();
+
+				const storedScopes = this.getScopesByCredentialType(activeCredentialType);
+
+				if (storedScopes) return storedScopes;
+
+				this.activeCredential.scopes = await this.$store.dispatch('credentials/fetchScopes', activeCredentialType);
 			},
 			onNodeExecute () {
 				this.$emit('execute');
