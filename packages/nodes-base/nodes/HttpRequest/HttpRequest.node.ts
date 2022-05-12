@@ -258,7 +258,7 @@ export class HttpRequest implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getNodeCredentialTypes',
 				},
-				default: '',
+				default: 'actionNetworkApi',
 				placeholder: 'None',
 				displayOptions: {
 					show: {

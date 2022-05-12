@@ -1,39 +1,14 @@
 <template>
-	<div :id="id" :class="classes" role="alert">
+	<div :id="id" :class="classes" role="alert" @click=onClick>
 		<div class="notice-content">
-			<n8n-text size="small">
+			<n8n-text size="small" :compact="true">
 				<slot>
 					<span
-						v-if="expandFromContent"
-						v-html="preExpansionText"
-						:class="expanded ? $style['expanded'] : $style['truncated']"
+						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
-						role="pre-expansion-region"
+						role="region"
+						v-html="sanitizeHtml(showFullContent ? fullContent : content)"
 					/>
-					<a
-						v-if="expandFromContent"
-						v-html="expansionText"
-						role="expansion-text-region"
-						:aria-controls="`${id}-content`"
-						:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
-						@click="toggleExpanded"
-					/>
-					<span
-						:class="expanded ? $style['expanded'] : $style['truncated']"
-						:id="`${id}-content`"
-						role="post-expansion-region"
-						v-html="expandFromContent ? postExpansionText : sanitizedContent"
-					/>
-					<span v-if="canTruncate">
-						<a
-							role="button"
-							@click="toggleExpanded"
-							:aria-controls="`${id}-content`"
-							:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
-						>
-							{{ expanded ? t('notice.showLess') : expandFromContent ? '' : t('notice.showMore') }}
-						</a>
-					</span>
 				</slot>
 			</n8n-text>
 		</div>
@@ -45,9 +20,7 @@ import Vue from 'vue';
 import sanitizeHtml from 'sanitize-html';
 import N8nText from "../../components/N8nText";
 import Locale from "../../mixins/locale";
-import {uid} from "../../utils";
-
-const DEFAULT_TRUNCATION_MAX_LENGTH = 150;
+import { uid } from "../../utils";
 
 export default Vue.extend({
 	name: 'n8n-notice',
@@ -64,29 +37,13 @@ export default Vue.extend({
 			type: String,
 			default: 'warning',
 		},
-		truncateAt: {
-			type: Number,
-			default: 150,
-		},
-		truncate: {
-			type: Boolean,
-			default: false,
-		},
-		trailingEllipsis: {
-			type: Boolean,
-			default: false,
-		},
 		content: {
+			required: true,
+			type: String,
+		},
+		fullContent: {
 			type: String,
 			default: '',
-		},
-		expandFromContent: {
-			type: Boolean,
-			default: false,
-		},
-		expansionTextPattern: {
-			type: RegExp,
-			default: () => /./,
 		},
 	},
 	components: {
@@ -94,7 +51,7 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			expanded: false,
+			showFullContent: false,
 		};
 	},
 	computed: {
@@ -106,41 +63,28 @@ export default Vue.extend({
 			];
 		},
 		canTruncate(): boolean {
-			return this.truncate && this.content.length > this.truncateAt;
-		},
-		truncatedContent(): string {
-			if (!this.canTruncate || this.expanded) {
-				return this.content;
-			}
-
-			return this.content.slice(0, this.truncateAt as number) + (this.trailingEllipsis ? '...' : '');
-		},
-		sanitizedContent(): string {
-			return sanitizeHtml(this.truncatedContent);
-		},
-		expansionText(): string {
-			const match = this.truncatedContent.match(this.expansionTextPattern);
-
-			if (match.length !== 1) {
-				throw new Error('Expansion text must appear once in content');
-			}
-
-			return match[0];
-		},
-		preExpansionText(): string {
-			const pre = this.truncatedContent.split(this.expansionTextPattern).shift();
-
-			return sanitizeHtml(pre);
-		},
-		postExpansionText(): string {
-			const post = this.truncatedContent.split(this.expansionTextPattern).pop();
-
-			return sanitizeHtml(post);
+			return this.fullContent !== undefined;
 		},
 	},
 	methods: {
 		toggleExpanded() {
-			this.expanded = !this.expanded;
+			this.showFullContent = !this.showFullContent;
+		},
+		sanitizeHtml(text: string): string {
+			return sanitizeHtml(
+				text, {
+					allowedAttributes: { a: ['data-key', 'href', 'target'] },
+				}
+			);
+		},
+		onClick(e) {
+			if (e.target.localName !== 'a') return;
+
+			if (e.target.dataset.key === 'show-less') {
+				this.showFullContent = false;
+			} else if (e.target.dataset.key === 'toggle-expand') {
+				this.showFullContent = !this.showFullContent;
+			}
 		},
 	},
 });
@@ -162,10 +106,6 @@ export default Vue.extend({
 
 	a {
 		font-weight: var(--font-weight-bold);
-	}
-
-	span {
-		line-height: var(--font-line-height-compact);
 	}
 }
 

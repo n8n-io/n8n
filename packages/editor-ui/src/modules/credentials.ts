@@ -8,6 +8,7 @@ import { getCredentialTypes,
 	oAuth2CredentialAuthorize,
 	oAuth1CredentialAuthorize,
 	testCredential,
+	getScopes,
 } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -35,6 +36,7 @@ const module: Module<ICredentialsState, IRootState> = {
 	state: {
 		credentialTypes: {},
 		credentials: {},
+		scopes: {},
 	},
 	mutations: {
 		setCredentialTypes: (state: ICredentialsState, credentialTypes: ICredentialType[]) => {
@@ -52,6 +54,14 @@ const module: Module<ICredentialsState, IRootState> = {
 
 				return accu;
 			}, {});
+		},
+		setScopes: (
+			state: ICredentialsState,
+			{ credentialType, scopes }: { credentialType: string; scopes: string[] },
+		) => {
+			if (state.scopes[credentialType] !== undefined) return;
+
+			state.scopes[credentialType] = scopes;
 		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
@@ -120,6 +130,9 @@ const module: Module<ICredentialsState, IRootState> = {
 				});
 			};
 		},
+		getScopesByCredentialType (state: ICredentialsState) {
+			return (credentialTypeName: string) => state.scopes[credentialTypeName];
+		},
 	},
 	actions: {
 		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
@@ -134,6 +147,12 @@ const module: Module<ICredentialsState, IRootState> = {
 			context.commit('setCredentials', credentials);
 
 			return credentials;
+		},
+		fetchScopes: async (context: ActionContext<ICredentialsState, IRootState>, credentialType: string): Promise<string[]> => {
+			const scopes = await getScopes(context.rootGetters.getRestApiContext, credentialType);
+			context.commit('setScopes', { credentialType, scopes });
+
+			return scopes;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);

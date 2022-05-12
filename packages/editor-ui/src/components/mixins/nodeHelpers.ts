@@ -1,7 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	SOMETHING_ELSE_KEY,
+	CUSTOM_API_CALL_KEY,
 } from '@/constants';
 
 import {
@@ -54,17 +54,9 @@ export const nodeHelpers = mixins(
 				if (!isObjectLiteral(parameters)) return false;
 
 				return (
-					parameters.resource === SOMETHING_ELSE_KEY ||
-					parameters.operation === SOMETHING_ELSE_KEY
+					parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY) ||
+					parameters.operation !== undefined && parameters.operation.includes(CUSTOM_API_CALL_KEY)
 				);
-			},
-
-			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
-				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
-
-				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
-
-				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 			},
 
 			// Returns the parameter value

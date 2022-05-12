@@ -132,18 +132,6 @@
 					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
-			<n8n-option
-				v-if="isSupportedByHttpRequestNode && ['resource', 'operation'].includes(parameter.name)"
-				:key="SOMETHING_ELSE_KEY"
-				:value="SOMETHING_ELSE_KEY"
-				:label="$locale.baseText('parameterInput.customApiCall')"
-			>
-				<div class="list-option">
-					<div class="option-headline">
-						{{ $locale.baseText('parameterInput.customApiCall') }}
-					</div>
-				</div>
-			</n8n-option>
 		</n8n-select>
 
 		<n8n-select
@@ -231,7 +219,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { SOMETHING_ELSE_KEY } from '@/constants';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -258,7 +246,6 @@ export default mixins(
 			'hideIssues', // boolean
 			'errorHighlight',
 			'isForCredential', // boolean
-			'isSupportedByHttpRequestNode', // boolean
 		],
 		data () {
 			return {
@@ -271,7 +258,7 @@ export default mixins(
 				remoteParameterOptionsLoadingIssues: null as string | null,
 				textEditDialogVisible: false,
 				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
-				SOMETHING_ELSE_KEY,
+				CUSTOM_API_CALL_KEY,
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
@@ -501,7 +488,7 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
-						if (checkValue === SOMETHING_ELSE_KEY) continue;
+						if (checkValue !== undefined && checkValue.includes(CUSTOM_API_CALL_KEY)) continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};

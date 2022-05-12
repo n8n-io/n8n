@@ -20,8 +20,6 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
-				:truncateAt="parameter.typeOptions && parameter.typeOptions.truncateAt"
 			/>
 
 			<div
@@ -79,7 +77,6 @@
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
-					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				/>
 			</div>
 		</div>
@@ -104,6 +101,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -121,7 +119,6 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
-			'isSupportedByHttpRequestNode', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -136,7 +133,7 @@ export default mixins(
 			indexToShowSlotAt (): number {
 				if (this.isHttpRequestNodeV2(this.node)) return 2;
 
-				if (this.node.type === 'n8n-nodes-base.webhook') return 1;
+				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
 
 				return 0;
 			},
@@ -175,6 +172,15 @@ export default mixins(
 
 				this.$emit('valueChanged', parameterData);
 			},
+
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
 					return false;

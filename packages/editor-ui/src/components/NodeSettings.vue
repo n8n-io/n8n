@@ -31,22 +31,15 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
-					:isSupportedByHttpRequestNode="isSupportedByHttpRequestNode"
 				>
 					<n8n-notice
-						v-if="isHttpRequestNodeV2(node) && scopes.length > 0"
-						:content="scopesContent"
-						:truncate="true"
-						:truncateAt="scopesContent.indexOf('<br>')"
-						:trailingEllipsis="false"
-						:expandFromContent="true"
-						:expansionTextPattern="/\d+ scopes?/"
+						v-if="isHttpRequestNodeV2(node) && activeCredential.scopes.length > 0"
+						:content="scopesShortContent"
+						:fullContent="scopesFullContent"
 					/>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
-						@nodeCredentialTypes="checkHttpRequestNodeSupport"
-						@newHttpRequestNodeCredentialType="prepareScopesNotice"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -59,13 +52,8 @@
 					<n8n-notice
 						:content="$locale.baseText(
 							'nodeSettings.useTheHttpRequestNode',
-							{
-								interpolate: {
-									nodeTypeDisplayName: nodeType.displayName
-								},
-							},
+							{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
 						)"
-						:truncate="false"
 					/>
 				</div>
 
@@ -108,6 +96,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { mapGetters } from 'vuex';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -126,7 +115,7 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			...mapGetters('credentials', [ 'getCredentialTypeByName' ]),
+			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getScopesByCredentialType' ]),
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -176,9 +165,25 @@ export default mixins(
 				});
 			},
 			parametersNoneSetting (): INodeProperties[] {
-				return this.parameters.filter((item) => {
-					return !item.isNodeSetting;
-				});
+				return this.parameters.reduce<INodeProperties[]>((acc, parameter) => {
+					if (parameter.isNodeSetting) return acc;
+
+					if (
+						['resource', 'operation'].includes(parameter.name) &&
+						this.isSupportedByHttpRequestNode
+					) {
+						const copy: INodeProperties & { options: [] } = JSON.parse(JSON.stringify(parameter));
+
+						copy.options.push({
+							name: this.$locale.baseText('parameterInput.customApiCall'),
+							value: `${CUSTOM_API_CALL_KEY}-${parameter.name}-${this.node}`,
+						 });
+
+						 return acc.push(copy), acc;
+					}
+
+					return acc.push(parameter), acc;
+				}, []);
 			},
 			parameters (): INodeProperties[] {
 				if (this.nodeType === null) {
@@ -187,20 +192,28 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			scopesContent (): string {
+			scopesShortContent (): string {
 				return this.$locale.baseText(
-					'nodeSettings.scopes',
+					'nodeSettings.scopes.shortContent',
 					{
-						adjustToNumber: this.scopes.length,
+						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
-							activeCredential: this.activeCredential,
-							scopes: this.scopesToDisplay,
+							activeCredential: this.activeCredential.displayName,
 						},
 					},
 				);
 			},
-			scopesToDisplay(): string {
-				return this.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>');
+			scopesFullContent (): string {
+				return this.$locale.baseText(
+					'nodeSettings.scopes.fullContent',
+					{
+						adjustToNumber: this.activeCredential.scopes.length,
+						interpolate: {
+							activeCredential: this.activeCredential.displayName,
+							scopes: this.activeCredential.scopes.map(scope => scope.replace(/\//g, '/<wbr>')).join('<br>'),
+						},
+					},
+				);
 			},
 		},
 		props: {
@@ -209,6 +222,8 @@ export default mixins(
 		},
 		data () {
 			return {
+				truncatedContent: 'Lorem ipsum <a data-key="toggle-expand">scopes</a> sit amet, consectetur adipiscing elit.',
+				fullContent: 'Lorem ipsum <a data-key="toggle-expand">scopes</a> sit amet, consectetur adipiscing elit. Vestibulum ornare euismod enim ac iaculis. Nulla lobortis, eros at consequat venenatis, elit turpis tempus lorem, feugiat consectetur sem metus ac nisl. Sed tincidunt lectus non lorem elementum posuere. Nunc velit purus, placerat id est eu, mollis volutpat arcu. Nunc interdum rutrum laoreet. Praesent ut dictum elit. Sed nisi libero, lacinia sit amet lectus in, pharetra varius enim. Maecenas in ante lectus. Proin blandit turpis id leo iaculis, at ultrices odio lobortis. <a data-key="show-less">Show less</a>',
 				nodeValid: true,
 				nodeColor: null,
 				openPanel: 'params',
@@ -225,8 +240,10 @@ export default mixins(
 					parameters: {},
 				} as INodeParameters,
 				isSupportedByHttpRequestNode: false,
-				activeCredential: '',
-				scopes: [] as string[],
+				activeCredential: {
+					displayName: '',
+					scopes: [] as string[],
+				},
 
 				nodeSettings: [
 					{
@@ -343,18 +360,26 @@ export default mixins(
 				});
 			},
 			async prepareScopesNotice(activeCredentialType: string) {
-				if (!this.isHttpRequestNodeV2(this.node)) return;
-
-				if (!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')) {
-					this.scopes = [];
+				if (
+					!this.isHttpRequestNodeV2(this.node) ||
+					!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')
+				) {
+					this.activeCredential.scopes = [];
 					return;
 				}
 
-				this.scopes = await this.restApi().getScopes(activeCredentialType);
-
 				const credentialType = this.getCredentialTypeByName(activeCredentialType);
 
-				this.activeCredential = credentialType.displayName.replace(' OAuth2 API', '');
+				this.activeCredential.displayName = credentialType.displayName.replace('OAuth2 API', '').trim();
+
+				const storedScopes = this.getScopesByCredentialType(activeCredentialType);
+
+				if (storedScopes) {
+					this.activeCredential.scopes = storedScopes;
+					return;
+				}
+
+				this.activeCredential.scopes = await this.$store.dispatch('credentials/fetchScopes', activeCredentialType);
 			},
 			onNodeExecute () {
 				this.$emit('execute');
@@ -432,6 +457,13 @@ export default mixins(
 				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
+				if (
+					this.isHttpRequestNodeV2(this.node) &&
+					parameterData.name === 'parameters.nodeCredentialType'
+				) {
+					this.prepareScopesNotice(parameterData.value as string);
+				}
+
 				let newValue: NodeParameterValue;
 				if (parameterData.hasOwnProperty('value')) {
 					// New value is given
@@ -610,6 +642,21 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
+
+			if (!this.isHttpRequestNodeV2(this.node)) {
+				const activeNodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+
+				if (activeNodeType && activeNodeType.credentials) {
+					const credentialTypeNames = activeNodeType.credentials.map((c: { name: string }) => c.name);
+					this.checkHttpRequestNodeSupport(credentialTypeNames);
+				}
+			} else if (
+				this.isHttpRequestNodeV2(this.node) &&
+				this.node.parameters.authentication === 'existingCredentialType'
+			) {
+				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
+			}
+
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {
 					this.openPanel = 'settings';
