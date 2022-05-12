@@ -1864,10 +1864,7 @@ export default mixins(
 								},
 							]);
 							this.zoomToFit();
-							this.$telemetry.track('welcome node inserted', {
-								instance_id: this.$store.getters.instanceId,
-								user_id: this.$store.getters.currentUserId,
-							});
+							this.$telemetry.track('welcome node inserted');
 						});
 					}
 				}, 0);
@@ -2240,8 +2237,6 @@ export default mixins(
 						{
 							workflow_id: this.$store.getters.workflowId,
 							is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
-							instance_id: this.$store.getters.instanceId,
-							user_id: this.$store.getters.currentUserId,
 						},
 					);
 				} else {

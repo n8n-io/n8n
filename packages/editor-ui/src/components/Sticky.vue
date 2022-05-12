@@ -28,6 +28,7 @@
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
+					@markdown-link-click="onMarkdownLinkClick"
 				/>
 			</div>
 
@@ -124,7 +125,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
- 	},
+	},
 	data () {
 		return {
 			isResizing: false,
@@ -144,6 +145,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 			else if (this.isActive && !edit) {
 				this.$store.commit('setActiveNode', null);
+			}
+		},
+		onMarkdownLinkClick(event: Event) {
+			if(event.target && event.currentTarget) {
+				// Track clicks on sticky links
+				const clickedURL = (event.currentTarget as Element).getAttribute('href') || '';
+				// If it's a YT link and it contains a N8n quickstart thumbnail, it's a welcome video link
+				const isWelcomeVideo = clickedURL.startsWith('https://www.youtube.com/') &&
+				 ((event.target as Element).localName === 'img' && (event.target as Element).getAttribute('alt') === 'n8n quickstart video');
+
+				const type = isWelcomeVideo ? 'welcome_video' : clickedURL === '/templates' ? 'templates' : 'other';
+				this.$telemetry.track('User clicked note link', { type } );
 			}
 		},
 		onInputChange(content: string) {
