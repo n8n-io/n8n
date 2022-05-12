@@ -79,7 +79,7 @@ export const certificateRequestFields = [
 		default: '',
 	},
 	{
-		displayName: 'Certificatet Signing Request',
+		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
 		type: 'string',
 		typeOptions: {
@@ -198,7 +198,7 @@ export const certificateRequestFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
-	
+
 ] as INodeProperties[];

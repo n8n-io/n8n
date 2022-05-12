@@ -9,7 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 import {
 	venafiApiRequest,

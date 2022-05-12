@@ -165,7 +165,7 @@ export const certificateFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -189,7 +189,7 @@ export const certificateFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -274,7 +274,7 @@ export const certificateFields = [
 		default: '',
 	},
 	{
-		displayName: 'Certificatet Signing Request',
+		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
 		type: 'string',
 		typeOptions: {
