@@ -24,11 +24,6 @@
 			</div>
 		</n8n-tooltip>
 
-		<a v-if="featureRequestUrl" @click="onFeatureRequestClick" :class="$style.featureRequest" target="_blank">
-			<font-awesome-icon icon="lightbulb" />
-			{{ $locale.baseText('ndv.featureRequest') }}
-		</a>
-
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
 			<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
@@ -77,6 +72,10 @@
 					@valueChanged="valueChanged"
 					@execute="onNodeExecute"
 				/>
+				<a v-if="featureRequestUrl" @click="onFeatureRequestClick" :class="$style.featureRequest" target="_blank">
+					<font-awesome-icon icon="lightbulb" />
+					{{ $locale.baseText('ndv.featureRequest') }}
+				</a>
 			</div>
 		</div>
 	</el-dialog>
@@ -631,10 +630,11 @@ $--main-panel-width: 360px;
 
 .featureRequest {
 	position: absolute;
-	bottom: 0;
-	left: var(--spacing-l);
+	bottom: var(--spacing-4xs);
+	left: calc(100% + var(--spacing-s));
 	color: var(--color-text-xlight);
 	font-size: var(--font-size-2xs);
+	width: 100%;
 
 	* {
 		margin-right: var(--spacing-3xs);
