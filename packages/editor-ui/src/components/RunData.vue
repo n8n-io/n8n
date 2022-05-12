@@ -29,7 +29,7 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && overrideOutputIndex === undefined" :class="{[$style.tabs]: displayMode === 'table'}">
+		<div v-if="maxOutputIndex > 0" :class="{[$style.tabs]: displayMode === 'table'}">
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
@@ -281,9 +281,6 @@ export default mixins(
 			linkedRuns: {
 				type: Boolean,
 			},
-			overrideOutputIndex: {
-				type: Number,
-			},
 			canLinkRuns: {
 				type: Boolean,
 			},
@@ -340,9 +337,6 @@ export default mixins(
 			displayMode(): IRunDataDisplayMode {
 				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
 			},
-			outputIndex(): number {
-				return this.overrideOutputIndex !== undefined ? this.overrideOutputIndex : this.currentOutputIndex;
-			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
 			},
@@ -385,7 +379,7 @@ export default mixins(
 				return null;
 			},
 			dataCount (): number {
-				return this.getDataCount(this.runIndex, this.outputIndex);
+				return this.getDataCount(this.runIndex, this.currentOutputIndex);
 			},
 			dataSizeInMB(): string {
 				return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -432,7 +426,7 @@ export default mixins(
 				return 0;
 			},
 			inputData (): INodeExecutionData[] {
-				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				let inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
 				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
 				}
@@ -453,7 +447,7 @@ export default mixins(
 					return [];
 				}
 
-				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
+				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
 			},
 			branches (): ITab[] {
 				function capitalize(name: string) {
@@ -710,7 +704,7 @@ export default mixins(
 				this.binaryDataDisplayData = {
 					node: this.node!.name,
 					runIndex: this.runIndex,
-					outputIndex: this.outputIndex,
+					outputIndex: this.currentOutputIndex,
 					index,
 					key,
 				};
@@ -799,7 +793,7 @@ export default mixins(
 				this.showData = false;
 
 				// Check how much data there is to display
-				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
 
 				const offset = this.pageSize * (this.currentPage - 1);
 				const jsonItems = inputData.slice(offset, offset + this.pageSize).map(item => item.json);

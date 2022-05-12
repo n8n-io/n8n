@@ -2,7 +2,6 @@
 	<RunData
 		:nodeUi="currentNode"
 		:runIndex="runIndex"
-		:overrideOutputIndex="overrideOutputIndex"
 		:linkedRuns="linkedRuns"
 		:canLinkRuns="canLinkRuns"
 		:emptyOutputMessage="$locale.baseText('ndv.input.emptyOutput')"
@@ -17,20 +16,19 @@
 		@runChange="onRunIndexChange">
 		<template v-slot:header>
 			<div :class="$style.titleSection">
-				<n8n-select size="small" :value="immediate ? IMMEDIATE_INPUT_KEY : currentNodeName" @input="onSelect">
+				<n8n-select size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')">
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option :label="$locale.baseText('ndv.input.immediate')" :value="IMMEDIATE_INPUT_KEY" :key="IMMEDIATE_INPUT_KEY"></n8n-option>
 					<n8n-option v-for="node in parentNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 			</div>
 		</template>
 
 		<template v-slot:node-not-run>
-			<div :class="$style.noOutputData" v-if="immediateNodeName">
+			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<NodeExecuteButton type="tertiary" :nodeName="immediateNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
+				<NodeExecuteButton type="tertiary" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
 				<n8n-text tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
@@ -63,8 +61,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { IMMEDIATE_INPUT_KEY } from '@/constants';
-
 
 export default mixins(
 	workflowHelpers,
@@ -83,23 +79,12 @@ export default mixins(
 		},
 		workflow: {
 		},
-		immediateNodeName: {
-			type: String,
-		},
-		immediate: {
-			type: Boolean,
-		},
 		canLinkRuns: {
 			type: Boolean,
 		},
 		sessionId: {
 			type: String,
 		},
-	},
-	data() {
-		return {
-			IMMEDIATE_INPUT_KEY,
-		};
 	},
 	computed: {
 		isExecutingPrevious(): boolean {
@@ -117,15 +102,6 @@ export default mixins(
 		},
 		currentNode (): INodeUi {
 			return this.$store.getters.getNodeByName(this.currentNodeName);
-		},
-		parentNodeOutputIndex (): number | undefined {
-			if (!this.currentNode || !this.activeNode) {
-				return undefined;
-			}
-			return this.currentWorkflow.getNodeConnectionOutputIndex(this.activeNode.name, this.currentNodeName, 'main', 1);
-		},
-		overrideOutputIndex (): number | undefined {
-			return this.immediate ? this.parentNodeOutputIndex : undefined;
 		},
 		parentNodes (): INodeUi[] {
 			if (!this.activeNode) {
@@ -162,7 +138,7 @@ export default mixins(
 			this.$emit('unlinkRun');
 		},
 		onSelect(value: string) {
-			const index = value === IMMEDIATE_INPUT_KEY ? 0 : this.parentNodes.findIndex((node) => node.name === value) + 1;
+			const index = this.parentNodes.findIndex((node) => node.name === value) + 1;
 			this.$emit('select', value, index);
 		},
 		onConnectionHelpClick() {

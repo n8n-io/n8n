@@ -33,8 +33,6 @@
 					:runIndex="inputRun"
 					:linkedRuns="linked"
 					:currentNodeName="inputNodeName"
-					:immediate="!selectedInput"
-					:immediateNodeName="parentNode"
 					:sessionId="sessionId"
 					@linkRun="onLinkRunToInput"
 					@unlinkRun="() => onUnlinkRun('input')"
@@ -96,8 +94,7 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
-import { IMMEDIATE_INPUT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
-import { isNumber } from './helpers';
+import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { editor } from 'monaco-editor';
 import PanelDragButton from './PanelDragButton.vue';
 
@@ -504,7 +501,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		onInputSelect(value: string, index: number) {
 			this.runInputIndex = -1;
 			this.isLinkingEnabled = true;
-			this.selectedInput = value !== IMMEDIATE_INPUT_KEY ? value : undefined;
+			this.selectedInput = value;
 
 			this.$telemetry.track('User changed ndv input dropdown', {
 				node_type: this.activeNode ? this.activeNode.type : '',
