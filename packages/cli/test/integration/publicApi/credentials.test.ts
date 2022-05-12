@@ -277,7 +277,7 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 });
 
-const credentialPayload = () => ({
+const credentialPayload = (): CredentialPayload => ({
 	name: randomName(),
 	type: randomName(),
 	data: { accessToken: randomString(6, 16) },

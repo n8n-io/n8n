@@ -714,7 +714,6 @@ export function initTestLogger() {
  export async function initBinaryManager() {
 	const binaryDataConfig = config.getEnv('binaryDataManager');
 	await BinaryDataManager.init(binaryDataConfig, true);
-	console.log('termine');
 }
 
 /**
@@ -752,7 +751,6 @@ export function createAgent(
 
 	if (options?.apiPath === 'public') {
 		agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
-		// console.log(agent.app._events.request._router.stack.slice(-1)[0].handle);
 
 		if (options?.auth && options?.user.apiKey) {
 			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });

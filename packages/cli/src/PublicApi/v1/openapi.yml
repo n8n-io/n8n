@@ -46,6 +46,12 @@ paths:
   /workflows/{workflowId}/deactivate:
     $ref: './spec/paths/WorkflowByIdDeactivate.yml'
 components:
+  schemas:
+    $ref: './spec/schemas/_index.yml'
+  responses:
+    $ref: './spec/responses/_index.yml'
+  parameters:
+    $ref: './spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

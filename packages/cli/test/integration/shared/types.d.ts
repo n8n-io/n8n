@@ -22,7 +22,7 @@ type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'cred
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess: ICredentialNodeAccess[];
+	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 

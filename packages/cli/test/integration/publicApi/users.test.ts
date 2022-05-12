@@ -460,9 +460,14 @@ test('POST /users should fail due not valid body structure', async () => {
 test('POST /users should fail due invalid email', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.post('/v1/users').send([
+	const response = await authOwnerAgent.post('/users').send([
 		{
 			email: '123',
 		},
@@ -476,11 +481,16 @@ test('POST /users should invite member user', async () => {
 
 	await utils.configureSmtp();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
 	const memberEmail = randomEmail();
 
-	const response = await authOwnerAgent.post('/v1/users').send([
+	const response = await authOwnerAgent.post('/users').send([
 		{
 			email: memberEmail,
 		},
@@ -501,11 +511,16 @@ test('POST /users should invite member user', async () => {
 test('POST /users should fail due to missing API Key', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: false, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: false,
+		user: owner,
+		version: 1,
+	});
 
 	await testDb.createUser();
 
-	const response = await authOwnerAgent.post('/v1/users');
+	const response = await authOwnerAgent.post('/users');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -515,9 +530,14 @@ test('DELETE /users/:identifier should fail due to invalid API Key', async () =>
 
 	owner.apiKey = null;
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: false, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: false,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete('/v1/users/testing@gmail.com');
+	const response = await authOwnerAgent.delete('/users/testing@gmail.com');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -525,9 +545,14 @@ test('DELETE /users/:identifier should fail due to invalid API Key', async () =>
 test('DELETE /users/identifier should fail due to member trying to access owner only endpoint', async () => {
 	const member = await testDb.createUser();
 
-	const authMemberAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: member });
+	const authMemberAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: member,
+		version: 1,
+	});
 
-	const response = await authMemberAgent.delete('/v1/users/testing@gmail.com');
+	const response = await authMemberAgent.delete('/users/testing@gmail.com');
 
 	expect(response.statusCode).toBe(403);
 });
@@ -537,9 +562,14 @@ test('DELETE /users/:identifier should fail due instance owner not setup', async
 
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete('/v1/users/testing@gmail.com').send([]);
+	const response = await authOwnerAgent.delete('/users/testing@gmail.com').send([]);
 
 	expect(response.statusCode).toBe(500);
 });
@@ -549,9 +579,14 @@ test('DELETE /users/:identifier should fail due instance owner not setup', async
 
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete('/v1/users/testing@gmail.com').send([]);
+	const response = await authOwnerAgent.delete('/users/testing@gmail.com').send([]);
 
 	expect(response.statusCode).toBe(500);
 });
@@ -559,9 +594,14 @@ test('DELETE /users/:identifier should fail due instance owner not setup', async
 test('DELETE /users/:identifier should fail due user triying to delete itself', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete(`/v1/users/${owner.email}`).send([]);
+	const response = await authOwnerAgent.delete(`/users/${owner.email}`).send([]);
 
 	expect(response.statusCode).toBe(400);
 });
@@ -571,16 +611,20 @@ test('DELETE /users/:email should delete user', async () => {
 
 	const member = await testDb.createUser();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete(`/v1/users/${member.email}`).send([]);
+	const response = await authOwnerAgent.delete(`/users/${member.email}`).send([]);
 
 	expect(response.statusCode).toBe(200);
 
 	const savedMember = await Db.collections.User!.findOne({ email: member.email });
 
 	expect(savedMember).toBe(undefined);
-
 });
 
 test('DELETE /users/:id should delete user', async () => {
@@ -588,16 +632,20 @@ test('DELETE /users/:id should delete user', async () => {
 
 	const member = await testDb.createUser();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete(`/v1/users/${member.id}`).send([]);
+	const response = await authOwnerAgent.delete(`/users/${member.id}`).send([]);
 
 	expect(response.statusCode).toBe(200);
 
 	const savedMember = await Db.collections.User!.findOne({ id: member.id });
 
 	expect(savedMember).toBe(undefined);
-
 });
 
 test('DELETE /users/:id should delete user and transfer data to owner', async () => {
@@ -605,14 +653,19 @@ test('DELETE /users/:id should delete user and transfer data to owner', async ()
 
 	const member = await testDb.createUser();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
 	//Add test workflow to user
 	const workflow = await testDb.createWorkflow({}, member);
 
 	// delete user and transfer data to owner
-	const response = await authOwnerAgent.delete(`/v1/users/${member.id}`).query({
-		transferId: owner.id
+	const response = await authOwnerAgent.delete(`/users/${member.id}`).query({
+		transferId: owner.id,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -625,7 +678,7 @@ test('DELETE /users/:id should delete user and transfer data to owner', async ()
 	//check whether the workflow was transfered to the owner
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		user: owner,
-		workflow
+		workflow,
 	});
 
 	expect(sharedWorkflow).not.toBeUndefined();
@@ -636,14 +689,19 @@ test('DELETE /users/:email should delete user and transfer data to owner', async
 
 	const member = await testDb.createUser();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
 	//Add test workflow to user
 	const workflow = await testDb.createWorkflow({}, member);
 
 	// delete user and transfer data to owner
-	const response = await authOwnerAgent.delete(`/v1/users/${member.email}`).query({
-		transferId: owner.email
+	const response = await authOwnerAgent.delete(`/users/${member.email}`).query({
+		transferId: owner.email,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -656,7 +714,7 @@ test('DELETE /users/:email should delete user and transfer data to owner', async
 	//check whether the workflow was transfered to the owner
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		user: owner,
-		workflow
+		workflow,
 	});
 
 	expect(sharedWorkflow).not.toBeUndefined();
@@ -665,23 +723,33 @@ test('DELETE /users/:email should delete user and transfer data to owner', async
 test('DELETE /users/:email should fail due valid email not found in db', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete('/v1/users/jhondoe@gmail.com').send([]);
+	const response = await authOwnerAgent.delete('/users/jhondoe@gmail.com').send([]);
 
 	expect(response.statusCode).toBe(404);
-
 });
 
 test('DELETE /users/:id should fail due valid id not found in db', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
 
-	const response = await authOwnerAgent.delete('/v1/users/a652e8de-cfdb-11ec-9d64-0242ac120002').send([]);
+	const response = await authOwnerAgent
+		.delete('/users/a652e8de-cfdb-11ec-9d64-0242ac120002')
+		.send([]);
 
 	expect(response.statusCode).toBe(404);
-
 });
 
 const INITIAL_TEST_USER = {
