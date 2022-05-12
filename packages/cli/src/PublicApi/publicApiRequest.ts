@@ -1,5 +1,6 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
+import { IDataObject } from 'n8n-workflow';
 
 import type { User } from '../databases/entities/User';
 
@@ -75,4 +76,8 @@ export declare namespace WorkflowRequest {
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ workflowId: number }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
+}
+
+export declare namespace CredentialRequest {
+	type Create = AuthenticatedRequest<{}, {}, { type: string; name: string; data: IDataObject }, {}>;
 }

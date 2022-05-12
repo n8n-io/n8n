@@ -8,10 +8,12 @@
 import express = require('express');
 import config = require('../../config');
 import type { UserRequest } from '../requests';
+import type { CredentialRequest } from './publicApiRequest';
 import * as UserManagementMailer from '../UserManagement/email/UserManagementMailer';
 
 import { decodeCursor, getGlobalMemberRole } from './helpers';
 import { Role, PaginatatedRequest } from './publicApiRequest';
+import { validateCredentialsProperties } from './v1/Credentials/credentials.service';
 
 export const instanceOwnerSetup = (
 	req: express.Request,
@@ -130,6 +132,24 @@ const globalMemberRoleSetup = async (
 	} catch (error) {
 		return res.status(500).json({
 			message: 'Members role not found in database - inconsistent state',
+		});
+	}
+	next();
+};
+
+export const validCredentialsProperties = async (
+	req: CredentialRequest.Create,
+	res: express.Response,
+	next: express.NextFunction,
+): Promise<any> => {
+	const { type, data } = req.body;
+	const formatError = (propertyName: string) => {
+		return `request.body.data should have required property '${propertyName}'`;
+	};
+	const missingProperties = validateCredentialsProperties(type, data);
+	if (missingProperties.length) {
+		return res.status(400).json({
+			message: missingProperties.map(formatError).join(','),
 		});
 	}
 	next();

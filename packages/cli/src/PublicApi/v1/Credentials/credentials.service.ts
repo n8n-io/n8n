@@ -1,10 +1,12 @@
 import { FindOneOptions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
+import { IDataObject, INodeProperties } from 'n8n-workflow';
 import { Db, ICredentialsDb } from '../../..';
 import { CredentialsEntity } from '../../../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../../../databases/entities/SharedCredentials';
 import { validateEntity } from '../../../GenericHelpers';
 import { User } from '../../../databases/entities/User';
+import { CredentialsHelper } from '../../../CredentialsHelper';
 
 export async function getCredentials(
 	credentialId: number | string,
@@ -123,4 +125,23 @@ export function sanitizeCredentials(
 	});
 
 	return argIsArray ? sanitizedCredentials : sanitizedCredentials[0];
+}
+
+export function validateCredentialsProperties(type: string, data: IDataObject): string[] {
+	const missingProperties: string[] = [];
+	const helper = new CredentialsHelper('');
+	const credentialsProperties: INodeProperties[] = helper.getCredentialsProperties(type);
+	const dataProperties = Object.keys(data);
+	const credentialsKeys = credentialsProperties
+		// remove hidden types as they do not necessarily have to be defined
+		// since they have a default value
+		.filter((property) => property.type !== 'hidden')
+		.map((property) => property.name);
+
+	credentialsKeys.forEach((key) => {
+		if (!dataProperties.includes(key)) {
+			missingProperties.push(key);
+		}
+	});
+	return missingProperties;
 }
