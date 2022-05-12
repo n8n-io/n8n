@@ -40,7 +40,6 @@
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
-						@nodeCredentialTypes="checkHttpRequestNodeSupport"
 						@newHttpRequestNodeCredentialType="prepareScopesNotice"
 					/>
 				</parameter-input-list>
@@ -375,7 +374,10 @@ export default mixins(
 
 				const storedScopes = this.getScopesByCredentialType(activeCredentialType);
 
-				if (storedScopes) return storedScopes;
+				if (storedScopes) {
+					this.activeCredential.scopes = storedScopes;
+					return;
+				}
 
 				this.activeCredential.scopes = await this.$store.dispatch('credentials/fetchScopes', activeCredentialType);
 			},
@@ -633,6 +635,16 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
+
+			if (!this.isHttpRequestNodeV2(this.node)) {
+				const activeNodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+
+				if (activeNodeType && activeNodeType.credentials) {
+					const credentialTypeNames = activeNodeType.credentials.map((c: { name: string }) => c.name);
+					this.checkHttpRequestNodeSupport(credentialTypeNames);
+				}
+			}
+
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {
 					this.openPanel = 'settings';

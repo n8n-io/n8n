@@ -108,12 +108,8 @@ export default mixins(
 				this.node.parameters.authentication === 'genericCredentialType';
 		},
 		credentialTypesNode (): string[] {
-			const nodeCredentialTypes = this.credentialTypesNodeDescription
+			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
-
-			this.$emit('nodeCredentialTypes', nodeCredentialTypes);
-
-			return nodeCredentialTypes;
 		},
 		credentialTypesNodeDescriptionDisplayed (): INodeCredentialDescription[] {
 			return this.credentialTypesNodeDescription
