@@ -175,13 +175,13 @@ export function generateNodesGraph(
 					nodeItem.domain = getDomainBase(node.parameters.url as string);
 				}
 			} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 2) {
-				const { authenticateWith } = node.parameters as { authenticateWith: string };
+				const { authentication } = node.parameters as { authentication: string };
 
 				nodeItem.credential_type = {
 					none: 'none',
-					genericAuth: node.parameters.genericAuthType as string,
-					nodeCredential: node.parameters.nodeCredentialType as string,
-				}[authenticateWith];
+					genericCredentialType: node.parameters.genericAuthType as string,
+					existingCredentialType: node.parameters.nodeCredentialType as string,
+				}[authentication];
 
 				nodeItem.credential_set = node.credentials
 					? Object.keys(node.credentials).length > 0
