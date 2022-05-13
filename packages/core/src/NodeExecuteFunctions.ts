@@ -708,6 +708,9 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		};
 	}
 
+	// if there is a body and it's empty (does not have properties),
+	// make sure not to send anything in it as some services fail when
+	// sending GET request with empty body.
 	if (n8nRequest.body && Object.keys(n8nRequest.body).length) {
 		axiosRequest.data = n8nRequest.body;
 		// Let's add some useful header standards here.
