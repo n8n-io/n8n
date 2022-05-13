@@ -46,7 +46,7 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import { IConnection, IDataObject, IObservableObject } from './Interfaces';
+import { IConnection, IDataObject, INodeSearch, IObservableObject } from './Interfaces';
 
 export class Workflow {
 	id: string | undefined;
@@ -609,7 +609,8 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
-		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
+		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth)
+			.map((search) => search.name);
 	}
 
 	/**
@@ -622,7 +623,8 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
-		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
+		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth)
+			.map((search) => search.name);
 	}
 
 	/**
@@ -642,8 +644,8 @@ export class Workflow {
 		nodeName: string,
 		type = 'main',
 		depth = -1,
-		checkedNodes?: string[],
-	): string[] {
+		checkedNodes?: INodeSearch[],
+	): INodeSearch[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
 		if (depth === 0) {
@@ -663,26 +665,30 @@ export class Workflow {
 
 		checkedNodes = checkedNodes || [];
 
-		if (checkedNodes.includes(nodeName)) {
+		if (checkedNodes.find((search) => search.name === nodeName)) {
 			// Node got checked already before
 			return [];
 		}
 
-		checkedNodes.push(nodeName);
+		checkedNodes.push({
+			name: nodeName
+		});
 
-		const returnNodes: string[] = [];
-		let addNodes: string[];
+		const returnNodes: INodeSearch[] = [];
+		let addNodes: INodeSearch[];
 		let nodeIndex: number;
 		let i: number;
 		let parentNodeName: string;
 		connections[nodeName][type].forEach((connectionsByIndex) => {
 			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.includes(connection.node)) {
+				if (checkedNodes!.find((search) => search.name === connection.node)) {
 					// Node got checked already before
 					return;
 				}
 
-				returnNodes.unshift(connection.node);
+				returnNodes.unshift({
+					name: connection.node
+				});
 
 				addNodes = this.getConnectedNodes(
 					connections,
@@ -696,8 +702,8 @@ export class Workflow {
 					// Because nodes can have multiple parents it is possible that
 					// parts of the tree is parent of both and to not add nodes
 					// twice check first if they already got added before.
-					parentNodeName = addNodes[i];
-					nodeIndex = returnNodes.indexOf(parentNodeName);
+					parentNodeName = addNodes[i].name;
+					nodeIndex = returnNodes.findIndex((search) => search.name === parentNodeName);
 
 					if (nodeIndex !== -1) {
 						// Node got found before so remove it from current location
@@ -705,7 +711,7 @@ export class Workflow {
 						returnNodes.splice(nodeIndex, 1);
 					}
 
-					returnNodes.unshift(parentNodeName);
+					returnNodes.unshift(addNodes[i]);
 				}
 			});
 		});

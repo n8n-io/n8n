@@ -1457,3 +1457,7 @@ export interface ITelemetrySettings {
 	enabled: boolean;
 	config?: ITelemetryClientConfig;
 }
+
+export interface INodeSearch {
+	name: string;
+}
