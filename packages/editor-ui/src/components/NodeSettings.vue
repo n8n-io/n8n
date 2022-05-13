@@ -371,7 +371,12 @@ export default mixins(
 
 				const credentialType = this.getCredentialTypeByName(activeCredentialType);
 
-				this.activeCredential.displayName = credentialType.displayName.replace('OAuth2 API', '').trim();
+				const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
+				const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
+
+				this.activeCredential.displayName = credentialType.displayName
+					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
+					.trim();
 
 				const storedScopes = this.getScopesByCredentialType(activeCredentialType);
 

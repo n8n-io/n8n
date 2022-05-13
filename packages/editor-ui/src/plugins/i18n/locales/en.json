@@ -402,6 +402,8 @@
 	"nodeSettings.nodeDescription": "Node Description",
 	"nodeSettings.notes.description": "Optional note to save with the node",
 	"nodeSettings.notes.displayName": "Notes",
+	"nodeSettings.oauth1Api": "OAuth1 API",
+	"nodeSettings.oauth2Api": "OAuth2 API",
 	"nodeSettings.notesInFlow.description": "If active, the note above will display in the flow as a subtitle",
 	"nodeSettings.notesInFlow.displayName": "Display note in flow?",
 	"nodeSettings.parameters": "Parameters",
