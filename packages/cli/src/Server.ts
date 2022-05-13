@@ -138,7 +138,7 @@ import * as TagHelpers from './TagHelpers';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
@@ -911,7 +911,14 @@ class App {
 				const requestedName =
 					req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-				return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+				const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+
+				const onboardingFlowEnabled =
+					!config.getEnv('workflows.onboardingFlowDisabled') &&
+					!req.user.settings?.isOnboarded &&
+					(await isBelowOnboardingThreshold(req.user));
+
+				return { name, onboardingFlowEnabled };
 			}),
 		);
 

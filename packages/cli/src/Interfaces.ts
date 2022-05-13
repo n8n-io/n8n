@@ -476,7 +476,7 @@ export interface IPersonalizationSurveyAnswers {
 }
 
 export interface IUserSettings {
-	isFreshUser?: boolean;
+	isOnboarded?: boolean;
 }
 
 export interface IUserManagementSettings {
