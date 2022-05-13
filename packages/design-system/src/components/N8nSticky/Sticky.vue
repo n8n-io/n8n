@@ -165,8 +165,8 @@ export default mixins(Locale).extend({
 		onInput(value: string) {
 			this.$emit('input', value);
 		},
-		onMarkdownClick(event) {
-			this.$emit('markdown-click', event);
+		onMarkdownClick(link, event) {
+			this.$emit('markdown-click', link, event);
 		},
 		onResize(values) {
 			this.$emit('resize', values);
