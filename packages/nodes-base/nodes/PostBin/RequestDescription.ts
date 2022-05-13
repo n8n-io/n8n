@@ -63,6 +63,25 @@ export const requestOperations: INodeProperties[] = [
 // Properties of the `Request` resource
 export const requestFields: INodeProperties[] = [
 	{
+		name: 'binId',
+		displayName: 'Bin ID',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'request',
+				],
+				operation: [
+					'get',
+					'shift',
+				],
+			},
+		},
+		description: 'Unique identifier for each bin.',
+	},
+	{
 		name: 'requestId',
 		displayName: 'Request ID',
 		type: 'string',

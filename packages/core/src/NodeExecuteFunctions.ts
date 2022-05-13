@@ -708,7 +708,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		};
 	}
 
-	if (n8nRequest.body) {
+	if (n8nRequest.body && Object.keys(n8nRequest.body).length) {
 		axiosRequest.data = n8nRequest.body;
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');

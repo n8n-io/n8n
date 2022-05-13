@@ -1,4 +1,7 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 // Regular expressions used to extract binId from parameter value
 const BIN_STRING_REGEX = /Bin '(\d+-\d+)'/g;
@@ -14,7 +17,10 @@ const BIN_URL_REGEX = /https:\/\/www\.toptal\.com\/developers\/postbin\/b\/(\d+-
  * @param {IHttpRequestOptions} requestOptions
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
-export async function buildBinAPIURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+export async function buildBinAPIURL(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions>  {
 	let binId = this.getNodeParameter('binId') as string;
 	// Parse binId from parameter value
 	binId = parseBinId(binId);

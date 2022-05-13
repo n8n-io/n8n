@@ -40,7 +40,6 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}',
 					},
 					send: {
 						preSend: [
@@ -57,7 +56,6 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/developers/postbin/api/bin/{{$parameter["binId"]}}',
 					},
 					send: {
 						preSend: [
@@ -74,7 +72,6 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/developers/postbin/{{$parameter["binId"]}}',
 					},
 					send: {
 						preSend: [
@@ -112,13 +109,11 @@ export const binFields: INodeProperties[] = [
 			show: {
 				resource: [
 					'bin',
-					'request',
 				],
 				operation: [
 					'get',
 					'delete',
 					'test',
-					'shift',
 				],
 			},
 		},
@@ -142,7 +137,7 @@ export const binFields: INodeProperties[] = [
 			],
 		},
 	 },
-	 // Content is sent is the body of POST requests
+	 // Content is sent in the body of POST requests
 	 routing: {
 		send: {
 			property: 'content',
