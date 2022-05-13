@@ -481,10 +481,13 @@ export default mixins(
 					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
 
 					const checkValues: string[] = [];
-					if (Array.isArray(this.displayValue)) {
-						checkValues.push.apply(checkValues, this.displayValue);
-					} else {
-						checkValues.push(this.displayValue as string);
+
+					if (!this.skipCheck(this.displayValue)) {
+						if (Array.isArray(this.displayValue)) {
+							checkValues.push.apply(checkValues, this.displayValue);
+						} else {
+							checkValues.push(this.displayValue as string);
+						}
 					}
 
 					for (const checkValue of checkValues) {
@@ -586,6 +589,12 @@ export default mixins(
 			},
 		},
 		methods: {
+			/**
+			 * Check whether a param value must be skipped when collecting node param issues for validation.
+			 */
+			skipCheck(value: string | number | boolean | null) {
+				return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+			},
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
