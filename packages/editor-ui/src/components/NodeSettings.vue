@@ -351,12 +351,13 @@ export default mixins(
 			 */
 			checkHttpRequestNodeSupport(credentialTypeNames: string[]) {
 				this.isSupportedByHttpRequestNode = credentialTypeNames.some(name => {
-					const credentialType = this.getCredentialTypeByName(name);
+					const credType = this.getCredentialTypeByName(name);
 
-					return (
-						credentialType.name.slice(0, -4).endsWith('OAuth') ||
-						credentialType.authenticate !== undefined
+					const isOAuth = Array.isArray(credType.extends) && credType.extends.some(
+						(parentType: string) => ['oAuth2Api', 'oAuth1Api'].includes(parentType),
 					);
+
+					return isOAuth || credType.authenticate !== undefined;
 				});
 			},
 			async prepareScopesNotice(activeCredentialType: string) {
