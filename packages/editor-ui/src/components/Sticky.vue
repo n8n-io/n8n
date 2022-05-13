@@ -148,8 +148,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$store.commit('setActiveNode', null);
 			}
 		},
-		onMarkdownClick(link:HTMLAnchorElement, event: Event) {
-			if(link) {
+		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
+			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
 				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
 				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && link.getAttribute('href') === '/templates' ? 'templates' : 'other';
