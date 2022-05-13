@@ -184,7 +184,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return this.getWorkflow();
 		},
 		parentNodes(): string[] {
-			return this.workflow.getParentNodes(this.activeNode.name, 'main', 1) || [];
+			if (this.activeNode) {
+				return this.workflow.getParentNodes(this.activeNode.name, 'main', 1) || [];
+			}
+
+			return [];
 		},
 		parentNode(): string | undefined {
 			return this.parentNodes[0];
@@ -338,7 +342,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				});
 
 				setTimeout(() => {
-					const outogingConnections = (this.$store.getters.outgoingConnectionsByNodeName(this.activeNode.name) as INodeConnections).main;
+					const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(this.activeNode.name) as INodeConnections;
 
 					this.$telemetry.track('User opened node modal', {
 						node_type: this.activeNodeType ? this.activeNodeType.name : '',
@@ -350,7 +354,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						selected_view_inputs: this.isTriggerNode? 'trigger': this.$store.getters['ui/inputPanelDispalyMode'],
 						selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
 						input_connectors: this.parentNodes.length,
-						output_connectors: outogingConnections.length,
+						output_connectors: outogingConnections && outogingConnections.main && outogingConnections.main.length,
 						// todo
 						// input_state with the following events: node has no connection, no input data yet, no input data
 						// input_displayed_run_index
