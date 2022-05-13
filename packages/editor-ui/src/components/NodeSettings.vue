@@ -176,7 +176,7 @@ export default mixins(
 
 						copy.options.push({
 							name: this.$locale.baseText('parameterInput.customApiCall'),
-							value: `${CUSTOM_API_CALL_KEY}-${parameter.name}-${this.node}`,
+							value: `${CUSTOM_API_CALL_KEY}-${parameter.name}-${this.node.name}`,
 						 });
 
 						 return acc.push(copy), acc;
