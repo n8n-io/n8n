@@ -3,6 +3,7 @@ import express = require('express');
 import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
 import { CredentialRequest } from '../../../../requests';
 import { externalHooks } from '../../../../Server';
+import { validCredentialsProperties, validCredentialType } from './credentials.midleware';
 // import { validCredentialsProperties } from '../../middlewares';
 
 import {
@@ -17,7 +18,8 @@ import {
 
 export = {
 	createCredential: [
-		// validCredentialsProperties,
+		validCredentialType,
+		validCredentialsProperties,
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,

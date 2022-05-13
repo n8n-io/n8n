@@ -27,6 +27,7 @@ import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
 	ActiveWorkflowRunner,
+	CredentialTypes,
 	Db,
 	ExternalHooks,
 	InternalHooksManager,
@@ -158,6 +159,45 @@ export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.A
 	const workflowRunner = ActiveWorkflowRunner.getInstance();
 	workflowRunner.init();
 	return workflowRunner;
+}
+
+/**
+ * Initialize node types.
+ */
+export async function initCredentialsTypes(): Promise<void> {
+	const credentialTypes = CredentialTypes();
+	await credentialTypes.init({
+		'githubApi': {
+			type: {
+				name: 'githubApi',
+				displayName: 'Github API',
+				documentationUrl: 'github',
+				properties: [
+					{
+						displayName: 'Github Server',
+						name: 'server',
+						type: 'string',
+						default: 'https://api.github.com',
+						description:
+							'The server to connect to. Only has to be set if Github Enterprise is used.',
+					},
+					{
+						displayName: 'User',
+						name: 'user',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Access Token',
+						name: 'accessToken',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+			sourcePath: '',
+		},
+	});
 }
 
 /**
@@ -711,7 +751,7 @@ export function initTestLogger() {
 /**
  * Initialize a BinaryManager for test runs.
  */
- export async function initBinaryManager() {
+export async function initBinaryManager() {
 	const binaryDataConfig = config.getEnv('binaryDataManager');
 	await BinaryDataManager.init(binaryDataConfig, true);
 }

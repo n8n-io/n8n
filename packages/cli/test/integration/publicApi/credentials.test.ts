@@ -31,6 +31,7 @@ beforeAll(async () => {
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
+	utils.initCredentialsTypes();
 });
 
 beforeEach(async () => {
@@ -53,7 +54,7 @@ test('POST /credentials should create credentials', async () => {
 	});
 	const payload = {
 		name: 'test credential',
-		type: 'github',
+		type: 'githubApi',
 		data: {
 			accessToken: 'abcdefghijklmnopqrstuvwxyz',
 			user: 'test',
@@ -123,30 +124,6 @@ test('POST /credentials should fail with missing encryption key', async () => {
 	expect(response.statusCode).toBe(500);
 
 	mock.mockRestore();
-});
-
-test('POST /credentials should ignore ID in payload', async () => {
-	let ownerShell = await testDb.createUserShell(globalOwnerRole);
-	ownerShell = await testDb.addApiKey(ownerShell);
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
-	const firstResponse = await authOwnerAgent
-		.post('/credentials')
-		.send({ id: '8', ...credentialPayload() });
-
-	expect(firstResponse.body.id).not.toBe('8');
-
-	const secondResponse = await authOwnerAgent
-		.post('/credentials')
-		.send({ id: 8, ...credentialPayload() });
-
-	expect(secondResponse.body.id).not.toBe(8);
 });
 
 test('DELETE /credentials/:id should delete owned cred for owner', async () => {
@@ -279,8 +256,12 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 
 const credentialPayload = (): CredentialPayload => ({
 	name: randomName(),
-	type: randomName(),
-	data: { accessToken: randomString(6, 16) },
+	type: 'githubApi',
+	data: {
+		accessToken: randomString(6, 16),
+		server: randomString(1, 10),
+		user: randomString(1, 10),
+	},
 });
 
 const dbCredential = () => {
@@ -304,6 +285,13 @@ const INVALID_PAYLOADS = [
 		name: randomName(),
 		type: randomName(),
 		nodesAccess: [{ nodeType: randomName() }],
+	},
+	{
+		name: randomName(),
+		type: 'githubApi',
+		data: {
+			server: randomName(),
+		},
 	},
 	{},
 	[],

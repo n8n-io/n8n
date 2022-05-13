@@ -18,7 +18,6 @@ import { User } from '../../../src/databases/entities/User';
 import type { CollectionName, CredentialPayload } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
-import { now } from 'lodash';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
