@@ -28,7 +28,7 @@
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
-					@markdown-link-click="onMarkdownLinkClick"
+					@click.native="onClick"
 				/>
 			</div>
 
@@ -55,6 +55,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { QUICKSTART_NOTE_NAME } from '@/constants';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -147,17 +148,36 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$store.commit('setActiveNode', null);
 			}
 		},
-		onMarkdownLinkClick(event: Event) {
-			if(event.target && event.currentTarget) {
-				// Track clicks on sticky links
-				const clickedURL = (event.currentTarget as Element).getAttribute('href') || '';
-				// If it's a YT link and it contains a N8n quickstart thumbnail, it's a welcome video link
-				const isWelcomeVideo = clickedURL.startsWith('https://www.youtube.com/') &&
-				 ((event.target as Element).localName === 'img' && (event.target as Element).getAttribute('alt') === 'n8n quickstart video');
+		onClick(event: Event) {
+			// Catching all sticky note clicks so we can control
+			// what happens based on the clicked element
+			const clickedElement = event.target as Element;
+			let clickedURL = '';
 
-				const type = isWelcomeVideo ? 'welcome_video' : clickedURL === '/templates' ? 'templates' : 'other';
+			// Currently, tracking telemetry events on link clicks:
+			// 1. Clicks on <a> elements
+			if(clickedElement instanceof HTMLAnchorElement) {
+				clickedURL = clickedElement.getAttribute('href') || '';
+			}
+			// 2. Clicks on elements inside links
+			//    (In markdown, these should only be <img>)
+			if(clickedElement.matches('a *')) {
+				const parentLink = clickedElement.closest('a');
+				if(parentLink) {
+					clickedURL = parentLink.getAttribute('href') || '';
+				}
+			}
+
+			if(clickedURL !== '') {
+				const isWelcomeVideo =
+						(clickedElement.localName === 'img' &&
+						clickedElement.getAttribute('alt') === 'n8n quickstart video');
+				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
+				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && clickedURL === '/templates' ? 'templates' : 'other';
+
 				this.$telemetry.track('User clicked note link', { type } );
 			}
+
 		},
 		onInputChange(content: string) {
 			this.setParameters({content});

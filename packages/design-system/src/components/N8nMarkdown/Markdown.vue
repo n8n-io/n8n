@@ -158,23 +158,6 @@ export default {
 				.use(markdownTasklists, this.options.tasklists),
 		};
 	},
-	mounted() {
-		// Once the component is mounted and HTML is rendered,
-		// attach listeners to all link elements
-		this.initLinkListeners();
-	},
-	methods: {
-		// Add click listeners that will emit a custom event to parent component
-		// This can be used to track telemetry data and provide additional control over link events
-		initLinkListeners() {
-			const links = this.$refs['editor'].getElementsByTagName('a');
-			for(var link of links) {
-				link.addEventListener('click', (event)=> {
-					this.$emit('markdown-link-click', event);
-				});
-			}
-		}
-	}
 };
 </script>
 

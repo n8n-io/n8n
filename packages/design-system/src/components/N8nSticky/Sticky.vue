@@ -24,10 +24,8 @@
 				>
 					<n8n-markdown
 						theme="sticky"
-						ref="stickyMarkdown"
 						:content="content"
 						:withMultiBreaks="true"
-						@markdown-link-click="onMarkdownLinkClick"
 					/>
 				</div>
 				<div
@@ -158,9 +156,6 @@ export default mixins(Locale).extend({
 				this.$emit('edit', true);
 			}
 		},
-		onMarkdownLinkClick(event) {
-			this.$emit('markdown-link-click', event)
-		},
 		onInputBlur(value) {
 			if (!this.isResizing) {
 				this.$emit('edit', false);
@@ -183,11 +178,6 @@ export default mixins(Locale).extend({
 	},
 	watch: {
 		editMode(newMode, prevMode) {
-			if(newMode === false) {
-				// When exiting the edit mode, attach click listeners to links
-				// in case new links have been added
-				this.$refs.stickyMarkdown.initLinkListeners();
-			}
 			setTimeout(() => {
 				if (newMode && !prevMode && this.$refs.input && this.$refs.input.$refs && this.$refs.input.$refs.textarea) {
 					const textarea = this.$refs.input.$refs.textarea;
