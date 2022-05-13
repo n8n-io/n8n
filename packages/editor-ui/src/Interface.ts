@@ -782,6 +782,7 @@ export interface IRootState {
 	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
+	activeCredentialScopes: string[];
 	activeNode: string | null;
 	baseUrl: string;
 	defaultLocale: string;

@@ -148,11 +148,20 @@ const module: Module<ICredentialsState, IRootState> = {
 
 			return credentials;
 		},
-		fetchScopes: async (context: ActionContext<ICredentialsState, IRootState>, credentialType: string): Promise<string[]> => {
-			const scopes = await getScopes(context.rootGetters.getRestApiContext, credentialType);
-			context.commit('setScopes', { credentialType, scopes });
+		fetchActiveCredentialScopes: async (context: ActionContext<ICredentialsState, IRootState>, credentialType: string): Promise<string[]> => {
+			const storedScopes = context.getters.getScopesByCredentialType(credentialType);
 
-			return scopes;
+			if (storedScopes) {
+				context.commit('setActiveCredentialScopes', storedScopes, { root: true });
+				return storedScopes;
+			}
+
+			const apiScopes = await getScopes(context.rootGetters.getRestApiContext, credentialType);
+
+			context.commit('setActiveCredentialScopes', apiScopes, { root: true });
+			context.commit('setScopes', { credentialType, scopes: apiScopes });
+
+			return apiScopes;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);
