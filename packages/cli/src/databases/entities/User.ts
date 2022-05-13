@@ -16,7 +16,7 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import * as config from '../../../config';
-import { DatabaseType, IPersonalizationSurveyAnswers } from '../..';
+import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
@@ -101,6 +101,12 @@ export class User {
 		transformer: answersFormatter,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
+
+	@Column({
+		type: resolveDataType('json') as ColumnOptions['type'],
+		nullable: true,
+	})
+	settings: IUserSettings | null;
 
 	@ManyToOne(() => Role, (role) => role.globalForUsers, {
 		cascade: true,

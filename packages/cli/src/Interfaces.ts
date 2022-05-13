@@ -475,6 +475,10 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
+export interface IUserSettings {
+	isFreshUser?: boolean;
+}
+
 export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
