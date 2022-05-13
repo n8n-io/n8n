@@ -182,7 +182,9 @@ export default mixins(
 						 return acc.push(copy), acc;
 					}
 
-					return acc.push(parameter), acc;
+					acc.push(parameter);
+
+					return acc;
 				}, []);
 			},
 			parameters (): INodeProperties[] {
