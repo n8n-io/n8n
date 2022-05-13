@@ -34,13 +34,18 @@ export class NotionTrigger implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
-				testedBy: 'notionApiCredentialTest',
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Notion only has timestamps that are precise to the minute, please keep that in mind, when setting polling interval',
+				name: 'pollNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Event',
 				name: 'event',
@@ -166,8 +171,6 @@ export class NotionTrigger implements INodeType {
 			}
 			if (Array.isArray(data) && data.length) {
 				return [this.helpers.returnJsonArray(data)];
-			} else {
-				return null;
 			}
 		}
 

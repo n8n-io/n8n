@@ -195,23 +195,6 @@ export class NotionV2 implements INodeType {
 				return returnData;
 			},
 		},
-		credentialTest: {
-			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The security token included in the request is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
