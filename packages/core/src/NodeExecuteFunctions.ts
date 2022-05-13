@@ -1387,6 +1387,36 @@ export function getNode(node: INode): INode {
 }
 
 /**
+ * Clean up parameter data to make sure that only valid data gets returned
+ * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
+ */
+function cleanupParameterData(
+	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	if (inputData === null || inputData === undefined) {
+		return inputData;
+	}
+
+	if (Array.isArray(inputData)) {
+		inputData.forEach((value) => cleanupParameterData(value));
+		return inputData;
+	}
+
+	if (inputData.constructor.name === 'DateTime') {
+		// Is a special luxon date so convert to string
+		return inputData.toString();
+	}
+
+	if (typeof inputData === 'object') {
+		Object.keys(inputData).forEach((key) => {
+			inputData[key] = cleanupParameterData(inputData[key]);
+		});
+	}
+
+	return inputData;
+}
+
+/**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
  * @export
@@ -1437,6 +1467,8 @@ export function getNodeParameter(
 			timezone,
 			additionalKeys,
 		);
+
+		returnData = cleanupParameterData(returnData);
 	} catch (e) {
 		e.message += ` [Error in parameter: "${parameterName}"]`;
 		throw e;
