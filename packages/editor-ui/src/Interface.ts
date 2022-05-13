@@ -21,6 +21,7 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	INodeSearch,
 } from 'n8n-workflow';
 
 export * from 'n8n-design-system/src/types';

@@ -628,6 +628,19 @@ export class Workflow {
 	}
 
 	/**
+	 * Returns all the nodes before the given one
+	 *
+	 * @param {string} nodeName
+	 * @param {string} [type='main']
+	 * @param {*} [depth=-1]
+	 * @returns {string[]}
+	 * @memberof Workflow
+	 */
+	getParentGraph(nodeName: string, type = 'main', depth = -1): INodeSearch[] {
+		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
+	}
+
+	/**
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
@@ -645,6 +658,7 @@ export class Workflow {
 		type = 'main',
 		depth = -1,
 		checkedNodes?: INodeSearch[],
+		distance = 1,
 	): INodeSearch[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
@@ -671,7 +685,8 @@ export class Workflow {
 		}
 
 		checkedNodes.push({
-			name: nodeName
+			name: nodeName,
+			distance,
 		});
 
 		const returnNodes: INodeSearch[] = [];
@@ -687,7 +702,8 @@ export class Workflow {
 				}
 
 				returnNodes.unshift({
-					name: connection.node
+					name: connection.node,
+					distance,
 				});
 
 				addNodes = this.getConnectedNodes(
@@ -696,6 +712,7 @@ export class Workflow {
 					type,
 					newDepth,
 					checkedNodes,
+					distance + 1,
 				);
 
 				for (i = addNodes.length; i--; i > 0) {

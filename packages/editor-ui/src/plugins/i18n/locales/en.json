@@ -299,6 +299,7 @@
 	"ndv.execute.listenForEvent": "Listen For Event",
 	"ndv.featureRequest": "I wish this node would...",
 	"ndv.input": "Input",
+	"ndv.input.parentNodeOption": "{name} ({distance} node back)",
 	"ndv.input.noNodesFound": "No nodes found",
 	"ndv.input.parentNodes": "Parent nodes",
 	"ndv.input.emptyOutput": "This input item is empty.",

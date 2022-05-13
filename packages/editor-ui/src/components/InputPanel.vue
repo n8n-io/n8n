@@ -20,7 +20,7 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node in parentNodes" :label="node.name" :value="node.name" :key="node.name"></n8n-option>
+					<n8n-option v-for="node in parentNodes" :label="$locale.baseText('ndv.input.parentNodeOption', {interpolate: {name: node.name, distance: node.distance}})" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 			</div>
 		</template>
@@ -55,7 +55,7 @@
 
 <script lang="ts">
 import { INodeUi } from '@/Interface';
-import { INodeTypeDescription, Workflow } from 'n8n-workflow';
+import { INodeSearch, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
@@ -103,16 +103,15 @@ export default mixins(
 		currentNode (): INodeUi {
 			return this.$store.getters.getNodeByName(this.currentNodeName);
 		},
-		parentNodes (): INodeUi[] {
+		parentNodes (): INodeSearch[] {
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeUi[] = (this.workflow as Workflow).getParentNodes(this.activeNode.name)
-				.map((nodeName: string) => this.$store.getters.getNodeByName(nodeName))
+			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentGraph(this.activeNode.name)
 				.reverse();
 
 			// dedupe nodes and remove self
-			return nodes.filter((node, i) => (this.activeNode && (node.name !== this.activeNode.name)) && nodes.indexOf(node) === i);
+			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},
 	},
 	methods: {
