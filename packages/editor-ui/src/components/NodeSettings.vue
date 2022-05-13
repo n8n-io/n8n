@@ -222,8 +222,6 @@ export default mixins(
 		},
 		data () {
 			return {
-				truncatedContent: 'Lorem ipsum <a data-key="toggle-expand">scopes</a> sit amet, consectetur adipiscing elit.',
-				fullContent: 'Lorem ipsum <a data-key="toggle-expand">scopes</a> sit amet, consectetur adipiscing elit. Vestibulum ornare euismod enim ac iaculis. Nulla lobortis, eros at consequat venenatis, elit turpis tempus lorem, feugiat consectetur sem metus ac nisl. Sed tincidunt lectus non lorem elementum posuere. Nunc velit purus, placerat id est eu, mollis volutpat arcu. Nunc interdum rutrum laoreet. Praesent ut dictum elit. Sed nisi libero, lacinia sit amet lectus in, pharetra varius enim. Maecenas in ante lectus. Proin blandit turpis id leo iaculis, at ultrices odio lobortis. <a data-key="show-less">Show less</a>',
 				nodeValid: true,
 				nodeColor: null,
 				openPanel: 'params',
