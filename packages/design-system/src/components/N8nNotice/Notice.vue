@@ -81,8 +81,12 @@ export default Vue.extend({
 			if (e.target.localName !== 'a') return;
 
 			if (e.target.dataset.key === 'show-less') {
+				e.stopPropagation();
+				e.preventDefault();
 				this.showFullContent = false;
-			} else if (e.target.dataset.key === 'toggle-expand') {
+			} else if (this.canTruncate && e.target.dataset.key === 'toggle-expand') {
+				e.stopPropagation();
+				e.preventDefault();
 				this.showFullContent = !this.showFullContent;
 			}
 		},
