@@ -161,7 +161,18 @@ export default {
 	},
 	methods: {
 		onClick(event) {
-			this.$emit('markdown-click', event);
+			let clickedLink = null;
+
+			if(event.target instanceof HTMLAnchorElement) {
+				clickedLink = event.target;
+			}
+			if(event.target.matches('a *')) {
+				const parentLink = event.target.closest('a');
+				if(parentLink) {
+					clickedLink = parentLink;
+				}
+			}
+			this.$emit('markdown-click', clickedLink, event);
 		}
 	}
 };

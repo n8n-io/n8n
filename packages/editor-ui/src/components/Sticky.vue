@@ -148,34 +148,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$store.commit('setActiveNode', null);
 			}
 		},
-		onMarkdownClick(event: Event) {
-			event.preventDefault();
-			// Catching all sticky note clicks
-			const clickedElement = event.target as Element;
-			let clickedURL = '';
-
-			// 1. Clicks on <a> elements
-			if(clickedElement instanceof HTMLAnchorElement) {
-				clickedURL = clickedElement.getAttribute('href') || '';
-			}
-			// 2. Clicks on elements inside links
-			if(clickedElement.matches('a *')) {
-				const parentLink = clickedElement.closest('a');
-				if(parentLink) {
-					clickedURL = parentLink.getAttribute('href') || '';
-				}
-			}
-
-			if(clickedURL !== '') {
-				const isWelcomeVideo =
-						(clickedElement.localName === 'img' &&
-						clickedElement.getAttribute('alt') === 'n8n quickstart video');
+		onMarkdownClick(link:HTMLAnchorElement, event: Event) {
+			if(link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && clickedURL === '/templates' ? 'templates' : 'other';
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
+				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && link.getAttribute('href') === '/templates' ? 'templates' : 'other';
 
 				this.$telemetry.track('User clicked note link', { type } );
 			}
-
 		},
 		onInputChange(content: string) {
 			this.setParameters({content});
