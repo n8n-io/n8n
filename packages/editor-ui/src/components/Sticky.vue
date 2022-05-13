@@ -28,7 +28,7 @@
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
-					@click.native="onClick"
+					@markdown-click="onMarkdownClick"
 				/>
 			</div>
 
@@ -148,19 +148,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$store.commit('setActiveNode', null);
 			}
 		},
-		onClick(event: Event) {
-			// Catching all sticky note clicks so we can control
-			// what happens based on the clicked element
+		onMarkdownClick(event: Event) {
+			event.preventDefault();
+			// Catching all sticky note clicks
 			const clickedElement = event.target as Element;
 			let clickedURL = '';
 
-			// Currently, tracking telemetry events on link clicks:
 			// 1. Clicks on <a> elements
 			if(clickedElement instanceof HTMLAnchorElement) {
 				clickedURL = clickedElement.getAttribute('href') || '';
 			}
 			// 2. Clicks on elements inside links
-			//    (In markdown, these should only be <img>)
 			if(clickedElement.matches('a *')) {
 				const parentLink = clickedElement.closest('a');
 				if(parentLink) {

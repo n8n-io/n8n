@@ -4,6 +4,7 @@
 			v-if="!loading"
 			ref="editor"
 			:class="$style[theme]" v-html="htmlContent"
+			@click="onClick"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
@@ -158,6 +159,11 @@ export default {
 				.use(markdownTasklists, this.options.tasklists),
 		};
 	},
+	methods: {
+		onClick(event) {
+			this.$emit('markdown-click', event);
+		}
+	}
 };
 </script>
 
