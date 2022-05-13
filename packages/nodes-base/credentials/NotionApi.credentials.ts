@@ -32,6 +32,6 @@ export class NotionApi implements ICredentialType {
 			baseURL: 'https://api.notion.com/v1',
 			url: '/users/me',
 			method: 'GET',
-		 },
+		},
 	};
 }

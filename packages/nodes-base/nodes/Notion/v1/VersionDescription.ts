@@ -23,7 +23,7 @@ import {
 	databasePageOperations,
 } from '../DatabasePageDescription';
 
-import { 
+import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -99,6 +99,7 @@ export const versionDescription: INodeTypeDescription = {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Block',

@@ -6,11 +6,12 @@ import {
 	blocks,
 } from './Blocks';
 
-export const pageOperations = [
+export const pageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -44,6 +45,7 @@ export const pageOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -73,9 +75,9 @@ export const pageOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const pageFields = [
+export const pageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                page:archive                                */
@@ -415,4 +417,4 @@ export const pageFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

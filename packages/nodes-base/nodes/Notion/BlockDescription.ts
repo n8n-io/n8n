@@ -6,11 +6,12 @@ import {
 	blocks,
 } from './Blocks';
 
-export const blockOperations = [
+export const blockOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,9 +33,9 @@ export const blockOperations = [
 		],
 		default: 'append',
 	},
-] as INodeProperties[];
+];
 
-export const blockFields = [
+export const blockFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                block:append                                 */
@@ -120,4 +121,4 @@ export const blockFields = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];
