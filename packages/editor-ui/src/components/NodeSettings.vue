@@ -196,7 +196,7 @@ export default mixins(
 			},
 			scopesShortContent (): string {
 				return this.$locale.baseText(
-					'nodeSettings.scopes.shortContent',
+					'nodeSettings.scopes.notice',
 					{
 						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
@@ -207,7 +207,7 @@ export default mixins(
 			},
 			scopesFullContent (): string {
 				return this.$locale.baseText(
-					'nodeSettings.scopes.fullContent',
+					'nodeSettings.scopes.expandedNoticeWithScopes',
 					{
 						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
