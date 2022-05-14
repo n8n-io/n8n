@@ -2232,7 +2232,7 @@ export class GoogleDrive implements INodeType {
 							json: false,
 						};
 
-						const file = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { fields: 'mimeType' });
+						const file = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { fields: 'mimeType', supportsTeamDrives: true });
 						let response;
 
 						if (file.mimeType.includes('vnd.google-apps')) {
@@ -2521,7 +2521,7 @@ export class GoogleDrive implements INodeType {
 
 						const fileId = this.getNodeParameter('fileId', i) as string;
 
-						const response = await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`);
+						await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`, {}, { supportsTeamDrives: true });
 
 						// If we are still here it did succeed
 						returnData.push({
@@ -2539,7 +2539,9 @@ export class GoogleDrive implements INodeType {
 
 						const body: IDataObject = {};
 
-						const qs: IDataObject = {};
+						const qs: IDataObject = {
+							supportsTeamDrives: true,
+						};
 
 						if (permissions.permissionsValues) {
 							Object.assign(body, permissions.permissionsValues);
