@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -285,12 +285,6 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Repeat Until',
-				name: 'repeatUntil',
-				type: 'dateTime',
-				default: '',
-			},
-			{
 				displayName: 'Repeat How Many Times?',
 				name: 'repeatHowManyTimes',
 				type: 'number',
@@ -298,6 +292,12 @@ export const eventFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
+			},
+			{
+				displayName: 'Repeat Until',
+				name: 'repeatUntil',
+				type: 'dateTime',
+				default: '',
 			},
 			{
 				displayName: 'RRULE',
@@ -331,13 +331,6 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Title of the event',
-			},
-			{
 				displayName: 'Show Me As',
 				name: 'showMeAs',
 				type: 'options',
@@ -355,6 +348,13 @@ export const eventFields: INodeProperties[] = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+				description: 'Title of the event',
 			},
 			{
 				displayName: 'Visibility',
@@ -607,7 +607,7 @@ export const eventFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -649,7 +649,7 @@ export const eventFields: INodeProperties[] = [
 					{
 						name: 'Start Time',
 						value: 'startTime',
-						description: 'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True)',
+						description: 'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True).',
 					},
 					{
 						name: 'Updated',
@@ -896,12 +896,6 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Repeat Until',
-				name: 'repeatUntil',
-				type: 'dateTime',
-				default: '',
-			},
-			{
 				displayName: 'Repeat How Many Times?',
 				name: 'repeatHowManyTimes',
 				type: 'number',
@@ -911,18 +905,17 @@ export const eventFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
+				displayName: 'Repeat Until',
+				name: 'repeatUntil',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'RRULE',
 				name: 'rrule',
 				type: 'string',
 				default: '',
 				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
-			},
-			{
-				displayName: 'Start',
-				name: 'start',
-				type: 'dateTime',
-				default: '',
-				description: 'Start time of the event',
 			},
 			{
 				displayName: 'Send Updates',
@@ -949,13 +942,6 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Title of the event',
-			},
-			{
 				displayName: 'Show Me As',
 				name: 'showMeAs',
 				type: 'options',
@@ -973,6 +959,20 @@ export const eventFields: INodeProperties[] = [
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
+			},
+			{
+				displayName: 'Start',
+				name: 'start',
+				type: 'dateTime',
+				default: '',
+				description: 'Start time of the event',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+				description: 'Title of the event',
 			},
 			{
 				displayName: 'Visibility',
