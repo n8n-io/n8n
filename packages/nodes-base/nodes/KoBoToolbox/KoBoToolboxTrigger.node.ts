@@ -16,7 +16,7 @@ import {
 } from './GenericFunctions';
 
 import {
-	 options,
+	options,
 } from './Options';
 
 export class KoBoToolboxTrigger implements INodeType {
@@ -98,13 +98,14 @@ export class KoBoToolboxTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
+				const workflow = this.getWorkflow();
 				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
 
 				const response = await koBoToolboxApiRequest.call(this, {
 					method: 'POST',
 					url: `/api/v2/assets/${formId}/hooks/`,
 					body: {
-						name: `n8n-webhook:${webhookUrl}`,
+						name: `n8n webhook id ${workflow.id}: ${workflow.name}`,
 						endpoint: webhookUrl,
 						email_notification: true,
 					},

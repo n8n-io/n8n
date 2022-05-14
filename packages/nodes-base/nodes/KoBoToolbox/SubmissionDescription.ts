@@ -193,6 +193,73 @@ export const submissionFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Filter',
+		name: 'filterType',
+		type: 'options',
+		default: 'none',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'None',
+				value: 'none',
+			},
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+		],
+	},
+	{
+		displayName: 'See <a href="https://github.com/SEL-Columbia/formhub/wiki/Formhub-Access-Points-(API)#api-parameters" target="_blank">Formhub API docs</a> to creating filters, using the MongoDB JSON format - e.g. {"_submission_time":{"$lt":"2021-10-01T01:02:03"}}',
+		name: 'jsonNotice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Filters (JSON)',
+		name: 'filterJson',
+		type: 'string',
+		default: '',
+		typeOptions: {
+			// alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -211,6 +278,36 @@ export const submissionFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
+				displayName: 'Download Attachments',
+				name: 'download',
+				type: 'boolean',
+				default: false,
+				description: 'Download submitted attachments',
+			},
+			{
+				displayName: 'Attachments Naming Scheme',
+				name: 'binaryNamingScheme',
+				type: 'options',
+				default: 'sequence',
+				displayOptions: {
+					show: {
+						download: [
+							true,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Sequence (e.g. attachment_N)',
+						value: 'sequence',
+					},
+					{
+						name: 'Use Original Form Question ID',
+						value: 'question',
+					},
+				],
+			},
+			{
 				displayName: 'Attachments Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
@@ -219,17 +316,13 @@ export const submissionFields: INodeProperties[] = [
 						download: [
 							true,
 						],
+						binaryNamingScheme: [
+							'sequence',
+						],
 					},
 				},
 				default: 'attachment_',
 				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
-			},
-			{
-				displayName: 'Download Attachments',
-				name: 'download',
-				type: 'boolean',
-				default: false,
-				description: 'Download submitted attachments',
 			},
 			{
 				displayName: 'Fields to Retrieve',
@@ -291,13 +384,13 @@ export const submissionFields: INodeProperties[] = [
 				default: false,
 				description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 			},
-			// {
-			// 	displayName: 'Sort',
-			// 	name: 'sort',
-			// 	type: 'json',
-			// 	default: '',
-			// 	description: 'Sort predicates, in Mongo JSON format (e.g. {"_submission_time":1})',
-			// },
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'json',
+				default: '',
+				description: 'Sort predicates, in MongoDB JSON format (e.g. {"_submission_time":1})',
+			},
 		],
 	},
 ];
