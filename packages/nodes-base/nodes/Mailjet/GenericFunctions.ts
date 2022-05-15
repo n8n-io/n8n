@@ -15,8 +15,25 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const emailApiCredentials = await this.getCredentials('mailjetEmailApi') as { apiKey: string, secretKey: string, sandboxMode: boolean };
+export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const resource = this.getNodeParameter('resource', 0) as string;
+
+	let credentialType;
+
+	if (resource === 'email' || this.getNode().type.includes('Trigger')) {
+		credentialType = 'mailjetEmailApi';
+		const { sandboxMode } = await  this.getCredentials('mailjetEmailApi') as
+		{ sandboxMode: boolean };
+
+		if (!this.getNode().type.includes('Trigger')) {
+			Object.assign(body, { SandboxMode: sandboxMode });
+		}
+
+	} else {
+		credentialType = 'mailjetSmsApi';
+	}
+
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
@@ -25,25 +42,12 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.mailjet.com${resource}`,
+		uri: uri || `https://api.mailjet.com${path}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
-	}
-
-	let credentialType = '';
-	if (emailApiCredentials !== undefined) {
-		const { sandboxMode } = emailApiCredentials;
-		credentialType = 'mailjetEmailApi';
-
-		//Disable for trigger node as callback URL has no property "SandboxMode"
-		if (!resource.includes('eventcallbackurl')) {
-			Object.assign(body, { SandboxMode: sandboxMode });
-		}
-	} else {
-		credentialType = 'mailjetSmsApi';
 	}
 
 	try {
