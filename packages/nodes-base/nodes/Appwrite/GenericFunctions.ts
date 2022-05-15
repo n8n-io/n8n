@@ -15,7 +15,7 @@ import {
 
 export async function appwriteApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, collectionId: string, documentId: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('appwriteApi');
+	const credentials = await this.getCredentials('appwriteApi') as IDataObject;;
 
 	try {
 		const options: OptionsWithUri = {
