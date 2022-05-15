@@ -36,6 +36,11 @@ export const fileOperations: INodeProperties[] = [
 				description: 'Get a file',
 			},
 			{
+				name: 'Rename',
+				value: 'rename',
+				description: 'Rename a file',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a file',
@@ -256,6 +261,43 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 		description: 'Field ID',
 	},
+/* -------------------------------------------------------------------------- */
+/*                                 file:rename                                */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Item ID',
+	name: 'itemId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'file',
+			],
+		},
+	},
+	default: '',
+	description: 'ID of the file',
+},
+{
+	displayName: 'New Name',
+	name: 'newName',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'file',
+			],
+		},
+	},
+	default: '',
+	description: 'New name for file',
+},
 /* -------------------------------------------------------------------------- */
 /*                                 file:search                                */
 /* -------------------------------------------------------------------------- */
