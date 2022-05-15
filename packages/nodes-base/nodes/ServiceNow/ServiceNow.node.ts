@@ -533,16 +533,16 @@ export class ServiceNow implements INodeType {
 						}
 					} else if (operation === 'upload') {
 						const tableName = this.getNodeParameter('tableName', i) as string;
-						const recordId = this.getNodeParameter('table_sys_id', i) as string;
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const recordId = this.getNodeParameter('id', i) as string;
+						const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						let binaryData: IBinaryData;
 
-						if (items[i].binary && items[i].binary![binaryPropertyName]) {
-							binaryData = items[i].binary![binaryPropertyName];
+						if (items[i].binary && items[i].binary![inputDataFieldName]) {
+							binaryData = items[i].binary![inputDataFieldName];
 						} else {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${inputDataFieldName}" does not exists on item!`);
 						}
 
 						const headers: IDataObject = {
@@ -552,11 +552,11 @@ export class ServiceNow implements INodeType {
 						const qs: IDataObject = {
 							table_name: tableName,
 							table_sys_id: recordId,
-							file_name: binaryData.fileName ? binaryData.fileName : `${binaryPropertyName}.${binaryData.fileExtension}`,
+							file_name: binaryData.fileName ? binaryData.fileName : `${inputDataFieldName}.${binaryData.fileExtension}`,
 							...options,
 						};
 
-						const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName) as Buffer;
+						const body = await this.helpers.getBinaryDataBuffer(i, inputDataFieldName) as Buffer;
 
 						const response = await serviceNowApiRequest.call(this, 'POST', '/now/attachment/file', body, qs, '', {headers});
 						responseData = response.result;

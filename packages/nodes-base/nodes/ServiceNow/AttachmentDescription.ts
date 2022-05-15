@@ -19,6 +19,7 @@ export const attachmentOperations: INodeProperties[] = [
 			{
 				name: 'Upload',
 				value: 'upload',
+				description: 'Upload a specified binary file as an attachment to a specified record',
 			},
 			{
 				name: 'Delete',
@@ -69,8 +70,8 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                attachment:upload                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Record Sys ID',
-		name: 'table_sys_id',
+		displayName: 'Table Record ID',
+		name: 'id',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -87,8 +88,8 @@ export const attachmentFields: INodeProperties[] = [
 		description: 'Sys_id of the record in the table specified in Table Name that you want to attach the file to',
 	},
 	{
-		displayName: 'Binary Property',
-		name: 'binaryPropertyName',
+		displayName: 'Input Data Field Name',
+		name: 'inputDataFieldName',
 		type: 'string',
 		default: 'data',
 		required: true,
@@ -122,7 +123,7 @@ export const attachmentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File name for the attachment',
+				displayName: 'File Name for the Attachment',
 				name: 'file_name',
 				type: 'string',
 				default: '',
@@ -134,8 +135,8 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                attachment:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Attachment Sys ID',
-		name: 'attachments_sys_id',
+		displayName: 'Attachment ID',
+		name: 'attachmentId',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -155,8 +156,8 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                attachment:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Attachment Sys ID',
-		name: 'attachments_sys_id',
+		displayName: 'Attachment ID',
+		name: 'attachmentId',
 		type: 'string',
 		default: '',
 		displayOptions: {
