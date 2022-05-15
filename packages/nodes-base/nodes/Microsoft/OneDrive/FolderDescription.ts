@@ -31,6 +31,11 @@ export const folderOperations: INodeProperties[] = [
 				description: 'Get items inside a folder',
 			},
 			{
+				name: 'Rename',
+				value: 'rename',
+				description: 'Rename a folder',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a folder',
@@ -116,6 +121,43 @@ export const folderFields: INodeProperties[] = [
 		},
 		default: '',
 	},
+/* -------------------------------------------------------------------------- */
+/*                               folder:rename                                */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Item ID',
+	name: 'itemId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'folder',
+			],
+		},
+	},
+	default: '',
+	description: 'ID of the folder',
+},
+{
+	displayName: 'New Name',
+	name: 'newName',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'folder',
+			],
+		},
+	},
+	default: '',
+	description: 'New name for folder',
+},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:search                              */
 /* -------------------------------------------------------------------------- */
