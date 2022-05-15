@@ -159,10 +159,10 @@ export class TrelloTrigger implements INodeType {
 
 		const bodyData = this.getBodyData();
 
-		const credentials = await this.getCredentials('trelloApi');
-
 		// TODO: Check why that does not work as expected even though it gets done as described
-		//       https://developers.trello.com/page/webhooks
+		//    https://developers.trello.com/page/webhooks
+
+		//const credentials = await this.getCredentials('trelloApi');
 		// // Check if the request is valid
 		// const headerData = this.getHeaderData() as IDataObject;
 		// const webhookUrl = this.getNodeWebhookUrl('default');
