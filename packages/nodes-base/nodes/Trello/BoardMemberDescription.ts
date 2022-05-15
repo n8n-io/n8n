@@ -64,7 +64,7 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to get members from.',
+		description: 'The ID of the board to get members from',
 	},
 	{
 		displayName: 'Return All',
@@ -81,12 +81,13 @@ export const boardMemberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
@@ -122,7 +123,7 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to add member to.',
+		description: 'The ID of the board to add member to',
 	},
 	{
 		displayName: 'Member ID',
@@ -140,7 +141,7 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the member to add to the board.',
+		description: 'The ID of the member to add to the board',
 	},
 	{
 		displayName: 'Type',
@@ -175,7 +176,7 @@ export const boardMemberFields: INodeProperties[] = [
 				description: 'Invite as observer (Trello premium feature)',
 			},
 		],
-		description: 'Determines the type of membership the user being added should have.',
+		description: 'Determines the type of membership the user being added should have',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -223,7 +224,7 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to invite member to.',
+		description: 'The ID of the board to invite member to',
 	},
 	{
 		displayName: 'Email',
@@ -241,7 +242,7 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to update.',
+		description: 'The ID of the board to update',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -282,7 +283,7 @@ export const boardMemberFields: INodeProperties[] = [
 						description: 'Invite as observer (Trello premium feature)',
 					},
 				],
-				description: 'Determines the type of membership the user being added should have.',
+				description: 'Determines the type of membership the user being added should have',
 			},
 			{
 				displayName: 'Full Name',
@@ -313,7 +314,7 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to remove member from.',
+		description: 'The ID of the board to remove member from',
 	},
 	{
 		displayName: 'Member ID',
@@ -331,6 +332,6 @@ export const boardMemberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the member to remove from the board.',
+		description: 'The ID of the member to remove from the board',
 	},
 ];

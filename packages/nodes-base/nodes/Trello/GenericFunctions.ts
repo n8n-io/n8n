@@ -26,7 +26,7 @@ import {
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	query = query || {};
 
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		method,
 		body,
 		qs: query,
