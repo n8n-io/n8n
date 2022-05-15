@@ -226,38 +226,56 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 
 	// Itterate over all keys and replace the custom ones
 	for (const key of Object.keys(item)) {
+
 		if (customProperties[key] !== undefined) {
 			// Is a custom property
 			customPropertyData = customProperties[key];
-			// Check if also the value has to be resolved or just the key
-			if (item[key] !== null && item[key] !== undefined && customPropertyData.options !== undefined && Array.isArray(customPropertyData.options)) {
-				// Has an option key so get the actual option-value
-				if (customPropertyData.field_type === 'set') {
-					const tempArray = (item[key] as string)!.split(',');
-					const setPropertyArray = [];
-					for (let i = 0; i < tempArray.length; i++) {
-						const propertyOption = customPropertyData.options.find(option => option.id.toString() === tempArray[i]!.toString());
-						setPropertyArray.push(propertyOption?.label);
-					}
-					item[customPropertyData.name as string] = setPropertyArray;
-				} else {
-					const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
 
-					if (propertyOption !== undefined) {
-						item[customPropertyData.name as string] = propertyOption.label;
-					}
-				}
+			// value is not set, so nothing to resolve
+			if (item[key] === null) {
+				item[customPropertyData.name] = item[key];
 				delete item[key];
-			} else {
-				// Does already represent the actual value or is
-				item[customPropertyData.name as string] = item[key];
+				continue;
+			}
+
+			if ([
+				'date',
+				'address',
+				'double',
+				'monetary',
+				'org',
+				'people',
+				'phone',
+				'text',
+				'time',
+				'user',
+				'varchar',
+				'varchar_auto',
+				'int',
+				'time',
+				'timerange',
+			].includes(customPropertyData.field_type)) {
+					item[customPropertyData.name as string] = item[key];
+					delete item[key];
+				// type options
+			} else if (['enum', 'visible_to'].includes(customPropertyData.field_type) && customPropertyData.options) {
+				const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
+				if (propertyOption !== undefined) {
+					item[customPropertyData.name as string] = propertyOption.label;
+					delete item[key];
+				}
+				// type multioptions
+			} else if (['set'].includes(customPropertyData.field_type) && customPropertyData.options) {
+				const selectedIds = (item[key] as string).split(',');
+				const selectedLabels = customPropertyData.options.
+				filter(option => selectedIds.includes(option.id.toString())).
+				map(option => option.label);
+				item[customPropertyData.name] = selectedLabels;
 				delete item[key];
 			}
 		}
 	}
-
 }
-
 
 export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
 	optionParameters.sort((a, b) => {
