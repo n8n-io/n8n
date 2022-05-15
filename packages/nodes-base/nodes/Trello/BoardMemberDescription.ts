@@ -285,7 +285,7 @@ export const boardMemberFields: INodeProperties[] = [
 				description: 'Determines the type of membership the user being added should have.',
 			},
 			{
-				displayName: 'Full name',
+				displayName: 'Full Name',
 				name: 'fullName',
 				type: 'string',
 				default: '',
