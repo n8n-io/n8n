@@ -770,7 +770,6 @@ export class Workflow {
 			return [];
 		}
 
-		console.log(key);
 		checkedNodes[key] = {
 			name: nodeName,
 			distance,
