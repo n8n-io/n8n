@@ -23,22 +23,19 @@ import {
 } from './users.service';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import {
-	authorize,
-	emailSetup,
-	instanceOwnerSetup,
-	validCursor,
-} from '../../shared/midlewares/global.midleware';
+import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
 import {
 	deletingOwnUser,
 	getMailerInstance,
 	globalMemberRoleSetup,
 	transferingToDeletedUser,
+	userManagmentEnabled,
+	emailSetup,
 } from './users.midleware';
 
 export = {
 	createUser: [
-		instanceOwnerSetup,
+		userManagmentEnabled,
 		emailSetup,
 		authorize(['owner']),
 		getMailerInstance,
@@ -68,7 +65,7 @@ export = {
 		},
 	],
 	deleteUser: [
-		instanceOwnerSetup,
+		userManagmentEnabled,
 		deletingOwnUser,
 		transferingToDeletedUser,
 		authorize(['owner']),
@@ -116,7 +113,7 @@ export = {
 		},
 	],
 	getUser: [
-		instanceOwnerSetup,
+		userManagmentEnabled,
 		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
@@ -134,7 +131,7 @@ export = {
 		},
 	],
 	getUsers: [
-		instanceOwnerSetup,
+		userManagmentEnabled,
 		validCursor,
 		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {

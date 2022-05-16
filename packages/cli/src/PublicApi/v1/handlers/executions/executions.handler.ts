@@ -9,11 +9,7 @@ import {
 } from './executions.service';
 
 import { ActiveExecutions } from '../../../..';
-import {
-	authorize,
-	instanceOwnerSetup,
-	validCursor,
-} from '../../shared/midlewares/global.midleware';
+import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
 
 import { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
@@ -21,7 +17,6 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
 	deleteExecution: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { executionId } = req.params;
@@ -54,7 +49,6 @@ export = {
 		},
 	],
 	getExecution: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { executionId } = req.params;
@@ -79,7 +73,6 @@ export = {
 		},
 	],
 	getExecutions: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
@@ -95,7 +88,10 @@ export = {
 			// user does not have workflows hence no executions
 			// or the execution he is trying to access belongs to a workflow he does not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json();
+				return res.json({
+					data: [],
+					nextCursor: null,
+				});
 			}
 
 			// get running workflows so we exclude them from the result

@@ -7,21 +7,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express = require('express');
 import config = require('../../../../../config');
-import { PaginatatedRequest } from '../../../types';
+import { PaginatatedRequest, UserRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 type Role = 'member' | 'owner';
-
-export const instanceOwnerSetup = (
-	req: express.Request,
-	res: express.Response,
-	next: express.NextFunction,
-): any => {
-	if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-		return res.status(500).json({ message: 'Instance owner is not set up' });
-	}
-	next();
-};
 
 export const authorize =
 	(role: Role[]) =>
@@ -36,17 +25,6 @@ export const authorize =
 			message: 'Unauthorized',
 		});
 	};
-
-export const emailSetup = (
-	req: express.Request,
-	res: express.Response,
-	next: express.NextFunction,
-): any => {
-	if (!config.getEnv('userManagement.emails.mode')) {
-		return res.status(500).json({ message: 'Email is not set up' });
-	}
-	next();
-};
 
 export const validCursor = (
 	req: PaginatatedRequest,

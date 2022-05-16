@@ -147,23 +147,6 @@ test('GET /workflows should return all workflows', async () => {
 	}
 });
 
-test('GET /workflows should fail due no instance owner not setup', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
-
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/workflows');
-
-	expect(response.statusCode).toBe(500);
-});
-
 test('GET /workflows/:workflowId should fail due to missing API Key', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 

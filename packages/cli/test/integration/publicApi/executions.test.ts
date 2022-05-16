@@ -105,23 +105,6 @@ test('GET /executions/:executionId should fail due to invalid API Key', async ()
 	expect(response.statusCode).toBe(401);
 });
 
-test('GET /executions/:executionId should fail due no instance owner not setup', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
-
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/executions/3');
-
-	expect(response.statusCode).toBe(500);
-});
-
 test('GET /executions/:executionId should get an execution', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
@@ -203,23 +186,6 @@ test('DELETE /executions/:executionId should fail due to invalid API Key', async
 	expect(response.statusCode).toBe(401);
 });
 
-test('DELETE /executions/:executionId should fail due no instance owner not setup', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
-
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.delete('/executions/3');
-
-	expect(response.statusCode).toBe(500);
-});
-
 test('DELETE /executions/:executionId should delete an execution', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
@@ -299,19 +265,6 @@ test('GET /executions should fail due to invalid API Key', async () => {
 	const response = await authOwnerAgent.get('/executions');
 
 	expect(response.statusCode).toBe(401);
-});
-
-//todo check why this sometimes failes
-test.skip('GET /executions should fail due no instance owner not setup', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
-
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
-
-	const response = await authOwnerAgent.get('/executions');
-
-	expect(response.statusCode).toBe(500);
 });
 
 test('GET /executions should retrieve all successfull executions', async () => {

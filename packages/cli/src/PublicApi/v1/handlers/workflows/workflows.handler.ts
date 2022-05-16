@@ -6,11 +6,7 @@ import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
-import {
-	authorize,
-	instanceOwnerSetup,
-	validCursor,
-} from '../../shared/midlewares/global.midleware';
+import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
 import {
@@ -28,7 +24,6 @@ import {
 
 export = {
 	createWorkflow: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			let workflow = req.body;
@@ -62,7 +57,6 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { workflowId } = req.params;
@@ -88,7 +82,6 @@ export = {
 		},
 	],
 	getWorkflow: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { workflowId } = req.params;
@@ -105,7 +98,6 @@ export = {
 		},
 	],
 	getWorkflows: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
@@ -154,7 +146,6 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { workflowId } = req.params;
@@ -205,7 +196,6 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { workflowId } = req.params;
@@ -242,7 +232,6 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		instanceOwnerSetup,
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { workflowId } = req.params;

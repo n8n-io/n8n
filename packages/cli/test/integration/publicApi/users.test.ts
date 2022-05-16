@@ -116,8 +116,25 @@ test('GET /users should fail due to member trying to access owner only endpoint'
 	expect(response.statusCode).toBe(403);
 });
 
-test('GET /users should fail due no instance owner not setup', async () => {
+test('GET /users should fail due to instance owner not setup', async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', false);
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		version: 1,
+		auth: true,
+		user: owner,
+	});
+
+	const response = await authOwnerAgent.get('/users');
+
+	expect(response.statusCode).toBe(500);
+});
+
+test('GET /users should fail due to UM disabled', async () => {
+	config.set('userManagement.disabled', true);
 
 	const owner = await Db.collections.User!.findOneOrFail();
 

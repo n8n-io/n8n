@@ -1,7 +1,9 @@
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express = require('express');
+import config = require('../../../../../config');
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
+import { isEmailSetUp } from '../../../../UserManagement/UserManagementHelper';
 import { UserRequest } from '../../../types';
 import { getGlobalMemberRole } from './users.service';
 
@@ -62,6 +64,34 @@ export const globalMemberRoleSetup = async (
 		return res.status(500).json({
 			message: 'Members role not found in database - inconsistent state',
 		});
+	}
+	next();
+};
+
+export const userManagmentEnabled = async (
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
+): Promise<any> => {
+	if (
+		config.getEnv('userManagement.disabled') ||
+		!config.getEnv('userManagement.isInstanceOwnerSetUp')
+	) {
+		return res.status(500).json({
+			message: 'Users endpoints can only be used with UM enabled and an instance owner setup',
+		});
+	}
+
+	next();
+};
+
+export const emailSetup = (
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
+): any => {
+	if (!isEmailSetUp()) {
+		return res.status(500).json({ message: 'Email is not set up' });
 	}
 	next();
 };
