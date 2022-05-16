@@ -609,8 +609,7 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
-		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth)
-			.map((search) => search.name);
+		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
 	}
 
 	/**
@@ -623,20 +622,6 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
-		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth)
-			.map((search) => search.name);
-	}
-
-	/**
-	 * Returns all the nodes before the given one
-	 *
-	 * @param {string} nodeName
-	 * @param {string} [type='main']
-	 * @param {*} [depth=-1]
-	 * @returns {string[]}
-	 * @memberof Workflow
-	 */
-	getParentGraph(nodeName: string, type = 'main', depth = -1): INodeSearch[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
 	}
 
@@ -657,9 +642,8 @@ export class Workflow {
 		nodeName: string,
 		type = 'main',
 		depth = -1,
-		checkedNodes?: INodeSearch[],
-		distance = 1,
-	): INodeSearch[] {
+		checkedNodes?: string[],
+	): string[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
 		if (depth === 0) {
@@ -679,15 +663,120 @@ export class Workflow {
 
 		checkedNodes = checkedNodes || [];
 
-		if (checkedNodes.find((search) => search.name === nodeName)) {
+		if (checkedNodes.includes(nodeName)) {
 			// Node got checked already before
 			return [];
 		}
 
-		checkedNodes.push({
+		checkedNodes.push(nodeName);
+
+		const returnNodes: string[] = [];
+		let addNodes: string[];
+		let nodeIndex: number;
+		let i: number;
+		let parentNodeName: string;
+		connections[nodeName][type].forEach((connectionsByIndex) => {
+			connectionsByIndex.forEach((connection) => {
+				if (checkedNodes!.includes(connection.node)) {
+					// Node got checked already before
+					return;
+				}
+
+				returnNodes.unshift(connection.node);
+
+				addNodes = this.getConnectedNodes(
+					connections,
+					connection.node,
+					type,
+					newDepth,
+					checkedNodes,
+				);
+
+				for (i = addNodes.length; i--; i > 0) {
+					// Because nodes can have multiple parents it is possible that
+					// parts of the tree is parent of both and to not add nodes
+					// twice check first if they already got added before.
+					parentNodeName = addNodes[i];
+					nodeIndex = returnNodes.indexOf(parentNodeName);
+
+					if (nodeIndex !== -1) {
+						// Node got found before so remove it from current location
+						// that node-order stays correct
+						returnNodes.splice(nodeIndex, 1);
+					}
+
+					returnNodes.unshift(parentNodeName);
+				}
+			});
+		});
+
+		return returnNodes;
+	}
+
+	/**
+	 * Returns all the nodes before the given one
+	 *
+	 * @param {string} nodeName
+	 * @param {string} [type='main']
+	 * @param {*} [depth=-1]
+	 * @returns {string[]}
+	 * @memberof Workflow
+	 */
+	getParentConnections(nodeName: string, type = 'main', depth = -1): INodeSearch[] {
+		return this.getConnections(this.connectionsByDestinationNode, nodeName, type, depth);
+	}
+
+	/**
+	 * Gets all the nodes which are connected nodes starting from
+	 * the given one
+	 *
+	 * @param {IConnections} connections
+	 * @param {string} nodeName
+	 * @param {string} [type='main']
+	 * @param {*} [depth=-1]
+	 * @param {string[]} [checkedNodes]
+	 * @returns {string[]}
+	 * @memberof Workflow
+	 */
+	getConnections(
+		connections: IConnections,
+		nodeName: string,
+		type = 'main',
+		depth = -1,
+		checkedNodes: { [key: string]: INodeSearch } = {},
+		distance = 0,
+	): INodeSearch[] {
+		depth = depth === -1 ? -1 : depth;
+		const newDepth = depth === -1 ? depth : depth - 1;
+		if (depth === 0) {
+			// Reached max depth
+			return [];
+		}
+
+		if (!connections.hasOwnProperty(nodeName)) {
+			// Node does not have incoming connections
+			return [];
+		}
+
+		if (!connections[nodeName].hasOwnProperty(type)) {
+			// Node does not have incoming connections of given type
+			return [];
+		}
+
+		const key = `${nodeName}`;
+
+		if (checkedNodes[key] && checkedNodes[key].distance <= distance) {
+			// Node got checked already before
+			return [];
+		}
+
+		console.log(key);
+		checkedNodes[key] = {
 			name: nodeName,
 			distance,
-		});
+			index: -1,
+			target: '',
+		};
 
 		const returnNodes: INodeSearch[] = [];
 		let addNodes: INodeSearch[];
@@ -696,17 +785,21 @@ export class Workflow {
 		let parentNodeName: string;
 		connections[nodeName][type].forEach((connectionsByIndex) => {
 			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.find((search) => search.name === connection.node)) {
+				const connKey = `${connection.node}`;
+				if (checkedNodes[connKey] && checkedNodes[connKey].distance <= distance) {
 					// Node got checked already before
+
 					return;
 				}
 
 				returnNodes.unshift({
 					name: connection.node,
-					distance,
+					distance: distance + 1,
+					index: connection.index,
+					target: nodeName,
 				});
 
-				addNodes = this.getConnectedNodes(
+				addNodes = this.getConnections(
 					connections,
 					connection.node,
 					type,
@@ -725,6 +818,7 @@ export class Workflow {
 					if (nodeIndex !== -1) {
 						// Node got found before so remove it from current location
 						// that node-order stays correct
+						addNodes[i].distance = Math.min(returnNodes[nodeIndex].distance, addNodes[i].distance);
 						returnNodes.splice(nodeIndex, 1);
 					}
 

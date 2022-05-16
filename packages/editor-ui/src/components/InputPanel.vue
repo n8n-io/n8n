@@ -16,7 +16,7 @@
 		@runChange="onRunIndexChange">
 		<template v-slot:header>
 			<div :class="$style.titleSection">
-				<n8n-select size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')">
+				<n8n-select size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
@@ -107,10 +107,9 @@ export default mixins(
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentGraph(this.activeNode.name)
+			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name, 'main', 50)
 				.reverse();
 
-			// dedupe nodes and remove self
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},
 	},

@@ -1461,4 +1461,6 @@ export interface ITelemetrySettings {
 export interface INodeSearch {
 	name: string;
 	distance: number;
+	index: number;
+	target: string;
 }
