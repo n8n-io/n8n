@@ -87,6 +87,7 @@ export default mixins(
 	name: 'NodeCredentials',
 	props: [
 		'node', // INodeUi
+		'overrideCredType', // cred type
 	],
 	data () {
 		return {
@@ -99,14 +100,6 @@ export default mixins(
 			credentialOptions: 'allCredentialsByType',
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
-		isProxyAuth(): boolean {
-			return this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authentication === 'existingCredentialType';
-		},
-		isGenericAuth(): boolean {
-			return this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authentication === 'genericCredentialType';
-		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
@@ -120,17 +113,9 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			if (this.isGenericAuth) {
-				const { genericAuthType } = this.node.parameters as { genericAuthType: string };
+			const credType = this.getCredentialTypeByName(this.overrideCredType);
 
-				return [this.getCredentialTypeByName(genericAuthType)];
-			}
-
-			if (this.isProxyAuth) {
-				const { nodeCredentialType } = this.node.parameters as { nodeCredentialType?: string };
-
-				if (nodeCredentialType) return [this.getCredentialTypeByName(nodeCredentialType)];
-			}
+			if (credType) return [credType];
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {

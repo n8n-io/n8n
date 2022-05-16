@@ -32,12 +32,8 @@
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 				>
-					<n8n-notice
-						v-if="isHttpRequestNodeV2(node) && this.activeCredential.scopes.length > 0"
-						:content="scopesShortContent"
-						:fullContent="scopesFullContent"
-					/>
 					<node-credentials
+						v-if="!isHttpRequestNodeV2(node)"
 						:node="node"
 						@credentialSelected="credentialSelected"
 					/>
@@ -330,28 +326,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			async prepareScopesNotice(credentialTypeName: string) {
-				if (
-					!this.isHttpRequestNodeV2(this.node) ||
-					!credentialTypeName || !credentialTypeName.endsWith('OAuth2Api')
-				) {
-					this.activeCredential.scopes = [];
-					return;
-				}
-
-				const { name, displayName } = this.getCredentialTypeByName(credentialTypeName);
-
-				this.activeCredential.scopes = this.getScopesByCredentialType(name);
-				this.activeCredential.shortDisplayName = this.shortenCredentialDisplayName(displayName);
-			},
-			shortenCredentialDisplayName (credentialDisplayName: string) {
-				const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
-				const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
-
-				return credentialDisplayName
-					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
-					.trim();
-			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},
@@ -428,13 +402,6 @@ export default mixins(
 				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
-				if (
-					this.isHttpRequestNodeV2(this.node) &&
-					parameterData.name === 'parameters.nodeCredentialType'
-				) {
-					this.prepareScopesNotice(parameterData.value as string);
-				}
-
 				let newValue: NodeParameterValue;
 				if (parameterData.hasOwnProperty('value')) {
 					// New value is given
@@ -613,13 +580,6 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
-
-			if (
-				this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authentication === 'existingCredentialType'
-			) {
-				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
-			}
 
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {

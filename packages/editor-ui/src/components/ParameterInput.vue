@@ -104,6 +104,50 @@
 			:placeholder="parameter.placeholder"
 		/>
 
+		<div v-else-if="parameter.type === 'nodeCredentialType'">
+			<n8n-select
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				:value="displayValue"
+				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="credType in supportedCredentialTypes"
+					:value="credType.name"
+					:key="credType.name"
+				>
+					<div class="list-option">
+						<div class="option-headline">
+							{{ credType.displayName }}
+						</div>
+						<div
+							v-if="credType.description"
+							class="option-description"
+							v-html="credType.description"
+						/>
+					</div>
+				</n8n-option>
+			</n8n-select>
+			<n8n-notice
+				v-if="this.activeCredential.scopes.length > 0"
+				:content="scopesShortContent"
+				:fullContent="scopesFullContent"
+			/>
+			<node-credentials
+				:node="node"
+				:overrideCredType="node.parameters.nodeCredentialType"
+				@credentialSelected="credentialSelected"
+			/>
+		</div>
+
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
@@ -197,6 +241,7 @@ import { get } from 'lodash';
 
 import {
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	NodeHelpers,
@@ -206,10 +251,12 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
+	ICredentialType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
+import NodeCredentials from '@/components/NodeCredentials.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -220,6 +267,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -232,6 +280,7 @@ export default mixins(
 		components: {
 			CodeEdit,
 			ExpressionEdit,
+			NodeCredentials,
 			PrismEditor,
 			TextEdit,
 		},
@@ -259,6 +308,10 @@ export default mixins(
 				textEditDialogVisible: false,
 				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
 				CUSTOM_API_CALL_KEY,
+				activeCredential: {
+					shortDisplayName: '',
+					scopes: [] as string[],
+				},
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
@@ -305,6 +358,35 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapGetters('credentials', ['allCredentialTypes', 'getScopesByCredentialType']),
+			scopesShortContent (): string {
+				return this.$locale.baseText(
+					'nodeSettings.scopes.notice',
+					{
+						adjustToNumber: this.activeCredential.scopes.length,
+						interpolate: {
+							activeCredential: this.activeCredential.shortDisplayName,
+						},
+					},
+				);
+			},
+			scopesFullContent (): string {
+				return this.$locale.baseText(
+					'nodeSettings.scopes.expandedNoticeWithScopes',
+					{
+						adjustToNumber: this.activeCredential.scopes.length,
+						interpolate: {
+							activeCredential: this.activeCredential.shortDisplayName,
+							scopes: this.activeCredential.scopes.map(
+								(scope: string) => scope.replace(/\//g, '/<wbr>'),
+							).join('<br>'),
+						},
+					},
+				);
+			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
+			},
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -333,9 +415,6 @@ export default mixins(
 				}
 
 				return returnValues.join('|');
-			},
-			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -373,6 +452,13 @@ export default mixins(
 					returnValue = this.value;
 				} else {
 					returnValue = this.expressionValueComputed;
+				}
+
+				if (this.parameter.type === 'nodeCredentialType') {
+					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+					if (credType) {
+						returnValue = credType.displayName;
+					}
 				}
 
 				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
@@ -592,8 +678,88 @@ export default mixins(
 			workflow (): Workflow {
 				return this.getWorkflow();
 			},
+			supportedCredentialTypes(): ICredentialType[] {
+				return this.allCredentialTypes.filter((c: ICredentialType) => this.supportsProxyAuth(c.name));
+			},
 		},
 		methods: {
+			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
+				// Update the values on the node
+				this.$store.commit('updateNodeProperties', updateInformation);
+
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
+
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			},
+			async prepareScopesNotice(credentialTypeName: string) {
+				const credType = this.getCredentialTypeByName(credentialTypeName);
+
+				if (!credType) return;
+
+				this.activeCredential.scopes = this.getScopesByCredentialType(credType.name);
+				this.activeCredential.shortDisplayName = this.shortenCredentialDisplayName(credType.displayName);
+			},
+			shortenCredentialDisplayName (credentialDisplayName: string) {
+				const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
+				const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
+
+				return credentialDisplayName
+					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
+					.trim();
+			},
+			getSupportedCredentialTypes(credentialTypes: string[]) {
+				return credentialTypes.reduce<{ extends: string[]; has: string[] }>((acc, cur) => {
+					const _extends = cur.split('extends:');
+
+					if (_extends.length === 2) {
+						acc.extends.push(_extends[1]);
+						return acc;
+					}
+
+					const _has = cur.split('has:');
+
+					if (_has.length === 2) {
+						acc.has.push(_has[1]);
+						return acc;
+					}
+
+					return acc;
+				}, { extends: [], has: [] });
+			},
+			supportsProxyAuth(name: string): boolean {
+				if (this.parameter.type !== 'nodeCredentialType') return false;
+
+				const supported = this.getSupportedCredentialTypes(this.parameter.credentialTypes);
+
+				const credType = this.$store.getters['credentials/getCredentialTypeByName'](name);
+
+				for (const property of supported.has) {
+					if (credType[property] !== undefined) return true;
+				}
+
+				// @TODO: Consolidate two if-checks
+
+				if (
+					credType.extends &&
+					credType.extends.some(
+						(parentType: string) => supported.extends.includes(parentType),
+					)
+				) {
+					return true;
+				}
+
+				if (credType.extends) {
+					return credType.extends.reduce(
+						(acc: boolean, parentType: string) => acc || this.supportsProxyAuth(parentType),
+						false,
+					);
+				}
+
+				return false;
+			},
 			/**
 			 * Check whether a param value must be skipped when collecting node param issues for validation.
 			 */
@@ -752,6 +918,10 @@ export default mixins(
 				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string[] | string | number | boolean | Date | null) {
+				if (this.parameter.name === 'nodeCredentialType') {
+					this.prepareScopesNotice(value as string);
+				}
+
 				if (value instanceof Date) {
 					value = value.toISOString();
 				}
@@ -803,6 +973,10 @@ export default mixins(
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;
+			}
+
+			if (this.node.parameters.authentication === 'existingCredentialType') {
+				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
 			}
 
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && this.displayValue !== null && this.displayValue.toString().charAt(0) !== '#') {

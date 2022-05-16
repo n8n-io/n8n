@@ -831,7 +831,8 @@ export type NodePropertyTypes =
 	| 'multiOptions'
 	| 'number'
 	| 'options'
-	| 'string';
+	| 'string'
+	| 'nodeCredentialType';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -888,6 +889,7 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 	routing?: INodePropertyRouting;
+	credentialTypes?: string[];
 }
 export interface INodePropertyOptions {
 	name: string;

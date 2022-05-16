@@ -253,13 +253,14 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Credential Type',
 				name: 'nodeCredentialType',
-				type: 'options',
+				type: 'nodeCredentialType',
 				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getNodeCredentialTypes',
-				},
 				default: '',
-				placeholder: 'None',
+				credentialTypes: [
+					'extends:oAuth2Api',
+					'extends:oAuth1Api',
+					'has:authenticate',
+				],
 				displayOptions: {
 					show: {
 						authentication: [
@@ -271,13 +272,6 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
-			// @TODO expression not resolving, using Notion as example
-			// {
-			// 	displayName: 'Supports Proxy Auth',
-			// 	name: 'supportsProxyAuth',
-			// 	type: 'hidden',
-			// 	default: '={{ $parameter["&authentication"] === "existingCredentialType" }}',
-			// },
 			{
 				displayName: 'Generic Auth Type',
 				name: 'genericAuthType',
