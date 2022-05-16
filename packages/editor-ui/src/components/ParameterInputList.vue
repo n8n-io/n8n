@@ -131,8 +131,6 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.isHttpRequestNodeV2(this.node)) return 2;
-
 				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
 
 				return 0;

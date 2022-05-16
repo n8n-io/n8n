@@ -33,7 +33,6 @@
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 				>
 					<node-credentials
-						v-if="!isHttpRequestNodeV2(node)"
 						:node="node"
 						@credentialSelected="credentialSelected"
 					/>

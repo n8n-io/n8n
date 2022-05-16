@@ -511,7 +511,10 @@ export default mixins(
 
 				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'), this.node);
 
-				if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
+				if (this.parameter.type === 'nodeCredentialType' && this.displayValue === '') {
+					issues.parameters = issues.parameters || {};
+					issues.parameters[this.parameter.name] = ['Select a credential type from the dropdown'];
+				} else if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
@@ -534,12 +537,7 @@ export default mixins(
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
 							}
-
-							if (this.isHttpRequestNodeV2(this.node)) {
-								issues.parameters[this.parameter.name] = ['Select a credential type from the dropdown'];
-							} else {
-								issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
-							}
+							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
 						}
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
