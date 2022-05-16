@@ -160,7 +160,7 @@ export class Xata implements INodeType {
 			},
 			{
 				displayName: 'Limit',
-				name: 'limit',
+				name: 'size',
 				type: 'number',
 				displayOptions: {
 					show: {
@@ -176,7 +176,7 @@ export class Xata implements INodeType {
 					minValue: 1,
 					maxValue: 200,
 				},
-				default: 200,
+				default: 20,
 				description: 'Max number of results to return',
 			},
 			{
@@ -226,6 +226,36 @@ export class Xata implements INodeType {
 
 
 					},
+					{
+						displayName: 'Offset',
+						name: 'offset',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 800,
+						},
+						default: 0,
+						description: 'Number of matching records to skip',
+					},
+
+					{
+						displayName: 'Limit',
+						name: 'size',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 200,
+						},
+						default: 20,
+						description: 'Number of results to return per page',
+						displayOptions: {
+							show: {
+								'/returnAll': [
+									true,
+								],
+							},
+						},
+					}
 
 
 				],

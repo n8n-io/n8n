@@ -6,7 +6,6 @@ import {
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
-	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -30,6 +29,18 @@ export function getAdditionalOptions(additionalOptions: IDataObject) {
 			} catch (error) {
 
 				throw new Error(`Cannot parse ${key} to JSON. Check the ${key} (JSON) option`);
+
+			}
+
+		} else if (key === 'offset' || key === 'size') {
+
+			if(body['page']) {
+
+				(body['page'] as IDataObject)![key] = additionalOptions[key]
+
+			} else {
+
+				body['page'] = {[key]:additionalOptions[key]}
 
 			}
 
@@ -130,6 +141,8 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 export async function xataApiList(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, returnAll: boolean, url?: string): Promise<any> { // tslint:disable-line:no-any
 
+	const page:IDataObject = body['page'] as IDataObject;
+	const offset = page ? page['offset'] ? page['offset']  : 0 : 0;
 
 	let records = new Array();
 
@@ -137,6 +150,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 		try {
 
+			const size = page ? page['size'] ? page['size'] : 200 : 200;
 			let arrayLength = 0;
 
 			do {
@@ -151,7 +165,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 				}
 
-				Object.assign(body, { 'page': { 'after': crs } });
+				Object.assign(body, { 'page': { 'after': crs, 'offset' : offset, 'size' : size } });
 
 				if (body!.hasOwnProperty('filter')) {
 
@@ -177,8 +191,8 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 	} else {
 
-		const limit = this.getNodeParameter('limit', 0) as number;
-		Object.assign(body, { 'page': { 'size': limit } });
+		const size = this.getNodeParameter('size', 0) as number;
+		Object.assign(body, { 'page': { 'size': size, 'offset':offset } });
 
 		try {
 
