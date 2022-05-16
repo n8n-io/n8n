@@ -119,7 +119,21 @@
 			:valueChanged="valueChanged"
 			:setFocus="setFocus"
 			:onBlur="onBlur"
-		/>
+		>
+			<template v-slot:issues-and-options>
+				<parameter-issues
+					:getIssues="getIssues"
+				/>
+				<parameter-options
+					:displayOptionsComputed="displayOptionsComputed"
+					:optionSelected="optionSelected"
+					:parameter="parameter"
+					:isValueExpression="isValueExpression"
+					:isDefault="isDefault"
+					:hasRemoteMethod="hasRemoteMethod"
+				/>
+			</template>
+		</node-credential-type>
 
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
@@ -186,26 +200,21 @@
 		/>
 	</div>
 
-	<div class="parameter-issues" v-if="getIssues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</n8n-tooltip>
-	</div>
+	<parameter-issues
+		v-if="parameter.type !== 'nodeCredentialType'"
+		:getIssues="getIssues"
+	/>
 
-	<div class="parameter-options" v-if="displayOptionsComputed">
-			<el-dropdown trigger="click" @command="optionSelected" size="mini">
-				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$locale.baseText('parameterInput.parameterOptions')"/>
-				</span>
-				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $locale.baseText('parameterInput.addExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $locale.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="hasRemoteMethod">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
-				</el-dropdown-menu>
-			</el-dropdown>
-	</div>
+	<parameter-options
+		v-if="parameter.type !== 'nodeCredentialType'"
+		:displayOptionsComputed="displayOptionsComputed"
+		:optionSelected="optionSelected"
+		:parameter="parameter"
+		:isValueExpression="isValueExpression"
+		:isDefault="isDefault"
+		:hasRemoteMethod="hasRemoteMethod"
+	/>
+
 	</div>
 </template>
 
@@ -232,6 +241,8 @@ import NodeCredentialType from '@/components/NodeCredentialType.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import ParameterIssues from '@/components/ParameterIssues.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -259,6 +270,8 @@ export default mixins(
 			NodeCredentialType,
 			PrismEditor,
 			ScopesNotice,
+			ParameterOptions,
+			ParameterIssues,
 			TextEdit,
 		},
 		props: [
@@ -604,6 +617,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
+				if (this.parameter.type === 'nodeCredentialType') return styles;
 				if (this.displayOptionsComputed === true) {
 					deductWidth += 25;
 				}
@@ -940,20 +954,6 @@ export default mixins(
 
 .parameter-input {
 	display: inline-block;
-}
-
-.parameter-options {
-	width: 25px;
-	text-align: right;
-	float: right;
-}
-
-.parameter-issues {
-	width: 20px;
-	text-align: right;
-	float: right;
-	color: #ff8080;
-	font-size: var(--font-size-s);
 }
 
 ::v-deep .color-input {

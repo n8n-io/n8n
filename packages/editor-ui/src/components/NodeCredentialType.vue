@@ -1,45 +1,51 @@
 <template>
 	<div>
-		<n8n-select
-			:size="inputSize"
-			filterable
-			:value="displayValue"
-			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
-			:loading="remoteParameterOptionsLoading"
-			:disabled="isReadOnly || remoteParameterOptionsLoading"
-			:title="displayTitle"
-			@change="valueChanged"
-			@keydown.stop
-			@focus="setFocus"
-			@blur="onBlur"
-		>
-			<n8n-option
-				v-for="credType in supportedCredentialTypes"
-				:value="credType.name"
-				:key="credType.name"
+		<div class="parameter-value-container">
+			<n8n-select
+				:size="inputSize"
+				filterable
+				:value="displayValue"
+				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
 			>
-				<div class="list-option">
-					<div class="option-headline">
-						{{ credType.displayName }}
+				<n8n-option
+					v-for="credType in supportedCredentialTypes"
+					:value="credType.name"
+					:key="credType.name"
+				>
+					<div class="list-option">
+						<div class="option-headline">
+							{{ credType.displayName }}
+						</div>
+						<div
+							v-if="credType.description"
+							class="option-description"
+							v-html="credType.description"
+						/>
 					</div>
-					<div
-						v-if="credType.description"
-						class="option-description"
-						v-html="credType.description"
-					/>
-				</div>
-			</n8n-option>
-		</n8n-select>
+				</n8n-option>
+			</n8n-select>
+			<slot name="issues-and-options" />
+		</div>
+
 		<scopes-notice
 			v-if="activeCredential.scopes.length > 0"
 			:scopes="activeCredential.scopes"
 			:shortCredentialDisplayName="activeCredential.shortDisplayName"
 		/>
-		<node-credentials
-			:node="node"
-			:overrideCredType="node.parameters.nodeCredentialType"
-			@credentialSelected="credentialSelected"
-		/>
+		<div>
+			<node-credentials
+				:node="node"
+				:overrideCredType="node.parameters.nodeCredentialType"
+				@credentialSelected="credentialSelected"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -88,8 +94,6 @@ export default Vue.extend({
 				if (credType[property] !== undefined) return true;
 			}
 
-			// @TODO: Consolidate two if-checks
-
 			if (
 				credType.extends &&
 				credType.extends.some(
@@ -131,6 +135,14 @@ export default Vue.extend({
 });
 </script>
 
-<style module lang="scss">
+<style lang="scss">
+.parameter-value-container {
+	display: flex;
+	align-items: center;
+}
+
+.parameter-issues {
+	padding-left: 5px;
+}
 
 </style>
