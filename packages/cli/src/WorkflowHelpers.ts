@@ -604,7 +604,7 @@ export async function getSharedWorkflowIds(user: User): Promise<number[]> {
  */
 export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
-	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote']
+	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
 	const workflowOwnerRole = await Db.collections.Role.findOne({
 		name: 'owner',
