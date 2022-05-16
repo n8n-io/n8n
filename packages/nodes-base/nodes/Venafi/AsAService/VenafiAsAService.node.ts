@@ -58,6 +58,7 @@ export class VenafiAsAService implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
+				noDataExpression: true,
 				type: 'options',
 				options: [
 					{
@@ -70,7 +71,7 @@ export class VenafiAsAService implements INodeType {
 					},
 				],
 				default: 'certificateRequest',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...certificateOperations,
 			...certificateFields,
@@ -195,7 +196,7 @@ export class VenafiAsAService implements INodeType {
 									if (key.Typename === 'dnsNames') {
 										subjectAltNamesByType.dnsNames ? subjectAltNamesByType.dnsNames.push(key.name as string) : subjectAltNamesByType.dnsNames = [key.name as string];
 									}
-									if (key.Typename === 'ipAddresses') {
+									/*if (key.Typename === 'ipAddresses') {
 										subjectAltNamesByType.ipAddresses ? subjectAltNamesByType.ipAddresses.push(key.name as string) : subjectAltNamesByType.ipAddresses = [key.name as string];
 									}
 									if (key.Typename === 'rfc822Names') {
@@ -203,7 +204,7 @@ export class VenafiAsAService implements INodeType {
 									}
 									if (key.Typename === 'uniformResourceIdentifiers') {
 										subjectAltNamesByType.uniformResourceIdentifiers ? subjectAltNamesByType.uniformResourceIdentifiers.push(key.name as string) : subjectAltNamesByType.uniformResourceIdentifiers = [key.name as string];
-									}
+									}*/
 								}
 							}
 							if (Object.keys(subjectAltNamesByType).length !== 0) {

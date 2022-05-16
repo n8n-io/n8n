@@ -2,10 +2,11 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateOperations = [
+export const certificateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -43,9 +44,9 @@ export const certificateOperations = [
 		],
 		default: 'delete',
 	},
-] as INodeProperties[];
+];
 
-export const certificateFields = [
+export const certificateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                          certificate:download                              */
 	/* -------------------------------------------------------------------------- */
@@ -188,7 +189,7 @@ export const certificateFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -323,7 +324,7 @@ export const certificateFields = [
 						value: 'P10D',
 					},
 					{
-						name: '12 hours',
+						name: '12 Hours',
 						value: 'PT12H',
 					},
 				],
@@ -331,4 +332,4 @@ export const certificateFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

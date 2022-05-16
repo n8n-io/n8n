@@ -2,10 +2,11 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateRequestOperations = [
+export const certificateRequestOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -32,11 +33,10 @@ export const certificateRequestOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const certificateRequestFields = [
+export const certificateRequestFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 certificateRequest:create                  */
 	/* -------------------------------------------------------------------------- */
@@ -155,7 +155,7 @@ export const certificateRequestFields = [
 			},
 		},
 		type: 'string',
-		default: 'your-domain.com',
+		default: 'n8n.io',
 	},
 	// Optional...
 	{
@@ -185,31 +185,14 @@ export const certificateRequestFields = [
 				default: '',
 			},
 			{
-				displayName: 'Locality',
-				name: 'locality',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Organization',
-				name: 'organization',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Organizational Units',
-				name: 'organizationalUnits',
-				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: '',
-			},
-			{
 				displayName: 'Key Curve',
 				name: 'keyCurve',
 				type: 'options',
 				options: [
+					{
+						name: 'ED25519',
+						value: 'ED25519',
+					},
 					{
 						name: 'P256',
 						value: 'P256',
@@ -221,10 +204,6 @@ export const certificateRequestFields = [
 					{
 						name: 'P521',
 						value: 'P521',
-					},
-					{
-						name: 'ED25519',
-						value: 'ED25519',
 					},
 					{
 						name: 'UNKNOWN',
@@ -256,6 +235,33 @@ export const certificateRequestFields = [
 				default: 'RSA',
 			},
 			{
+				displayName: 'Locality',
+				name: 'locality',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Organizational Units',
+				name: 'organizationalUnits',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Subject Alt Names',
 				name: 'SubjectAltNamesUi',
 				placeholder: 'Add Subject',
@@ -267,7 +273,7 @@ export const certificateRequestFields = [
 				options: [
 					{
 						name: 'SubjectAltNamesValues',
-						displayName: 'Subject alt Name',
+						displayName: 'Subject Alt Name',
 						values: [
 							{
 								displayName: 'Typename',
@@ -275,41 +281,36 @@ export const certificateRequestFields = [
 								type: 'options',
 								options: [
 									{
-										name: 'RFC822 Names',
-										value: 'rfc822Names',
-									},
-									{
 										name: 'DNS',
 										value: 'dnsNames',
 									},
-									{
-										name: 'URI',
-										value: 'uniformResourceIdentifiers',
-									},
-									{
+									/*{
 										name: 'IP Address',
 										value: 'ipAddresses',
 									},
+									{
+										name: 'RFC822 Names',
+										value: 'rfc822Names',
+									},
+
+									{
+										name: 'URI',
+										value: 'uniformResourceIdentifiers',
+									},*/
 								],
-								description: 'An integer that represents the kind of SAN',
-								default: '',
+								description: 'What type of SAN is being used',
+								default: 'dnsNames',
 							},
 							{
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
-								default: '',
+								default: 'community.n8n.io',
 								description: 'The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address.',
 							},
 						],
 					},
 				],
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
 			},
 		],
 	},
@@ -367,7 +368,7 @@ export const certificateRequestFields = [
 						value: 'P10D',
 					},
 					{
-						name: '12 hours',
+						name: '12 Hours',
 						value: 'PT12H',
 					},
 				],
@@ -436,8 +437,7 @@ export const certificateRequestFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
-
-] as INodeProperties[];
+];
