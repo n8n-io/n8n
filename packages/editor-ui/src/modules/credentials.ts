@@ -8,7 +8,6 @@ import { getCredentialTypes,
 	oAuth2CredentialAuthorize,
 	oAuth1CredentialAuthorize,
 	testCredential,
-	getScopes,
 } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -24,6 +23,7 @@ import {
 	ICredentialsDecrypted,
 	INodeCredentialTestResult,
 	INodeTypeDescription,
+	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
 
@@ -36,7 +36,6 @@ const module: Module<ICredentialsState, IRootState> = {
 	state: {
 		credentialTypes: {},
 		credentials: {},
-		scopes: {},
 	},
 	mutations: {
 		setCredentialTypes: (state: ICredentialsState, credentialTypes: ICredentialType[]) => {
@@ -54,14 +53,6 @@ const module: Module<ICredentialsState, IRootState> = {
 
 				return accu;
 			}, {});
-		},
-		setScopes: (
-			state: ICredentialsState,
-			{ credentialType, scopes }: { credentialType: string; scopes: string[] },
-		) => {
-			if (state.scopes[credentialType] !== undefined) return;
-
-			state.scopes[credentialType] = scopes;
 		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
@@ -130,8 +121,31 @@ const module: Module<ICredentialsState, IRootState> = {
 				});
 			};
 		},
-		getScopesByCredentialType (state: ICredentialsState) {
-			return (credentialTypeName: string) => state.scopes[credentialTypeName];
+		getScopesByCredentialType (_: ICredentialsState, getters: any) { // tslint:disable-line:no-any
+			return (credentialTypeName: string) => {
+				const credentialType = getters.getCredentialTypeByName(credentialTypeName) as {
+					properties: INodeProperties[];
+				};
+
+				const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
+
+				if (
+					!scopeProperty ||
+					!scopeProperty.default ||
+					typeof scopeProperty.default !== 'string' ||
+					scopeProperty.default === ''
+				) {
+					return [];
+				}
+
+				const { default: scopeDefault } = scopeProperty;
+
+				if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+
+				if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+
+				return [scopeDefault];
+			};
 		},
 	},
 	actions: {
@@ -147,21 +161,6 @@ const module: Module<ICredentialsState, IRootState> = {
 			context.commit('setCredentials', credentials);
 
 			return credentials;
-		},
-		fetchActiveCredentialScopes: async (context: ActionContext<ICredentialsState, IRootState>, credentialType: string): Promise<string[]> => {
-			const storedScopes = context.getters.getScopesByCredentialType(credentialType);
-
-			if (storedScopes) {
-				context.commit('setActiveCredentialScopes', storedScopes, { root: true });
-				return storedScopes;
-			}
-
-			const apiScopes = await getScopes(context.rootGetters.getRestApiContext, credentialType);
-
-			context.commit('setActiveCredentialScopes', apiScopes, { root: true });
-			context.commit('setScopes', { credentialType, scopes: apiScopes });
-
-			return apiScopes;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);

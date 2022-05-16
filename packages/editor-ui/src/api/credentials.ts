@@ -20,10 +20,6 @@ export async function getAllCredentials(context: IRestApiContext): Promise<ICred
 	return await makeRestApiRequest(context, 'GET', '/credentials');
 }
 
-export async function getScopes(context: IRestApiContext, credentialType: string): Promise<string[]> {
-	return await makeRestApiRequest(context, 'GET', '/oauth2-credential/scopes', { credentialType });
-}
-
 export async function createNewCredential(context: IRestApiContext, data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
 	return makeRestApiRequest(context, 'POST', `/credentials`, data as unknown as IDataObject);
 }

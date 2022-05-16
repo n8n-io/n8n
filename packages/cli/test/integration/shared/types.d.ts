@@ -15,7 +15,7 @@ export type SmtpTestAccount = {
 	};
 };
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'oauth2-credential';
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
 
 export type CredentialPayload = {
 	name: string;

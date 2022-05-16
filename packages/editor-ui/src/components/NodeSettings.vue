@@ -33,7 +33,7 @@
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 				>
 					<n8n-notice
-						v-if="isHttpRequestNodeV2(node) && this.activeCredentialScopes.length > 0"
+						v-if="isHttpRequestNodeV2(node) && this.activeCredential.scopes.length > 0"
 						:content="scopesShortContent"
 						:fullContent="scopesFullContent"
 					/>
@@ -96,7 +96,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { mapGetters } from 'vuex';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -115,7 +114,6 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			...mapGetters(['activeCredentialScopes']),
 			...mapGetters('credentials', [
 				'getCredentialTypeByName',
 				'getScopesByCredentialType',
@@ -169,27 +167,9 @@ export default mixins(
 				});
 			},
 			parametersNoneSetting (): INodeProperties[] {
-				return this.parameters.reduce<INodeProperties[]>((acc, parameter) => {
-					if (parameter.isNodeSetting) return acc;
-
-					if (
-						['resource', 'operation'].includes(parameter.name) &&
-						this.isSupportedByHttpRequestNode
-					) {
-						const copy: INodeProperties & { options: [] } = JSON.parse(JSON.stringify(parameter));
-
-						copy.options.push({
-							name: this.$locale.baseText('parameterInput.customApiCall'),
-							value: `${CUSTOM_API_CALL_KEY}-${parameter.name}-${this.node.name}`,
-						 });
-
-						 return acc.push(copy), acc;
-					}
-
-					acc.push(parameter);
-
-					return acc;
-				}, []);
+				return this.parameters.filter((item) => {
+					return !item.isNodeSetting;
+				});
 			},
 			parameters (): INodeProperties[] {
 				if (this.nodeType === null) {
@@ -202,7 +182,7 @@ export default mixins(
 				return this.$locale.baseText(
 					'nodeSettings.scopes.notice',
 					{
-						adjustToNumber: this.activeCredentialScopes.length,
+						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
 							activeCredential: this.activeCredential.shortDisplayName,
 						},
@@ -213,10 +193,10 @@ export default mixins(
 				return this.$locale.baseText(
 					'nodeSettings.scopes.expandedNoticeWithScopes',
 					{
-						adjustToNumber: this.activeCredentialScopes.length,
+						adjustToNumber: this.activeCredential.scopes.length,
 						interpolate: {
 							activeCredential: this.activeCredential.shortDisplayName,
-							scopes: this.activeCredentialScopes.map(
+							scopes: this.activeCredential.scopes.map(
 								(scope: string) => scope.replace(/\//g, '/<wbr>'),
 							).join('<br>'),
 						},
@@ -245,9 +225,9 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
-				isSupportedByHttpRequestNode: false,
 				activeCredential: {
 					shortDisplayName: '',
+					scopes: [] as string[],
 				},
 
 				nodeSettings: [
@@ -350,42 +330,27 @@ export default mixins(
 			},
 		},
 		methods: {
-			/**
-			 * Check if any of the node's credential types may be used to
-			 * make a request with the HTTP Request node v2.
-			 */
-			checkHttpRequestNodeSupport(credentialTypeNames: string[]) {
-				this.isSupportedByHttpRequestNode = credentialTypeNames.some(name => {
-					const credType = this.getCredentialTypeByName(name);
-
-					const isOAuth = Array.isArray(credType.extends) && credType.extends.some(
-						(parentType: string) => ['oAuth2Api', 'oAuth1Api'].includes(parentType),
-					);
-
-					return isOAuth || credType.authenticate !== undefined;
-				});
-			},
-			async prepareScopesNotice(activeCredentialType: string) {
+			async prepareScopesNotice(credentialTypeName: string) {
 				if (
 					!this.isHttpRequestNodeV2(this.node) ||
-					!activeCredentialType || !activeCredentialType.endsWith('OAuth2Api')
+					!credentialTypeName || !credentialTypeName.endsWith('OAuth2Api')
 				) {
-					this.$store.commit('setActiveCredentialScopes', [], { root: true });
+					this.activeCredential.scopes = [];
 					return;
 				}
 
-				const credentialType = this.getCredentialTypeByName(activeCredentialType);
+				const { name, displayName } = this.getCredentialTypeByName(credentialTypeName);
 
-				this.$store.commit('setActiveCredentialType', credentialType.name);
-
+				this.activeCredential.scopes = this.getScopesByCredentialType(name);
+				this.activeCredential.shortDisplayName = this.shortenCredentialDisplayName(displayName);
+			},
+			shortenCredentialDisplayName (credentialDisplayName: string) {
 				const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
 				const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
 
-				this.activeCredential.shortDisplayName = credentialType.displayName
+				return credentialDisplayName
 					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
 					.trim();
-
-				this.$store.dispatch('credentials/fetchActiveCredentialScopes', activeCredentialType);
 			},
 			onNodeExecute () {
 				this.$emit('execute');
@@ -649,14 +614,7 @@ export default mixins(
 		mounted () {
 			this.setNodeValues();
 
-			if (!this.isHttpRequestNodeV2(this.node)) {
-				const activeNodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
-
-				if (activeNodeType && activeNodeType.credentials) {
-					const credentialTypeNames = activeNodeType.credentials.map((c: { name: string }) => c.name);
-					this.checkHttpRequestNodeSupport(credentialTypeNames);
-				}
-			} else if (
+			if (
 				this.isHttpRequestNodeV2(this.node) &&
 				this.node.parameters.authentication === 'existingCredentialType'
 			) {
@@ -707,7 +665,6 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
-
 	}
 }
 

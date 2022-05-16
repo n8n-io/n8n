@@ -271,6 +271,13 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
+			// @TODO expression not resolving, using Notion as example
+			// {
+			// 	displayName: 'Supports Proxy Auth',
+			// 	name: 'supportsProxyAuth',
+			// 	type: 'hidden',
+			// 	default: '={{ $parameter["&authentication"] === "existingCredentialType" }}',
+			// },
 			{
 				displayName: 'Generic Auth Type',
 				name: 'genericAuthType',

@@ -157,7 +157,6 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { oauth2CredentialController } from './api/oauth2Credential.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -1450,7 +1449,7 @@ class App {
 					if (defaultLocale === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							acc.push(description);
+							acc.push(injectCustomApiCallOption(description));
 							return acc;
 						}, []);
 					}
@@ -1474,7 +1473,7 @@ class App {
 							// ignore - no translation exists at path
 						}
 
-						nodeTypes.push(description);
+						nodeTypes.push(injectCustomApiCallOption(description));
 					}
 
 					const nodeTypes: INodeTypeDescription[] = [];
@@ -1921,8 +1920,6 @@ class App {
 		// ----------------------------------------
 		// OAuth2-Credential/Auth
 		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/oauth2-credential`, oauth2CredentialController);
 
 		// Authorize OAuth Data
 		this.app.get(
@@ -3108,4 +3105,59 @@ async function getExecutionsCount(
 	});
 
 	return { count, estimated: false };
+}
+
+const CUSTOM_API_CALL_NAME = 'Custom API Call';
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+/**
+ * Inject a `Custom API Call` option into `resource` and `operation`
+ * parameters in a node that supports proxy auth.
+ */
+function injectCustomApiCallOption(description: INodeTypeDescription) {
+	if (!supportsProxyAuth(description)) return description;
+
+	description.properties.forEach((p) => {
+		if (
+			['resource', 'operation'].includes(p.name) &&
+			Array.isArray(p.options) &&
+			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+		) {
+			p.options.push({
+				name: CUSTOM_API_CALL_NAME,
+				value: CUSTOM_API_CALL_KEY,
+			});
+		}
+
+		return p;
+	});
+
+	return description;
+}
+
+const credentialTypes = CredentialTypes();
+
+/**
+ * Whether any of the node's credential types may be used to
+ * make a request from a node other than itself.
+ */
+function supportsProxyAuth(description: INodeTypeDescription) {
+	if (!description.credentials) return false;
+
+	return description.credentials.some(({ name }) => {
+		const credType = credentialTypes.getByName(name);
+
+		if (credType.authenticate !== undefined) return true;
+
+		return isOAuth(credType);
+	});
+}
+
+function isOAuth(credType: ICredentialType) {
+	return (
+		Array.isArray(credType.extends) &&
+		credType.extends.some((parentType) =>
+			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+		)
+	);
 }

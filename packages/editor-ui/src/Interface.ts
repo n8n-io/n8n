@@ -782,7 +782,6 @@ export interface IRootState {
 	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
-	activeCredentialScopes: string[];
 	activeNode: string | null;
 	baseUrl: string;
 	defaultLocale: string;
@@ -826,14 +825,9 @@ export interface ICredentialMap {
 	[name: string]: ICredentialsResponse;
 }
 
-interface IScopesMap {
-	[credentialType: string]: string[];
-}
-
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
-	scopes: IScopesMap;
 }
 
 export interface ITagsState {

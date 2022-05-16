@@ -48,7 +48,6 @@ const state: IRootState = {
 	activeActions: [],
 	activeNode: null,
 	activeCredentialType: null,
-	activeCredentialScopes: [] as string[],
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
 	defaultLocale: 'en',
@@ -574,9 +573,6 @@ export const store = new Vuex.Store({
 		setActiveCredentialType (state, activeCredentialType: string) {
 			state.activeCredentialType = activeCredentialType;
 		},
-		setActiveCredentialScopes (state, scopes: string[]) {
-			state.activeCredentialScopes = scopes;
-		},
 
 		setLastSelectedNode (state, nodeName: string) {
 			state.lastSelectedNode = nodeName;
@@ -663,10 +659,6 @@ export const store = new Vuex.Store({
 	getters: {
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
-		},
-
-		activeCredentialScopes: (state): string[] => {
-			return state.activeCredentialScopes;
 		},
 
 		isActionActive: (state) => (action: string): boolean => {
