@@ -473,7 +473,7 @@ export class ServiceNow implements INodeType {
 				if (resource === 'attachment') {
 					if (operation === 'get') {
 
-						const attachmentsSysId = this.getNodeParameter('attachments_sys_id', i) as string;
+						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
 						const download = this.getNodeParameter('download', i) as boolean;
 						let endpoint = `/now/attachment/${attachmentsSysId}`;
 
@@ -561,7 +561,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(this, 'POST', '/now/attachment/file', body, qs, '', {headers});
 						responseData = response.result;
 					} else if (operation === 'delete') {
-						const attachmentsSysId = this.getNodeParameter('attachments_sys_id', i) as string;
+						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
 						await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
 						responseData = {'success': true};
 					}
