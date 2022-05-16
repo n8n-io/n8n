@@ -47,6 +47,10 @@ export const nodeHelpers = mixins(
 			isHttpRequestNodeV2 (node: INodeUi): boolean {
 				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
 			},
+			hasProxyAuth (node: INodeUi): boolean {
+				// @TODO
+				return false;
+			},
 
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
 				const { parameters } = nodeValues;

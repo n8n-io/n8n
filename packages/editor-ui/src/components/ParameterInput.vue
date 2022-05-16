@@ -628,9 +628,6 @@ export default mixins(
 			workflow (): Workflow {
 				return this.getWorkflow();
 			},
-			supportedCredentialTypes(): ICredentialType[] {
-				return this.allCredentialTypes.filter((c: ICredentialType) => this.supportsProxyAuth(c.name));
-			},
 		},
 		methods: {
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
@@ -659,56 +656,6 @@ export default mixins(
 				return credentialDisplayName
 					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
 					.trim();
-			},
-			getSupportedCredentialTypes(credentialTypes: string[]) {
-				return credentialTypes.reduce<{ extends: string[]; has: string[] }>((acc, cur) => {
-					const _extends = cur.split('extends:');
-
-					if (_extends.length === 2) {
-						acc.extends.push(_extends[1]);
-						return acc;
-					}
-
-					const _has = cur.split('has:');
-
-					if (_has.length === 2) {
-						acc.has.push(_has[1]);
-						return acc;
-					}
-
-					return acc;
-				}, { extends: [], has: [] });
-			},
-			supportsProxyAuth(name: string): boolean {
-				if (this.parameter.type !== 'nodeCredentialType') return false;
-
-				const supported = this.getSupportedCredentialTypes(this.parameter.credentialTypes);
-
-				const credType = this.$store.getters['credentials/getCredentialTypeByName'](name);
-
-				for (const property of supported.has) {
-					if (credType[property] !== undefined) return true;
-				}
-
-				// @TODO: Consolidate two if-checks
-
-				if (
-					credType.extends &&
-					credType.extends.some(
-						(parentType: string) => supported.extends.includes(parentType),
-					)
-				) {
-					return true;
-				}
-
-				if (credType.extends) {
-					return credType.extends.reduce(
-						(acc: boolean, parentType: string) => acc || this.supportsProxyAuth(parentType),
-						false,
-					);
-				}
-
-				return false;
 			},
 			/**
 			 * Check whether a param value must be skipped when collecting node param issues for validation.
