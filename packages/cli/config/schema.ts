@@ -179,6 +179,12 @@ export const schema = {
 			default: 'My workflow',
 			env: 'WORKFLOWS_DEFAULT_NAME',
 		},
+		onboardingFlowDisabled: {
+			doc: 'Show onboarding flow in new workflow',
+			format: 'Boolean',
+			default: false,
+			env: 'N8N_ONBOARDING_FLOW_DISABLED',
+		},
 	},
 
 	executions: {
