@@ -147,7 +147,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -1864,6 +1864,7 @@ export default mixins(
 								},
 							]);
 							this.zoomToFit();
+							this.$telemetry.track('welcome node inserted');
 						});
 					}
 				}, 0);
@@ -2231,7 +2232,13 @@ export default mixins(
 				}
 
 				if(node.type === STICKY_NODE_TYPE) {
-					this.$telemetry.track('User deleted workflow note', { workflow_id: this.$store.getters.workflowId });
+					this.$telemetry.track(
+						'User deleted workflow note',
+						{
+							workflow_id: this.$store.getters.workflowId,
+							is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
+						},
+					);
 				} else {
 					this.$externalHooks().run('node.deleteNode', { node });
 					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
