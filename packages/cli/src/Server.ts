@@ -577,7 +577,7 @@ class App {
 		});
 
 		if (!config.getEnv('publicApi.disabled')) {
-			this.app.use(`/${this.publicApiEndpoint}`, ...(await loadPublicApiVersions()));
+			this.app.use(...(await loadPublicApiVersions(this.publicApiEndpoint)));
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());

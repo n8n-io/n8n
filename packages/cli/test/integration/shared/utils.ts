@@ -93,12 +93,12 @@ export async function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router | express.Router[]> = {
 			credentials: credentialsController,
-			publicApi: await loadPublicApiVersions(),
+			publicApi: await loadPublicApiVersions(testServer.publicApiEndpoint),
 		};
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {
-				testServer.app.use(`/${testServer.publicApiEndpoint}`, ...(map[group] as express.Router[]));
+				testServer.app.use(...(map[group] as express.Router[]));
 			} else {
 				testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
 			}

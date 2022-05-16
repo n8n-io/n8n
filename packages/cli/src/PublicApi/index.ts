@@ -14,18 +14,27 @@ import validator from 'validator';
 import * as YAML from 'yamljs';
 import { Db } from '..';
 import config from '../../config';
+import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
 
 function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
 	hanldersDirectory: string,
 	swaggerThemeCss: string,
+	publicApiEndpoint: string,
 ): Router {
 	const n8nPath = config.getEnv('path');
 	const swaggerDocument = YAML.load(openApiSpecPath) as swaggerUi.JsonObject;
+	// add the server depeding on the config so the user can interact with the API
+	// from the swagger UI
+	swaggerDocument.server = [
+		{
+			url: `${getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+		},
+	];
 	const apiController = express.Router();
 	apiController.use(
-		`/${version}/docs`,
+		`/${publicApiEndpoint}/${version}/docs`,
 		swaggerUi.serveFiles(swaggerDocument),
 		swaggerUi.setup(swaggerDocument, {
 			customCss: swaggerThemeCss,
@@ -35,7 +44,7 @@ function createApiRouter(
 	);
 	apiController.use(`/${version}`, express.json());
 	apiController.use(
-		`/${version}`,
+		`/${publicApiEndpoint}/${version}`,
 		OpenApiValidator.middleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: hanldersDirectory,
@@ -91,7 +100,9 @@ function createApiRouter(
 	return apiController;
 }
 
-export const loadPublicApiVersions = async (): Promise<express.Router[]> => {
+export const loadPublicApiVersions = async (
+	publicApiEndpoint: string,
+): Promise<express.Router[]> => {
 	const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 	const folders = await fs.readdir(__dirname);
 	const css = (await fs.readFile(swaggerThemePath)).toString();
@@ -99,7 +110,7 @@ export const loadPublicApiVersions = async (): Promise<express.Router[]> => {
 	const apiRouters: express.Router[] = [];
 	for (const version of versions) {
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');
-		apiRouters.push(createApiRouter(version, openApiPath, __dirname, css));
+		apiRouters.push(createApiRouter(version, openApiPath, __dirname, css, publicApiEndpoint));
 	}
 	return apiRouters;
 };
