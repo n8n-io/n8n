@@ -504,14 +504,14 @@ export class ServiceNow implements INodeType {
 						const download = this.getNodeParameter('download', i) as boolean;
 						const tableName = this.getNodeParameter('tableName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const queryFilter = this.getNodeParameter('sysparm_query', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						qs = {} as IDataObject;
 
 						qs.sysparm_query = `table_name=${tableName}`;
 
-						if (queryFilter) {
-							qs.sysparm_query = `${qs.sysparm_query}^${queryFilter}`;
+						if (options.queryFilter) {
+							qs.sysparm_query = `${qs.sysparm_query}^${options.queryFilter}`;
 						}
 
 						if (!returnAll) {

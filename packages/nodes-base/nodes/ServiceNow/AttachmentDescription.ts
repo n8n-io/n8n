@@ -217,23 +217,23 @@ export const attachmentFields: INodeProperties[] = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
-	{
-		displayName: 'Filter',
-		name: 'sysparm_query',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
-	},
+	// {
+	// 	displayName: 'Filter',
+	// 	name: 'sysparm_query',
+	// 	type: 'string',
+	// 	default: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'attachment',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
+	// },
 	{
 		displayName: 'Download',
 		name: 'download',
@@ -270,5 +270,33 @@ export const attachmentFields: INodeProperties[] = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'attachment',
+				],
+				operation: [
+					'get', 'getAll',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Filter',
+				name: 'queryFilter',
+				type: 'string',
+				placeholder: '<col_name><operator><value>',
+				default: '',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/reference/api/sandiego/rest/c_TableAPI#table-GET">More info</a>.',
+				hint: 'All parameters are case-sensitive. Queries can contain more than one entry.',
+			},
+		],
 	},
 ];
