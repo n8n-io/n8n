@@ -233,7 +233,6 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
-	ICredentialType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';

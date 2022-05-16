@@ -90,7 +90,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -109,10 +108,6 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			...mapGetters('credentials', [
-				'getCredentialTypeByName',
-				'getScopesByCredentialType',
-			]),
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -173,31 +168,6 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			scopesShortContent (): string {
-				return this.$locale.baseText(
-					'nodeSettings.scopes.notice',
-					{
-						adjustToNumber: this.activeCredential.scopes.length,
-						interpolate: {
-							activeCredential: this.activeCredential.shortDisplayName,
-						},
-					},
-				);
-			},
-			scopesFullContent (): string {
-				return this.$locale.baseText(
-					'nodeSettings.scopes.expandedNoticeWithScopes',
-					{
-						adjustToNumber: this.activeCredential.scopes.length,
-						interpolate: {
-							activeCredential: this.activeCredential.shortDisplayName,
-							scopes: this.activeCredential.scopes.map(
-								(scope: string) => scope.replace(/\//g, '/<wbr>'),
-							).join('<br>'),
-						},
-					},
-				);
-			},
 		},
 		props: {
 			eventBus: {
@@ -220,10 +190,6 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
-				activeCredential: {
-					shortDisplayName: '',
-					scopes: [] as string[],
-				},
 
 				nodeSettings: [
 					{
@@ -579,7 +545,6 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
-
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {
 					this.openPanel = 'settings';
