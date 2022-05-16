@@ -244,9 +244,8 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = OAuth1Credential.Auth;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }> & {
-			user?: User;
-		};
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Scopes = AuthenticatedRequest<{}, {}, {}, { credentialType: string }>;
 	}
 }
 

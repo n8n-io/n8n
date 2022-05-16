@@ -26,6 +26,7 @@ import { credentialsController } from '../../../src/api/credentials.api';
 import type { User } from '../../../src/databases/entities/User';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import { oauth2CredentialController } from '../../../src/api/oauth2Credential.api';
 
 /**
  * Initialize a test server.
@@ -63,6 +64,7 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router> = {
 			credentials: credentialsController,
+			'oauth2-credential': oauth2CredentialController,
 		};
 
 		for (const group of routerEndpoints) {
@@ -105,7 +107,10 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const functionEndpoints: string[] = [];
 
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+		(['credentials', 'oauth2-credential'].includes(group)
+			? routerEndpoints
+			: functionEndpoints
+		).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];

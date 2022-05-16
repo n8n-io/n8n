@@ -1,6 +1,8 @@
 <template>
-	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -128,6 +130,11 @@ export default mixins(
 			},
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
+			},
+			indexToShowSlotAt (): number {
+				if (this.isHttpRequestNodeV2(this.node)) return 2;
+
+				return 0;
 			},
 		},
 		methods: {
@@ -260,7 +267,12 @@ export default mixins(
 </script>
 
 <style lang="scss">
-.paramter-input-list-wrapper {
+.parameter-input-list-wrapper {
+
+	div:first-child > .node-credentials {
+		padding-top: var(--spacing-xs);
+	}
+
 	.delete-option {
 		display: none;
 		position: absolute;

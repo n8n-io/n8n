@@ -1,5 +1,5 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
+	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="['node-credentials', $style.container]">
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
 				:label="$locale.baseText(
@@ -11,15 +11,20 @@
 					}
 				)"
 				:bold="false"
-				size="small"
-
 				:set="issues = getIssues(credentialTypeDescription.name)"
+				size="small"
 			>
 				<div v-if="isReadOnly">
-					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
+					<n8n-input
+						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
+						disabled
+						size="small"
+					/>
 				</div>
-
-				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
+				<div
+					v-else
+					:class="issues.length ? $style.hasIssues : $style.input"
+				>
 					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
@@ -92,7 +97,16 @@ export default mixins(
 	computed: {
 		...mapGetters('credentials', {
 			credentialOptions: 'allCredentialsByType',
+			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
+		isProxyAuth(): boolean {
+			return this.isHttpRequestNodeV2(this.node) &&
+				this.node.parameters.authenticateWith === 'nodeCredential';
+		},
+		isGenericAuth(): boolean {
+			return this.isHttpRequestNodeV2(this.node) &&
+				this.node.parameters.authenticateWith === 'genericAuth';
+		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
@@ -105,6 +119,18 @@ export default mixins(
 		},
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
+
+			if (this.isGenericAuth) {
+				const { genericAuthType } = this.node.parameters as { genericAuthType: string };
+
+				return [this.getCredentialTypeByName(genericAuthType)];
+			}
+
+			if (this.isProxyAuth) {
+				const { nodeCredentialType } = this.node.parameters as { nodeCredentialType?: string };
+
+				if (nodeCredentialType) return [this.getCredentialTypeByName(nodeCredentialType)];
+			}
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
@@ -295,7 +321,7 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	margin: var(--spacing-xs) 0;
+	margin: 0;
 
 	> * {
 		margin-bottom: var(--spacing-xs);
