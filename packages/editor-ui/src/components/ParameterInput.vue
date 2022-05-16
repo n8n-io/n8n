@@ -104,49 +104,22 @@
 			:placeholder="parameter.placeholder"
 		/>
 
-		<div v-else-if="parameter.type === 'nodeCredentialType'">
-			<n8n-select
-				ref="inputField"
-				:size="inputSize"
-				filterable
-				:value="displayValue"
-				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
-				:loading="remoteParameterOptionsLoading"
-				:disabled="isReadOnly || remoteParameterOptionsLoading"
-				:title="displayTitle"
-				@change="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
-			>
-				<n8n-option
-					v-for="credType in supportedCredentialTypes"
-					:value="credType.name"
-					:key="credType.name"
-				>
-					<div class="list-option">
-						<div class="option-headline">
-							{{ credType.displayName }}
-						</div>
-						<div
-							v-if="credType.description"
-							class="option-description"
-							v-html="credType.description"
-						/>
-					</div>
-				</n8n-option>
-			</n8n-select>
-			<scopes-notice
-				v-if="this.activeCredential.scopes.length > 0"
-				:scopes="this.activeCredential.scopes"
-				:shortCredentialDisplayName="this.activeCredential.shortDisplayName"
-			/>
-			<node-credentials
-				:node="node"
-				:overrideCredType="node.parameters.nodeCredentialType"
-				@credentialSelected="credentialSelected"
-			/>
-		</div>
+		<node-credential-type
+			v-else-if="parameter.type === 'nodeCredentialType'"
+			ref="inputField"
+			:parameter="parameter"
+			:node="node"
+			:credentialSelected="credentialSelected"
+			:activeCredential="activeCredential"
+			:inputSize="inputSize"
+			:displayValue="displayValue"
+			:remoteParameterOptionsLoading="remoteParameterOptionsLoading"
+			:isReadOnly="isReadOnly"
+			:displayTitle="displayTitle"
+			:valueChanged="valueChanged"
+			:setFocus="setFocus"
+			:onBlur="onBlur"
+		/>
 
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
@@ -255,6 +228,7 @@ import {
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
+import NodeCredentialType from '@/components/NodeCredentialType.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
@@ -282,6 +256,7 @@ export default mixins(
 			CodeEdit,
 			ExpressionEdit,
 			NodeCredentials,
+			NodeCredentialType,
 			PrismEditor,
 			ScopesNotice,
 			TextEdit,
