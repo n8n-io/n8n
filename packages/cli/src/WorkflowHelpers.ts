@@ -604,6 +604,7 @@ export async function getSharedWorkflowIds(user: User): Promise<number[]> {
  */
 export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
+	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote']
 
 	const workflowOwnerRole = await Db.collections.Role.findOne({
 		name: 'owner',
@@ -626,7 +627,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 		// valid workflow: 2+ nodes without start node
 		const validWorkflowCount = workflows.reduce((counter, workflow) => {
 			if (counter <= 2 && workflow.nodes.length > 2) {
-				const nodes = workflow.nodes.filter((node) => node.type !== 'n8n-nodes-base.start');
+				const nodes = workflow.nodes.filter((node) => !skippedTypes.includes(node.type));
 				if (nodes.length >= 2) {
 					return counter + 1;
 				}
