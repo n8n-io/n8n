@@ -1,4 +1,6 @@
 import {
+	IAuthenticate,
+	IAuthenticateHeaderAuth,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +17,11 @@ export class SendGridApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate = {
+		type: 'headerAuth',
+		properties: {
+			name: 'Authorization',
+			value: '=Bearer {{$credentials.apiKey}}',
+		},
+	} as IAuthenticateHeaderAuth;
 }
