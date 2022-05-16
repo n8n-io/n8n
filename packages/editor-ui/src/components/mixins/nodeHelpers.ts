@@ -44,12 +44,8 @@ export const nodeHelpers = mixins(
 			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
-			isHttpRequestNodeV2 (node: INodeUi): boolean {
-				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
-			},
 			hasProxyAuth (node: INodeUi): boolean {
-				// @TODO
-				return false;
+				return node.parameters.nodeCredentialType !== undefined;
 			},
 
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
@@ -247,7 +243,7 @@ export const nodeHelpers = mixins(
 				} = node.parameters as HttpRequestNode.V2.AuthParams;
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
+					this.hasProxyAuth(node) &&
 					authentication === 'genericCredentialType' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
@@ -256,7 +252,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
+					this.hasProxyAuth(node) &&
 					authentication === 'existingCredentialType' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
@@ -270,7 +266,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
+					this.hasProxyAuth(node) &&
 					authentication === 'existingCredentialType' &&
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
