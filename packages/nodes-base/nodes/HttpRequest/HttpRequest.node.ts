@@ -865,14 +865,6 @@ export class HttpRequest implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			getNodeCredentialTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return Promise.resolve(CREDENTIAL_TYPES);
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -1370,64 +1362,3 @@ export class HttpRequest implements INodeType {
 		return this.prepareOutputData(returnItems);
 	}
 }
-
-const NODES_BASE_ROOT: Readonly<string> = path.resolve(__dirname, '..', '..', '..');
-
-/**
- * Credential types shown as options for `Node Credential Type` parameter.
- */
-const CREDENTIAL_TYPES = getCredPaths().reduce<INodePropertyOptions[]>((acc, credPath) => {
-	const credential = new (getCredClass(credPath))();
-
-	if (!isSupportedNodeCredentialType(credential)) return acc;
-
-	return [
-		...acc,
-		{
-			name: credential.displayName,
-			value: credential.name,
-		},
-	];
-}, []);
-
-function getCredPaths(root = NODES_BASE_ROOT): string[] {
-	const packageJson = require(path.resolve(root, 'package.json'));
-
-	return deduplicate(packageJson.n8n.credentials);
-}
-
-function deduplicate<T>(array: T[]) {
-	return [...new Set(array)];
-}
-
-function getCredClass(credPath: string, root = NODES_BASE_ROOT): { new(): Credential } {
-	const match = credPath.match(/(^dist\/credentials\/(?<credClassName>.*)\.credentials\.js$)/);
-
-	if (!match?.groups) {
-		throw new Error(`Failed to extract credential class name from: ${credPath}`);
-	}
-
-	const fullCredPath = path.resolve(root, credPath);
-
-	return require(fullCredPath)[match.groups.credClassName];
-}
-
-function isGenericAuth(cred: Credential) {
-	return cred.name.startsWith('http') || cred.name.startsWith('oAuth');
-}
-
-function isSupportedNodeCredentialType(cred: Credential) {
-	if (isGenericAuth(cred)) return false;
-
-	if (cred.name === 'notionOAuth2Api') return false; // exists but currently commented out
-
-	if (cred.name.slice(0, -4).endsWith('OAuth')) return true;
-
-	return cred.authenticate !== undefined;
-}
-
-type Credential = {
-	displayName: string;
-	name: string;
-	authenticate?: IAuthenticate;
-};
