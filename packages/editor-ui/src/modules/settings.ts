@@ -12,6 +12,7 @@ import Vue from 'vue';
 import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
+import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -24,6 +25,9 @@ const module: Module<ISettingsState, IRootState> = {
 			smtpSetup: false,
 		},
 		templatesEndpointHealthy: false,
+		api: {
+			enabled: false,
+		},
 	},
 	getters: {
 		versionCli(state: ISettingsState) {
@@ -31,6 +35,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		isUserManagementEnabled(state: ISettingsState): boolean {
 			return state.userManagement.enabled;
+		},
+		isPublicApiEnabled(state: ISettingsState): boolean {
+			return state.api.enabled;
 		},
 		showSetupPage(state: ISettingsState) {
 			return state.userManagement.showSetupOnFirstLoad;
@@ -75,6 +82,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.userManagement.enabled = settings.userManagement.enabled;
 			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			state.userManagement.smtpSetup = settings.userManagement.smtpSetup;
+			state.api.enabled = settings.publicApi.enabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
@@ -152,6 +160,17 @@ const module: Module<ISettingsState, IRootState> = {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
 			context.commit('setTemplatesEndpointHealthy', true);
+		},
+		async getApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
+			return apiKey;
+		},
+		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);
+			return apiKey;
+		},
+		async deleteApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			await deleteApiKey(context.rootGetters['getRestApiContext']);
 		},
 	},
 };
