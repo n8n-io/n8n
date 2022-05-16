@@ -51,7 +51,6 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		console.log(options);
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {

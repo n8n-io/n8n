@@ -27,7 +27,7 @@ export interface ICsrAttributes {
 export interface IKeyTypeParameters {
 	keyType?: string;
 	keyCurve?: string;
-	keyLength?: Number;
+	keyLength?: number;
 }
 
 export interface ISubjectAltNamesByType {

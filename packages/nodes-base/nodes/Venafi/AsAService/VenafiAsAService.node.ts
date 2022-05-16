@@ -94,7 +94,7 @@ export class VenafiAsAService implements INodeType {
 			},
 			async getApplicationServerTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { applicationServerTypes } = await venafiApiRequest.call(this, 'GET', '/outagedetection/v1/applicationservertypes')
+				const { applicationServerTypes } = await venafiApiRequest.call(this, 'GET', '/outagedetection/v1/applicationservertypes');
 				for (const applicationServerType of applicationServerTypes) {
 					returnData.push({
 						name: applicationServerType.platformName,
@@ -138,8 +138,8 @@ export class VenafiAsAService implements INodeType {
 						const generateCsr = this.getNodeParameter('generateCsr', i) as boolean;
 
 						const body: ICertficateRequest = {
-							applicationId: applicationId,
-							certificateIssuingTemplateId: certificateIssuingTemplateId,
+							applicationId,
+							certificateIssuingTemplateId,
 						};
 
 						if (generateCsr) {
