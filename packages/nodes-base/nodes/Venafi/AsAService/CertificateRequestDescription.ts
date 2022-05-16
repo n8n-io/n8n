@@ -78,6 +78,242 @@ export const certificateRequestFields = [
 		},
 		default: '',
 	},
+	// CSR Builder
+	{
+		displayName: 'Generate CSR',
+		name: 'generateCsr',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+			},
+		},
+		default: false,
+	},
+	// Is this always going to be true?
+	{
+		displayName: 'VaaS Generated',
+		name: 'isVaaSGenerated',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		default: true,
+	},
+	// Required
+	{
+		displayName: 'Application Server Type',
+		name: 'applicationServerTypeId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getApplicationServerTypes',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Common Name',
+		name: 'commonName',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		type: 'string',
+		default: 'your-domain.com',
+	},
+	// Optional...
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country Code',
+				name: 'country',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Locality',
+				name: 'locality',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Organizational Units',
+				name: 'organizationalUnits',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Key Curve',
+				name: 'keyCurve',
+				type: 'options',
+				options: [
+					{
+						name: 'P256',
+						value: 'P256',
+					},
+					{
+						name: 'P384',
+						value: 'P384',
+					},
+					{
+						name: 'P521',
+						value: 'P521',
+					},
+					{
+						name: 'ED25519',
+						value: 'ED25519',
+					},
+					{
+						name: 'UNKNOWN',
+						value: 'UNKNOWN',
+					},
+				],
+				default: 'ED25519',
+			},
+			{
+				displayName: 'Key Length',
+				name: 'keyLength',
+				type: 'number',
+				default: 2048,
+			},
+			{
+				displayName: 'Key Type',
+				name: 'keyType',
+				type: 'options',
+				options: [
+					{
+						name: 'EC',
+						value: 'EC',
+					},
+					{
+						name: 'RSA',
+						value: 'RSA',
+					},
+				],
+				default: 'RSA',
+			},
+			{
+				displayName: 'Subject Alt Names',
+				name: 'SubjectAltNamesUi',
+				placeholder: 'Add Subject',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'SubjectAltNamesValues',
+						displayName: 'Subject alt Name',
+						values: [
+							{
+								displayName: 'Typename',
+								name: 'Typename',
+								type: 'options',
+								options: [
+									{
+										name: 'RFC822 Names',
+										value: 'rfc822Names',
+									},
+									{
+										name: 'DNS',
+										value: 'dnsNames',
+									},
+									{
+										name: 'URI',
+										value: 'uniformResourceIdentifiers',
+									},
+									{
+										name: 'IP Address',
+										value: 'ipAddresses',
+									},
+								],
+								description: 'An integer that represents the kind of SAN',
+								default: '',
+							},
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	// End CSR Builder
 	{
 		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
@@ -92,6 +328,9 @@ export const certificateRequestFields = [
 				],
 				resource: [
 					'certificateRequest',
+				],
+				generateCsr: [
+					false,
 				],
 			},
 		},
