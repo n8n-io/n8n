@@ -496,7 +496,12 @@ export default mixins(
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
 							}
-							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
+
+							if (this.isHttpRequestNodeV2(this.node)) {
+								issues.parameters[this.parameter.name] = ['Select a credential type from the dropdown'];
+							} else {
+								issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
+							}
 						}
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
