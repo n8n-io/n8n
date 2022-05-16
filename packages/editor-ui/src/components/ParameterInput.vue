@@ -136,10 +136,10 @@
 					</div>
 				</n8n-option>
 			</n8n-select>
-			<n8n-notice
+			<scopes-notice
 				v-if="this.activeCredential.scopes.length > 0"
-				:content="scopesShortContent"
-				:fullContent="scopesFullContent"
+				:scopes="this.activeCredential.scopes"
+				:shortCredentialDisplayName="this.activeCredential.shortDisplayName"
 			/>
 			<node-credentials
 				:node="node"
@@ -257,6 +257,7 @@ import {
 import CodeEdit from '@/components/CodeEdit.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import ScopesNotice from '@/components/ScopesNotice.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -282,6 +283,7 @@ export default mixins(
 			ExpressionEdit,
 			NodeCredentials,
 			PrismEditor,
+			ScopesNotice,
 			TextEdit,
 		},
 		props: [
@@ -359,31 +361,6 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes', 'getScopesByCredentialType']),
-			scopesShortContent (): string {
-				return this.$locale.baseText(
-					'nodeSettings.scopes.notice',
-					{
-						adjustToNumber: this.activeCredential.scopes.length,
-						interpolate: {
-							activeCredential: this.activeCredential.shortDisplayName,
-						},
-					},
-				);
-			},
-			scopesFullContent (): string {
-				return this.$locale.baseText(
-					'nodeSettings.scopes.expandedNoticeWithScopes',
-					{
-						adjustToNumber: this.activeCredential.scopes.length,
-						interpolate: {
-							activeCredential: this.activeCredential.shortDisplayName,
-							scopes: this.activeCredential.scopes.map(
-								(scope: string) => scope.replace(/\//g, '/<wbr>'),
-							).join('<br>'),
-						},
-					},
-				);
-			},
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
 			},
