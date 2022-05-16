@@ -2661,7 +2661,8 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							!sharedWorkflowIds.includes(data.workflowId.toString())
+							(data.workflowId !== undefined &&
+								!sharedWorkflowIds.includes(data.workflowId.toString()))
 						) {
 							continue;
 						}
