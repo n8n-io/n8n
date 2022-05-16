@@ -17,6 +17,7 @@ import {
 import {
 	mapEndpoint,
 	serviceNowApiRequest,
+	serviceNowDownloadAttachment,
 	serviceNowRequestAllItems,
 	sortData
 } from './GenericFunctions';
@@ -475,7 +476,7 @@ export class ServiceNow implements INodeType {
 
 						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
 						const download = this.getNodeParameter('download', i) as boolean;
-						let endpoint = `/now/attachment/${attachmentsSysId}`;
+						const endpoint = `/now/attachment/${attachmentsSysId}`;
 
 						const response = await serviceNowApiRequest.call(this, 'GET', endpoint, {});
 						const fileMetadata = response.result;
@@ -486,31 +487,21 @@ export class ServiceNow implements INodeType {
 
 						if (download) {
 							const outputField = this.getNodeParameter('outputField', i) as string;
-							endpoint = `${endpoint}/file`;
-							const fileData = await serviceNowApiRequest.call(
-								this,
-								'GET',
-								endpoint,
-								{},
-								{},
-								'',
-								{ json: false, encoding: null, resolveWithFullResponse: true },
-							);
-							const binaryData = await this.helpers.prepareBinaryData(
-								Buffer.from(fileData.body as string),
-								fileMetadata.file_name,
-								fileMetadata.content_type,
-							);
 							responseData = {
 								...responseData,
 								binary: {
-									[outputField]: binaryData,
+									[outputField]: await serviceNowDownloadAttachment.call(
+										this,
+										endpoint,
+										fileMetadata.file_name,
+										fileMetadata.content_type,
+									),
 								},
 							};
 						}
 
 					} else if (operation === 'getAll') {
-
+						const download = this.getNodeParameter('download', i) as boolean;
 						const tableName = this.getNodeParameter('tableName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const queryFilter = this.getNodeParameter('sysparm_query', i) as string;
@@ -531,6 +522,30 @@ export class ServiceNow implements INodeType {
 						} else {
 							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/attachment', {}, qs);
 						}
+
+						if (download) {
+							const outputField = this.getNodeParameter('outputField', i) as string;
+							const responseDataWithAttachments: IDataObject[] = [];
+
+							for (const data of responseData as IDataObject[]) {
+								responseDataWithAttachments.push({
+									json: data,
+									binary: {
+										[outputField]: await serviceNowDownloadAttachment.call(
+											this,
+											`/now/attachment/${data.sys_id}`,
+											data.file_name as string,
+											data.content_type as string,
+										),
+									},
+								});
+							}
+
+							responseData = responseDataWithAttachments;
+						} else {
+							responseData = (responseData as IDataObject[]).map( data => ({ json: data }));
+						}
+
 					} else if (operation === 'upload') {
 						const tableName = this.getNodeParameter('tableName', i) as string;
 						const recordId = this.getNodeParameter('id', i) as string;
@@ -928,8 +943,10 @@ export class ServiceNow implements INodeType {
 				: returnData.push(responseData);
 		}
 
-		if (resource === 'attachment' && operation === 'get') {
-			return this.prepareOutputData(returnData as INodeExecutionData[]);
+		if (resource === 'attachment') {
+			if (operation === 'get' || operation === 'getAll') {
+				return this.prepareOutputData(returnData as INodeExecutionData[]);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

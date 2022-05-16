@@ -173,43 +173,6 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		description: 'Sys_id value of the attachment to delete',
 	},
-	{
-		displayName: 'Download',
-		name: 'download',
-		type: 'boolean',
-		default: false,
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Output Field',
-		name: 'outputField',
-		type: 'string',
-		default: 'data',
-		description: 'Field name where downloaded data will be placed',
-		displayOptions: {
-			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
-			},
-		},
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                attachment:getAll                           */
 	/* -------------------------------------------------------------------------- */
@@ -270,5 +233,42 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		},
 		description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
+	},
+	{
+		displayName: 'Download',
+		name: 'download',
+		type: 'boolean',
+		default: false,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'attachment',
+				],
+				operation: [
+					'get', 'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Output Field',
+		name: 'outputField',
+		type: 'string',
+		default: 'data',
+		description: 'Field name where downloaded data will be placed',
+		displayOptions: {
+			show: {
+				resource: [
+					'attachment',
+				],
+				operation: [
+					'get', 'getAll',
+				],
+				download: [
+					true,
+				],
+			},
+		},
 	},
 ];
