@@ -15,12 +15,6 @@ export default Vue.extend({
 		'scopes',
 		'shortCredentialDisplayName',
 	],
-	data() {
-		return {
-			content: '',
-			fullContent: '',
-		};
-	},
 	computed: {
 		scopesShortContent (): string {
 			return this.$locale.baseText(
