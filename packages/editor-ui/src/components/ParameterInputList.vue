@@ -283,11 +283,6 @@ export default mixins(
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-
-	div:first-child > .node-credentials {
-		padding-top: var(--spacing-xs);
-	}
-
 	.delete-option {
 		display: none;
 		position: absolute;

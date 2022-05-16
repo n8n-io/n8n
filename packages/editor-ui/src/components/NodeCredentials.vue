@@ -306,11 +306,7 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	margin: 0;
-
-	> * {
-		margin-bottom: var(--spacing-xs);
-	}
+	margin-top: var(--spacing-xs);
 }
 
 .warning {
