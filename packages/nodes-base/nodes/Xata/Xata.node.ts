@@ -159,7 +159,7 @@ export class Xata implements INodeType {
 				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
-				displayName: 'Limit',
+				displayName: 'Size',
 				name: 'size',
 				type: 'number',
 				displayOptions: {
@@ -239,7 +239,7 @@ export class Xata implements INodeType {
 					},
 
 					{
-						displayName: 'Limit',
+						displayName: 'Size',
 						name: 'size',
 						type: 'number',
 						typeOptions: {
