@@ -50,12 +50,12 @@ export class MailjetTrigger implements INodeType {
 				default: 'open',
 				options: [
 					{
-						name: 'email.bounce',
-						value: 'bounce',
-					},
-					{
 						name: 'email.blocked',
 						value: 'blocked',
+					},
+					{
+						name: 'email.bounce',
+						value: 'bounce',
 					},
 					{
 						name: 'email.open',

@@ -455,5 +455,4 @@ export const boardFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];
