@@ -17,12 +17,12 @@ servers:
   - url: /api/v1
 tags:
   - name: User
-    description: Operations about user
+    description: Operations about users
   - name: Execution
-    description: Operations about execution
+    description: Operations about executions
   - name: Workflow
-    description: Operations about workflow
-  - name: Credentials
+    description: Operations about workflows
+  - name: Credential
     description: Operations about credentials
 paths:
   /credentials:
