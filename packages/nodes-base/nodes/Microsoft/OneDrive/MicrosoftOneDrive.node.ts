@@ -271,6 +271,15 @@ export class MicrosoftOneDrive implements INodeType {
 						returnData.push(responseData);
 					}
 				}
+				if (resource === 'file' || resource === 'folder') {
+					if (operation === 'rename') {
+						const itemId = this.getNodeParameter('itemId', i) as string;
+						const newName = this.getNodeParameter('newName', i) as string;
+						const body = {name: newName};
+						responseData = await microsoftApiRequest.call(this, 'PATCH', `/drive/items/${itemId}`, body);
+						returnData.push(responseData as IDataObject);
+					}
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {

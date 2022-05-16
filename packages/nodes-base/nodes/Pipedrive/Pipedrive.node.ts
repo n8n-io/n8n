@@ -3663,7 +3663,7 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getFilters',
 						},
 						default: '',
-						description: 'ID of the filter to use.',
+						description: 'ID of the filter to use',
 					},
 				],
 			},
