@@ -93,6 +93,7 @@ import {
 	faUserCircle,
 	faUserFriends,
 	faUsers,
+	faVideo,
 	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import {
@@ -197,6 +198,7 @@ addIcon(faUndo);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
+addIcon(faVideo);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
