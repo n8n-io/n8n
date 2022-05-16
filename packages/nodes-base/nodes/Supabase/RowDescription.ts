@@ -146,7 +146,6 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -291,7 +290,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -314,7 +313,7 @@ export const rowFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	...getFilters(['row'], ['getAll'], {}),
 ];

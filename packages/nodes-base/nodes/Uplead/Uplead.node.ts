@@ -48,12 +48,12 @@ export class Uplead implements INodeType {
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Company API lets you lookup company data via a domain name or company name.',
+						description: 'Company API lets you lookup company data via a domain name or company name',
 					},
 					{
 						name: 'Person',
 						value: 'person',
-						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`,
+						description: 'Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name',
 					},
 				],
 				default: 'company',

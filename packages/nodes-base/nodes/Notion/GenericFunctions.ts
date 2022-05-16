@@ -662,7 +662,7 @@ export function getConditions() {
 				} as IDisplayOptions,
 				options: (typeConditions[types[type]] as string[]).map((type: string) => ({ name: capitalCase(type), value: type })),
 				default: '',
-				description: 'The value of the property to filter by.',
+				description: 'The value of the property to filter by',
 			} as INodeProperties,
 		);
 	}
@@ -703,7 +703,7 @@ export function getConditions() {
 				} as IDisplayOptions,
 				options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
 				default: '',
-				description: 'The value of the property to filter by.',
+				description: 'The value of the property to filter by',
 			} as INodeProperties,
 		);
 	}

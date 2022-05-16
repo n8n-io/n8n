@@ -55,7 +55,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field.',
+		description: 'If the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'Binary Property',
@@ -76,7 +76,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property which contains the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded',
 	},
 	{
 		displayName: 'File Association',
@@ -228,7 +228,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -252,7 +252,7 @@ export const fileFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -279,14 +279,14 @@ export const fileFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Filter based on Contact Id, if user has permission to see Contact files.',
+				description: 'Filter based on Contact ID, if user has permission to see Contact files',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `Filter files based on name, with '*' preceding or following to indicate LIKE queries.`,
+				description: 'Filter files based on name, with \'*\' preceding or following to indicate LIKE queries',
 			},
 			{
 				displayName: 'Permission',
@@ -376,7 +376,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Filter based on the type of file.',
+				description: 'Filter based on the type of file',
 			},
 			{
 				displayName: 'Viewable',

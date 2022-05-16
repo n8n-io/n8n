@@ -47,7 +47,7 @@ export const workItemFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'Title of the work item to create.',
+		description: 'Title of the work item to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -68,7 +68,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from.',
+		description: 'ID of the space to retrieve the work items from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -90,7 +90,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the status to set on the item to create.',
+		description: 'ID of the status to set on the item to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -134,7 +134,7 @@ export const workItemFields: INodeProperties[] = [
 				name: 'effort',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Effort to set for the item to create.',
+				description: 'Effort to set for the item to create',
 				options: [
 					{
 						name: 'Small',
@@ -155,7 +155,7 @@ export const workItemFields: INodeProperties[] = [
 				name: 'impact',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Impact to set for the item to create.',
+				description: 'Impact to set for the item to create',
 				options: [
 					{
 						name: 'Small',
@@ -179,7 +179,7 @@ export const workItemFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'ID of the label to set on the item to create.',
+				description: 'ID of the label to set on the item to create',
 			},
 			{
 				displayName: 'Member IDs',
@@ -189,7 +189,7 @@ export const workItemFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'ID of the user to assign to the item to create.',
+				description: 'ID of the user to assign to the item to create',
 			},
 		],
 	},
@@ -203,7 +203,7 @@ export const workItemFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'ID of the work item to retrieve.',
+		description: 'ID of the work item to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -228,7 +228,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from.',
+		description: 'ID of the space to retrieve the work items from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -245,7 +245,7 @@ export const workItemFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -262,7 +262,7 @@ export const workItemFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -291,7 +291,7 @@ export const workItemFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'ID of the work item to update.',
+		description: 'ID of the work item to update',
 		displayOptions: {
 			show: {
 				resource: [
@@ -335,7 +335,7 @@ export const workItemFields: INodeProperties[] = [
 				name: 'effort',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Effort to set for the item to update.',
+				description: 'Effort to set for the item to update',
 				options: [
 					{
 						name: 'Small',
@@ -356,7 +356,7 @@ export const workItemFields: INodeProperties[] = [
 				name: 'impact',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Impact to set for the item to update.',
+				description: 'Impact to set for the item to update',
 				options: [
 					{
 						name: 'Small',
@@ -380,14 +380,14 @@ export const workItemFields: INodeProperties[] = [
 					loadOptionsMethod: 'getStatuses',
 				},
 				default: [],
-				description: 'ID of the status to set on the item to update.',
+				description: 'ID of the status to set on the item to update',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title to set for the work item to update.',
+				description: 'Title to set for the work item to update',
 			},
 		],
 	},

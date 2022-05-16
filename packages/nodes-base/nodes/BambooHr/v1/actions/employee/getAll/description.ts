@@ -16,7 +16,7 @@ export const employeeGetAllDescription: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -40,6 +40,6 @@ export const employeeGetAllDescription: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 ];
