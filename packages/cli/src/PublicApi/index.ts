@@ -42,7 +42,7 @@ function createApiRouter(
 			customfavIcon: `${n8nPath}favicon.ico`,
 		}),
 	);
-	apiController.use(`/${version}`, express.json());
+	apiController.use(`/${publicApiEndpoint}/${version}`, express.json());
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		OpenApiValidator.middleware({
