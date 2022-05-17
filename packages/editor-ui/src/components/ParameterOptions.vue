@@ -1,5 +1,5 @@
 <template>
-	<div class="parameter-options" v-if="displayOptionsComputed">
+	<div class="parameter-options">
 		<el-dropdown
 			trigger="click"
 			@command="optionSelected"

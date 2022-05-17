@@ -125,6 +125,7 @@
 					:getIssues="getIssues"
 				/>
 				<parameter-options
+				 	v-if="displayOptionsComputed"
 					:displayOptionsComputed="displayOptionsComputed"
 					:optionSelected="optionSelected"
 					:parameter="parameter"
@@ -206,7 +207,7 @@
 	/>
 
 	<parameter-options
-		v-if="parameter.type !== 'credentialsSelect'"
+		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
 		:displayOptionsComputed="displayOptionsComputed"
 		:optionSelected="optionSelected"
 		:parameter="parameter"
