@@ -12,6 +12,7 @@ import { UpdateWorkflowCredentials1630330987096 } from './1630330987096-UpdateWo
 import { AddExecutionEntityIndexes1644421939510 } from './1644421939510-AddExecutionEntityIndexes';
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
+import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -26,6 +27,7 @@ const sqliteMigrations = [
 	AddExecutionEntityIndexes1644421939510,
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
+	AddUserSettings1652367743993,
 ];
 
 export { sqliteMigrations };

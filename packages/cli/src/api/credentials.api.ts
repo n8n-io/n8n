@@ -98,10 +98,12 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.NewName): Promise<{ name: string }> => {
 		const { name: newName } = req.query;
 
-		return GenericHelpers.generateUniqueName(
-			newName ?? config.getEnv('credentials.defaultName'),
-			'credentials',
-		);
+		return {
+			name: await GenericHelpers.generateUniqueName(
+				newName ?? config.getEnv('credentials.defaultName'),
+				'credentials',
+			),
+		};
 	}),
 );
 

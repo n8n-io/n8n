@@ -147,7 +147,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -596,7 +596,7 @@ export default mixins(
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
@@ -1836,7 +1836,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				await this.$store.dispatch('workflows/setNewWorkflowName');
+				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
+
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
@@ -1848,6 +1849,24 @@ export default mixins(
 				this.setZoomLevel(1);
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+					// For novice users (onboardingFlowEnabled == true)
+					// Inject welcome sticky note and zoom to fit
+					if(newWorkflow.onboardingFlowEnabled) {
+						this.$nextTick(async () => {
+							await this.addNodes([
+								{
+									...CanvasHelpers.WELCOME_STICKY_NODE,
+									parameters: {
+										// Use parameters from the template but add translated content
+										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+									},
+								},
+							]);
+							this.zoomToFit();
+							this.$telemetry.track('welcome node inserted');
+						});
+					}
 				}, 0);
 			},
 			async initView (): Promise<void> {
@@ -2213,7 +2232,13 @@ export default mixins(
 				}
 
 				if(node.type === STICKY_NODE_TYPE) {
-					this.$telemetry.track('User deleted workflow note', { workflow_id: this.$store.getters.workflowId });
+					this.$telemetry.track(
+						'User deleted workflow note',
+						{
+							workflow_id: this.$store.getters.workflowId,
+							is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
+						},
+					);
 				} else {
 					this.$externalHooks().run('node.deleteNode', { node });
 					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
