@@ -223,6 +223,7 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
+				noDataExpression: true,
 				type: 'options',
 				required: true,
 				options: [
@@ -254,6 +255,7 @@ export class HttpRequest implements INodeType {
 				displayName: 'Credential Type',
 				name: 'nodeCredentialType',
 				type: 'credentialsSelect',
+				noDataExpression: true,
 				required: true,
 				default: '',
 				credentialTypes: [
