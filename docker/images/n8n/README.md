@@ -4,7 +4,7 @@
 
 n8n is a free and open [fair-code](http://faircode.io) distributed node based Workflow Automation Tool. It can be self-hosted, easily extended, and so also used with internal tools.
 
-<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
+<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
 
 ## Contents
 
