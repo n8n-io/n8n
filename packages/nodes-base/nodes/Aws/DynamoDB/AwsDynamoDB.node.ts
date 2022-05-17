@@ -304,13 +304,10 @@ export class AwsDynamoDB implements INodeType {
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
-							TableName: this.getNodeParameter('tableName', i) as string,
-							ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
+							TableName: this.getNodeParameter('tableName', i) as string
 						};
 
-						if (scan === true) {
-							body['FilterExpression'] = this.getNodeParameter('filterExpression', i) as string;
-						} else {
+						if (scan === false) {
 							body['KeyConditionExpression'] = this.getNodeParameter('keyConditionExpression', i) as string;
 						}
 
@@ -328,6 +325,12 @@ export class AwsDynamoDB implements INodeType {
 
 						if (Object.keys(expressionAttributeName).length) {
 							body.ExpressionAttributeNames = expressionAttributeName;
+						}
+
+						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
+
+						if (Object.keys(expressionAttributeValues).length) {
+							body.ExpressionAttributeValues = expressionAttributeValues;
 						}
 
 						if (indexName) {
