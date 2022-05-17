@@ -176,8 +176,7 @@ export class Markdown implements INodeType {
 						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">.',
+						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
 					},
 					{
 						displayName: 'Line Start Escape Pattern',
@@ -321,6 +320,7 @@ export class Markdown implements INodeType {
 						displayName: 'Automatic Linking To URLs',
 						name: 'simplifiedAutoLink',
 						type: 'boolean',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
 						description: 'Whether to enable automatic linking to urls',
 					},
@@ -329,22 +329,21 @@ export class Markdown implements INodeType {
 						name: 'backslashEscapesHTMLTags',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to support for HTML Tag escaping ex: <div>foo</div',
+						description: 'Whether to support for HTML Tag escaping ex: &lt;div&gt;foo&lt;/div&gt;',
 					},
 					{
 						displayName: 'Complete HTML Document',
 						name: 'completeHTMLDocument',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to output a complete html document, including <html>, <head> and <body> tags instead of an HTML fragment',
+						description: 'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
 					},
 					{
 						displayName: 'Customized Header ID',
 						name: 'customizedHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to use text in curly braces as header id',
+						description: 'Whether to use text in curly braces as header ID',
 					},
 					{
 						displayName: 'Emoji Support',
@@ -382,8 +381,7 @@ export class Markdown implements INodeType {
 						name: 'ghCompatibleHeaderId',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to generate header ids compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
+						description: 'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
 					},
 					{
 						displayName: 'GitHub Mention Link',
@@ -442,7 +440,7 @@ export class Markdown implements INodeType {
 						name: 'noHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to disable the automatic generation of header ids',
+						description: 'Whether to disable the automatic generation of header IDs',
 					},
 					{
 						displayName: 'Parse Image Dimensions',
@@ -457,15 +455,14 @@ export class Markdown implements INodeType {
 						name: 'prefixHeaderId',
 						type: 'string',
 						default: 'section',
-						description: 'Add a prefix to the generated header ids',
+						description: 'Add a prefix to the generated header IDs',
 					},
 					{
 						displayName: 'Raw Header ID',
 						name: 'rawHeaderId',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to remove only spaces, \' and " from generated header ids (including prefixes), replacing them with dashes (-)',
+						description: 'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
 					},
 					{
 						displayName: 'Raw Prefix Header ID',
@@ -478,6 +475,7 @@ export class Markdown implements INodeType {
 						displayName: 'Simple Line Breaks',
 						name: 'simpleLineBreaks',
 						type: 'boolean',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
 						description:
 							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',

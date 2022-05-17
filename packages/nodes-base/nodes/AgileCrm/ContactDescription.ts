@@ -87,7 +87,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -107,7 +107,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: 20,
-		description: 'Number of results to fetch.',
+		description: 'Max number of results to return',
 	},
 
 	{
@@ -183,8 +183,9 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Filters',
@@ -206,7 +207,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Condition',
 		options: [
 			{
@@ -218,7 +219,7 @@ export const contactFields: INodeProperties[] = [
 						name: 'field',
 						type: 'string',
 						default: '',
-						description: 'Any searchable field.',
+						description: 'Any searchable field',
 					},
 					{
 						displayName: 'Condition Type',
@@ -319,7 +320,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Options',
@@ -371,7 +371,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'field',
 								type: 'string',
 								default: '',
-								description: `The sorting field`,
+								description: 'The sorting field',
 							},
 						],
 					},
@@ -389,7 +389,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -423,7 +422,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>.`,
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>',
 	},
 
 	{
@@ -451,7 +450,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'addressOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contacts address.',
+				description: 'Contacts address',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -466,7 +465,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of address.',
+								description: 'Type of address',
 								options: [
 									{
 										name: 'Home',
@@ -488,7 +487,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Full address.',
+								description: 'Full address',
 							},
 						],
 					},
@@ -499,14 +498,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'company',
 				type: 'string',
 				default: '',
-				description: 'Company Name.',
+				description: 'Company Name',
 			},
 			{
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contact email.',
+				description: 'Contact email',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -539,7 +538,6 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Email',
 							},
 						],
 					},
@@ -550,14 +548,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'Contact first name.',
+				description: 'Contact first name',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Contact last name.',
+				description: 'Contact last name',
 			},
 			{
 				displayName: 'Lead Score',
@@ -607,7 +605,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'phoneOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contacts phone.',
+				description: 'Contacts phone',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -622,7 +620,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of phone number.',
+								description: 'Type of phone number',
 								options: [
 									{
 										name: 'Home',
@@ -660,7 +658,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Phone number.',
+								description: 'Phone number',
 							},
 						],
 					},
@@ -682,14 +680,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Professional title.',
+				description: 'Professional title',
 			},
 			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contacts websites.',
+				description: 'Contacts websites',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -704,7 +702,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of website.',
+								description: 'Type of website',
 								options: [
 									{
 										name: 'Facebook',
@@ -769,7 +767,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -784,21 +781,21 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
 								default: '',
-								description: 'Property sub type.',
+								description: 'Property sub type',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 							},
 						],
 					},
@@ -826,7 +823,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Id of contact to delete.',
+		description: 'ID of contact to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -855,7 +852,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -888,7 +884,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>.`,
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -915,7 +911,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'addressOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contacts address.',
+				description: 'Contacts address',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -930,7 +926,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of address.',
+								description: 'Type of address',
 								options: [
 									{
 										name: 'Home',
@@ -952,7 +948,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Full address.',
+								description: 'Full address',
 							},
 						],
 					},
@@ -963,14 +959,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'company',
 				type: 'string',
 				default: '',
-				description: 'Company Name.',
+				description: 'Company Name',
 			},
 			{
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contact email.',
+				description: 'Contact email',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1003,7 +999,6 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Email',
 							},
 						],
 					},
@@ -1014,14 +1009,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'Contact first name.',
+				description: 'Contact first name',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Contact last name.',
+				description: 'Contact last name',
 			},
 			{
 				displayName: 'Lead Score',
@@ -1071,7 +1066,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'phoneOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contacts phone.',
+				description: 'Contacts phone',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1086,7 +1081,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of phone number.',
+								description: 'Type of phone number',
 								options: [
 									{
 										name: 'Home',
@@ -1124,7 +1119,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Phone number.',
+								description: 'Phone number',
 							},
 						],
 					},
@@ -1146,14 +1141,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Professional title.',
+				description: 'Professional title',
 			},
 			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Contacts websites.',
+				description: 'Contacts websites',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1168,7 +1163,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of website.',
+								description: 'Type of website',
 								options: [
 									{
 										name: 'Facebook',
@@ -1233,7 +1228,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1248,21 +1242,21 @@ export const contactFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
 								default: '',
-								description: 'Property sub type.',
+								description: 'Property sub type',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 							},
 						],
 					},

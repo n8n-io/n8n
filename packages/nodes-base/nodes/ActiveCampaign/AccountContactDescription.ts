@@ -56,7 +56,6 @@ export const accountContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Account ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -74,7 +73,6 @@ export const accountContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -121,7 +119,7 @@ export const accountContactFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the account contact to delete.',
+		description: 'ID of the account contact to delete',
 	},
 	// ----------------------------------
 	//         accountContact:update
@@ -149,7 +147,7 @@ export const accountContactFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {

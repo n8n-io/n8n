@@ -15,6 +15,8 @@ import {
 	utils as xlsxUtils,
 } from 'xlsx';
 
+import { get } from 'lodash';
+
 export interface ISheetOptions {
 	scope: string[];
 }
@@ -245,8 +247,8 @@ export class GoogleSheet {
 	}
 
 
-	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<string[][]> {
-		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex);
+	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption, usePathForKeyRow: boolean): Promise<string[][]> {
+		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex, usePathForKeyRow);
 		return this.appendData(range, data, valueInputMode);
 	}
 
@@ -268,7 +270,16 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption): Promise<string[][]> {
+	async updateSheetData(
+			inputData: IDataObject[],
+			indexKey: string,
+			range: string,
+			keyRowIndex: number,
+			dataStartRowIndex: number,
+			valueInputMode: ValueInputOption,
+			valueRenderMode: ValueRenderOption,
+			upsert = false,
+		): Promise<string[][]> {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
@@ -333,14 +344,20 @@ export class GoogleSheet {
 			itemKey = inputItem[indexKey] as string;
 			// if ([undefined, null].includes(inputItem[indexKey] as string | undefined | null)) {
 			if (itemKey === undefined || itemKey === null) {
-				// Item does not have the indexKey so we can ignore it
+				// Item does not have the indexKey so we can ignore it or append it if upsert true
+				if (upsert) {
+					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode, false);
+				}
 				continue;
 			}
 
 			// Item does have the key so check if it exists in Sheet
 			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
 			if (itemKeyIndex === -1) {
-				// Key does not exist in the Sheet so it can not be updated so skip it
+				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
+				if (upsert) {
+					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode, false);
+				}
 				continue;
 			}
 
@@ -457,7 +474,7 @@ export class GoogleSheet {
 	}
 
 
-	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number): Promise<string[][]> {
+	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number, usePathForKeyRow: boolean): Promise<string[][]> {
 		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
@@ -486,9 +503,10 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				const data = item[key];
-				if (item.hasOwnProperty(key) && data !== null && typeof data !== 'undefined') {
-					rowData.push(data.toString());
+				if (usePathForKeyRow && (get(item, key) !== undefined)) { //match by key path
+					rowData.push(get(item, key)!.toString());
+				} else if (!usePathForKeyRow && item.hasOwnProperty(key) && item[key] !== null && item[key] !== undefined) { //match by exact key name
+					rowData.push(item[key]!.toString());
 				} else {
 					rowData.push('');
 				}

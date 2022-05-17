@@ -36,7 +36,6 @@ import {
 import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
-import { moveMessagePortToContext } from 'worker_threads';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -125,7 +124,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				for (const calendar of calendars) {
 					const calendarName = calendar.summary;
-					const calendarId = calendar.id;
+					const calendarId = encodeURIComponent(calendar.id);
 					returnData.push({
 						name: calendarName,
 						value: calendarId,
@@ -176,7 +175,7 @@ export class GoogleCalendar implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

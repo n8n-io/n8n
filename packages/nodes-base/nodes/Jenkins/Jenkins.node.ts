@@ -170,7 +170,7 @@ export class Jenkins implements INodeType {
 					},
 				},
 				required: true,
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -327,7 +327,6 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				required: false,
 				default: '',
 				description: 'Freeform reason for quiet down mode',
 			},
@@ -518,7 +517,7 @@ export class Jenkins implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

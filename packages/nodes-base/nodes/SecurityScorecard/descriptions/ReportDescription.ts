@@ -52,7 +52,7 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -76,7 +76,7 @@ export const reportFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Report',
@@ -133,7 +133,7 @@ export const reportFields: INodeProperties[] = [
 	{
 		displayName: 'Scorecard Identifier',
 		name: 'scorecardIdentifier',
-		description: 'Primary identifier of a company or scorecard, i.e. domain',
+		description: 'Primary identifier of a company or scorecard, i.e. domain.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -176,13 +176,11 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Portfolio ID',
 	},
 	{
 		displayName: 'Branding',
 		name: 'branding',
 		type: 'options',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -237,7 +235,6 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -270,7 +267,6 @@ export const reportFields: INodeProperties[] = [
 						value: 'pdf',
 					},
 				],
-				required: false,
 			},
 		],
 	},
@@ -278,7 +274,6 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -303,7 +298,6 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: [],
-				required: false,
 			},
 			{
 				displayName: 'Format',
@@ -320,7 +314,6 @@ export const reportFields: INodeProperties[] = [
 						value: 'pdf',
 					},
 				],
-				required: false,
 			},
 			{
 				displayName: 'IPs',
@@ -330,7 +323,6 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: [],
-				required: false,
 			},
 			{
 				displayName: 'Subdomains',
@@ -340,7 +332,6 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: [],
-				required: false,
 			},
 
 		],
@@ -379,6 +370,6 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 ];

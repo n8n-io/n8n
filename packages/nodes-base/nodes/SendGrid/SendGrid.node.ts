@@ -124,7 +124,7 @@ export class SendGrid implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
@@ -456,8 +456,10 @@ export class SendGrid implements INodeType {
 
 								const binaryProperty = items[i].binary![property];
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
+
 								attachmentsToSend.push({
-									content: binaryProperty.data,
+									content: dataBuffer.toString('base64'),
 									filename: binaryProperty.fileName || 'unknown',
 									type: binaryProperty.mimeType,
 								});

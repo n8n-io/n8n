@@ -127,17 +127,17 @@ export class Jira implements INodeType {
 					{
 						name: 'Issue Attachment',
 						value: 'issueAttachment',
-						description: 'Add, remove, and get an attachment from an issue.',
+						description: 'Add, remove, and get an attachment from an issue',
 					},
 					{
 						name: 'Issue Comment',
 						value: 'issueComment',
-						description: 'Get, create, update, and delete a comment from an issue.',
+						description: 'Get, create, update, and delete a comment from an issue',
 					},
 					{
 						name: 'User',
 						value: 'user',
-						description: 'Get, create and delete a user.',
+						description: 'Get, create and delete a user',
 					},
 				],
 				default: 'issue',
@@ -442,7 +442,7 @@ export class Jira implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 

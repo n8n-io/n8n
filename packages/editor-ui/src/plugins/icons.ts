@@ -93,7 +93,12 @@ import {
 	faUserCircle,
 	faUserFriends,
 	faUsers,
+	faVideo,
+	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
+import {
+	faStickyNote,
+} from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 function addIcon(icon: any) { // tslint:disable-line:no-any
@@ -177,6 +182,8 @@ addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
+addIcon(faSolidStickyNote);
+addIcon(faStickyNote);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
@@ -191,6 +198,7 @@ addIcon(faUndo);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
+addIcon(faVideo);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

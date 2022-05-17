@@ -170,7 +170,7 @@ export async function generateUniqueName(
 
 	// name is unique
 	if (found.length === 0) {
-		return { name: requestedName };
+		return requestedName;
 	}
 
 	const maxSuffix = found.reduce((acc, { name }) => {
@@ -190,10 +190,10 @@ export async function generateUniqueName(
 
 	// name is duplicate but no numeric suffixes exist yet
 	if (maxSuffix === 0) {
-		return { name: `${requestedName} 2` };
+		return `${requestedName} 2`;
 	}
 
-	return { name: `${requestedName} ${maxSuffix + 1}` };
+	return `${requestedName} ${maxSuffix + 1}`;
 }
 
 export async function validateEntity(
