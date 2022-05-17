@@ -43,8 +43,8 @@ export default Vue.extend({
 			);
 		},
 		shortCredentialDisplayName (): string {
-			const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
-			const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
+			const oauth1Api = this.$locale.baseText('generic.oauth1Api');
+			const oauth2Api = this.$locale.baseText('generic.oauth2Api');
 
 			return this.getCredentialTypeByName(this.activeCredentialType).displayName
 				.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
