@@ -104,8 +104,8 @@
 			:placeholder="parameter.placeholder"
 		/>
 
-		<node-credential-type
-			v-else-if="parameter.type === 'nodeCredentialType'"
+		<credentials-select
+			v-else-if="parameter.type === 'credentialsSelect'"
 			ref="inputField"
 			:parameter="parameter"
 			:node="node"
@@ -133,7 +133,7 @@
 					:hasRemoteMethod="hasRemoteMethod"
 				/>
 			</template>
-		</node-credential-type>
+		</credentials-select>
 
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
@@ -201,12 +201,12 @@
 	</div>
 
 	<parameter-issues
-		v-if="parameter.type !== 'nodeCredentialType'"
+		v-if="parameter.type !== 'credentialsSelect'"
 		:getIssues="getIssues"
 	/>
 
 	<parameter-options
-		v-if="parameter.type !== 'nodeCredentialType'"
+		v-if="parameter.type !== 'credentialsSelect'"
 		:displayOptionsComputed="displayOptionsComputed"
 		:optionSelected="optionSelected"
 		:parameter="parameter"
@@ -236,7 +236,7 @@ import {
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
-import NodeCredentialType from '@/components/NodeCredentialType.vue';
+import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
@@ -266,7 +266,7 @@ export default mixins(
 			CodeEdit,
 			ExpressionEdit,
 			NodeCredentials,
-			NodeCredentialType,
+			CredentialsSelect,
 			PrismEditor,
 			ScopesNotice,
 			ParameterOptions,
@@ -418,7 +418,7 @@ export default mixins(
 					returnValue = this.expressionValueComputed;
 				}
 
-				if (this.parameter.type === 'nodeCredentialType') {
+				if (this.parameter.type === 'credentialsSelect') {
 					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
 					if (credType) {
 						returnValue = credType.displayName;
@@ -523,7 +523,7 @@ export default mixins(
 
 				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'), this.node);
 
-				if (this.parameter.type === 'nodeCredentialType' && this.displayValue === '') {
+				if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
 					issues.parameters = issues.parameters || {};
 					issues.parameters[this.parameter.name] = ['Select a credential type from the dropdown'];
 				} else if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
@@ -616,7 +616,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'nodeCredentialType') return styles;
+				if (this.parameter.type === 'credentialsSelect') return styles;
 				if (this.displayOptionsComputed === true) {
 					deductWidth += 25;
 				}
@@ -828,7 +828,7 @@ export default mixins(
 				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string[] | string | number | boolean | Date | null) {
-				if (this.parameter.name === 'nodeCredentialType') {
+				if (this.parameter.name === 'credentialsSelect') {
 					this.prepareScopesNotice(value as string);
 				}
 

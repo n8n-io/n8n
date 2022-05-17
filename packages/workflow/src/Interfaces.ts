@@ -832,7 +832,7 @@ export type NodePropertyTypes =
 	| 'number'
 	| 'options'
 	| 'string'
-	| 'nodeCredentialType';
+	| 'credentialsSelect';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

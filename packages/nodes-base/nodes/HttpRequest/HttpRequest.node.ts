@@ -253,7 +253,7 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Credential Type',
 				name: 'nodeCredentialType',
-				type: 'nodeCredentialType',
+				type: 'credentialsSelect',
 				required: true,
 				default: '',
 				credentialTypes: [

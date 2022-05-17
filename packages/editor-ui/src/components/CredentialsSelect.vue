@@ -57,7 +57,7 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 
 export default Vue.extend({
-	name: 'NodeCredentialType',
+	name: 'CredentialsSelect',
 	components: {
 		ScopesNotice,
 		NodeCredentials,
@@ -84,7 +84,7 @@ export default Vue.extend({
 	},
 	methods: {
 		supportsProxyAuth(name: string): boolean {
-			if (this.parameter.type !== 'nodeCredentialType') return false;
+			if (this.parameter.type !== 'credentialsSelect') return false;
 
 			// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
 			if (name === 'httpHeaderAuth') return false;
