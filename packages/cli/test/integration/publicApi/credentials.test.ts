@@ -8,6 +8,7 @@ import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import * as testDb from '../shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+import { INodeProperties } from 'n8n-workflow/dist/src/Interfaces';
 
 jest.mock('../../../src/telemetry');
 
@@ -252,6 +253,48 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 	const response = await authOwnerAgent.delete('/credentials/123');
 
 	expect(response.statusCode).toBe(404);
+});
+
+test('GET /credentials/schema/:credentialType should fail due to not found type', async () => {
+	let ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await testDb.addApiKey(ownerShell);
+
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		version: 1,
+		auth: true,
+		user: ownerShell,
+	});
+
+	const response = await authOwnerAgent.get('/credentials/schema/testing');
+
+	expect(response.statusCode).toBe(404);
+});
+
+test('GET /credentials/schema/:credentialType should retrieve credential type', async () => {
+	let ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await testDb.addApiKey(ownerShell);
+
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		version: 1,
+		auth: true,
+		user: ownerShell,
+	});
+
+	const response = await authOwnerAgent.get('/credentials/schema/githubApi');
+
+	const names = response.body.map((data: INodeProperties) => data.name);
+
+	const githubApiTypeNames = utils
+		.gitHubCredentialType()
+		.properties.map((nodeProperty) => nodeProperty.name);
+
+	for (const name of names) {
+		expect(githubApiTypeNames.includes(name)).toBe(true);
+	}
+
+	expect(response.statusCode).toBe(200);
 });
 
 const credentialPayload = (): CredentialPayload => ({

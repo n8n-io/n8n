@@ -8,6 +8,7 @@ import bodyParser from 'body-parser';
 import util from 'util';
 import { createTestAccount } from 'nodemailer';
 import {
+	ICredentialType,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -161,40 +162,43 @@ export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.A
 	return workflowRunner;
 }
 
+export function gitHubCredentialType(): ICredentialType {
+	return {
+		name: 'githubApi',
+		displayName: 'Github API',
+		documentationUrl: 'github',
+		properties: [
+			{
+				displayName: 'Github Server',
+				name: 'server',
+				type: 'string',
+				default: 'https://api.github.com',
+				description: 'The server to connect to. Only has to be set if Github Enterprise is used.',
+			},
+			{
+				displayName: 'User',
+				name: 'user',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Access Token',
+				name: 'accessToken',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
+}
+
 /**
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
 	const credentialTypes = CredentialTypes();
 	await credentialTypes.init({
-		'githubApi': {
-			type: {
-				name: 'githubApi',
-				displayName: 'Github API',
-				documentationUrl: 'github',
-				properties: [
-					{
-						displayName: 'Github Server',
-						name: 'server',
-						type: 'string',
-						default: 'https://api.github.com',
-						description:
-							'The server to connect to. Only has to be set if Github Enterprise is used.',
-					},
-					{
-						displayName: 'User',
-						name: 'user',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Access Token',
-						name: 'accessToken',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
+		githubApi: {
+			type: gitHubCredentialType(),
 			sourcePath: '',
 		},
 	});
