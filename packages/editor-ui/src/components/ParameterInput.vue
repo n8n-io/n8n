@@ -115,9 +115,9 @@
 			:displayValue="displayValue"
 			:isReadOnly="isReadOnly"
 			:displayTitle="displayTitle"
-			:valueChanged="valueChanged"
-			:setFocus="setFocus"
-			:onBlur="onBlur"
+			@valueChanged="valueChanged"
+			@setFocus="setFocus"
+			@onBlur="onBlur"
 		>
 			<template v-slot:issues-and-options>
 				<parameter-issues

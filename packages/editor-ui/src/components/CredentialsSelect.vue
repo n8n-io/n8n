@@ -7,10 +7,10 @@
 				:value="displayValue"
 				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 				:title="displayTitle"
-				@change="valueChanged"
+				@change="(value) => $emit('valueChanged', value)"
 				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
+				@focus="$emit('setFocus')"
+				@blur="$emit('onBlur')"
 			>
 				<n8n-option
 					v-for="credType in supportedCredentialTypes"
@@ -68,9 +68,6 @@ export default Vue.extend({
 		'displayValue',
 		'isReadOnly',
 		'displayTitle',
-		'valueChanged',
-		'setFocus',
-		'onBlur',
 	],
 	computed: {
 		...mapGetters('credentials', ['allCredentialTypes', 'getScopesByCredentialType']),
