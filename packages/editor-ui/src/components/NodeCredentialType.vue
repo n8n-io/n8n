@@ -86,6 +86,9 @@ export default Vue.extend({
 		supportsProxyAuth(name: string): boolean {
 			if (this.parameter.type !== 'nodeCredentialType') return false;
 
+			// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
+			if (name === 'httpHeaderAuth') return false;
+
 			const supported = this.getSupportedCredentialTypes(this.parameter.credentialTypes);
 
 			const credType = this.$store.getters['credentials/getCredentialTypeByName'](name);
