@@ -86,12 +86,13 @@ export class Todoist implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The resource to operate on.',
+				description: 'Authentication method to use',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
@@ -101,12 +102,12 @@ export class Todoist implements INodeType {
 				],
 				default: 'task',
 				required: true,
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -117,14 +118,14 @@ export class Todoist implements INodeType {
 				},
 				options: [
 					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a new task',
-					},
-					{
 						name: 'Close',
 						value: 'close',
 						description: 'Close a task',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new task',
 					},
 					{
 						name: 'Delete',
@@ -153,7 +154,6 @@ export class Todoist implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Project',
@@ -249,6 +249,13 @@ export class Todoist implements INodeType {
 						description: 'Specific date and time in RFC3339 format in UTC',
 					},
 					{
+						displayName: 'Due String Locale',
+						name: 'dueLang',
+						type: 'string',
+						default: '',
+						description: '2-letter code specifying language in case due_string is not written in English',
+					},
+					{
 						displayName: 'Due String',
 						name: 'dueString',
 						type: 'string',
@@ -256,11 +263,27 @@ export class Todoist implements INodeType {
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
-						displayName: 'Due String Locale',
-						name: 'dueLang',
-						type: 'string',
-						default: '',
-						description: '2-letter code specifying language in case due_string is not written in English',
+						displayName: 'Labels',
+						name: 'labels',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getLabels',
+						},
+						default: [],
+					},
+					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getItems',
+							loadOptionsDependsOn: [
+								'projectId',
+								'options.sectionId',
+							],
+						},
+						default: {},
+						description: 'The parent task you want to operate on',
 					},
 					{
 						displayName: 'Priority',
@@ -285,30 +308,6 @@ export class Todoist implements INodeType {
 						},
 						default: {},
 						description: 'The section you want to operate on',
-					},
-					{
-						displayName: 'Parent ID',
-						name: 'parentId',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getItems',
-							loadOptionsDependsOn: [
-								'projectId',
-								'options.sectionId',
-							],
-						},
-						default: {},
-						description: 'The parent task you want to operate on.',
-					},
-					{
-						displayName: 'Labels',
-						name: 'labels',
-						type: 'multiOptions',
-						typeOptions: {
-							loadOptionsMethod: 'getLabels',
-						},
-						default: [],
-						description: 'Labels',
 					},
 				],
 			},
@@ -350,7 +349,7 @@ export class Todoist implements INodeType {
 					minValue: 1,
 					maxValue: 500,
 				},
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 			},
 			{
@@ -402,6 +401,20 @@ export class Todoist implements INodeType {
 						description: 'IETF language tag defining what language filter is written in, if differs from default English',
 					},
 					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getItems',
+							loadOptionsDependsOn: [
+								'options.projectId',
+								'options.sectionId',
+							],
+						},
+						default: '',
+						description: 'Filter tasks by parent task ID',
+					},
+					{
 						displayName: 'Project ID',
 						name: 'projectId',
 						type: 'options',
@@ -422,21 +435,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: '',
-						description: 'Filter tasks by section id.',
-					},
-					{
-						displayName: 'Parent ID',
-						name: 'parentId',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getItems',
-							loadOptionsDependsOn: [
-								'options.projectId',
-								'options.sectionId',
-							],
-						},
-						default: '',
-						description: 'Filter tasks by parent task id.',
+						description: 'Filter tasks by section ID',
 					},
 				],
 			},
@@ -479,18 +478,18 @@ export class Todoist implements INodeType {
 						description: 'Specific date and time in RFC3339 format in UTC',
 					},
 					{
-						displayName: 'Due String',
-						name: 'dueString',
-						type: 'string',
-						default: '',
-						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
-					},
-					{
 						displayName: 'Due String Locale',
 						name: 'dueLang',
 						type: 'string',
 						default: '',
 						description: '2-letter code specifying language in case due_string is not written in English',
+					},
+					{
+						displayName: 'Due String',
+						name: 'dueString',
+						type: 'string',
+						default: '',
+						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
 						displayName: 'Labels',
@@ -629,7 +628,6 @@ export class Todoist implements INodeType {
 						//https://developer.todoist.com/rest/v1/#create-a-new-task
 						const content = this.getNodeParameter('content', i) as string;
 						const projectId = this.getNodeParameter('projectId', i) as number;
-						const labels = this.getNodeParameter('labels', i) as number[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IBodyCreateTask = {
@@ -654,8 +652,8 @@ export class Todoist implements INodeType {
 							body.due_lang = options.dueLang as string;
 						}
 
-						if (labels !== undefined && labels.length !== 0) {
-							body.label_ids = labels;
+						if (options.labels) {
+							body.label_ids = options.labels as number[];
 						}
 
 						if (options.sectionId) {
@@ -695,27 +693,27 @@ export class Todoist implements INodeType {
 					if (operation === 'getAll') {
 						//https://developer.todoist.com/rest/v1/#get-active-tasks
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						if (filters.projectId) {
-							qs.project_id = filters.projectId as string;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						if (options.projectId) {
+							qs.project_id = options.projectId as string;
 						}
-						if (filters.sectionId) {
-							qs.section_id = filters.sectionId as string;
+						if (options.sectionId) {
+							qs.section_id = options.sectionId as string;
 						}
-						if (filters.parentId) {
-							qs.parent_id = filters.parentId as string;
+						if (options.parentId) {
+							qs.parent_id = options.parentId as string;
 						}
-						if (filters.labelId) {
-							qs.label_id = filters.labelId as string;
+						if (options.labelId) {
+							qs.label_id = options.labelId as string;
 						}
-						if (filters.filter) {
-							qs.filter = filters.filter as string;
+						if (options.filter) {
+							qs.filter = options.filter as string;
 						}
-						if (filters.lang) {
-							qs.lang = filters.lang as string;
+						if (options.lang) {
+							qs.lang = options.lang as string;
 						}
-						if (filters.ids) {
-							qs.ids = filters.ids as string;
+						if (options.ids) {
+							qs.ids = options.ids as string;
 						}
 
 						responseData = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
