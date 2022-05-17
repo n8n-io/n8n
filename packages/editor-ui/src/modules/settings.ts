@@ -27,6 +27,8 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesEndpointHealthy: false,
 		api: {
 			enabled: false,
+			latestVersion: 0,
+			path: '/',
 		},
 	},
 	getters: {
@@ -38,6 +40,12 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		isPublicApiEnabled(state: ISettingsState): boolean {
 			return state.api.enabled;
+		},
+		getPublicApiLatestVersion(state: ISettingsState): number {
+			return state.api.latestVersion;
+		},
+		getPublicApiPath(state: ISettingsState): string {
+			return state.api.path;
 		},
 		showSetupPage(state: ISettingsState) {
 			return state.userManagement.showSetupOnFirstLoad;
@@ -83,6 +91,8 @@ const module: Module<ISettingsState, IRootState> = {
 			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			state.userManagement.smtpSetup = settings.userManagement.smtpSetup;
 			state.api.enabled = settings.publicApi.enabled;
+			state.api.latestVersion = settings.publicApi.latestVersion;
+			state.api.path = settings.publicApi.path;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);

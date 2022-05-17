@@ -318,6 +318,8 @@ class App {
 			},
 			publicApi: {
 				enabled: config.getEnv('publicApi.disabled') === false,
+				latestVersion: 1,
+				path: config.getEnv('publicApi.path'),
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),

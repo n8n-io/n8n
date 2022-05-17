@@ -659,6 +659,8 @@ export interface IN8nUISettings {
 	};
 	publicApi: {
 		enabled: boolean;
+		latestVersion: number;
+		path: string;
 	};
 }
 
@@ -863,6 +865,8 @@ export interface ISettingsState {
 	templatesEndpointHealthy: boolean;
 	api: {
 		enabled: boolean;
+		latestVersion: number;
+		path: string;
 	};
 }
 

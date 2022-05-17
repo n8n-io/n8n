@@ -30,7 +30,7 @@
 					<n8n-text size="small">
 						{{ $locale.baseText('settings.api.view.tryapi') }}
 					</n8n-text>
-					<n8n-link to="/playground" :newWindow="true" size="small">
+					<n8n-link :to="apiPlaygroundPath" :newWindow="true" size="small">
 						{{ $locale.baseText('settings.api.view.apiPlayground') }}
 					</n8n-link>
 				</div>
@@ -66,10 +66,15 @@ export default mixins(
 			loading: false,
 			mounted: false,
 			apiKey: '',
+			apiPlaygroundPath: '',
 		};
 	},
 	mounted() {
 		this.getApiKey();
+		const baseUrl = this.$store.getters.getBaseUrl;
+		const apiPath = this.$store.getters['settings/getPublicApiPath'];
+		const latestVersion = this.$store.getters['settings/getPublicApiLatestVersion'];
+		this.apiPlaygroundPath = `${baseUrl}${apiPath}/v${latestVersion}/docs`;
 	},
 	computed: {
 		currentUser(): IUser {

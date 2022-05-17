@@ -483,6 +483,8 @@ export interface IUserManagementSettings {
 }
 export interface IPublicApiSettings {
 	enabled: boolean;
+	latestVersion: number;
+	path: string;
 }
 
 export interface IPackageVersions {
