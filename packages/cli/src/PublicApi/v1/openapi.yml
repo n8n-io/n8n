@@ -24,11 +24,16 @@ tags:
     description: Operations about workflows
   - name: Credential
     description: Operations about credentials
+  - name: CredentialType
+    description: Operations about credential types
+
 paths:
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
+  /credentialTypes/{credentialTypeId}/schema:
+    $ref: './handlers/credentialTypes/spec/paths/credentialTypes.id.schema.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{identifier}:

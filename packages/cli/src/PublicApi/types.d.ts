@@ -60,6 +60,10 @@ export declare namespace ExecutionRequest {
 	type Delete = Get;
 }
 
+export declare namespace CredentialTypeRequest {
+	type Get = AuthenticatedRequest<{ credentialTypeId: string }, {}, {}, {}>;
+}
+
 export declare namespace WorkflowRequest {
 	type GetAll = AuthenticatedRequest<
 		{},
