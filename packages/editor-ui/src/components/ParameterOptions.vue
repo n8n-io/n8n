@@ -2,7 +2,7 @@
 	<div class="parameter-options">
 		<el-dropdown
 			trigger="click"
-			@command="optionSelected"
+			@command="(opt) => $emit('optionSelected', opt)"
 			size="mini"
 		>
 			<span class="el-dropdown-link">
