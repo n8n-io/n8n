@@ -73,6 +73,7 @@ export async function saveUsersWithRole(
 	void InternalHooksManager.getInstance().onUserInvite({
 		user_id: tokenOwnerId,
 		target_user_id: savedUsers.map((user) => user.id),
+		public_api: true,
 	});
 
 	return savedUsers;
@@ -120,11 +121,13 @@ export async function inviteUsers(
 			void InternalHooksManager.getInstance().onEmailFailed({
 				user_id: invitation.id as string,
 				message_type: 'New user invite',
+				public_api: true,
 			});
 		} else {
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
 				user_id: invitation.id as string,
 				message_type: 'New user invite',
+				public_api: true,
 			});
 		}
 	});
@@ -248,7 +251,11 @@ export async function sendUserDeleteTelemetry(data: {
 		telemetryData.migration_user_id = data.transferId;
 	}
 
-	void InternalHooksManager.getInstance().onUserDeletion(data.apiKeyOwnerUser.id, telemetryData);
+	void InternalHooksManager.getInstance().onUserDeletion(
+		data.apiKeyOwnerUser.id,
+		telemetryData,
+		true,
+	);
 }
 
 export async function deleteDataAndSendTelemetry(data: {
@@ -285,8 +292,8 @@ export function isInstanceOwner(user: User): boolean {
 	return user.globalRole.name === 'owner';
 }
 
-export async function getWorkflowOwnerRole(): Promise<Role | undefined> {
-	return Db.collections.Role.findOne({
+export async function getWorkflowOwnerRole(): Promise<Role> {
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});

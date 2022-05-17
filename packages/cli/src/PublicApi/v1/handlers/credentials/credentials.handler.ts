@@ -31,9 +31,7 @@ export = {
 
 				Object.assign(newCredential, encryptedData);
 
-				await externalHooks.run('credentials.create', [encryptedData]);
-
-				const savedCredential = await saveCredential(newCredential, req.user);
+				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
 
 				// LoggerProxy.verbose('New credential created', {
 				// 	credentialId: newCredential.id,
@@ -78,8 +76,6 @@ export = {
 					message: `Credential not found.`,
 				});
 			}
-
-			await externalHooks.run('credentials.delete', [credentialId]);
 
 			await removeCredential(credentials);
 			credentials.id = Number(credentialId);

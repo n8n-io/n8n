@@ -808,7 +808,7 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
 				const { id, ...rest } = savedWorkflow;
 
@@ -1091,7 +1091,11 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowSaved(
+					req.user.id,
+					updatedWorkflow,
+					false,
+				);
 
 				if (updatedWorkflow.active) {
 					// When the workflow is supposed to be active add it again
@@ -1159,7 +1163,7 @@ class App {
 
 				await Db.collections.Workflow.delete(workflowId);
 
-				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;

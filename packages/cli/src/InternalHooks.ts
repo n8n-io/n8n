@@ -64,24 +64,30 @@ export class InternalHooksClass implements IInternalHooksClass {
 		);
 	}
 
-	async onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void> {
+	async onWorkflowCreated(
+		userId: string,
+		workflow: IWorkflowBase,
+		publicApi: boolean,
+	): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 		return this.telemetry.track('User created workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
 			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
+			public_api: publicApi,
 		});
 	}
 
-	async onWorkflowDeleted(userId: string, workflowId: string): Promise<void> {
+	async onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void> {
 		return this.telemetry.track('User deleted workflow', {
 			user_id: userId,
 			workflow_id: workflowId,
+			public_api: publicApi,
 		});
 	}
 
-	async onWorkflowSaved(userId: string, workflow: IWorkflowDb): Promise<void> {
+	async onWorkflowSaved(userId: string, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		const notesCount = Object.keys(nodeGraph.notes).length;
@@ -98,6 +104,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			notes_count_non_overlapping: notesCount - overlappingCount,
 			version_cli: this.versionCli,
 			num_tags: workflow.tags?.length ?? 0,
+			public_api: publicApi,
 		});
 	}
 
@@ -215,17 +222,27 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserDeletion(
 		userId: string,
 		userDeletionData: ITelemetryUserDeletionData,
+		publicApi: boolean,
 	): Promise<void> {
-		return this.telemetry.track('User deleted user', { ...userDeletionData, user_id: userId });
+		return this.telemetry.track('User deleted user', {
+			...userDeletionData,
+			user_id: userId,
+			public_api: publicApi,
+		});
 	}
 
-	async onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void> {
+	async onUserInvite(userInviteData: {
+		user_id: string;
+		target_user_id: string[];
+		public_api: boolean;
+	}): Promise<void> {
 		return this.telemetry.track('User invited new user', userInviteData);
 	}
 
 	async onUserReinvite(userReinviteData: {
 		user_id: string;
 		target_user_id: string;
+		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track('User resent new user invite email', userReinviteData);
 	}
@@ -248,9 +265,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserTransactionalEmail(userTransactionalEmailData: {
 		user_id: string;
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
-			'Instance sent transactional email to user',
+			'Instance sent transacptional email to user',
 			userTransactionalEmailData,
 		);
 	}
@@ -273,6 +291,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onEmailFailed(failedEmailData: {
 		user_id: string;
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
 			'Instance failed to send transactional email to user',

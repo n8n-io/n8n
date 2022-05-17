@@ -2,7 +2,6 @@ import express = require('express');
 import { FindManyOptions, In } from 'typeorm';
 import { ActiveWorkflowRunner, Db } from '../../../..';
 import config = require('../../../../../config');
-import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
@@ -20,6 +19,7 @@ import {
 	getWorkflows,
 	getSharedWorkflows,
 	getWorkflowsCount,
+	createWorkflow,
 } from './workflows.service';
 
 export = {
@@ -37,21 +37,9 @@ export = {
 
 			const role = await getWorkflowOwnerRole();
 
-			// is this still needed?
 			await replaceInvalidCredentials(workflow);
 
-			await Db.transaction(async (transactionManager) => {
-				const newWorkflow = new WorkflowEntity();
-				Object.assign(newWorkflow, workflow);
-				workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-				const newSharedWorkflow = new SharedWorkflow();
-				Object.assign(newSharedWorkflow, {
-					role,
-					user: req.user,
-					workflow,
-				});
-				await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-			});
+			workflow = await createWorkflow(workflow, req.user, role);
 
 			return res.json(workflow);
 		},
@@ -177,7 +165,7 @@ export = {
 				await workflowRunner.remove(workflowId.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			await updateWorkflow(sharedWorkflow.workflowId, updateData, req.user);
 
 			if (sharedWorkflow.workflow.active) {
 				try {

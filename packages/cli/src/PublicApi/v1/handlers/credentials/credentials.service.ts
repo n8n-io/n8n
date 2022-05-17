@@ -6,6 +6,7 @@ import { CredentialsEntity } from '../../../../databases/entities/CredentialsEnt
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 import { User } from '../../../../databases/entities/User';
 import { CredentialsHelper } from '../../../../CredentialsHelper';
+import { externalHooks } from '../../../../Server';
 
 export async function getCredentials(
 	credentialId: number | string,
@@ -60,11 +61,14 @@ export async function createCredential(
 export async function saveCredential(
 	credential: CredentialsEntity,
 	user: User,
+	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
 	const role = await Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
+
+	await externalHooks.run('credentials.create', [encryptedData]);
 
 	return Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -86,6 +90,7 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
+	await externalHooks.run('credentials.delete', [credentials.id]);
 	return Db.collections.Credentials.remove(credentials);
 }
 
