@@ -843,7 +843,6 @@ export default mixins(
 				this.$emit('valueChanged', parameterData);
 			},
 			optionSelected (command: string) {
-				console.log('option selected', command);
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'addExpression') {
