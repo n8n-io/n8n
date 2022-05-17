@@ -110,7 +110,7 @@
 			:parameter="parameter"
 			:node="node"
 			:credentialSelected="credentialSelected"
-			:activeCredential="activeCredential"
+			:activeCredentialType="activeCredentialType"
 			:inputSize="inputSize"
 			:displayValue="displayValue"
 			:remoteParameterOptionsLoading="remoteParameterOptionsLoading"
@@ -298,10 +298,7 @@ export default mixins(
 				textEditDialogVisible: false,
 				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
 				CUSTOM_API_CALL_KEY,
-				activeCredential: {
-					shortDisplayName: '',
-					scopes: [] as string[],
-				},
+				activeCredentialType: '',
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
@@ -348,7 +345,7 @@ export default mixins(
 			},
 		},
 		computed: {
-			...mapGetters('credentials', ['allCredentialTypes', 'getScopesByCredentialType']),
+			...mapGetters('credentials', ['allCredentialTypes']),
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -655,22 +652,6 @@ export default mixins(
 
 				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
-			async prepareScopesNotice(credentialTypeName: string) {
-				const credType = this.getCredentialTypeByName(credentialTypeName);
-
-				if (!credType) return;
-
-				this.activeCredential.scopes = this.getScopesByCredentialType(credType.name);
-				this.activeCredential.shortDisplayName = this.shortenCredentialDisplayName(credType.displayName);
-			},
-			shortenCredentialDisplayName (credentialDisplayName: string) {
-				const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
-				const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
-
-				return credentialDisplayName
-					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
-					.trim();
-			},
 			/**
 			 * Check whether a param value must be skipped when collecting node param issues for validation.
 			 */
@@ -830,7 +811,7 @@ export default mixins(
 			},
 			valueChanged (value: string[] | string | number | boolean | Date | null) {
 				if (this.parameter.name === 'nodeCredentialType') {
-					this.prepareScopesNotice(value as string);
+					this.activeCredentialType = value as string;
 				}
 
 				if (value instanceof Date) {
@@ -887,7 +868,7 @@ export default mixins(
 			}
 
 			if (this.node && this.node.parameters.authentication === 'existingCredentialType') {
-				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
+				this.activeCredentialType = this.node.parameters.nodeCredentialType as string;
 			}
 
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && this.displayValue !== null && this.displayValue.toString().charAt(0) !== '#') {

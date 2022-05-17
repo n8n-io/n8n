@@ -1,6 +1,5 @@
 <template>
 	<n8n-notice
-		v-if="this.scopes.length > 0"
 		:content="scopesShortContent"
 		:fullContent="scopesFullContent"
 	/>
@@ -8,14 +7,16 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'ScopesNotice',
 	props: [
+		'activeCredentialType',
 		'scopes',
-		'shortCredentialDisplayName',
 	],
 	computed: {
+		...mapGetters('credentials', ['getCredentialTypeByName']),
 		scopesShortContent (): string {
 			return this.$locale.baseText(
 				'nodeSettings.scopes.notice',
@@ -40,6 +41,14 @@ export default Vue.extend({
 					},
 				},
 			);
+		},
+		shortCredentialDisplayName (): string {
+			const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
+			const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
+
+			return this.getCredentialTypeByName(this.activeCredentialType).displayName
+				.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
+				.trim();
 		},
 	},
 });

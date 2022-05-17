@@ -35,9 +35,9 @@
 		</div>
 
 		<scopes-notice
-			v-if="activeCredential.scopes.length > 0"
-			:scopes="activeCredential.scopes"
-			:shortCredentialDisplayName="activeCredential.shortDisplayName"
+			v-if="scopes.length > 0"
+			:activeCredentialType="activeCredentialType"
+			:scopes="scopes"
 		/>
 		<div>
 			<node-credentials
@@ -63,10 +63,10 @@ export default Vue.extend({
 		NodeCredentials,
 	},
 	props: [
+		'activeCredentialType',
 		'node',
 		'credentialSelected',
 		'parameter',
-		'activeCredential',
 		'inputSize',
 		'displayValue',
 		'remoteParameterOptionsLoading',
@@ -77,7 +77,12 @@ export default Vue.extend({
 		'onBlur',
 	],
 	computed: {
-		...mapGetters('credentials', ['allCredentialTypes']),
+		...mapGetters('credentials', ['allCredentialTypes', 'getScopesByCredentialType']),
+		scopes(): string[] {
+			if (!this.activeCredentialType) return [];
+
+			return this.getScopesByCredentialType(this.activeCredentialType);
+		},
 		supportedCredentialTypes(): ICredentialType[] {
 			return this.allCredentialTypes.filter((c: ICredentialType) => this.supportsProxyAuth(c.name));
 		},
