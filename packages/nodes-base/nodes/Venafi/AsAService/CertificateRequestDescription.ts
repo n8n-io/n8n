@@ -95,25 +95,6 @@ export const certificateRequestFields: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'VaaS Generated',
-		name: 'isVaaSGenerated',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'certificateRequest',
-				],
-				generateCsr: [
-					true,
-				],
-			},
-		},
-		default: true,
-	},
-	{
 		displayName: 'Application Server Type',
 		name: 'applicationServerTypeId',
 		type: 'options',
@@ -130,11 +111,6 @@ export const certificateRequestFields: INodeProperties[] = [
 				],
 				generateCsr: [
 					true,
-				],
-			},
-			hide: {
-				isVaaSGenerated: [
-					false,
 				],
 			},
 		},
@@ -154,11 +130,6 @@ export const certificateRequestFields: INodeProperties[] = [
 				],
 				generateCsr: [
 					true,
-				],
-			},
-			hide: {
-				isVaaSGenerated: [
-					false,
 				],
 			},
 		},
@@ -182,11 +153,6 @@ export const certificateRequestFields: INodeProperties[] = [
 				],
 				generateCsr: [
 					true,
-				],
-			},
-			hide: {
-				isVaaSGenerated: [
-					false,
 				],
 			},
 		},
@@ -343,10 +309,8 @@ export const certificateRequestFields: INodeProperties[] = [
 				resource: [
 					'certificateRequest',
 				],
-			},
-			hide: {
-				isVaaSGenerated: [
-					true,
+				generateCsr: [
+					false,
 				],
 			},
 		},
