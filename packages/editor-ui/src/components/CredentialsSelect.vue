@@ -6,8 +6,6 @@
 				filterable
 				:value="displayValue"
 				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
-				:loading="remoteParameterOptionsLoading"
-				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
 				@change="valueChanged"
 				@keydown.stop
@@ -69,7 +67,6 @@ export default Vue.extend({
 		'parameter',
 		'inputSize',
 		'displayValue',
-		'remoteParameterOptionsLoading',
 		'isReadOnly',
 		'displayTitle',
 		'valueChanged',

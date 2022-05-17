@@ -113,7 +113,6 @@
 			:activeCredentialType="activeCredentialType"
 			:inputSize="inputSize"
 			:displayValue="displayValue"
-			:remoteParameterOptionsLoading="remoteParameterOptionsLoading"
 			:isReadOnly="isReadOnly"
 			:displayTitle="displayTitle"
 			:valueChanged="valueChanged"
