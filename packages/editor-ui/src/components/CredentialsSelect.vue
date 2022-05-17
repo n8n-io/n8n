@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div class="parameter-value-container">
+		<div :class="$style['parameter-value-container']">
 			<n8n-select
 				:size="inputSize"
 				filterable
@@ -138,14 +138,10 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss">
+<style module lang="scss">
 .parameter-value-container {
 	display: flex;
 	align-items: center;
-}
-
-.parameter-issues {
-	padding-left: 5px;
 }
 
 </style>

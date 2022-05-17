@@ -1,5 +1,5 @@
 <template>
-	<div class="parameter-options">
+	<div :class="$style['parameter-options']">
 		<el-dropdown
 			trigger="click"
 			@command="(opt) => $emit('optionSelected', opt)"
@@ -59,7 +59,7 @@ export default Vue.extend({
 });
 </script>
 
-<style scoped lang="scss">
+<style module lang="scss">
 .parameter-options {
 	width: 25px;
 	text-align: right;
