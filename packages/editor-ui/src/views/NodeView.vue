@@ -1864,7 +1864,7 @@ export default mixins(
 								},
 							]);
 							this.zoomToFit();
-							this.$telemetry.track('welcome node inserted');
+							this.$telemetry.track('welcome note inserted');
 						});
 					}
 				}, 0);
