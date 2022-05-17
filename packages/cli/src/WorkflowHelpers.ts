@@ -9,6 +9,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-param-reassign */
+import { In } from 'typeorm';
 import {
 	IDataObject,
 	IExecuteData,
@@ -595,4 +596,53 @@ export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	});
 
 	return sharedWorkflows.map(({ workflow }) => workflow.id);
+}
+
+/**
+ * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
+ * If user does, set flag in its settings.
+ */
+export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
+	let belowThreshold = true;
+	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
+
+	const workflowOwnerRole = await Db.collections.Role.findOne({
+		name: 'owner',
+		scope: 'workflow',
+	});
+	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
+		user,
+		role: workflowOwnerRole,
+	}).then((ownedWorkflows) => ownedWorkflows.map((wf) => wf.workflowId));
+
+	if (ownedWorkflowsIds.length > 15) {
+		belowThreshold = false;
+	} else {
+		// just fetch workflows' nodes to keep memory footprint low
+		const workflows = await Db.collections.Workflow.find({
+			where: { id: In(ownedWorkflowsIds) },
+			select: ['nodes'],
+		});
+
+		// valid workflow: 2+ nodes without start node
+		const validWorkflowCount = workflows.reduce((counter, workflow) => {
+			if (counter <= 2 && workflow.nodes.length > 2) {
+				const nodes = workflow.nodes.filter((node) => !skippedTypes.includes(node.type));
+				if (nodes.length >= 2) {
+					return counter + 1;
+				}
+			}
+			return counter;
+		}, 0);
+
+		// more than 2 valid workflows required
+		belowThreshold = validWorkflowCount <= 2;
+	}
+
+	// user is above threshold --> set flag in settings
+	if (!belowThreshold) {
+		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+	}
+
+	return belowThreshold;
 }
