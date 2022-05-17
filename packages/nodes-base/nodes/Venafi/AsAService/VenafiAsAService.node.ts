@@ -144,75 +144,84 @@ export class VenafiAsAService implements INodeType {
 						};
 
 						if (generateCsr) {
-							const applicationServerTypeId = this.getNodeParameter('applicationServerTypeId', i) as string;
-							const commonName = this.getNodeParameter('commonName', i) as string;
 							const isVaaSGenerated = this.getNodeParameter('isVaaSGenerated', i) as boolean;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							if (!isVaaSGenerated) {
+								const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
+								body.certificateSigningRequest = certificateSigningRequest;
+							} else {
+								const applicationServerTypeId = this.getNodeParameter('applicationServerTypeId', i) as string;
+								const commonName = this.getNodeParameter('commonName', i) as string;
+								const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-							const keyTypeDetails: IKeyTypeParameters = {};
-							const csrAttributes: ICsrAttributes = {};
-							const subjectAltNamesByType: ISubjectAltNamesByType = {};
+								const keyTypeDetails: IKeyTypeParameters = {};
+								const csrAttributes: ICsrAttributes = {};
+								const subjectAltNamesByType: ISubjectAltNamesByType = {};
 
-							body.isVaaSGenerated = isVaaSGenerated as boolean;
-							body.applicationServerTypeId = applicationServerTypeId as string;
+								body.isVaaSGenerated = isVaaSGenerated as boolean;
+								body.applicationServerTypeId = applicationServerTypeId as string;
 
-							csrAttributes.commonName = commonName as string;
+								csrAttributes.commonName = commonName as string;
 
-							// Csr Generation
-							if (additionalFields.organization) {
-								csrAttributes.organization = additionalFields.organization as string;
-							}
-							if (additionalFields.organizationalUnits) {
-								csrAttributes.organizationalUnits = additionalFields.organizationalUnits as string[];
-							}
-							if (additionalFields.locality) {
-								csrAttributes.locality = additionalFields.locality as string;
-							}
-							if (additionalFields.state) {
-								csrAttributes.state = additionalFields.state as string;
-							}
-							if (additionalFields.country) {
-								csrAttributes.country = additionalFields.country as string;
-							}
-							body.csrAttributes = csrAttributes;
+								// Csr Generation
+								if (additionalFields.organization) {
+									csrAttributes.organization = additionalFields.organization as string;
+								}
+								if (additionalFields.organizationalUnits) {
+									csrAttributes.organizationalUnits = additionalFields.organizationalUnits as string[];
+								}
+								if (additionalFields.locality) {
+									csrAttributes.locality = additionalFields.locality as string;
+								}
+								if (additionalFields.state) {
+									csrAttributes.state = additionalFields.state as string;
+								}
+								if (additionalFields.country) {
+									csrAttributes.country = additionalFields.country as string;
+								}
+								body.csrAttributes = csrAttributes;
 
-							// Key type
-							if (additionalFields.keyType) {
-								keyTypeDetails.keyType = additionalFields.keyType as string;
-							}
-							if (additionalFields.keyCurve) {
-								keyTypeDetails.keyCurve = additionalFields.keyCurve as string;
-							}
-							if (additionalFields.keyLength) {
-								keyTypeDetails.keyLength = additionalFields.keyLength as number;
-							}
-							if (Object.keys(keyTypeDetails).length !== 0) {
-								body.csrAttributes.keyTypeParameters = keyTypeDetails;
-							}
+								// Key type
+								if (additionalFields.keyType) {
+									keyTypeDetails.keyType = additionalFields.keyType as string;
+								}
+								if (additionalFields.keyCurve) {
+									keyTypeDetails.keyCurve = additionalFields.keyCurve as string;
+								}
+								if (additionalFields.keyLength) {
+									keyTypeDetails.keyLength = additionalFields.keyLength as number;
+								}
+								if (Object.keys(keyTypeDetails).length !== 0) {
+									body.csrAttributes.keyTypeParameters = keyTypeDetails;
+								}
 
-							// SAN
-							if (additionalFields.SubjectAltNamesUi) {
-								for (const key of (additionalFields.SubjectAltNamesUi as IDataObject).SubjectAltNamesValues as IDataObject[]) {
-									if (key.Typename === 'dnsNames') {
-										subjectAltNamesByType.dnsNames ? subjectAltNamesByType.dnsNames.push(key.name as string) : subjectAltNamesByType.dnsNames = [key.name as string];
+								// SAN
+								if (additionalFields.SubjectAltNamesUi) {
+									for (const key of (additionalFields.SubjectAltNamesUi as IDataObject).SubjectAltNamesValues as IDataObject[]) {
+										if (key.Typename === 'dnsNames') {
+											subjectAltNamesByType.dnsNames ? subjectAltNamesByType.dnsNames.push(key.name as string) : subjectAltNamesByType.dnsNames = [key.name as string];
+										}
+										/*if (key.Typename === 'ipAddresses') {
+											subjectAltNamesByType.ipAddresses ? subjectAltNamesByType.ipAddresses.push(key.name as string) : subjectAltNamesByType.ipAddresses = [key.name as string];
+										}
+										if (key.Typename === 'rfc822Names') {
+											subjectAltNamesByType.rfc822Names ? subjectAltNamesByType.rfc822Names.push(key.name as string) : subjectAltNamesByType.rfc822Names = [key.name as string];
+										}
+										if (key.Typename === 'uniformResourceIdentifiers') {
+											subjectAltNamesByType.uniformResourceIdentifiers ? subjectAltNamesByType.uniformResourceIdentifiers.push(key.name as string) : subjectAltNamesByType.uniformResourceIdentifiers = [key.name as string];
+										}*/
 									}
-									/*if (key.Typename === 'ipAddresses') {
-										subjectAltNamesByType.ipAddresses ? subjectAltNamesByType.ipAddresses.push(key.name as string) : subjectAltNamesByType.ipAddresses = [key.name as string];
-									}
-									if (key.Typename === 'rfc822Names') {
-										subjectAltNamesByType.rfc822Names ? subjectAltNamesByType.rfc822Names.push(key.name as string) : subjectAltNamesByType.rfc822Names = [key.name as string];
-									}
-									if (key.Typename === 'uniformResourceIdentifiers') {
-										subjectAltNamesByType.uniformResourceIdentifiers ? subjectAltNamesByType.uniformResourceIdentifiers.push(key.name as string) : subjectAltNamesByType.uniformResourceIdentifiers = [key.name as string];
-									}*/
+								}
+								if (Object.keys(subjectAltNamesByType).length !== 0) {
+									body.csrAttributes.subjectAlternativeNamesByType = subjectAltNamesByType;
 								}
 							}
-							if (Object.keys(subjectAltNamesByType).length !== 0) {
-								body.csrAttributes.subjectAlternativeNamesByType = subjectAltNamesByType;
-							}
 						} else {
+							console.log('!generate');
 							const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
 							body.certificateSigningRequest = certificateSigningRequest;
+							//const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
+							console.log('Generate' + certificateSigningRequest);
+							//body.certificateSigningRequest = certificateSigningRequest;
 						}
 
 						Object.assign(body, options);

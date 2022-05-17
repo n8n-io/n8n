@@ -1,7 +1,3 @@
-import {
-	IDataObject,
- } from 'n8n-workflow';
-
 export interface ICertficateRequest {
 	isVaaSGenerated?: boolean;
 	csrAttributes?: ICsrAttributes;

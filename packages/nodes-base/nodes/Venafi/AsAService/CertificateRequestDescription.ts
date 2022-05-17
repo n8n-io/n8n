@@ -78,7 +78,6 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		default: '',
 	},
-	// CSR Builder
 	{
 		displayName: 'Generate CSR',
 		name: 'generateCsr',
@@ -95,7 +94,6 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		default: false,
 	},
-	// Is this always going to be true?
 	{
 		displayName: 'VaaS Generated',
 		name: 'isVaaSGenerated',
@@ -115,7 +113,6 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		default: true,
 	},
-	// Required
 	{
 		displayName: 'Application Server Type',
 		name: 'applicationServerTypeId',
@@ -135,12 +132,18 @@ export const certificateRequestFields: INodeProperties[] = [
 					true,
 				],
 			},
+			hide: {
+				isVaaSGenerated: [
+					false,
+				],
+			},
 		},
 		default: '',
 	},
 	{
 		displayName: 'Common Name',
 		name: 'commonName',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
@@ -151,6 +154,11 @@ export const certificateRequestFields: INodeProperties[] = [
 				],
 				generateCsr: [
 					true,
+				],
+			},
+			hide: {
+				isVaaSGenerated: [
+					false,
 				],
 			},
 		},
@@ -174,6 +182,11 @@ export const certificateRequestFields: INodeProperties[] = [
 				],
 				generateCsr: [
 					true,
+				],
+			},
+			hide: {
+				isVaaSGenerated: [
+					false,
 				],
 			},
 		},
@@ -330,8 +343,10 @@ export const certificateRequestFields: INodeProperties[] = [
 				resource: [
 					'certificateRequest',
 				],
-				generateCsr: [
-					false,
+			},
+			hide: {
+				isVaaSGenerated: [
+					true,
 				],
 			},
 		},
