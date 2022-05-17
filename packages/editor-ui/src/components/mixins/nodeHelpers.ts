@@ -44,7 +44,7 @@ export const nodeHelpers = mixins(
 		},
 		methods: {
 			hasProxyAuth (node: INodeUi): boolean {
-				return node.parameters.nodeCredentialType !== undefined;
+				return Object.keys(node.parameters).includes('nodeCredentialType');
 			},
 
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
