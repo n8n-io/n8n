@@ -1,10 +1,13 @@
 import express = require('express');
+import { INodeProperties } from 'n8n-workflow';
+import { CredentialsHelper } from '../../../../CredentialsHelper';
+import { CredentialTypes } from '../../../../CredentialTypes';
 
 import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
 import { CredentialRequest } from '../../../../requests';
-import { externalHooks } from '../../../../Server';
+import { CredentialTypeRequest } from '../../../types';
+import { authorize } from '../../shared/midlewares/global.midleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.midleware';
-// import { validCredentialsProperties } from '../../middlewares';
 
 import {
 	createCredential,
@@ -18,6 +21,7 @@ import {
 
 export = {
 	createCredential: [
+		authorize(['owner', 'member']),
 		validCredentialType,
 		validCredentialsProperties,
 		async (
@@ -46,6 +50,7 @@ export = {
 		},
 	],
 	deleteCredential: [
+		authorize(['owner', 'member']),
 		async (
 			req: CredentialRequest.Delete,
 			res: express.Response,
@@ -81,6 +86,25 @@ export = {
 			credentials.id = Number(credentialId);
 
 			return res.json(sanitizeCredentials(credentials));
+		},
+	],
+
+	getCredentialType: [
+		authorize(['owner', 'member']),
+		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { credentialTypeId } = req.params;
+
+			try {
+				CredentialTypes().getByName(credentialTypeId);
+			} catch (error) {
+				return res.status(404).json();
+			}
+
+			let schema = new CredentialsHelper('').getCredentialsProperties(credentialTypeId);
+
+			schema = schema.filter((nodeProperty) => nodeProperty.type !== 'hidden');
+
+			return res.json(schema);
 		},
 	],
 };
