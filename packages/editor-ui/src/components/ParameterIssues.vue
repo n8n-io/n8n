@@ -1,7 +1,7 @@
 <template>
-	<div class="parameter-issues" v-if="getIssues.length">
+	<div class="parameter-issues" v-if="issues.length">
 		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 			<font-awesome-icon icon="exclamation-triangle" />
 		</n8n-tooltip>
 	</div>
@@ -13,7 +13,7 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'ParameterIssues',
 	props: [
-		'getIssues',
+		'issues',
 	],
 });
 </script>

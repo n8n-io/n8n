@@ -122,7 +122,7 @@
 		>
 			<template v-slot:issues-and-options>
 				<parameter-issues
-					:getIssues="getIssues"
+					:issues="getIssues"
 				/>
 				<parameter-options
 				 	v-if="displayOptionsComputed"
@@ -203,7 +203,7 @@
 
 	<parameter-issues
 		v-if="parameter.type !== 'credentialsSelect'"
-		:getIssues="getIssues"
+		:issues="getIssues"
 	/>
 
 	<parameter-options
