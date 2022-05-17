@@ -3,16 +3,26 @@
 		"target": "esnext",
 		"module": "esnext",
 		"strict": true,
-		"jsx": "preserve",
 		"importHelpers": true,
 		"moduleResolution": "node",
+		"declaration": true,
 		"experimentalDecorators": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
+		"allowJs": true,
 		"allowSyntheticDefaultImports": true,
 		"sourceMap": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "jest"],
+	    "outDir": "dist",
+		"types": [
+		  "webpack-env",
+		  "jest",
+		  "vitest/globals"
+		],
+	  	"typeRoots": [
+		  "@testing-library",
+		  "@types"
+		],
 		"paths": {
 			"@/*": ["src/*"]
 		},
@@ -21,9 +31,7 @@
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.tsx",
-		"src/**/*.vue",
-		"tests/**/*.ts",
-		"tests/**/*.tsx"
+		"src/**/*.vue"
 	],
 	"exclude": ["node_modules"]
 }

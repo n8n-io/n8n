@@ -194,13 +194,14 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 
 					const submissionQueryOptions = this.getNodeParameter('options', i) as IDataObject;
+					const filterJson = this.getNodeParameter('filterJson', i, null) as string;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/data/`,
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000) as number,
-							...(submissionQueryOptions.query && { query: submissionQueryOptions.query }),
-							//...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
+							...(filterJson && { query: filterJson }),
+							...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
 							...(submissionQueryOptions.fields && { fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string)) }),
 						},
 						scroll: this.getNodeParameter('returnAll', i) as boolean,

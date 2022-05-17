@@ -128,7 +128,7 @@ export class Ssh implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The command to be executed on a remote device.',
+				description: 'The command to be executed on a remote device',
 			},
 			{
 				displayName: 'Working Directory',
@@ -190,7 +190,7 @@ export class Ssh implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded',
 			},
 			{
 				displayName: 'Target Directory',
@@ -209,7 +209,7 @@ export class Ssh implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '/home/user',
-				description: `The directory to upload the file to. The name of the file does not need to be specified, it's taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.`,
+				description: 'The directory to upload the file to. The name of the file does not need to be specified, it\'s taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.',
 			},
 			{
 				displayName: 'Path',
@@ -245,7 +245,7 @@ export class Ssh implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data.',
+				description: 'Object property name which holds binary data',
 				required: true,
 			},
 			{
@@ -270,7 +270,7 @@ export class Ssh implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: `Overrides the binary data file name.`,
+						description: 'Overrides the binary data file name',
 					},
 				],
 			},

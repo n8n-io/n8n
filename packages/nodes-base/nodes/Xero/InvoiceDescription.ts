@@ -79,7 +79,7 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				name: 'Sales Invoice',
 				value: 'ACCREC',
-				description: ' Accounts Receivable or customer invoice',
+				description: 'Accounts Receivable or customer invoice',
 			},
 		],
 		default: '',
@@ -216,7 +216,7 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'taxAmount',
 						type: 'string',
 						default: '',
-						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
+						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 					},
 					{
 						displayName: 'Line Amount',
@@ -673,7 +673,7 @@ export const invoiceFields: INodeProperties[] = [
 								name: 'taxAmount',
 								type: 'string',
 								default: '',
-								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
+								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 							},
 							{
 								displayName: 'Line Amount',
@@ -866,7 +866,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -890,7 +890,7 @@ export const invoiceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -914,7 +914,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
-				description: `When set to true you'll only retrieve Invoices created by your app`,
+				description: 'When set to true you\'ll only retrieve Invoices created by your app',
 			},
 			{
 				displayName: 'Order By',

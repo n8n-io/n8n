@@ -125,7 +125,7 @@ export const notificationFields: INodeProperties[] = [
 									},
 								},
 								default: 'data',
-								description: `Name of the property that holds the binary data.`,
+								description: 'Name of the property that holds the binary data',
 							},
 						],
 					},
@@ -136,7 +136,7 @@ export const notificationFields: INodeProperties[] = [
 				name: 'notificationDisabled',
 				type: 'boolean',
 				default: false,
-				description: `<p>true: The user doesn't receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>`,
+				description: '<p>true: The user doesn\'t receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>',
 			},
 			{
 				displayName: 'Sticker',
