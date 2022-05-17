@@ -109,6 +109,8 @@ export default Vue.extend({
 			}
 
 			if (credType.extends) {
+				// recurse upward until base credential type
+				// e.g. microsoftDynamicsOAuth2Api -> microsoftOAuth2Api -> oAuth2Api
 				return credType.extends.reduce(
 					(acc: boolean, parentType: string) => acc || this.supportsProxyAuth(parentType),
 					false,
