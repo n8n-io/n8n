@@ -44,7 +44,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style module lang="scss">
-
-</style>
