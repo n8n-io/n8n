@@ -21,15 +21,12 @@ import {
 
 export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('venafiAsAServiceApi') as IDataObject;
-
 	const operation = this.getNodeParameter('operation', 0) as string;
 
 	const options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
 			'content-type': 'application/json',
-			'tppl-api-key': credentials.apiKey,
 		},
 		method,
 		body,
@@ -51,9 +48,8 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
-	} catch (error) {
+		return await this.helpers.requestWithAuthentication.call(this, 'venafiAsAServiceApi', options);
+	} catch(error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

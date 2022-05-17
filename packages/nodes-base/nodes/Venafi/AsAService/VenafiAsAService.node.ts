@@ -216,12 +216,8 @@ export class VenafiAsAService implements INodeType {
 								}
 							}
 						} else {
-							console.log('!generate');
 							const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
 							body.certificateSigningRequest = certificateSigningRequest;
-							//const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
-							console.log('Generate' + certificateSigningRequest);
-							//body.certificateSigningRequest = certificateSigningRequest;
 						}
 
 						Object.assign(body, options);
