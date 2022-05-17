@@ -36,7 +36,7 @@ export default Vue.extend({
 					interpolate: {
 						activeCredential: this.shortCredentialDisplayName,
 						scopes: this.scopes.map(
-							(scope: string) => scope.replace(/\//g, '/<wbr>'),
+							(s: string) => s.includes('/') ? s.split('/').pop() : s,
 						).join('<br>'),
 					},
 				},
