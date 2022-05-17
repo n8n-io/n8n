@@ -109,7 +109,7 @@
 			ref="inputField"
 			:parameter="parameter"
 			:node="node"
-			:credentialSelected="credentialSelected"
+			@credentialSelected="credentialSelected"
 			:activeCredentialType="activeCredentialType"
 			:inputSize="inputSize"
 			:displayValue="displayValue"

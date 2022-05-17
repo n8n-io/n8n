@@ -41,7 +41,7 @@
 			<node-credentials
 				:node="node"
 				:overrideCredType="node.parameters.nodeCredentialType"
-				@credentialSelected="credentialSelected"
+				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
 	</div>
@@ -63,7 +63,6 @@ export default Vue.extend({
 	props: [
 		'activeCredentialType',
 		'node',
-		'credentialSelected',
 		'parameter',
 		'inputSize',
 		'displayValue',
