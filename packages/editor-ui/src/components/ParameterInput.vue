@@ -828,7 +828,7 @@ export default mixins(
 				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string[] | string | number | boolean | Date | null) {
-				if (this.parameter.name === 'credentialsSelect') {
+				if (this.parameter.name === 'nodeCredentialType') {
 					this.prepareScopesNotice(value as string);
 				}
 
