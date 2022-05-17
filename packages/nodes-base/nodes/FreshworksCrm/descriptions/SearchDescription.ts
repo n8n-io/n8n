@@ -17,17 +17,12 @@ export const searchOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Lookup',
-				value: 'lookup',
-				description: 'Lookup records by entering query for a given field and entities combination',
-			},
-			{
-				name: 'Search',
-				value: 'search',
+				name: 'Query',
+				value: 'query',
 				description: 'Search for records by entering query and entities',
 			},
 		],
-		default: 'search',
+		default: 'query',
 	},
 ];
 
@@ -48,26 +43,7 @@ export const searchFields: INodeProperties[] = [
 					'search',
 				],
 				operation: [
-					'lookup',
-					'search',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Field',
-		name: 'field',
-		description: 'Provide the field against which the entities have to be searched. The request can be searched only on one field.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'lookup',
+					'query',
 				],
 			},
 		},
@@ -128,10 +104,36 @@ export const searchFields: INodeProperties[] = [
 					'search',
 				],
 				operation: [
-					'lookup',
-					'search',
+					'query',
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'field',
+				description: 'Provide the field against which the entities have to be searched. The request can be searched only on one field.',
+				type: 'string',
+				default: '',
+				hint: 'Searching in multiple entities make sure that this field is available in all entities or else you\'d receive an error response',
+			},
+		],
 	},
 ];

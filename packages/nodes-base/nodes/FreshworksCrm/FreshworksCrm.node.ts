@@ -872,36 +872,24 @@ export class FreshworksCrm implements INodeType {
 					// https://developers.freshworks.com/crm/api/#search
 
 					const query = this.getNodeParameter('query', i) as string;
+					const field = this.getNodeParameter('options.field', i, '') as string;
 					let entities = this.getNodeParameter('entities', i);
 					if (Array.isArray(entities)) {
 						entities = entities.join(',');
 					}
 
-					if (operation === 'lookup') {
+					if (operation === 'query') {
+						if (field) {
+							// https://developers.freshworks.com/crm/api/#lookup_search
+							const endpoint = `/lookup?q=${query}&f=${field}&entities=${entities}`;
 
-						// ----------------------------------------
-						//          search: lookup
-						// ----------------------------------------
+							responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
+						} else {
+							// https://developers.freshworks.com/crm/api/#search
+							const endpoint = `/search?q=${query}&include=${entities}`;
 
-						// https://developers.freshworks.com/crm/api/#lookup_search
-
-						const field = this.getNodeParameter('field', i) as string;
-						const endpoint = `/lookup?q=${query}&f=${field}&entities=${entities}`;
-
-						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
-
-					} else if (operation === 'search') {
-
-						// ----------------------------------------
-						//          search: search
-						// ----------------------------------------
-
-						// https://developers.freshworks.com/crm/api/#search
-
-						const endpoint = `/search?q=${query}&include=${entities}`;
-
-						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
-
+							responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
+						}
 					}
 
 				} else if (resource === 'task') {
