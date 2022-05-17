@@ -348,9 +348,6 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes', 'getScopesByCredentialType']),
-			node (): INodeUi {
-				return this.$store.getters.activeNode;
-			},
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -379,6 +376,9 @@ export default mixins(
 				}
 
 				return returnValues.join('|');
+			},
+			node (): INodeUi | null {
+				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -885,7 +885,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			if (this.node.parameters.authentication === 'existingCredentialType') {
+			if (this.node && this.node.parameters.authentication === 'existingCredentialType') {
 				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
 			}
 
