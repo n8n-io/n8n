@@ -523,7 +523,10 @@ export default mixins(
 
 				if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
 					issues.parameters = issues.parameters || {};
-					issues.parameters[this.parameter.name] = ['Select a credential type from the dropdown'];
+
+					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
+
+					issues.parameters[this.parameter.name] = [issue];
 				} else if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
@@ -547,7 +550,13 @@ export default mixins(
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
 							}
-							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
+
+							const issue = this.$locale.baseText(
+								'parameterInput.theValueIsNotSupported',
+								{ interpolate: { checkValue } },
+							);
+
+							issues.parameters[this.parameter.name] = [issue];
 						}
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
