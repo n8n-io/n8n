@@ -369,8 +369,6 @@ test('GET /users/:id should return a user', async () => {
 	expect(personalizationAnswers).toBeUndefined();
 	expect(password).toBeUndefined();
 	expect(resetPasswordToken).toBeUndefined();
-	//virtual method not working
-	//expect(isPending).toBe(false);
 	expect(globalRole).toBeUndefined();
 	expect(createdAt).toBeDefined();
 	expect(updatedAt).toBeDefined();
@@ -412,6 +410,8 @@ test('POST /users should fail due to invalid API Key', async () => {
 
 test('POST /users should fail due to member trying to access owner only endpoint', async () => {
 	const member = await testDb.createUser();
+
+	await utils.configureSmtp();
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
