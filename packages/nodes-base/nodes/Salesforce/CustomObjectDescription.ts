@@ -7,6 +7,7 @@ export const customObjectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +27,11 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a custom object record',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom object record',
@@ -36,18 +42,12 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Get all custom object records',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a custom object record',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a custom object record',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
