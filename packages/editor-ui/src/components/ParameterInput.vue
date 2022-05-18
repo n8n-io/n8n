@@ -528,7 +528,6 @@ export default mixins(
 					issues.parameters[this.parameter.name] = [issue];
 				} else if (
 					['options', 'multiOptions'].includes(this.parameter.type) &&
-					this.parameter.name !== 'genericAuthType' &&
 					this.remoteParameterOptionsLoading === false &&
 					this.remoteParameterOptionsLoadingIssues === null
 				) {
@@ -540,11 +539,13 @@ export default mixins(
 
 					const checkValues: string[] = [];
 
+					const isGenericAuth = this.parameter.name === 'genericAuthType';
+
 					if (!this.skipCheck(this.displayValue)) {
 						if (Array.isArray(this.displayValue)) {
-							checkValues.push.apply(checkValues, this.displayValue);
+							checkValues.push.apply(checkValues, isGenericAuth ? this.value : this.displayValue);
 						} else {
-							checkValues.push(this.displayValue as string);
+							checkValues.push(isGenericAuth ? this.value : this.displayValue as string);
 						}
 					}
 
