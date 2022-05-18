@@ -52,10 +52,6 @@ function dedupe<T>(arr: Array<T>): Array<T> {
 	return [...new Set(arr)];
 }
 
-function join<T>(a: Array<T>, b: Array<T>): Array<T> {
-	return [...a, ...b];
-}
-
 export class Workflow {
 	id: string | undefined;
 
