@@ -93,6 +93,15 @@
 				/>
 			</div>
 
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0 && binaryData.length > 0" :class="$style.center">
+				<n8n-text>
+					{{ $locale.baseText('runData.switchToBinary.info') }}
+					<a @click="switchToBinary">
+						{{ $locale.baseText('runData.switchToBinary.binary') }}
+					</a>
+				</n8n-text>
+			</div>
+
 			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
 				<table :class="$style.table">
 					<tr>
@@ -486,6 +495,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			switchToBinary() {
+				this.onDisplayModeChange('binary');
+			},
 			onBranchChange(value: number) {
 				this.outputIndex = value;
 

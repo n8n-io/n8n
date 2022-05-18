@@ -596,6 +596,8 @@
 	"pushConnection.showMessage.title": "Workflow executed successfully",
 	"pushConnectionTracker.cannotConnectToServer": "You have a connection issue or the server is down. <br />n8n should reconnect automatically once the issue is resolved.",
 	"pushConnectionTracker.connectionLost": "Connection lost",
+	"runData.switchToBinary.info": "This item only has",
+	"runData.switchToBinary.binary": "binary data",
 	"runData.linking.hint": "Link displayed input and output runs",
 	"runData.unlinking.hint": "Unlink displayed input and output runs",
 	"runData.binary": "Binary",
