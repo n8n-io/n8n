@@ -89,15 +89,33 @@ export const questionsOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '={{"/api/card/" + $parameter.questionId + "/query/" + $parameter.format}}',
 						returnFullResponse: true,
+						encoding: 'arraybuffer',
 					},
 					output: {
 						postReceive: [
-							{
-								type: 'binaryData',
-								properties: {
-									destinationProperty: 'Result',
-								},
-							},
+							// @ts-ignore
+						async function(
+							this: IExecuteSingleFunctions,
+							_items: INodeExecutionData[],
+							response: IN8nHttpFullResponse,
+						): Promise<INodeExecutionData[]> {
+							const items = _items;
+							const result: INodeExecutionData[] = [];
+							for (let i = 0; i < items.length; i++) {
+								const newItem: INodeExecutionData = {
+									json: items[i].json,
+									binary: {},
+								};
+
+								if (items[i].binary !== undefined) {
+									Object.assign(newItem.binary, items[i].binary);
+								}
+								items[i] = newItem;
+								items[i].binary!['data'] = await this.helpers.prepareBinaryData(response.body as Buffer, 'data', response.headers['content-type']);
+								result.push(items[i]);
+							}
+							return result;
+						},
 						],
 					},
 				},
