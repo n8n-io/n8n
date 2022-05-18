@@ -23,7 +23,11 @@ esbuild.build({
 	entryPoints: tsFiles,
 	format: 'cjs',
 	outdir: path.resolve(distDir),
-	watch: watchMode,
+	watch: watchMode && {
+		onRebuild(error) {
+			console.log(`[esbuild] Build ${error ? 'failed' : 'succeeded'}.`);
+		},
+	},
 	sourcemap: !watchMode,
 	banner: {
 		js: '\'use strict\';\n'
