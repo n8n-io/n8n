@@ -10,6 +10,7 @@
 		:isExecuting="isExecutingPrevious"
 		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
 		:sessionId="sessionId"
+		:overrideOutputs="connectedCurrentNodeOutputs"
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -102,6 +103,15 @@ export default mixins(
 		},
 		currentNode (): INodeUi {
 			return this.$store.getters.getNodeByName(this.currentNodeName);
+		},
+		connectedCurrentNodeOutputs(): number[] | undefined {
+			console.log(this.currentNodeName, this.parentNodes);
+			const search = this.parentNodes.find(({name}) => name === this.currentNodeName);
+			console.log(search);
+			if (search) {
+				return search.indicies;
+			}
+			return undefined;
 		},
 		parentNodes (): INodeSearch[] {
 			if (!this.activeNode) {

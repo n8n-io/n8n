@@ -305,6 +305,9 @@ export default mixins(
 			paneType: {
 				type: String,
 			},
+			overrideOutputs: {
+				type: Array,
+			},
 		},
 		data () {
 			return {
@@ -316,7 +319,7 @@ export default mixins(
 					path: deselectedPlaceholder,
 				},
 				showData: false,
-				currentOutputIndex: 0,
+				outputIndex: 0,
 				binaryDataDisplayVisible: false,
 				binaryDataDisplayData: null as IBinaryDisplayData | null,
 
@@ -449,12 +452,22 @@ export default mixins(
 
 				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
 			},
+			currentOutputIndex(): number {
+				if (this.overrideOutputs && this.overrideOutputs.length && !this.overrideOutputs.includes(this.outputIndex)) {
+					return this.overrideOutputs[0] as number;
+				}
+
+				return this.outputIndex;
+			},
 			branches (): ITab[] {
 				function capitalize(name: string) {
 					return name.charAt(0).toLocaleUpperCase() + name.slice(1);
 				}
 				const branches: ITab[] = [];
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
+					if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
+						continue;
+					}
 					const itemsCount = this.getDataCount(this.runIndex, i);
 					const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
 					let outputName = this.getOutputName(i);
@@ -474,7 +487,7 @@ export default mixins(
 		},
 		methods: {
 			onBranchChange(value: number) {
-				this.currentOutputIndex = value;
+				this.outputIndex = value;
 
 				this.$telemetry.track('User changed ndv branch', {
 					session_id: this.sessionId,
@@ -594,7 +607,7 @@ export default mixins(
 			},
 			init() {
 				// Reset the selected output index every time another node gets selected
-				this.currentOutputIndex = 0;
+				this.outputIndex = 0;
 				this.refreshDataSize();
 				this.closeBinaryDataDisplay();
 				if (this.binaryData.length > 0) {
