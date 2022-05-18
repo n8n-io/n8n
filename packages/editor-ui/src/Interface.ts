@@ -341,6 +341,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	id: string;
 	data: IRunExecutionData;
 	workflowData: IWorkflowDb;
+	executedNode?: string;
 }
 
 export interface IExecutionShortResponse {
