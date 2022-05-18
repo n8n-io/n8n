@@ -10,6 +10,7 @@
 import express from 'express';
 import http from 'http';
 import PCancelable from 'p-cancelable';
+import * as promClient from 'prom-client';
 
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
@@ -45,6 +46,12 @@ import {
 	checkPermissionsForExecution,
 	getWorkflowOwner,
 } from '../src/UserManagement/UserManagementHelper';
+import { Metrics } from '../src/metrics/metrics';
+
+type WorkflowMetrics = {
+	workflowBucket: promClient.Histogram<string>;
+	workflowCounter: promClient.Counter<string>;
+}
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -67,6 +74,24 @@ export class Worker extends Command {
 
 	static processExistCode = 0;
 	// static activeExecutions = ActiveExecutions.getInstance();
+
+	initMetrics(): promClient.Registry {
+		const prefix = 'n8n_worker_';
+		const register = new promClient.Registry();
+		register.setDefaultLabels({ prefix });
+		promClient.collectDefaultMetrics({ register });
+
+		return register;
+	}
+
+	getDuration(start: Date, end?: Date): number {
+		if (!end) {
+			const now = Date.now();
+			return now - start.getTime();
+		}
+
+		return end.getTime() - start.getTime();
+	}
 
 	/**
 	 * Stoppes the n8n in a graceful way.
@@ -100,8 +125,7 @@ export class Worker extends Command {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
 					LoggerProxy.info(
-						`Waiting for ${
-							Object.keys(Worker.runningJobs).length
+						`Waiting for ${Object.keys(Worker.runningJobs).length
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
 					);
 				}
@@ -117,7 +141,11 @@ export class Worker extends Command {
 		process.exit(Worker.processExistCode);
 	}
 
-	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
+	async runJob(
+		job: Bull.Job,
+		nodeTypes: INodeTypes,
+		metrics: WorkflowMetrics,
+	): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
 		const executionDb = await Db.collections.Execution.findOne(jobData.executionId);
 
@@ -230,6 +258,20 @@ export class Worker extends Command {
 		// Wait till the execution is finished
 		await workflowRun;
 
+		// set metrics for the workflow execution
+		const executionId = jobData.executionId ? jobData.executionId : 'unknown';
+		const workflowName = workflow.name ? workflow.name : 'unknown';
+
+		const finished = (await workflowRun).finished ? (await workflowRun).finished : false;
+		const duration = this.getDuration((await workflowRun).startedAt, (await workflowRun).stoppedAt);
+
+		metrics.workflowBucket.labels(executionId, workflowName, finished as unknown as string).observe(duration);
+		if (finished) {
+			metrics.workflowCounter.labels('success').inc();
+		} else {
+			metrics.workflowCounter.labels('failed').inc();
+		}
+
 		delete Worker.runningJobs[job.id];
 
 		return {
@@ -247,6 +289,21 @@ export class Worker extends Command {
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Worker.stopProcess);
 		process.on('SIGINT', Worker.stopProcess);
+
+		// initialize the metrics
+		const registry = this.initMetrics();
+		const metrics = new Metrics(registry);
+		const workflowBucket = metrics.initHistogram(
+			'workflow_execution',
+			'Execution duration for a workflow',
+			['execution_id', 'workflow_name', 'finished'],
+			[0.5, 1, 10, 30, 60, 1440],
+		);
+		const workflowCounter = metrics.initCounter(
+			'workflow_execution',
+			'Number of successful executions for a workflow',
+			['status'],
+		)
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
@@ -292,7 +349,11 @@ export class Worker extends Command {
 
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
+				Worker.jobQueue.process(flags.concurrency, async (job) =>
+					this.runJob(job, nodeTypes, {
+						workflowBucket, workflowCounter,
+					}),
+				);
 
 				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
@@ -349,6 +410,34 @@ export class Worker extends Command {
 						process.exit(2);
 					} else {
 						logger.error('Error from queue: ', error);
+					}
+				});
+
+				const metricsApp = express();
+				const metricsPort = config.getEnv('prometheus.metrics.port');
+				const metricsServer = http.createServer(metricsApp);
+
+				metricsApp.get('/metrics', async (req: express.Request, res: express.Response) => {
+					try {
+						const m = await registry.metrics();
+
+						res.set('content-type', registry.contentType);
+						res.send(m);
+					} catch (e) {
+						res.status(500).send(e);
+					}
+				});
+
+				metricsServer.listen(metricsPort, () => {
+					logger.info(`Prometheus metrics are available at http://localhost:${metricsPort}/metrics`);
+				});
+
+				metricsServer.on('error', (error: Error & { code: string }) => {
+					if (error.code === 'EADDRINUSE') {
+						console.log(
+							`n8n's metrics port ${metricsPort} is already in use. Do you have the n8n main process running on that port?`,
+						);
+						process.exit(1);
 					}
 				});
 
@@ -410,7 +499,7 @@ export class Worker extends Command {
 					);
 
 					server.listen(port, () => {
-						console.info(`\nn8n worker health check via, port ${port}`);
+						console.info(`Health check available at http://localhost:${port}/heatlhz`);
 					});
 
 					server.on('error', (error: Error & { code: string }) => {
@@ -421,6 +510,8 @@ export class Worker extends Command {
 							process.exit(1);
 						}
 					});
+
+					console.info(`\nn8n worker health check via, port ${port}`);
 				}
 			} catch (error) {
 				logger.error(`Worker process cannot continue. "${error.message}"`);

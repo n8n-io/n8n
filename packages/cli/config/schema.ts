@@ -880,4 +880,15 @@ export const schema = {
 		default: 'en',
 		env: 'N8N_DEFAULT_LOCALE',
 	},
+
+	prometheus: {
+		metrics: {
+			port: {
+				format: Number,
+				default: 9800,
+				env: 'N8N_METRICS_PORT',
+				doc: 'Port to serve metrics on worker.',
+			},
+		},
+	},
 };
