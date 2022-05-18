@@ -1,8 +1,8 @@
 import {MigrationInterface, QueryRunner} from 'typeorm';
 import * as config from '../../../../config';
 
-export class AddAPIKeyColumn1647888658687 implements MigrationInterface {
-	name = 'AddAPIKeyColumn1647888658687';
+export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
+	name = 'AddAPIKeyColumn1652905585850'
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
