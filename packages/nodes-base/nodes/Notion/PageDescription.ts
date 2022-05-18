@@ -99,7 +99,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -140,7 +140,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
 		displayName: 'Title',
@@ -200,7 +200,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -281,7 +281,7 @@ export const pageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -407,7 +407,7 @@ export const pageFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},

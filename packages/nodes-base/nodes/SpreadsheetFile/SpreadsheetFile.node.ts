@@ -100,7 +100,7 @@ export class SpreadsheetFile implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property from which to read the binary data of the spreadsheet file.',
+				description: 'Name of the binary property from which to read the binary data of the spreadsheet file',
 			},
 
 			// ----------------------------------
@@ -150,7 +150,7 @@ export class SpreadsheetFile implements INodeType {
 						],
 					},
 				},
-				description: 'The format of the file to save the data as.',
+				description: 'The format of the file to save the data as',
 			},
 			{
 				displayName: 'Binary Property',
@@ -166,7 +166,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save the binary data of the spreadsheet file.',
+				description: 'Name of the binary property in which to save the binary data of the spreadsheet file',
 			},
 
 			{
@@ -206,7 +206,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
+						description: 'File name to set in binary data. By default will "spreadsheet.&lt;fileFormat&gt;" be used.',
 					},
 					{
 						displayName: 'Header Row',
@@ -221,7 +221,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: true,
-						description: 'The first row of the file contains the header names.',
+						description: 'The first row of the file contains the header names',
 					},
 					{
 						displayName: 'Include Empty Cells',
@@ -235,7 +235,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'When reading from file the empty cells will be filled with an empty string in the JSON.',
+						description: 'When reading from file the empty cells will be filled with an empty string in the JSON',
 					},
 					{
 						displayName: 'RAW Data',
@@ -249,7 +249,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'If the data should be returned RAW instead of parsed.',
+						description: 'If the data should be returned RAW instead of parsed',
 					},
 					{
 						displayName: 'Read As String',
@@ -263,7 +263,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong.',
+						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong',
 					},
 					{
 						displayName: 'Range',
@@ -310,7 +310,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: 'Sheet',
-						description: 'Name of the sheet to create in the spreadsheet.',
+						description: 'Name of the sheet to create in the spreadsheet',
 					},
 				],
 			},

@@ -79,7 +79,7 @@ export class Git implements INodeType {
 					},
 				},
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'Operation',
@@ -170,7 +170,7 @@ export class Git implements INodeType {
 				default: '',
 				placeholder: '/tmp/repository',
 				required: true,
-				description: 'Local path of the git repository to operate on.',
+				description: 'Local path of the git repository to operate on',
 			},
 			{
 				displayName: 'New Repository Path',
@@ -186,7 +186,7 @@ export class Git implements INodeType {
 				default: '',
 				placeholder: '/tmp/repository',
 				required: true,
-				description: 'Local path to which the git repository should be cloned into.',
+				description: 'Local path to which the git repository should be cloned into',
 			},
 
 			...addFields,

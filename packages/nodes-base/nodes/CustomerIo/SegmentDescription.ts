@@ -49,7 +49,7 @@ export const segmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the segment.',
+		description: 'The unique identifier of the segment',
 	},
 	{
 		displayName: 'Customer IDs',
@@ -68,6 +68,6 @@ export const segmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'A list of customer ids to add to the segment.',
+		description: 'A list of customer IDs to add to the segment',
 	},
 ];

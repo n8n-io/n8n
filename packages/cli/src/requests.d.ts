@@ -51,7 +51,7 @@ export declare namespace WorkflowRequest {
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
-	type NewName = express.Request<{}, {}, {}, { name?: string }>;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
@@ -237,12 +237,16 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{ oauth_verifier: string; oauth_token: string; cid: string }
-		>;
+		> & {
+			user?: User;
+		};
 	}
 
 	namespace OAuth2Credential {
 		type Auth = OAuth1Credential.Auth;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }> & {
+			user?: User;
+		};
 	}
 }
 

@@ -56,37 +56,37 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'All updates.',
+						description: 'All updates',
 					},
 					{
 						name: 'message',
 						value: 'message',
-						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc..',
+						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc',
 					},
 					{
 						name: 'edited_message',
 						value: 'edited_message',
-						description: 'Trigger on new version of a channel post that is known to the bot and was edited.',
+						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
 						name: 'channel_post',
 						value: 'channel_post',
-						description: 'Trigger on new incoming channel post of any kind — text, photo, sticker, etc..',
+						description: 'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
 					},
 					{
 						name: 'edited_channel_post',
 						value: 'edited_channel_post',
-						description: 'Trigger on new version of a channel post that is known to the bot and was edited.',
+						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
 						name: 'inline_query',
 						value: 'inline_query',
-						description: 'Trigger on new incoming inline query.',
+						description: 'Trigger on new incoming inline query',
 					},
 					{
 						name: 'callback_query',
 						value: 'callback_query',
-						description: 'Trigger on new incoming callback query.',
+						description: 'Trigger on new incoming callback query',
 					},
 
 					{
@@ -107,7 +107,7 @@ export class TelegramTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The update types to listen to.',
+				description: 'The update types to listen to',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -121,7 +121,7 @@ export class TelegramTrigger implements INodeType {
 						name: 'download',
 						type: 'boolean',
 						default: false,
-						description: `Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field 'Image Size'.`,
+						description: 'Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field \'Image Size\'.',
 					},
 					{
 						displayName: 'Image Size',

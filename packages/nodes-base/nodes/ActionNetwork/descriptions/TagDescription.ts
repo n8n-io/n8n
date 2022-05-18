@@ -44,7 +44,7 @@ export const tagFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the tag to create.',
+		description: 'Name of the tag to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -67,7 +67,7 @@ export const tagFields: INodeProperties[] = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		description: 'ID of the tag to retrieve.',
+		description: 'ID of the tag to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -92,7 +92,7 @@ export const tagFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -109,7 +109,7 @@ export const tagFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

@@ -1,0 +1,28 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nNotice > props > content > should render correctly with content prop 1`] = `
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_4m4il_1 _warning_4m4il_16\\">
+  <div class=\\"notice-content\\"><span class=\\"_size-small_9dlpz_24 _regular_9dlpz_5\\"><span id=\\"notice-content\\" role=\\"region\\" class=\\"_truncated_4m4il_41\\">This is a notice.</span>
+    <!----></span></div>
+</div>"
+`;
+
+exports[`components > N8nNotice > props > content > should render html 1`] = `
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_4m4il_1 _warning_4m4il_16\\">
+  <div class=\\"notice-content\\"><span class=\\"_size-small_9dlpz_24 _regular_9dlpz_5\\"><span id=\\"notice-content\\" role=\\"region\\" class=\\"_truncated_4m4il_41\\"><strong>Hello world!</strong> This is a notice.</span>
+    <!----></span></div>
+</div>"
+`;
+
+exports[`components > N8nNotice > props > content > should sanitize rendered html 1`] = `
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_4m4il_1 _warning_4m4il_16\\">
+  <div class=\\"notice-content\\"><span class=\\"_size-small_9dlpz_24 _regular_9dlpz_5\\"><span id=\\"notice-content\\" role=\\"region\\" class=\\"_truncated_4m4il_41\\"> This is a notice.</span>
+    <!----></span></div>
+</div>"
+`;
+
+exports[`components > N8nNotice > should render correctly 1`] = `
+"<div id=\\"notice\\" role=\\"alert\\" class=\\"notice _notice_4m4il_1 _warning_4m4il_16\\">
+  <div class=\\"notice-content\\"><span class=\\"_size-small_9dlpz_24 _regular_9dlpz_5\\">This is a notice.</span></div>
+</div>"
+`;
