@@ -141,8 +141,7 @@ export async function xataApiRequest(this: IExecuteFunctions, apiKey: string, me
 
 export async function xataApiList(this: IExecuteFunctions, apiKey: string, method: IHttpRequestMethods, slug: string, database: string, branch: string, table: string, resource: string, body: IDataObject, returnAll: boolean, url?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const page:IDataObject = body['page'] as IDataObject;
-	const offset = page ? page['offset'] ? page['offset']  : 0 : 0;
+	const page = body['page'] as IDataObject;
 
 	let records = new Array();
 
@@ -190,7 +189,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 
 	} else {
-
+		const offset = page ? page['offset'] ? page['offset']  : 0 : 0;
 		const size = this.getNodeParameter('size', 0) as number;
 		Object.assign(body, { 'page': { 'size': size, 'offset':offset } });
 
