@@ -165,7 +165,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 				}
 
-				Object.assign(body, { 'page': { 'after': crs, 'offset' : offset, 'size' : size } });
+				Object.assign(body, { 'page': { 'after': crs, 'size' : size } });
 
 				if (body!.hasOwnProperty('filter')) {
 

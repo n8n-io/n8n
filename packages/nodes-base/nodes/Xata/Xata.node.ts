@@ -234,6 +234,13 @@ export class Xata implements INodeType {
 							minValue: 0,
 							maxValue: 800,
 						},
+						displayOptions: {
+							show: {
+								'/returnAll':[
+									false,
+								]
+							},
+						},
 						default: 0,
 						description: 'Number of matching records to skip',
 					},
