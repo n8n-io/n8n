@@ -8,6 +8,7 @@ export class HttpQueryAuth implements ICredentialType {
 	name = 'httpQueryAuth';
 	displayName = 'Query Auth';
 	documentationUrl = 'httpRequest';
+	isGenericAuth = true;
 	icon = 'node:n8n-nodes-base.httpRequest';
 	properties: INodeProperties[] = [
 		{

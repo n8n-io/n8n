@@ -40,7 +40,7 @@
 		<div>
 			<node-credentials
 				:node="node"
-				:overrideCredType="node.parameters.nodeCredentialType"
+				:overrideCredType="node.parameters.nodeCredentialType || node.parameters.genericAuthType"
 				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
@@ -77,6 +77,9 @@ export default Vue.extend({
 			return this.getScopesByCredentialType(this.activeCredentialType);
 		},
 		supportedCredentialTypes(): ICredentialType[] {
+			if (this.parameter.name === 'genericAuthType') {
+				return this.allCredentialTypes.filter((c: ICredentialType) => c.isGenericAuth);
+			}
 			return this.allCredentialTypes.filter((c: ICredentialType) => this.supportsProxyAuth(c.name));
 		},
 	},

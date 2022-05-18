@@ -105,7 +105,7 @@
 		/>
 
 		<credentials-select
-			v-else-if="parameter.type === 'credentialsSelect'"
+			v-else-if="parameter.type === 'credentialsSelect' || (parameter.name === 'genericAuthType')"
 			ref="inputField"
 			:parameter="parameter"
 			:node="node"
@@ -206,7 +206,7 @@
 	/>
 
 	<parameter-options
-		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
+		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect' && parameter.name !== 'genericAuthType'"
 		:displayOptionsComputed="displayOptionsComputed"
 		@optionSelected="optionSelected"
 		:parameter="parameter"
@@ -415,7 +415,7 @@ export default mixins(
 					returnValue = this.expressionValueComputed;
 				}
 
-				if (this.parameter.type === 'credentialsSelect') {
+				if (this.parameter.type === 'credentialsSelect' || this.parameter.name === 'genericAuthType') {
 					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
 					if (credType) {
 						returnValue = credType.displayName;
@@ -526,7 +526,12 @@ export default mixins(
 					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
 
 					issues.parameters[this.parameter.name] = [issue];
-				} else if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
+				} else if (
+					['options', 'multiOptions'].includes(this.parameter.type) &&
+					this.parameter.name !== 'genericAuthType' &&
+					this.remoteParameterOptionsLoading === false &&
+					this.remoteParameterOptionsLoadingIssues === null
+				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
@@ -622,7 +627,12 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'credentialsSelect') return styles;
+				if (
+					this.parameter.type === 'credentialsSelect' ||
+					this.parameter.name === 'genericAuthType'
+				) {
+					return styles;
+				}
 				if (this.displayOptionsComputed === true) {
 					deductWidth += 25;
 				}
