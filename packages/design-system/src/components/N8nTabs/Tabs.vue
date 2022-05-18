@@ -168,7 +168,7 @@ export default Vue.extend({
 
 .button {
 	position: absolute;
-	background-color: var(--color-background-light);
+	background-color: var(--color-background-base);
 	z-index: 1;
 	height: 24px;
 	width: 10px;
