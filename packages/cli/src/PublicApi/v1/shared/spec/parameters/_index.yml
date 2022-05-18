@@ -1,12 +1,12 @@
 UserIdentifier:
-  $ref: './userIdentifier.yml'
+  $ref: '../../../handlers/users/spec/schemas/parameters/userIdentifier.yml'
 Cursor:
   $ref: './cursor.yml'
 includeRole:
-  $ref: './includeRole.yml'
+  $ref: '../../../handlers/users/spec/schemas/parameters/includeRole.yml'
 Limit:
   $ref: './limit.yml'
 ExecutionId:
-  $ref: './executionId.yml'
+  $ref: '../../../handlers/executions/spec/schemas/parameters/executionId.yml'
 WorkflowId:
-  $ref: './workflowId.yml'
+  $ref: '../../../handlers/workflows/spec/schemas/parameters/workflowId.yml'

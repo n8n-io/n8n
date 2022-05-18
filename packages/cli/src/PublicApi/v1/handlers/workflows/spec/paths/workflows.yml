@@ -2,7 +2,7 @@ post:
   x-eov-operation-id: createWorkflow
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
-  - Workflow
+    - Workflow
   summary: Create a workflow
   description: Create a workflow in your instance.
   requestBody:
@@ -10,7 +10,7 @@ post:
     content:
       application/json:
         schema:
-          $ref: '../schemas/workflowInformation.yml'
+          $ref: '../schemas/workflow.yml'
     required: true
   responses:
     '200':
@@ -18,14 +18,14 @@ post:
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflowInformation.yml'
+            $ref: '../schemas/workflow.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getWorkflows
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
-  - Workflow
+    - Workflow
   summary: Retrieve all workflows
   description: Retrieve all workflows from your instance.
   parameters:
@@ -49,6 +49,6 @@ get:
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflowDetailsResponse.yml'
+            $ref: '../schemas/workflowList.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'

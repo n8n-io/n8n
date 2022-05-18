@@ -2,7 +2,7 @@ post:
   x-eov-operation-id: createUser
   x-eov-operation-handler: v1/handlers/users/users.handler
   tags:
-  - User
+    - User
   summary: Invite a user
   description: Invites a user to your instance. Only available for the instance owner.
   requestBody:
@@ -12,7 +12,7 @@ post:
         schema:
           type: array
           items:
-            $ref: '../schemas/userInformation.yml'
+            $ref: '../schemas/user.yml'
     required: true
   responses:
     '200':
@@ -22,26 +22,26 @@ post:
           schema:
             type: array
             items:
-              $ref: '../schemas/userInformation.yml'
+              $ref: '../schemas/user.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getUsers
   x-eov-operation-handler: v1/handlers/users/users.handler
   tags:
-  - User
+    - User
   summary: Retrieve all users
   description: Retrieve all users from your instance. Only available for the instance owner.
   parameters:
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
-    - $ref: '../../../../shared/spec/parameters/includeRole.yml'
+    - $ref: '../schemas/parameters/includeRole.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/userDetailsResponse.yml'
+            $ref: '../schemas/userList.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'

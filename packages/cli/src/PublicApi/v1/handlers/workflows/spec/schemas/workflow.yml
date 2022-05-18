@@ -26,18 +26,18 @@ properties:
   nodes:
     type: array
     items:
-      $ref: './nodeInformation.yml'
+      $ref: './node.yml'
   connections:
     type: object
-    example: { main: [{node: "Jira", type: "main", index: 0}] }
+    example: { main: [{ node: 'Jira', type: 'main', index: 0 }] }
   settings:
-    $ref: './workflowSettingInformation.yml'
+    $ref: './workflowSettings.yml'
   staticData:
     type: string
     nullable: true
-    example: "{ iterationId: 2 }"
+    example: '{ iterationId: 2 }'
   tags:
     type: array
     items:
-      $ref: './TagInformation.yml'
+      $ref: './tag.yml'
     readOnly: true

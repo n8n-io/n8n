@@ -2,18 +2,18 @@ get:
   x-eov-operation-id: getExecution
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
-  - Execution
+    - Execution
   summary: Retrieve an execution
   description: Retrieve an execution from you instance.
   parameters:
-    - $ref: '../../../../shared/spec/parameters/executionId.yml'
+    - $ref: '../schemas/parameters/executionId.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/executionInformation.yml'
+            $ref: '../schemas/execution.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
@@ -22,18 +22,18 @@ delete:
   x-eov-operation-id: deleteExecution
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
-  - Execution
+    - Execution
   summary: Delete an execution
   description: Deletes an execution from your instance.
   parameters:
-    - $ref: '../../../../shared/spec/parameters/executionId.yml'
+    - $ref: '../schemas/parameters/executionId.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/executionInformation.yml'
+            $ref: '../schemas/execution.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
