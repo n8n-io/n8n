@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	JSON2SheetOpts,
 	read as xlsxRead,
 	Sheet2JSONOpts,
 	utils as xlsxUtils,
@@ -417,7 +418,7 @@ export class SpreadsheetFile implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				const sheetToJsonOptions: JSON2SheetOpts = {};
 				if (options.headerRow === false) {
 					sheetToJsonOptions.skipHeader = true;
 				}
