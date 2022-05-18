@@ -55,14 +55,16 @@
 				/>
 			</div>
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
-				<PanelDragButton
-					:class="{[$style.draggable]: true, [$style.visible]: isDragging}"
-					v-if="!isTriggerNode"
-					:isDragging="isDragging"
-					:canMoveLeft="canMoveLeft"
-					:canMoveRight="canMoveRight"
-					@mousedown="onDragStart"
-				/>
+				<div :class="$style.dragButtonContainer" @click="close">
+					<PanelDragButton
+						:class="{[$style.draggable]: true, [$style.visible]: isDragging}"
+						v-if="!isTriggerNode"
+						:isDragging="isDragging"
+						:canMoveLeft="canMoveLeft"
+						:canMoveRight="canMoveRight"
+						@mousedown="onDragStart"
+					/>
+				</div>
 				<NodeSettings
 					:eventBus="settingsEventBus"
 					:dragging="isDragging"
@@ -643,10 +645,20 @@ $--main-panel-width: 360px;
 }
 
 .draggable {
-	top: -12px;
-	left: 40%;
 	position: absolute;
+	left: 40%;
 	visibility: hidden;
+}
+
+.dragButtonContainer {
+	position: absolute;
+	top: -12px;
+	width: $--main-panel-width;
+	height: 12px;
+
+	&:hover .draggable {
+		visibility: visible;
+	}
 }
 
 .visible {
