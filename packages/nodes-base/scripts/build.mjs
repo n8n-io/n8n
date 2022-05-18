@@ -1,6 +1,5 @@
 import path from 'path';
-import shell from 'shelljs';
-import glob from 'tiny-glob';
+import glob from 'fast-glob';
 import esbuild from 'esbuild';
 import {fileURLToPath} from 'url';
 
@@ -15,25 +14,26 @@ const rootDir = path.resolve(__dirname, '..');
 const distDir = path.resolve(rootDir, 'dist');
 
 /**
- * Clean up
- */
-
-shell.rm('-rf', distDir);
-
-/**
  * Build
  */
 
-const tsFiles = await glob(path.resolve(rootDir, '@(credentials|nodes|src)/**/*!(.d).ts'));
+const tsFiles = await glob([path.resolve(rootDir, '{credentials,nodes,src}/**/*.ts'), '!*.d.ts']);
 
 esbuild.build({
 	entryPoints: tsFiles,
 	format: 'cjs',
 	outdir: path.resolve(distDir),
 	watch: watchMode,
-	sourcemap: !watchMode
+	sourcemap: !watchMode,
+	banner: {
+		js: '\'use strict\';\n'
+	}
 }).then(() => {
-	console.log('\n[esbuild] Watching for changes...')
+	if (watchMode) {
+		console.log('\n[esbuild] Watching for changes...')
+	} else {
+		console.log(`\n[esbuild] Building ${tsFiles.length} files...`)
+	}
 }).catch((error) => {
 	console.error('[esbuild] An unexpected error has occurred!', error);
 	process.exit(1);

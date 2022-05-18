@@ -1,4 +1,4 @@
-const { existsSync, promises: { writeFile } } = require('fs');
+const { existsSync, mkdirSync, promises: { writeFile } } = require('fs');
 const path = require('path');
 const { task, src, dest } = require('gulp');
 
@@ -96,6 +96,10 @@ function isValidHeader(header, allowedHeaderKeys) {
 }
 
 function writeDistFile(data, distPath) {
+	if (!existsSync(distPath)){
+		mkdirSync(path.dirname(distPath), { recursive: true });
+	}
+
 	writeFile(
 		distPath,
 		`module.exports = ${JSON.stringify(data, null, 2)}`,

@@ -24,8 +24,6 @@
 		"credentials/**/*",
 		"src/**/*",
 		"nodes/**/*",
-		"nodes/**/*.json",
-		"credentials/translations/**/*.json",
 		"test/**/*"
 	],
 	"exclude": [
