@@ -1,4 +1,8 @@
 import {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	INodeProperties
 } from 'n8n-workflow';
 
@@ -31,12 +35,27 @@ export const binOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/developers/postbin/api/bin',
 					},
+					output: {
+						postReceive: [
+							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+								items.forEach(item => item.json = {
+									'binId': item.json.binId,
+									'now_timestamp': item.json.now,
+									'now_iso': new Date(item.json.now as string).toISOString(),
+									'expires_timestamp': item.json.expires,
+									'expires_iso': new Date(item.json.expires as string).toISOString(),
+								});
+
+								return items;
+							},
+						],
+					},
 				},
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns information based on the binId you provide.',
+				description: 'Return information based on bin ID',
 				routing: {
 					request: {
 						method: 'GET',
@@ -52,7 +71,7 @@ export const binOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Deletes this bin and all of it\'s posts.',
+				description: 'Delete a bin and all of its posts',
 				routing: {
 					request: {
 						method: 'DELETE',
@@ -65,35 +84,8 @@ export const binOperations: INodeProperties[] = [
 					},
 				},
 			},
-			{
-				name: 'Test',
-				value: 'test',
-				description: 'Test your API by sending a request to the bin.',
-				routing: {
-					request: {
-						method: 'POST',
-					},
-					send: {
-						preSend: [
-							// Parse binId before sending to make sure it's in the right format
-							buildBinTestURL,
-						],
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "status": "Sent" } }}',
-								},
-							},
-						],
-					},
-				},
-			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -113,36 +105,9 @@ export const binFields: INodeProperties[] = [
 				operation: [
 					'get',
 					'delete',
-					'test',
 				],
 			},
 		},
-		description: 'Unique identifier for each bin.',
-	},
-	{
-	 name: 'binContent',
-	 displayName: 'Bin Content',
-	 type: 'string',
-	 default: '',
-	 typeOptions: {
-		rows: 5,
-	 },
-	 displayOptions: {
-		show: {
-			resource: [
-				'bin',
-			],
-			operation: [
-				'test',
-			],
-		},
-	 },
-	 // Content is sent in the body of POST requests
-	 routing: {
-		send: {
-			property: 'content',
-			type: 'body',
-		},
-	 },
+		description: 'Unique identifier for each bin',
 	},
 ];

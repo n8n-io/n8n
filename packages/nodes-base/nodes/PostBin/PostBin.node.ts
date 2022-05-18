@@ -49,7 +49,6 @@ export class PostBin implements INodeType {
 				],
 				default: 'bin',
 				required: true,
-				description: 'Bin to work with',
 			},
 			...binOperations,
 			...binFields,

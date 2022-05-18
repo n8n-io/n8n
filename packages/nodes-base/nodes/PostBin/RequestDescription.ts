@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	buildBinTestURL,
 	buildRequestURL
 } from './GenericFunctions';
 
@@ -23,7 +24,7 @@ export const requestOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns information based on the binId and reqId you provide.',
+				description: 'Return data based on request ID and bin ID',
 				routing: {
 					request: {
 						method: 'GET',
@@ -38,9 +39,9 @@ export const requestOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Shift',
-				value: 'shift',
-				description: 'Removes the first request form the bin.',
+				name: 'Remove First',
+				value: 'removeFirst',
+				description: 'Remove the first request from the bin',
 				routing: {
 					request: {
 						method: 'GET',
@@ -54,9 +55,34 @@ export const requestOperations: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				name: 'Send',
+				value: 'send',
+				description: 'Test your API by sending the bin a request',
+				routing: {
+					request: {
+						method: 'POST',
+					},
+					send: {
+						preSend: [
+							// Parse binId before sending to make sure it's in the right format
+							buildBinTestURL,
+						],
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "status": "Sent" } }}',
+								},
+							},
+						],
+					},
+				},
+			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -75,12 +101,39 @@ export const requestFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
-					'shift',
+					'removeFirst',
+					'send',
 				],
 			},
 		},
-		description: 'Unique identifier for each bin.',
+		description: 'Unique identifier for each bin',
 	},
+	{
+		name: 'binContent',
+		displayName: 'Bin Content',
+		type: 'string',
+		default: '',
+		typeOptions: {
+		 rows: 5,
+		},
+		displayOptions: {
+		 show: {
+			 resource: [
+				 'request',
+			 ],
+			 operation: [
+				 'send',
+			 ],
+		 },
+		},
+		// Content is sent in the body of POST requests
+		routing: {
+		 send: {
+			 property: 'content',
+			 type: 'body',
+		 },
+		},
+	 },
 	{
 		name: 'requestId',
 		displayName: 'Request ID',
@@ -97,6 +150,6 @@ export const requestFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for each request.',
+		description: 'Unique identifier for each request',
 	},
 ];
