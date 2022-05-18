@@ -276,7 +276,7 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
 	test?: ICredentialTestRequest;
-	isGenericAuth?: true;
+	isGenericAuth?: boolean;
 }
 
 export interface ICredentialTypes {
