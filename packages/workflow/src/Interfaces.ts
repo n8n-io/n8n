@@ -889,7 +889,7 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 	routing?: INodePropertyRouting;
-	credentialTypes?: string[];
+	credentialTypes?: Array<'extends:oAuth2Api' | 'extends:oAuth1Api' | 'has:authenticate'>;
 }
 export interface INodePropertyOptions {
 	name: string;
