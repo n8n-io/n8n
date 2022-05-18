@@ -187,7 +187,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
-				return this.workflow.getParentNodes(this.activeNode.name, 'main', 1) || [];
+				return this.workflow.getParentConnections(this.activeNode.name, 1).map(({name}) => name) || [];
 			}
 
 			return [];
