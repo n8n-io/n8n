@@ -106,9 +106,7 @@ export default mixins(
 			return this.$store.getters.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
-			console.log(this.currentNodeName, this.parentNodes);
 			const search = this.parentNodes.find(({name}) => name === this.currentNodeName);
-			console.log(search);
 			if (search) {
 				return search.indicies;
 			}
