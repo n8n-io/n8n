@@ -635,7 +635,7 @@ $--main-panel-width: 360px;
 	left: calc(100% + var(--spacing-s));
 	color: var(--color-text-xlight);
 	font-size: var(--font-size-2xs);
-	width: 100%;
+	white-space: nowrap;
 
 	* {
 		margin-right: var(--spacing-3xs);
