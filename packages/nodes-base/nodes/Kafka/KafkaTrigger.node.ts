@@ -26,6 +26,7 @@ export class KafkaTrigger implements INodeType {
 		icon: 'file:kafka.svg',
 		group: ['trigger'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -40,15 +41,6 @@ export class KafkaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Topic',
-				name: 'topic',
-				type: 'string',
-				default: '',
-				required: true,
-				placeholder: 'topic-name',
-				description: 'Name of the queue of topic to consume from',
-			},
-			{
 				displayName: 'Group ID',
 				name: 'groupId',
 				type: 'string',
@@ -56,13 +48,6 @@ export class KafkaTrigger implements INodeType {
 				required: true,
 				placeholder: 'n8n-kafka',
 				description: 'ID of the consumer group',
-			},
-			{
-				displayName: 'Use Schema Registry',
-				name: 'useSchemaRegistry',
-				type: 'boolean',
-				default: false,
-				description: 'Use Confluent Schema Registry',
 			},
 			{
 				displayName: 'Schema Registry URL',
@@ -81,6 +66,22 @@ export class KafkaTrigger implements INodeType {
 				description: 'URL of the schema registry',
 			},
 			{
+				displayName: 'Topic',
+				name: 'topic',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'topic-name',
+				description: 'Name of the queue of topic to consume from',
+			},
+			{
+				displayName: 'Use Schema Registry',
+				name: 'useSchemaRegistry',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use Confluent Schema Registry',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -92,25 +93,14 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-<<<<<<< HEAD
-						description: 'Allow sending message to a previously non existing topic .',
-=======
-						description: 'Allow sending message to a previously non exisiting topic',
->>>>>>> f16b550c727e3ee29fd6388a8a69033d6bca171a
-					},
-					{
-						displayName: 'Read messages from beginning',
-						name: 'fromBeginning',
-						type: 'boolean',
-						default: true,
-						description: 'Read message from beginning',
+						description: 'Whether to allow sending message to a previously non exisiting topic',
 					},
 					{
 						displayName: 'JSON Parse Message',
 						name: 'jsonParseMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Try to parse the message to an object',
+						description: 'Whether to try and parse the message to an object',
 					},
 					{
 						displayName: 'Only Message',
@@ -124,14 +114,21 @@ export class KafkaTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Returns only the message property',
+						description: 'Whether to return only the message property',
 					},
 					{
-						displayName: 'Use Raw Message',
-						name: 'useRawMessage',
+						displayName: 'Read Messages From Beginning',
+						name: 'fromBeginning',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to read message from beginning',
+					},
+					{
+						displayName: 'Return Headers',
+						name: 'returnHeaders',
 						type: 'boolean',
 						default: false,
-						description: 'Use the raw message instead of string representation',
+						description: 'Whether to return the headers received from Kafka',
 					},
 					{
 						displayName: 'Session Timeout',
@@ -141,11 +138,11 @@ export class KafkaTrigger implements INodeType {
 						description: 'The time to await a response in ms',
 					},
 					{
-						displayName: 'Return headers',
-						name: 'returnHeaders',
+						displayName: 'Use Raw Message',
+						name: 'useRawMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Return the headers received from Kafka',
+						description: 'Whether to use the raw message instead of string representation',
 					},
 				],
 			},

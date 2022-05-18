@@ -27,6 +27,7 @@ export class Kafka implements INodeType {
 		icon: 'file:kafka.svg',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends messages to a Kafka topic',
 		defaults: {
 			name: 'Kafka',
@@ -53,7 +54,7 @@ export class Kafka implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON to Kafka',
+				description: 'Whether to send the data the node receives as JSON to Kafka',
 			},
 			{
 				displayName: 'Message',
@@ -80,7 +81,7 @@ export class Kafka implements INodeType {
 				name: 'useSchemaRegistry',
 				type: 'boolean',
 				default: false,
-				description: 'Use Confluent Schema Registry',
+				description: 'Whether to use Confluent Schema Registry',
 			},
 			{
 				displayName: 'Schema Registry URL',
@@ -183,7 +184,7 @@ export class Kafka implements INodeType {
 						name: 'compression',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data in a compressed format using the GZIP codec',
+						description: 'Whether to send the data in a compressed format using the GZIP codec',
 					},
 					{
 						displayName: 'Timeout',
