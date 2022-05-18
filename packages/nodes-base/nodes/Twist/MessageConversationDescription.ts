@@ -70,7 +70,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace.',
+		description: 'The ID of the workspace',
 	},
 	{
 		displayName: 'Conversation ID',
@@ -94,7 +94,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation.',
+		description: 'The ID of the conversation',
 	},
 	{
 		displayName: 'Content',
@@ -128,7 +128,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		description: 'Other options to set.',
+		description: 'Other options to set',
 		placeholder: 'Add options',
 		options: [
 			{
@@ -149,7 +149,7 @@ export const messageConversationFields: INodeProperties[] = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button.',
+								description: 'The action of the button',
 								options: [
 									{
 										name: 'Open URL',
@@ -170,7 +170,7 @@ export const messageConversationFields: INodeProperties[] = [
 								displayName: 'Button Text',
 								name: 'button_text',
 								type: 'string',
-								description: 'The text for the action button.',
+								description: 'The text for the action button',
 								default: '',
 							},
 							{
@@ -185,7 +185,7 @@ export const messageConversationFields: INodeProperties[] = [
 										],
 									},
 								},
-								description: 'The text for the action button.',
+								description: 'The text for the action button',
 								default: '',
 							},
 							{
@@ -212,7 +212,7 @@ export const messageConversationFields: INodeProperties[] = [
 										],
 									},
 								},
-								description: 'URL to redirect.',
+								description: 'URL to redirect',
 								default: '',
 							},
 						],
@@ -234,7 +234,7 @@ export const messageConversationFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The users that are directly mentioned.',
+				description: 'The users that are directly mentioned',
 			},
 			// {
 			// 	displayName: 'Direct Group Mentions ',
@@ -271,7 +271,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace.',
+		description: 'The ID of the workspace',
 	},
 	{
 		displayName: 'Conversation ID',
@@ -295,7 +295,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation.',
+		description: 'The ID of the conversation',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -312,28 +312,28 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		description: 'Other options to set.',
+		description: 'Other options to set',
 		options: [
 			{
 				displayName: 'Ending Object Index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
-				description: 'Limit messages ending at the specified object index.',
+				description: 'Limit messages ending at the specified object index',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
 				default: 50,
-				description: 'Limits the number of messages returned.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Order By',
 				name: 'order_by',
 				type: 'options',
 				default: 'ASC',
-				description: 'The order of the conversations returned - one of DESC or ASC.',
+				description: 'The order of the conversations returned - one of DESC or ASC',
 				options: [
 					{
 						name: 'ASC',
@@ -350,7 +350,7 @@ export const messageConversationFields: INodeProperties[] = [
 				name: 'from_obj_index',
 				type: 'number',
 				default: 0,
-				description: 'Limit messages starting at the specified object index.',
+				description: 'Limit messages starting at the specified object index',
 			},
 		],
 	},
@@ -375,7 +375,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation message.',
+		description: 'The ID of the conversation message',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -397,7 +397,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation message.',
+		description: 'The ID of the conversation message',
 	},
 	{
 		displayName: 'Update Fields',
@@ -414,7 +414,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		description: 'Other options to set.',
+		description: 'Other options to set',
 		options: [
 			{
 				displayName: 'Actions',
@@ -434,7 +434,7 @@ export const messageConversationFields: INodeProperties[] = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button.',
+								description: 'The action of the button',
 								options: [
 									{
 										name: 'Open URL',
@@ -455,7 +455,7 @@ export const messageConversationFields: INodeProperties[] = [
 								displayName: 'Button Text',
 								name: 'button_text',
 								type: 'string',
-								description: 'The text for the action button.',
+								description: 'The text for the action button',
 								default: '',
 							},
 							{
@@ -470,7 +470,7 @@ export const messageConversationFields: INodeProperties[] = [
 										],
 									},
 								},
-								description: 'The text for the action button.',
+								description: 'The text for the action button',
 								default: '',
 							},
 							{
@@ -497,7 +497,7 @@ export const messageConversationFields: INodeProperties[] = [
 										],
 									},
 								},
-								description: 'URL to redirect.',
+								description: 'URL to redirect',
 								default: '',
 							},
 						],
@@ -526,7 +526,7 @@ export const messageConversationFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The users that are directly mentioned.',
+				description: 'The users that are directly mentioned',
 			},
 		],
 	},

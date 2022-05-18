@@ -46,17 +46,17 @@ export class Snowflake implements INodeType {
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Execute an SQL query.',
+						description: 'Execute an SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
-						description: 'Insert rows in database.',
+						description: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update rows in database.',
+						description: 'Update rows in database',
 					},
 				],
 				default: 'insert',
@@ -83,7 +83,7 @@ export class Snowflake implements INodeType {
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute',
 			},
 
 
@@ -103,7 +103,7 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -118,7 +118,7 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 
@@ -153,6 +153,7 @@ export class Snowflake implements INodeType {
 				},
 				default: 'id',
 				required: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
@@ -168,7 +169,7 @@ export class Snowflake implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 		],

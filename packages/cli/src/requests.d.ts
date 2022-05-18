@@ -57,7 +57,7 @@ export declare namespace WorkflowRequest {
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
-	type NewName = express.Request<{}, {}, {}, { name?: string }>;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 

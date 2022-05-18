@@ -480,6 +480,10 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
+export interface IUserSettings {
+	isOnboarded?: boolean;
+}
+
 export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;

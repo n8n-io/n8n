@@ -133,7 +133,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 				},
 			},
 			default: false,
-			description: 'If all results should be returned or only up to a given limit.',
+			description: 'Whether to return all results or only up to a given limit',
 		},
 		{
 			displayName: 'Limit',
@@ -157,7 +157,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 				maxValue: 500,
 			},
 			default: 100,
-			description: 'How many results to return.',
+			description: 'Max number of results to return',
 		},
 		{
 			displayName: 'Simplify Response',
@@ -174,7 +174,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 				},
 			},
 			default: true,
-			description: 'Return a simplified version of the response instead of the raw data.',
+			description: 'Return a simplified version of the response instead of the raw data',
 		},
 	];
 }

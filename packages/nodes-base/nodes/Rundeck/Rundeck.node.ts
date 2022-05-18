@@ -82,7 +82,7 @@ export class Rundeck implements INodeType {
 				default: '',
 				placeholder: 'Rundeck Job Id',
 				required: true,
-				description: 'The job Id to execute.',
+				description: 'The job ID to execute',
 			},
 			{
 				displayName: 'Arguments',
@@ -146,7 +146,7 @@ export class Rundeck implements INodeType {
 				default: '',
 				placeholder: 'Rundeck Job Id',
 				required: true,
-				description: 'The job Id to get metadata off.',
+				description: 'The job ID to get metadata off',
 			},
 		],
 

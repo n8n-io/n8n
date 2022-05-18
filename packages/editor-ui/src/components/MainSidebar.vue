@@ -268,6 +268,16 @@ export default mixins(
 			helpMenuItems (): object[] {
 				return [
 					{
+						id: 'quickstart',
+						type: 'link',
+						properties: {
+							href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
+							title: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+							icon: 'video',
+							newWindow: true,
+						},
+					},
+					{
 						id: 'docs',
 						type: 'link',
 						properties: {

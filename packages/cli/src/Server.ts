@@ -138,7 +138,7 @@ import * as TagHelpers from './TagHelpers';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
@@ -933,7 +933,14 @@ class App {
 				const requestedName =
 					req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-				return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+				const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+
+				const onboardingFlowEnabled =
+					!config.getEnv('workflows.onboardingFlowDisabled') &&
+					!req.user.settings?.isOnboarded &&
+					(await isBelowOnboardingThreshold(req.user));
+
+				return { name, onboardingFlowEnabled };
 			}),
 		);
 
@@ -2295,7 +2302,7 @@ class App {
 						let filterToAdd = {};
 
 						if (key === 'waitTill') {
-							filterToAdd = { waitTill: !IsNull() };
+							filterToAdd = { waitTill: Not(IsNull()) };
 						} else if (key === 'finished' && value === false) {
 							filterToAdd = { finished: false, waitTill: IsNull() };
 						} else {
@@ -2684,7 +2691,8 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							!sharedWorkflowIds.includes(data.workflowId.toString())
+							(data.workflowId !== undefined &&
+								!sharedWorkflowIds.includes(data.workflowId.toString()))
 						) {
 							continue;
 						}
