@@ -107,7 +107,7 @@ export default mixins(
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name, 'main', 50)
+			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name, 50)
 				.reverse();
 
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
