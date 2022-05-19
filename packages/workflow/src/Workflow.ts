@@ -744,100 +744,60 @@ export class Workflow {
 	 */
 	getConnections(
 		connections: IConnections,
-		nodeName: string,
-		depth = -1,
+		sourceNode: string,
+		maxDepth = -1,
 	): INodeSearch[] {
-		const checkedNodes: { [key: string]: INodeSearch } = {
-			[nodeName]: {
-				name: nodeName,
-				distance: 0,
-				indicies: [],
-			},
-		};
 
-		return getConnectionsRec(nodeName, depth, checkedNodes, 0);
+		const returnConns: INodeSearch[] =[];
 
-		function getConnectionsRec(
-			nodeName: string,
-			depth: number,
-			checkedNodes: { [key: string]: INodeSearch } = {},
-			distance: number,
-		): INodeSearch[] {
-			const type = 'main';
-			if (depth === 0) {
-				// Reached max depth
-				return [];
+		const type = 'main';
+		let queue: INodeSearch[] = [];
+		queue.push({
+			name: sourceNode,
+			depth: 0,
+			indicies: [],
+		});
+
+		const visited: {[key: string]: INodeSearch} = {};
+
+		let depth = 0;
+		while (queue.length > 0) {
+			if (depth !== -1 && depth > maxDepth) {
+				break;
 			}
+			depth++;
 
-			if (!connections.hasOwnProperty(nodeName)) {
-				// Node does not have incoming connections
-				return [];
-			}
+			const toAdd = [...queue];
+			queue = [];
 
-			if (!connections[nodeName].hasOwnProperty(type)) {
-				// Node does not have incoming connections of given type
-				return [];
-			}
-
-			function addNodes(toAdd: INodeSearch[], toReturn: INodeSearch[]) {
-				for (let i = toAdd.length; i--; i >= 0) {
-					// Because nodes can have multiple parents it is possible that
-					// parts of the tree is parent of both and to not add nodes
-					// twice check first if they already got added before.
-					const parentNodeName = toAdd[i].name;
-					const nodeIndex = toReturn.findIndex((search) => search.name === parentNodeName);
-
-					if (nodeIndex !== -1) {
-						// Node got found before so remove it from current location
-						// that node-order stays correct
-						toAdd[i].distance = Math.min(toReturn[nodeIndex].distance, toAdd[i].distance);
-						toAdd[i].indicies = dedupe(toAdd[i].indicies.concat(toReturn[nodeIndex].indicies));
-						toReturn.splice(nodeIndex, 1, toAdd[i]);
-					}
-					else {
-						toReturn.unshift(toAdd[i]);
-					}
+			toAdd.forEach((curr) => {
+				if (visited[curr.name]) {
+					visited[curr.name].indicies = dedupe(visited[curr.name].indicies.concat(curr.indicies));
+					return;
 				}
-			}
 
-			const returnNodes: INodeSearch[] = [];
-			connections[nodeName][type].forEach((connectionsByIndex) => {
-				connectionsByIndex.forEach((connection) => {
-					const nodeName = connection.node;
-					if (!checkedNodes[nodeName]) {
-						checkedNodes[nodeName] = {
+				visited[curr.name] = curr;
+				if (curr.name !== sourceNode) {
+					returnConns.push(curr);
+				}
+
+				if (!connections.hasOwnProperty(curr.name) || !connections[curr.name].hasOwnProperty(type)) {
+					return;
+				}
+
+				connections[curr.name][type].forEach((connectionsByIndex) => {
+					connectionsByIndex.forEach((connection) => {
+						queue.push({
 							name: connection.node,
-							distance: distance + 1,
 							indicies: [connection.index],
-						};
-						returnNodes.unshift(checkedNodes[nodeName]);
-					}
-					else {
-						const prevDistance = checkedNodes[nodeName].distance;
-						addNodes([{
-							name: nodeName,
-							distance: distance + 1,
-							indicies: [connection.index],
-						}], returnNodes);
-						if (prevDistance <= distance + 1) {
-							// Node already visited before at a shorter distance
-							return;
-						}
-					}
-
-					const toAdd = getConnectionsRec(
-						connection.node,
-						depth === -1? -1: depth - 1,
-						checkedNodes,
-						distance + 1,
-					);
-
-					addNodes(toAdd, returnNodes);
+							depth,
+						});
+					});
 				});
 			});
-
-			return returnNodes;
 		}
+
+		return returnConns;
 	}
 
 	/**

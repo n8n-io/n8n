@@ -193,7 +193,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return [];
 		},
 		parentNode(): string | undefined {
-			return this.parentNodes[this.parentNodes.length - 1];
+			return this.parentNodes[0];
 		},
 		isTriggerNode(): boolean {
 			return (

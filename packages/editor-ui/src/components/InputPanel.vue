@@ -21,7 +21,7 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node in parentNodes" :label="$locale.baseText('ndv.input.parentNodeOption', {interpolate: {name: node.name, distance: node.distance}})" :value="node.name" :key="node.name"></n8n-option>
+					<n8n-option v-for="node in parentNodes" :label="$locale.baseText('ndv.input.parentNodeOption', {interpolate: {name: node.name, distance: node.depth}})" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 			</div>
@@ -116,8 +116,7 @@ export default mixins(
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name, 50)
-				.reverse();
+			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name, 50);
 
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},

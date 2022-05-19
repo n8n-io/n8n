@@ -1460,6 +1460,6 @@ export interface ITelemetrySettings {
 
 export interface INodeSearch {
 	name: string;
-	distance: number;
 	indicies: number[];
+	depth: number;
 }
