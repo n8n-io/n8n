@@ -87,6 +87,7 @@ export default mixins(
 	name: 'NodeCredentials',
 	props: [
 		'node', // INodeUi
+		'overrideCredType', // cred type
 	],
 	data () {
 		return {
@@ -99,14 +100,6 @@ export default mixins(
 			credentialOptions: 'allCredentialsByType',
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
-		isProxyAuth(): boolean {
-			return this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authenticateWith === 'nodeCredential';
-		},
-		isGenericAuth(): boolean {
-			return this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authenticateWith === 'genericAuth';
-		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
@@ -120,17 +113,9 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			if (this.isGenericAuth) {
-				const { genericAuthType } = this.node.parameters as { genericAuthType: string };
+			const credType = this.getCredentialTypeByName(this.overrideCredType);
 
-				return [this.getCredentialTypeByName(genericAuthType)];
-			}
-
-			if (this.isProxyAuth) {
-				const { nodeCredentialType } = this.node.parameters as { nodeCredentialType?: string };
-
-				if (nodeCredentialType) return [this.getCredentialTypeByName(nodeCredentialType)];
-			}
+			if (credType) return [credType];
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
@@ -224,7 +209,15 @@ export default mixins(
 				return;
 			}
 
-			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track(
+				'User selected credential from node modal',
+				{
+					credential_type: credentialType,
+					node_type: this.node.type,
+					...(this.isProxyAuth ? { is_service_specific: true } : {}),
+					workflow_id: this.$store.getters.workflowId,
+				},
+			);
 
 			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
@@ -321,11 +314,7 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	margin: 0;
-
-	> * {
-		margin-bottom: var(--spacing-xs);
-	}
+	margin-top: var(--spacing-xs);
 }
 
 .warning {

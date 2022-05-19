@@ -42,6 +42,16 @@
 						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+
+				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
+					<n8n-notice
+						:content="$locale.baseText(
+							'nodeSettings.useTheHttpRequestNode',
+							{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
+						)"
+					/>
+				</div>
+
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
