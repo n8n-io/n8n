@@ -261,12 +261,13 @@ export class Worker extends Command {
 		// set metrics for the workflow execution
 		const executionId = jobData.executionId ? jobData.executionId : 'unknown';
 		const workflowName = workflow.name ? workflow.name : 'unknown';
-
 		const finished = (await workflowRun).finished ? (await workflowRun).finished : false;
 		const duration = this.getDuration((await workflowRun).startedAt, (await workflowRun).stoppedAt);
+		const workflowError = (await workflowRun).data.resultData.error
 
 		metrics.workflowBucket.labels(executionId, workflowName, finished as unknown as string).observe(duration);
-		if (finished) {
+
+		if (finished && workflowError === undefined) {
 			metrics.workflowCounter.labels('success').inc();
 		} else {
 			metrics.workflowCounter.labels('failed').inc();
@@ -300,7 +301,7 @@ export class Worker extends Command {
 			[0.5, 1, 10, 30, 60, 1440],
 		);
 		const workflowCounter = metrics.initCounter(
-			'workflow_execution',
+			'workflow_execution_counter',
 			'Number of successful executions for a workflow',
 			['status'],
 		)
