@@ -841,6 +841,14 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
+			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
+				if (newData.length && !prevData.length && this.displayMode !== 'binary') {
+					this.switchToBinary();
+				}
+				else if (!newData.length && this.displayMode === 'binary') {
+					this.onDisplayModeChange('table');
+				}
+			},
 		},
 	});
 </script>
