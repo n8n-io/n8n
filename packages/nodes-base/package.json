@@ -20,8 +20,8 @@
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
-    "lintfix-plugin": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes --fix",
+    "lintfix-tslint": "tslint --fix -p tsconfig.json -c tslint.json",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes --fix",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
