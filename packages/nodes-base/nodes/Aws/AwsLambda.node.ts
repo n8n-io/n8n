@@ -6,6 +6,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -191,7 +192,7 @@ export class AwsLambda implements INodeType {
 					},
 				);
 
-				if (responseData !== null && responseData.errorMessage !== undefined) {
+				if (responseData !== null && responseData?.errorMessage !== undefined) {
 					let errorMessage = responseData.errorMessage;
 
 					if (responseData.stackTrace) {
@@ -206,7 +207,7 @@ export class AwsLambda implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

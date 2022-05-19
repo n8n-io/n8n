@@ -36,6 +36,11 @@ export const fileOperations: INodeProperties[] = [
 				description: 'Get a file',
 			},
 			{
+				name: 'Rename',
+				value: 'rename',
+				description: 'Rename a file',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a file',
@@ -76,7 +81,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -100,7 +104,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `The new name for the copy. If this isn't provided, the same name will be used as the original.`,
+				description: 'The new name for the copy. If this isn\'t provided, the same name will be used as the original.',
 			},
 		],
 	},
@@ -127,28 +131,28 @@ export const fileFields: INodeProperties[] = [
 				name: 'driveId',
 				type: 'string',
 				default: '',
-				description: 'Identifier of the drive instance that contains the item.',
+				description: 'Identifier of the drive instance that contains the item',
 			},
 			{
 				displayName: 'Drive Type',
 				name: 'driveType',
 				type: 'string',
 				default: '',
-				description: 'Identifies the type of drive.',
+				description: 'Identifies the type of drive',
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Identifier of the item in the drive.',
+				description: 'Identifier of the item in the drive',
 			},
 			{
 				displayName: 'List ID',
 				name: 'listId',
 				type: 'string',
 				default: '',
-				description: 'Identifier of the list.',
+				description: 'Identifier of the list',
 			},
 			{
 				displayName: 'Name',
@@ -169,14 +173,14 @@ export const fileFields: INodeProperties[] = [
 				name: 'shareId',
 				type: 'string',
 				default: '',
-				description: 'Identifier for a shared resource that can be accessed via the Shares API.',
+				description: 'Identifier for a shared resource that can be accessed via the Shares API',
 			},
 			{
 				displayName: 'Site ID',
 				name: 'siteId',
 				type: 'string',
 				default: '',
-				description: 'Identifier of the site.',
+				description: 'Identifier of the site',
 			},
 		],
 	},
@@ -218,7 +222,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Binary Property',
@@ -236,7 +239,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:get                                   */
@@ -259,6 +262,43 @@ export const fileFields: INodeProperties[] = [
 		description: 'Field ID',
 	},
 /* -------------------------------------------------------------------------- */
+/*                                 file:rename                                */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Item ID',
+	name: 'itemId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'file',
+			],
+		},
+	},
+	default: '',
+	description: 'ID of the file',
+},
+{
+	displayName: 'New Name',
+	name: 'newName',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'file',
+			],
+		},
+	},
+	default: '',
+	description: 'New name for file',
+},
+/* -------------------------------------------------------------------------- */
 /*                                 file:search                                */
 /* -------------------------------------------------------------------------- */
 	{
@@ -276,8 +316,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The query text used to search for items. Values may be matched
-		across several fields including filename, metadata, and file content.`,
+		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:share                                 */
@@ -297,7 +336,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'File ID',
 	},
 	{
 		displayName: 'Type',
@@ -375,7 +413,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name the file should be saved as.',
+		description: 'The name the file should be saved as',
 	},
 	{
 		displayName: 'Parent ID',
@@ -393,7 +431,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the parent folder that will contain the file.',
+		description: 'ID of the parent folder that will contain the file',
 	},
 	{
 		displayName: 'Binary Data',
@@ -411,7 +449,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field.',
+		description: 'If the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -434,7 +472,7 @@ export const fileFields: INodeProperties[] = [
 
 		},
 		placeholder: '',
-		description: 'The text content of the file.',
+		description: 'The text content of the file',
 	},
 	{
 		displayName: 'Binary Property',
@@ -457,6 +495,6 @@ export const fileFields: INodeProperties[] = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file.',
+		description: 'Name of the binary property which contains the data for the file',
 	},
 ];

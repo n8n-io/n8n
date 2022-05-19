@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -196,7 +195,7 @@ export class Cortex implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -242,7 +241,7 @@ export class Cortex implements INodeType {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 							}
 
-							const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+							const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const options = {
 								formData: {
@@ -425,7 +424,7 @@ export class Cortex implements INodeType {
 										throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 									}
 
-									const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+									const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 									const sha256 = createHash('sha256').update(fileBufferData).digest('hex');
 
 									(body.data as IDataObject).attachment = {

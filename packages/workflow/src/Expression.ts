@@ -1,5 +1,7 @@
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
+import { DateTime, Duration, Interval } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -67,6 +69,7 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 		selfData = {},
@@ -93,6 +96,7 @@ export class Expression {
 			connectionInputData,
 			siblingParameters,
 			mode,
+			timezone,
 			additionalKeys,
 			-1,
 			selfData,
@@ -114,6 +118,12 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+
+		// @ts-ignore
+		data.DateTime = DateTime;
+		data.Interval = Interval;
+		data.Duration = Duration;
+
 		// @ts-ignore
 		data.constructor = {};
 
@@ -149,6 +159,7 @@ export class Expression {
 		node: INode,
 		parameterValue: string | boolean | undefined,
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		defaultValue?: boolean | number | string,
 	): boolean | number | string | undefined {
@@ -175,6 +186,7 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 		) as boolean | number | string | undefined;
 	}
@@ -192,6 +204,7 @@ export class Expression {
 		node: INode,
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		defaultValue:
 			| NodeParameterValue
@@ -225,6 +238,7 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 			false,
 			selfData,
@@ -239,6 +253,7 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 			false,
 			selfData,
@@ -268,6 +283,7 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 		selfData = {},
@@ -293,6 +309,7 @@ export class Expression {
 					activeNodeName,
 					connectionInputData,
 					mode,
+					timezone,
 					additionalKeys,
 					returnObjectAsString,
 					selfData,
@@ -307,6 +324,7 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
+				timezone,
 				additionalKeys,
 				returnObjectAsString,
 				selfData,
@@ -324,6 +342,7 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
+				timezone,
 				additionalKeys,
 				returnObjectAsString,
 				selfData,

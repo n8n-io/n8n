@@ -6,6 +6,7 @@ export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -30,11 +31,12 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -74,7 +76,7 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -101,7 +103,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Post's title.`,
+		description: 'Post\'s title',
 	},
 	{
 		displayName: 'Content Format',
@@ -131,7 +133,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'html',
-		description: `The format of the post.`,
+		description: 'The format of the post',
 	},
 	{
 		displayName: 'Content',
@@ -157,7 +159,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The content of the post to create.',
+		description: 'The content of the post to create',
 	},
 	{
 		displayName: 'Content (JSON)',
@@ -181,7 +183,7 @@ export const postFields: INodeProperties[] = [
 		},
 
 		default: '',
-		description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info</a>',
+		description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -257,18 +259,18 @@ export const postFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Title',
-				name: 'og_title',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Open Graph Image',
 				name: 'og_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
 
+			},
+			{
+				displayName: 'Open Graph Title',
+				name: 'og_title',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Published At',
@@ -303,7 +305,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -355,7 +357,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the post to delete.',
+		description: 'The ID of the post to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -365,7 +367,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'By',
 		name: 'by',
 		type: 'options',
-		default: '',
+		default: 'id',
 		required: true,
 		options: [
 			{
@@ -391,7 +393,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Get the post either by slug or ID.',
+		description: 'Get the post either by slug or ID',
 	},
 	{
 		displayName: 'Identifier',
@@ -413,7 +415,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID or slug of the post to get.',
+		description: 'The ID or slug of the post to get',
 	},
 	{
 		displayName: 'Options',
@@ -532,7 +534,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -560,7 +562,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -623,7 +625,7 @@ export const postFields: INodeProperties[] = [
 				default: [
 					'html',
 				],
-				description: `By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext.`,
+				description: 'By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext',
 			},
 		],
 	},
@@ -713,7 +715,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the post to update.',
+		description: 'The ID of the post to update',
 	},
 	{
 		displayName: 'Content Format',
@@ -743,7 +745,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'html',
-		description: `The format of the post.`,
+		description: 'The format of the post',
 	},
 	{
 		displayName: 'Update Fields',
@@ -820,7 +822,7 @@ export const postFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info.</a>',
+				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info.</a>.',
 			},
 			{
 				displayName: 'Featured',
@@ -847,17 +849,17 @@ export const postFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Title',
-				name: 'og_title',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Open Graph Image',
 				name: 'og_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
+			},
+			{
+				displayName: 'Open Graph Title',
+				name: 'og_title',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Published At',
@@ -892,7 +894,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -905,7 +907,7 @@ export const postFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: `Post's title`,
+				description: 'Post\'s title',
 			},
 			{
 				displayName: 'Twitter Description',

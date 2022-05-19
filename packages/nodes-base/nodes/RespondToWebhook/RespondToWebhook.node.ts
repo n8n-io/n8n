@@ -1,10 +1,9 @@
 import {
-	BINARY_ENCODING,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
-	IExecuteFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
@@ -202,7 +201,7 @@ export class RespondToWebhook implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const respondWith = this.getNodeParameter('respondWith', 0) as string;
@@ -250,6 +249,7 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const binaryData = item.binary[responseBinaryPropertyName];
+			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(0, responseBinaryPropertyName);
 
 			if (binaryData === undefined) {
 				throw new NodeOperationError(this.getNode(), `No binary data property "${responseBinaryPropertyName}" does not exists on item!`);
@@ -258,7 +258,7 @@ export class RespondToWebhook implements INodeType {
 			if (headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
-			responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
+			responseBody = binaryDataBuffer;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(this.getNode(), `The Response Data option "${respondWith}" is not supported!`);
 		}

@@ -15,6 +15,12 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.awsComprehend/"
 			}
+		],
+		"generic": [
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
+			}
 		]
 	}
 }

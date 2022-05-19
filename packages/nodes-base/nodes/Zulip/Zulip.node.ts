@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -148,7 +147,7 @@ export class Zulip implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -217,10 +216,12 @@ export class Zulip implements INodeType {
 						if (items[i].binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
 						}
+
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 						const formData = {
 							file: {
 								//@ts-ignore
-								value: Buffer.from(items[i].binary[binaryProperty].data, BINARY_ENCODING),
+								value: binaryDataBuffer,
 								options: {
 									//@ts-ignore
 									filename: items[i].binary[binaryProperty].fileName,
@@ -230,7 +231,7 @@ export class Zulip implements INodeType {
 							},
 						};
 						responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData });
-						responseData.uri = `${credentials!.url}${responseData.uri}`;
+						responseData.uri = `${credentials.url}${responseData.uri}`;
 					}
 				}
 

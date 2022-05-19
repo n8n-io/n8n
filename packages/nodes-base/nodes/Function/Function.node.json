@@ -65,6 +65,11 @@
 				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
 			},
 			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			},
+			{
 				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
 				"icon": "🔗",
 				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
@@ -73,6 +78,11 @@
 				"label": "Build your own virtual assistant with n8n: A step by step guide",
 				"icon": "👦",
 				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
+			},
+			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
 			},
 			{
 				"label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n",
@@ -100,9 +110,18 @@
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
 			},
 			{
+				"label": "How a Membership Development Manager automates his work and investments",
+				"icon": "📈",
+				"url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/"
+			},
+			{
 				"label": "How Goomer automated their operations with over 200 n8n workflows",
 				"icon": "🛵",
 				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	},

@@ -13,7 +13,7 @@
 <script lang="ts">
 
 import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -38,6 +38,11 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+
+// Node types that should not be displayed in variable selector
+const SKIPPED_NODE_TYPES = [
+	STICKY_NODE_TYPE,
+];
 
 export default mixins(
 	workflowHelpers,
@@ -114,7 +119,7 @@ export default mixins(
 					const newOptions = this.removeEmptyEntries(inputData.options);
 					if (Array.isArray(newOptions) && newOptions.length) {
 						// Has still options left so return
-						inputData.options = this.sortOptions(newOptions);
+						inputData.options = newOptions;
 						return inputData;
 					} else if (Array.isArray(newOptions) && newOptions.length === 0) {
 						delete inputData.options;
@@ -386,7 +391,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.$store.getters.timezone, additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore
@@ -546,12 +551,23 @@ export default mixins(
 				let nodeOptions: IVariableSelectorOption[];
 				const upstreamNodes = this.workflow.getParentNodes(activeNode.name, inputName);
 
-				for (const [nodeName, node] of Object.entries(this.workflow.nodes)) {
+				const workflowNodes = Object.entries(this.workflow.nodes);
+
+				// Sort the nodes according to their position relative to the current node
+				workflowNodes.sort((a, b) => {
+					return upstreamNodes.indexOf(b[0]) - upstreamNodes.indexOf(a[0]);
+				});
+
+				for (const [nodeName, node] of workflowNodes) {
 					// Add the parameters of all nodes
 					// TODO: Later have to make sure that no parameters can be referenced which have expression which use input-data (for nodes which are not parent nodes)
 
 					if (nodeName === activeNode.name) {
 						// Skip the current node as this one get added separately
+						continue;
+					}
+					// If node type should be skipped, continue
+					if (SKIPPED_NODE_TYPES.includes(node.type)) {
 						continue;
 					}
 
@@ -606,7 +622,7 @@ export default mixins(
 				returnData.push(
 					{
 						name: this.$locale.baseText('variableSelector.nodes'),
-						options: this.sortOptions(allNodesData),
+						options: allNodesData,
 					},
 				);
 
