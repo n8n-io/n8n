@@ -157,7 +157,7 @@ export default mixins(
 					workflow_id: this.$store.getters.workflowId,
 					session_id: this.sessionId,
 					pane: 'input',
-					type: 'notConnectedHelp',
+					type: 'not-connected-help',
 				});
 			}
 		},
