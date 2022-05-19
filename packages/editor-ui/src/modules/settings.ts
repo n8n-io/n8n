@@ -41,10 +41,10 @@ const module: Module<ISettingsState, IRootState> = {
 		isPublicApiEnabled(state: ISettingsState): boolean {
 			return state.api.enabled;
 		},
-		getPublicApiLatestVersion(state: ISettingsState): number {
+		publicApiLatestVersion(state: ISettingsState): number {
 			return state.api.latestVersion;
 		},
-		getPublicApiPath(state: ISettingsState): string {
+		publicApiPath(state: ISettingsState): string {
 			return state.api.path;
 		},
 		showSetupPage(state: ISettingsState) {

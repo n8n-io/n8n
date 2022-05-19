@@ -44,6 +44,7 @@ export default mixins(copyPaste, showMessage).extend({
 	},
 	methods: {
 		copy(): void {
+			this.$emit('copy');
 			this.copyToClipboard(this.value);
 
 			this.$showMessage({

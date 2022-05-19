@@ -24,6 +24,7 @@
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						@copy="onCopy"
 					/>
 				</n8n-card>
 				<div :class="$style.hint">
@@ -72,8 +73,8 @@ export default mixins(
 	mounted() {
 		this.getApiKey();
 		const baseUrl = this.$store.getters.getBaseUrl;
-		const apiPath = this.$store.getters['settings/getPublicApiPath'];
-		const latestVersion = this.$store.getters['settings/getPublicApiLatestVersion'];
+		const apiPath = this.$store.getters['settings/publicApiPath'];
+		const latestVersion = this.$store.getters['settings/publicApiLatestVersion'];
 		this.apiPlaygroundPath = `${baseUrl}${apiPath}/v${latestVersion}/docs`;
 	},
 	computed: {
@@ -112,6 +113,7 @@ export default mixins(
 				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
 				this.loading = false;
+				this.$telemetry.track('User clicked create API key button');
 			}
 		},
 		async deleteApiKey() {
@@ -121,7 +123,12 @@ export default mixins(
 				this.apiKey = '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));
+			} finally {
+				this.$telemetry.track('User clicked delete API key button');
 			}
+		},
+		onCopy() {
+			this.$telemetry.track('User clicked copy API key button');
 		},
 	},
 });
