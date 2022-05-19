@@ -162,7 +162,11 @@ export default mixins(
 			}
 		},
 		truncate(nodeName: string) {
-			return nodeName.substring(0, 30);
+			const truncated = nodeName.substring(0, 30);
+			if (truncated.length < nodeName.length) {
+				return `${truncated}...`;
+			}
+			return truncated;
 		},
 	},
 });
