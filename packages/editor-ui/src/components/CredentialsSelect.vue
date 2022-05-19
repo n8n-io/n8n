@@ -92,6 +92,10 @@ export default Vue.extend({
 
 			for (const property of supported.has) {
 				if (checkedCredType[property] !== undefined) {
+
+					// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
+					if (name === 'httpHeaderAuth' && property === 'authenticate') continue;
+
 					return true;
 				}
 			}
