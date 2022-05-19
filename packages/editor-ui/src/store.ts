@@ -39,6 +39,7 @@ import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
+import communityNodes from './modules/communityNodes';
 
 Vue.use(Vuex);
 
@@ -102,6 +103,7 @@ const modules = {
 	versions,
 	users,
 	ui,
+	communityNodes,
 };
 
 export const store = new Vuex.Store({

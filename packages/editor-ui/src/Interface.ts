@@ -890,6 +890,10 @@ export interface IUsersState {
 export interface IWorkflowsState {
 }
 
+export interface ICommunityNodesState {
+	availablePackageCount: number;
+}
+
 export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;

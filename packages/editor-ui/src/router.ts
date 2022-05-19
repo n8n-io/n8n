@@ -8,6 +8,7 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
+import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -356,6 +357,23 @@ const router = new Router({
 					},
 					deny: {
 						role: [ROLE.Default],
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/community-nodes',
+			name: VIEWS.COMMUNITY_NODES,
+			components: {
+				default: SettingsCommunityNodesView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+				permissions: {
+					allow: {
+						role: [ROLE.Default, ROLE.Owner],
 					},
 				},
 			},
