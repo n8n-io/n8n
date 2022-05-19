@@ -94,7 +94,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in',
+		description: 'The stage ID of the pipeline the ticket is in',
 	},
 	{
 		displayName: 'Ticket Name',
