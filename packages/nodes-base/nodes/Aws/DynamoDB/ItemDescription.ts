@@ -693,7 +693,7 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Filter Expression',
 		name: 'filterExpression',
 		type: 'string',
-		required: true,
+		required: false,
 		displayOptions: {
 			show: {
 				scan: [
