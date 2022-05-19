@@ -109,12 +109,12 @@
 			ref="inputField"
 			:parameter="parameter"
 			:node="node"
-			@credentialSelected="credentialSelected"
 			:activeCredentialType="activeCredentialType"
 			:inputSize="inputSize"
 			:displayValue="displayValue"
 			:isReadOnly="isReadOnly"
 			:displayTitle="displayTitle"
+			@credentialSelected="credentialSelected"
 			@valueChanged="valueChanged"
 			@setFocus="setFocus"
 			@onBlur="onBlur"
@@ -126,11 +126,11 @@
 				<parameter-options
 				 	v-if="displayOptionsComputed"
 					:displayOptionsComputed="displayOptionsComputed"
-					@optionSelected="optionSelected"
 					:parameter="parameter"
 					:isValueExpression="isValueExpression"
 					:isDefault="isDefault"
 					:hasRemoteMethod="hasRemoteMethod"
+					@optionSelected="optionSelected"
 				/>
 			</template>
 		</credentials-select>
@@ -208,11 +208,11 @@
 	<parameter-options
 		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect' && parameter.name !== 'genericAuthType'"
 		:displayOptionsComputed="displayOptionsComputed"
-		@optionSelected="optionSelected"
 		:parameter="parameter"
 		:isValueExpression="isValueExpression"
 		:isDefault="isDefault"
 		:hasRemoteMethod="hasRemoteMethod"
+		@optionSelected="optionSelected"
 	/>
 
 	</div>
