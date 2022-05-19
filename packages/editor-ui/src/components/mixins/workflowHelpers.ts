@@ -330,7 +330,7 @@ export const workflowHelpers = mixins(
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-							if (this.hasProxyAuth(node)) {
+							if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
 								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 								continue;
 							}
