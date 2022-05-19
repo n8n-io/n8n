@@ -7,6 +7,7 @@ export const threadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,6 +17,11 @@ export const threadOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Permanently deletes the specified thread',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a thread',
@@ -24,6 +30,16 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all threads',
+			},
+			{
+				name: 'Trash',
+				value: 'trash',
+				description: 'Moves the specified thread to the trash',
+			},
+			{
+				name: 'Untrash',
+				value: 'untrash',
+				description: 'Removes the specified thread to the trash',
 			},
 		],
 		default: 'get',
@@ -44,6 +60,9 @@ export const threadFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
+					'delete',
+					'trash',
+					'untrash',
 				],
 			},
 		},
@@ -117,7 +136,7 @@ export const threadFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -141,7 +160,7 @@ export const threadFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 10,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -165,7 +184,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include threads from SPAM and TRASH in the results',
+				description: 'Whether to include threads from SPAM and TRASH in the results',
 			},
 			{
 				displayName: 'Label IDs',
@@ -185,7 +204,7 @@ export const threadFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Only return threads matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope`,
+				description: 'Only return threads matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope .',
 			},
 		],
 	},

@@ -7,6 +7,7 @@ export const threadLabelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const threadLabelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: '',
 	},
 ];
 
@@ -57,7 +57,7 @@ export const threadLabelFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getLabels',
 		},
-		default: '',
+		default: [],
 		required: true,
 		displayOptions: {
 			show: {

@@ -132,6 +132,7 @@ export class Gmail implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Draft',
@@ -159,7 +160,7 @@ export class Gmail implements INodeType {
 					},
 				],
 				default: 'draft',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			//-------------------------------
 			// Draft Operations
@@ -840,6 +841,18 @@ export class Gmail implements INodeType {
 					}
 				}
 				if (resource === 'thread') {
+					if (operation === 'delete') {
+						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/delete
+						method = 'DELETE';
+
+						const id = this.getNodeParameter('threadId', i);
+
+						endpoint = `/gmail/v1/users/me/threads/${id}`;
+
+						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/get
 						method = 'GET';
@@ -901,6 +914,26 @@ export class Gmail implements INodeType {
 						}
 
 						returnData.push(...responseData);
+					}
+					if (operation === 'trash') {
+						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
+						method = 'POST';
+
+						const id = this.getNodeParameter('threadId', i);
+
+						endpoint = `/gmail/v1/users/me/threads/${id}/trash`;
+
+						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
+					}
+					if (operation === 'untrash') {
+						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/untrash
+						method = 'POST';
+
+						const id = this.getNodeParameter('threadId', i);
+
+						endpoint = `/gmail/v1/users/me/threads/${id}/untrash`;
+
+						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
 					}
 				}
 				if (resource === 'threadLabel') {

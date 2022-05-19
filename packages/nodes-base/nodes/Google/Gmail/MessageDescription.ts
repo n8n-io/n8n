@@ -7,6 +7,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -15,11 +16,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an email',
-			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -40,9 +36,13 @@ export const messageOperations: INodeProperties[] = [
 				value: 'reply',
 				description: 'Reply to an email',
 			},
+			{
+				name: 'Send',
+				value: 'send',
+				description: 'Send an email',
+			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -140,7 +140,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Switch ON if the message should also be included as HTML',
+		description: 'Whether the message should also be included as HTML',
 	},
 	{
 		displayName: 'HTML Message',
@@ -281,7 +281,7 @@ export const messageFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'Name <test@gmail.com>',
 				default: '',
-				description: 'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API',
+				description: 'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API.',
 			},
 		],
 	},
@@ -351,7 +351,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 		],
 	},
@@ -433,7 +433,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Format',
@@ -479,7 +479,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages from SPAM and TRASH in the results',
+				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 			{
 				displayName: 'Label IDs',

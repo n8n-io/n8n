@@ -7,6 +7,7 @@ export const messageLabelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,7 @@ export const messageLabelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform',
+		description: 'Modifies the labels on the specified message',
 	},
 ];
 

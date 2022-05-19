@@ -7,6 +7,7 @@ export const draftOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const draftOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -96,7 +96,7 @@ export const draftFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Switch ON if the message should also be included as HTML',
+		description: 'Whether the message should also be included as HTML',
 	},
 	{
 		displayName: 'HTML Message',
@@ -251,7 +251,7 @@ export const draftFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Format',
@@ -367,7 +367,7 @@ export const draftFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Format',
@@ -413,7 +413,7 @@ export const draftFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages from SPAM and TRASH in the results',
+				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 		],
 	},
