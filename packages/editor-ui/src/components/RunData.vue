@@ -372,7 +372,7 @@ export default mixins(
 				return defaults;
 			},
 			hasNodeRun(): boolean {
-				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+				return Boolean(!this.isExecuting && this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
