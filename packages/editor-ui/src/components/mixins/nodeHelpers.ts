@@ -252,7 +252,7 @@ export const nodeHelpers = mixins(
 
 				if (
 					this.hasProxyAuth(node) &&
-					authentication === 'existingCredentialType' &&
+					authentication === 'predefinedCredentialType' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
@@ -266,7 +266,7 @@ export const nodeHelpers = mixins(
 
 				if (
 					this.hasProxyAuth(node) &&
-					authentication === 'existingCredentialType' &&
+					authentication === 'predefinedCredentialType' &&
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
@@ -500,7 +500,7 @@ function selectedCredsDoNotExist(
 declare namespace HttpRequestNode {
 	namespace V2 {
 		type AuthParams = {
-			authentication: 'none' | 'genericCredentialType' | 'existingCredentialType';
+			authentication: 'none' | 'genericCredentialType' | 'predefinedCredentialType';
 			genericAuthType: string;
 			nodeCredentialType: string;
 		};

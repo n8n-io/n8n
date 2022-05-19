@@ -232,8 +232,8 @@ export class HttpRequest implements INodeType {
 						value: 'none',
 					},
 					{
-						name: 'Existing Credential Type',
-						value: 'existingCredentialType',
+						name: 'Predefined Credential Type',
+						value: 'predefinedCredentialType',
 						description: 'We\'ve already implemented auth for many services so that you don\'t have to set it up manually',
 					},
 					{
@@ -266,7 +266,7 @@ export class HttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'existingCredentialType',
+							'predefinedCredentialType',
 						],
 						'@version': [
 							2,
@@ -860,7 +860,7 @@ export class HttpRequest implements INodeType {
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 		try {
-			authentication = this.getNodeParameter('authentication', 0) as 'existingCredentialType' | 'genericCredentialType' | 'none';
+			authentication = this.getNodeParameter('authentication', 0) as 'predefinedCredentialType' | 'genericCredentialType' | 'none';
 		} catch (_) {}
 
 		let httpBasicAuth;
@@ -890,7 +890,7 @@ export class HttpRequest implements INodeType {
 			try {
 				oAuth2Api = await this.getCredentials('oAuth2Api');
 			} catch (_) {}
-		} else if (authentication === 'existingCredentialType') {
+		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			} catch (_) {}
@@ -1205,7 +1205,7 @@ export class HttpRequest implements INodeType {
 						this.helpers.request(requestOptions),
 					);
 				}
-			} else if (authentication === 'existingCredentialType' && nodeCredentialType) {
+			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
 					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),

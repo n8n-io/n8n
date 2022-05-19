@@ -881,7 +881,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			if (this.node && this.node.parameters.authentication === 'existingCredentialType') {
+			if (this.node && this.node.parameters.authentication === 'predefinedCredentialType') {
 				this.activeCredentialType = this.node.parameters.nodeCredentialType as string;
 			}
 
