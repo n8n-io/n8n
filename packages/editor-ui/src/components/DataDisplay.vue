@@ -4,6 +4,7 @@
 		:before-close="close"
 		:show-close="false"
 		custom-class="data-display-wrapper"
+		class="ndv-wrapper"
 		width="auto"
 		append-to-body
 	>
@@ -522,6 +523,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 </script>
 
 <style lang="scss">
+.ndv-wrapper {
+	overflow: hidden;
+}
+
 .data-display-wrapper {
 	height: 93%;
 	width: 100%;

@@ -21,7 +21,7 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node in parentNodes" :label="$locale.baseText('ndv.input.parentNodeOption', {interpolate: {name: node.name, distance: node.depth}})" :value="node.name" :key="node.name"></n8n-option>
+					<n8n-option v-for="node in parentNodes" :label="$locale.baseText('ndv.input.parentNodeOption', {interpolate: {name: node.name }, adjustToNumber: node.depth})" :value="node.name" :key="node.name"></n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 			</div>
