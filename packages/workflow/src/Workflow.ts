@@ -726,7 +726,7 @@ export class Workflow {
 	 * @returns {string[]}
 	 * @memberof Workflow
 	 */
-	getParentConnections(nodeName: string, depth = 50): INodeSearch[] {
+	getParentConnections(nodeName: string, depth = -1): INodeSearch[] {
 		return this.getConnections(this.connectionsByDestinationNode, nodeName, depth);
 	}
 
@@ -762,7 +762,7 @@ export class Workflow {
 
 		let depth = 0;
 		while (queue.length > 0) {
-			if (depth !== -1 && depth > maxDepth) {
+			if (maxDepth !== -1 && depth > maxDepth) {
 				break;
 			}
 			depth++;

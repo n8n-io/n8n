@@ -658,6 +658,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		executedNode: (state): string | undefined => {
+			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
+		},
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
 		},

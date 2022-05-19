@@ -93,9 +93,10 @@ export default mixins(
 	},
 	computed: {
 		isExecutingPrevious(): boolean {
+			const triggeredNode = this.$store.getters.executedNode;
 			const executingNode = this.$store.getters.executingNode;
 			if (executingNode) {
-				return !!this.parentNodes.find((node) => node.name === executingNode);
+				return !!this.parentNodes.find((node) => node.name === executingNode || node.name === triggeredNode);
 			}
 			return false;
 		},
@@ -119,7 +120,7 @@ export default mixins(
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name, 50);
+			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name);
 
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},
