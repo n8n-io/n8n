@@ -298,7 +298,7 @@ $color-danger-shade: lightness(
 	font-weight: var(--font-weight-regular) !important;
 	--button-color: var(--color-text-dark);
 	--button-border-color: var(--color-foreground-base);
-	--button-background-color: var(--color-foreground-xlight);
+	--button-background-color: var(--color-background-base);
 
 	--button-active-background-color: var(--color-primary-tint-2);
 	--button-active-color: var(--color-primary);
