@@ -792,10 +792,11 @@ export class Workflow {
 						// that node-order stays correct
 						toAdd[i].distance = Math.min(toReturn[nodeIndex].distance, toAdd[i].distance);
 						toAdd[i].indicies = dedupe(toAdd[i].indicies.concat(toReturn[nodeIndex].indicies));
-						toReturn.splice(nodeIndex, 1);
+						toReturn.splice(nodeIndex, 1, toAdd[i]);
 					}
-
-					toReturn.unshift(toAdd[i]);
+					else {
+						toReturn.unshift(toAdd[i]);
+					}
 				}
 			}
 
