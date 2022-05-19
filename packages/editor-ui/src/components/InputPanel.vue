@@ -95,7 +95,7 @@ export default mixins(
 		isExecutingPrevious(): boolean {
 			const triggeredNode = this.$store.getters.executedNode;
 			const executingNode = this.$store.getters.executingNode;
-			if (executingNode) {
+			if (executingNode || triggeredNode) {
 				return !!this.parentNodes.find((node) => node.name === executingNode || node.name === triggeredNode);
 			}
 			return false;
