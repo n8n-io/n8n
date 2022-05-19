@@ -21,7 +21,10 @@
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node in parentNodes" :label="$locale.baseText('ndv.input.parentNodeOption', {interpolate: {name: node.name }, adjustToNumber: node.depth})" :value="node.name" :key="node.name"></n8n-option>
+					<n8n-option v-for="node in parentNodes" :value="node.name" :key="node.name" class="node-option">
+						{{ truncate(node.name) }}&nbsp;
+						<span >{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
+					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 			</div>
@@ -158,6 +161,9 @@ export default mixins(
 				});
 			}
 		},
+		truncate(nodeName: string) {
+			return nodeName.substring(0, 30);
+		},
 	},
 });
 </script>
@@ -203,5 +209,18 @@ export default mixins(
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 }
+</style>
 
+<style lang="scss" scoped>
+.node-option {
+	font-weight: var(--font-weight-regular) !important;
+
+	span {
+		color: var(--color-text-light);
+	}
+
+	&.selected > span {
+		color: var(--color-primary);
+	}
+}
 </style>
