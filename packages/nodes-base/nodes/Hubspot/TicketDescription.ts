@@ -330,6 +330,19 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
+				displayName: 'Stage ID',
+				name: 'stageId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTicketUpdateStages',
+					loadOptionsDependsOn: [
+						'updateFields.pipelineId',
+					],
+				},
+				default: '',
+				description: 'The stage ID of the pipeline the ticket is in; depends on Pipeline ID',
+			},
+			{
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'options',
