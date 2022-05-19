@@ -651,6 +651,14 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
 
 					if (simplifyOutput) {
+						// Use rendered fields if requested and available
+						qs.expand = qs.expand || '';
+						if (
+							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
+							responseData.renderedFields && Object.keys(responseData.renderedFields).length
+						) {
+							responseData.fields = responseData.renderedFields;
+						}
 						returnData.push(simplifyIssueOutput(responseData));
 					} else {
 						returnData.push(responseData);
