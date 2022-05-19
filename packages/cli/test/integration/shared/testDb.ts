@@ -204,14 +204,13 @@ export async function saveCredential(
  * Store a user in the DB, defaulting to a `member`.
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, globalRole, apiKey, ...rest } = attributes;
+	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
-		apiKey: apiKey ?? randomApiKey(),
 		...rest,
 	};
 
@@ -234,7 +233,7 @@ export function createUserShell(globalRole: Role): Promise<User> {
 
 export function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
-	return Db.collections.User!.save(user);
+	return Db.collections.User.save(user);
 }
 
 // ----------------------------------
@@ -290,14 +289,7 @@ export async function createExecution(
 	attributes: Partial<ExecutionEntity> = {},
 	workflow: WorkflowEntity,
 ) {
-	const {
-		data,
-		finished,
-		mode,
-		startedAt,
-		stoppedAt,
-		waitTill,
-	} = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
 
 	const execution = await Db.collections.Execution.save({
 		data: data ?? '[]',
@@ -316,12 +308,13 @@ export async function createExecution(
  * Store a execution in the DB and assigns it to a workflow.
  * @param user user to assign the workflow to
  */
- export async function createSuccessfullExecution(
-	workflow: WorkflowEntity,
-) {
-	const execution = await createExecution({
-		finished: true,
-	}, workflow)
+export async function createSuccessfullExecution(workflow: WorkflowEntity) {
+	const execution = await createExecution(
+		{
+			finished: true,
+		},
+		workflow,
+	);
 
 	return execution;
 }
@@ -330,13 +323,14 @@ export async function createExecution(
  * Store a execution in the DB and assigns it to a workflow.
  * @param user user to assign the workflow to
  */
- export async function createErrorExecution(
-	workflow: WorkflowEntity,
-) {
-	const execution = await createExecution({
-		finished: false,
-		stoppedAt: new Date(),
-	}, workflow)
+export async function createErrorExecution(workflow: WorkflowEntity) {
+	const execution = await createExecution(
+		{
+			finished: false,
+			stoppedAt: new Date(),
+		},
+		workflow,
+	);
 	return execution;
 }
 
@@ -344,13 +338,14 @@ export async function createExecution(
  * Store a execution in the DB and assigns it to a workflow.
  * @param user user to assign the workflow to
  */
- export async function createWaitingExecution(
-	workflow: WorkflowEntity,
-) {
-	const execution = await createExecution({
-		finished: false,
-		waitTill: new Date(),
-	}, workflow)
+export async function createWaitingExecution(workflow: WorkflowEntity) {
+	const execution = await createExecution(
+		{
+			finished: false,
+			waitTill: new Date(),
+		},
+		workflow,
+	);
 	return execution;
 }
 // ----------------------------------

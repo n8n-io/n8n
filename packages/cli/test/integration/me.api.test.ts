@@ -179,6 +179,50 @@ describe('Owner shell', () => {
 			expect(storedShellOwner.personalizationAnswers).toEqual(validPayload);
 		}
 	});
+
+	test('POST /me/api-key should create an api key', async () => {
+		const ownerShell = await testDb.createUserShell(globalOwnerRole);
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+
+		const response = await authOwnerShellAgent.post('/me/api-key');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.apiKey).toBeDefined();
+		expect(response.body.data.apiKey).not.toBeNull();
+
+		const storedShellOwner = await Db.collections.User.findOneOrFail({
+			where: { email: IsNull() },
+		});
+
+		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
+	});
+
+	test('GET /me/api-key should fetch the api key', async () => {
+		let ownerShell = await testDb.createUserShell(globalOwnerRole);
+		ownerShell = await testDb.addApiKey(ownerShell);
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+
+		const response = await authOwnerShellAgent.get('/me/api-key');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.apiKey).toEqual(ownerShell.apiKey);
+	});
+
+	test('DELETE /me/api-key should fetch the api key', async () => {
+		let ownerShell = await testDb.createUserShell(globalOwnerRole);
+		ownerShell = await testDb.addApiKey(ownerShell);
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+
+		const response = await authOwnerShellAgent.delete('/me/api-key');
+
+		expect(response.statusCode).toBe(200);
+
+		const storedShellOwner = await Db.collections.User.findOneOrFail({
+			where: { email: IsNull() },
+		});
+
+		expect(storedShellOwner.apiKey).toBeNull();
+	});
 });
 
 describe('Member', () => {
@@ -343,6 +387,47 @@ describe('Member', () => {
 			expect(storedAnswers).toEqual(validPayload);
 		}
 	});
+
+	test('POST /me/api-key should create an api key', async () => {
+		let member = await testDb.createUser({ globalRole: globalMemberRole });
+		member = await testDb.addApiKey(member);
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
+
+		const response = await authMemberAgent.post('/me/api-key');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.apiKey).toBeDefined();
+		expect(response.body.data.apiKey).not.toBeNull();
+
+		const storedMember = await Db.collections.User.findOneOrFail(member.id);
+
+		expect(storedMember.apiKey).toEqual(response.body.data.apiKey);
+	});
+
+	test('GET /me/api-key should fetch the api key', async () => {
+		let member = await testDb.createUser({ globalRole: globalMemberRole });
+		member = await testDb.addApiKey(member);
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
+
+		const response = await authMemberAgent.get('/me/api-key');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.apiKey).toEqual(member.apiKey);
+	});
+
+	test('DELETE /me/api-key should fetch the api key', async () => {
+		let member = await testDb.createUser({ globalRole: globalMemberRole });
+		member = await testDb.addApiKey(member);
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
+
+		const response = await authMemberAgent.delete('/me/api-key');
+
+		expect(response.statusCode).toBe(200);
+
+		const storedMember = await Db.collections.User.findOneOrFail(member.id);
+
+		expect(storedMember.apiKey).toBeNull();
+	});
 });
 
 describe('Owner', () => {
@@ -386,7 +471,6 @@ describe('Owner', () => {
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
-
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
