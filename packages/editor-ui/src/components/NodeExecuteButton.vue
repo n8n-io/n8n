@@ -43,8 +43,9 @@ export default mixins(
 			return null;
 		},
 		nodeRunning (): boolean {
+			const triggeredNode = this.$store.getters.executedNode;
 			const executingNode = this.$store.getters.executingNode;
-			return executingNode === this.node.name;
+			return executingNode === this.node.name || triggeredNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
