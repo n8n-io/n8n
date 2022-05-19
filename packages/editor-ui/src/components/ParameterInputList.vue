@@ -131,8 +131,6 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.isHttpRequestNodeV2(this.node)) return 2;
-
 				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
 
 				return 0;
@@ -285,11 +283,6 @@ export default mixins(
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-
-	div:first-child > .node-credentials {
-		padding-top: var(--spacing-xs);
-	}
-
 	.delete-option {
 		display: none;
 		position: absolute;

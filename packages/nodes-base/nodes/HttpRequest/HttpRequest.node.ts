@@ -223,6 +223,7 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
+				noDataExpression: true,
 				type: 'options',
 				required: true,
 				options: [
@@ -231,8 +232,8 @@ export class HttpRequest implements INodeType {
 						value: 'none',
 					},
 					{
-						name: 'Existing Credential Type',
-						value: 'existingCredentialType',
+						name: 'Predefined Credential Type',
+						value: 'predefinedCredentialType',
 						description: 'We\'ve already implemented auth for many services so that you don\'t have to set it up manually',
 					},
 					{
@@ -253,17 +254,19 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Credential Type',
 				name: 'nodeCredentialType',
-				type: 'options',
+				type: 'credentialsSelect',
+				noDataExpression: true,
 				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getNodeCredentialTypes',
-				},
 				default: '',
-				placeholder: 'None',
+				credentialTypes: [
+					'extends:oAuth2Api',
+					'extends:oAuth1Api',
+					'has:authenticate',
+				],
 				displayOptions: {
 					show: {
 						authentication: [
-							'existingCredentialType',
+							'predefinedCredentialType',
 						],
 						'@version': [
 							2,
@@ -271,45 +274,15 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
-			// @TODO expression not resolving, using Notion as example
-			// {
-			// 	displayName: 'Supports Proxy Auth',
-			// 	name: 'supportsProxyAuth',
-			// 	type: 'hidden',
-			// 	default: '={{ $parameter["&authentication"] === "existingCredentialType" }}',
-			// },
 			{
 				displayName: 'Generic Auth Type',
 				name: 'genericAuthType',
-				type: 'options',
+				type: 'credentialsSelect',
 				required: true,
-				options: [
-					{
-						name: 'Basic Auth',
-						value: 'httpBasicAuth',
-					},
-					{
-						name: 'Digest Auth',
-						value: 'httpDigestAuth',
-					},
-					{
-						name: 'Header Auth',
-						value: 'httpHeaderAuth',
-					},
-					{
-						name: 'Query Auth',
-						value: 'httpQueryAuth',
-					},
-					{
-						name: 'OAuth1',
-						value: 'oAuth1Api',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2Api',
-					},
+				default: '',
+				credentialTypes: [
+					'has:genericAuth',
 				],
-				default: 'httpBasicAuth',
 				displayOptions: {
 					show: {
 						authentication: [
@@ -871,14 +844,6 @@ export class HttpRequest implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			getNodeCredentialTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return Promise.resolve(CREDENTIAL_TYPES);
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -895,7 +860,7 @@ export class HttpRequest implements INodeType {
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 		try {
-			authentication = this.getNodeParameter('authentication', 0) as 'existingCredentialType' | 'genericCredentialType' | 'none';
+			authentication = this.getNodeParameter('authentication', 0) as 'predefinedCredentialType' | 'genericCredentialType' | 'none';
 		} catch (_) {}
 
 		let httpBasicAuth;
@@ -925,7 +890,7 @@ export class HttpRequest implements INodeType {
 			try {
 				oAuth2Api = await this.getCredentials('oAuth2Api');
 			} catch (_) {}
-		} else if (authentication === 'existingCredentialType') {
+		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			} catch (_) {}
@@ -1240,7 +1205,7 @@ export class HttpRequest implements INodeType {
 						this.helpers.request(requestOptions),
 					);
 				}
-			} else if (authentication === 'existingCredentialType' && nodeCredentialType) {
+			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
 					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
@@ -1376,64 +1341,3 @@ export class HttpRequest implements INodeType {
 		return this.prepareOutputData(returnItems);
 	}
 }
-
-const NODES_BASE_ROOT: Readonly<string> = path.resolve(__dirname, '..', '..', '..');
-
-/**
- * Credential types shown as options for `Node Credential Type` parameter.
- */
-const CREDENTIAL_TYPES = getCredPaths().reduce<INodePropertyOptions[]>((acc, credPath) => {
-	const credential = new (getCredClass(credPath))();
-
-	if (!isSupportedNodeCredentialType(credential)) return acc;
-
-	return [
-		...acc,
-		{
-			name: credential.displayName,
-			value: credential.name,
-		},
-	];
-}, []);
-
-function getCredPaths(root = NODES_BASE_ROOT): string[] {
-	const packageJson = require(path.resolve(root, 'package.json'));
-
-	return deduplicate(packageJson.n8n.credentials);
-}
-
-function deduplicate<T>(array: T[]) {
-	return [...new Set(array)];
-}
-
-function getCredClass(credPath: string, root = NODES_BASE_ROOT): { new(): Credential } {
-	const match = credPath.match(/(^dist\/credentials\/(?<credClassName>.*)\.credentials\.js$)/);
-
-	if (!match?.groups) {
-		throw new Error(`Failed to extract credential class name from: ${credPath}`);
-	}
-
-	const fullCredPath = path.resolve(root, credPath);
-
-	return require(fullCredPath)[match.groups.credClassName];
-}
-
-function isGenericAuth(cred: Credential) {
-	return cred.name.startsWith('http') || cred.name.startsWith('oAuth');
-}
-
-function isSupportedNodeCredentialType(cred: Credential) {
-	if (isGenericAuth(cred)) return false;
-
-	if (cred.name === 'notionOAuth2Api') return false; // exists but currently commented out
-
-	if (cred.name.slice(0, -4).endsWith('OAuth')) return true;
-
-	return cred.authenticate !== undefined;
-}
-
-type Credential = {
-	displayName: string;
-	name: string;
-	authenticate?: IAuthenticate;
-};

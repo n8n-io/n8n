@@ -1,5 +1,4 @@
 import {
-	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	CUSTOM_API_CALL_KEY,
 } from '@/constants';
@@ -44,8 +43,8 @@ export const nodeHelpers = mixins(
 			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
-			isHttpRequestNodeV2 (node: INodeUi): boolean {
-				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+			hasProxyAuth (node: INodeUi): boolean {
+				return Object.keys(node.parameters).includes('nodeCredentialType');
 			},
 
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
@@ -243,8 +242,8 @@ export const nodeHelpers = mixins(
 				} = node.parameters as HttpRequestNode.V2.AuthParams;
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
 					authentication === 'genericCredentialType' &&
+					genericAuthType !== '' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
 					const credential = this.getCredentialTypeByName(genericAuthType);
@@ -252,8 +251,8 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
-					authentication === 'existingCredentialType' &&
+					this.hasProxyAuth(node) &&
+					authentication === 'predefinedCredentialType' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
@@ -266,8 +265,8 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
-					authentication === 'existingCredentialType' &&
+					this.hasProxyAuth(node) &&
+					authentication === 'predefinedCredentialType' &&
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
@@ -501,7 +500,7 @@ function selectedCredsDoNotExist(
 declare namespace HttpRequestNode {
 	namespace V2 {
 		type AuthParams = {
-			authentication: 'none' | 'genericCredentialType' | 'existingCredentialType';
+			authentication: 'none' | 'genericCredentialType' | 'predefinedCredentialType';
 			genericAuthType: string;
 			nodeCredentialType: string;
 		};

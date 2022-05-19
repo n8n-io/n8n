@@ -138,7 +138,10 @@ const module: Module<ICredentialsState, IRootState> = {
 					return [];
 				}
 
-				const { default: scopeDefault } = scopeProperty;
+				let { default: scopeDefault } = scopeProperty;
+
+				// disregard expressions for display
+				scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
 
 				if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
 

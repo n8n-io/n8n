@@ -32,11 +32,6 @@
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 				>
-					<n8n-notice
-						v-if="isHttpRequestNodeV2(node) && this.activeCredential.scopes.length > 0"
-						:content="scopesShortContent"
-						:fullContent="scopesFullContent"
-					/>
 					<node-credentials
 						:node="node"
 						@credentialSelected="credentialSelected"
@@ -95,7 +90,6 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -114,10 +108,6 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
-			...mapGetters('credentials', [
-				'getCredentialTypeByName',
-				'getScopesByCredentialType',
-			]),
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
@@ -178,31 +168,6 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			scopesShortContent (): string {
-				return this.$locale.baseText(
-					'nodeSettings.scopes.notice',
-					{
-						adjustToNumber: this.activeCredential.scopes.length,
-						interpolate: {
-							activeCredential: this.activeCredential.shortDisplayName,
-						},
-					},
-				);
-			},
-			scopesFullContent (): string {
-				return this.$locale.baseText(
-					'nodeSettings.scopes.expandedNoticeWithScopes',
-					{
-						adjustToNumber: this.activeCredential.scopes.length,
-						interpolate: {
-							activeCredential: this.activeCredential.shortDisplayName,
-							scopes: this.activeCredential.scopes.map(
-								(scope: string) => scope.replace(/\//g, '/<wbr>'),
-							).join('<br>'),
-						},
-					},
-				);
-			},
 		},
 		props: {
 			eventBus: {
@@ -225,10 +190,6 @@ export default mixins(
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
-				activeCredential: {
-					shortDisplayName: '',
-					scopes: [] as string[],
-				},
 
 				nodeSettings: [
 					{
@@ -330,28 +291,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			async prepareScopesNotice(credentialTypeName: string) {
-				if (
-					!this.isHttpRequestNodeV2(this.node) ||
-					!credentialTypeName || !credentialTypeName.endsWith('OAuth2Api')
-				) {
-					this.activeCredential.scopes = [];
-					return;
-				}
-
-				const { name, displayName } = this.getCredentialTypeByName(credentialTypeName);
-
-				this.activeCredential.scopes = this.getScopesByCredentialType(name);
-				this.activeCredential.shortDisplayName = this.shortenCredentialDisplayName(displayName);
-			},
-			shortenCredentialDisplayName (credentialDisplayName: string) {
-				const oauth1Api = this.$locale.baseText('nodeSettings.oauth1Api');
-				const oauth2Api = this.$locale.baseText('nodeSettings.oauth2Api');
-
-				return credentialDisplayName
-					.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
-					.trim();
-			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},
@@ -428,13 +367,6 @@ export default mixins(
 				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
-				if (
-					this.isHttpRequestNodeV2(this.node) &&
-					parameterData.name === 'parameters.nodeCredentialType'
-				) {
-					this.prepareScopesNotice(parameterData.value as string);
-				}
-
 				let newValue: NodeParameterValue;
 				if (parameterData.hasOwnProperty('value')) {
 					// New value is given
@@ -613,14 +545,6 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
-
-			if (
-				this.isHttpRequestNodeV2(this.node) &&
-				this.node.parameters.authentication === 'existingCredentialType'
-			) {
-				this.prepareScopesNotice(this.node.parameters.nodeCredentialType as string);
-			}
-
 			if (this.eventBus) {
 				(this.eventBus as Vue).$on('openSettings', () => {
 					this.openPanel = 'settings';

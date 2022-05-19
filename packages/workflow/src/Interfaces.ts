@@ -276,6 +276,7 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
 	test?: ICredentialTestRequest;
+	genericAuth?: boolean;
 }
 
 export interface ICredentialTypes {
@@ -831,7 +832,8 @@ export type NodePropertyTypes =
 	| 'multiOptions'
 	| 'number'
 	| 'options'
-	| 'string';
+	| 'string'
+	| 'credentialsSelect';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -888,6 +890,9 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 	routing?: INodePropertyRouting;
+	credentialTypes?: Array<
+		'extends:oAuth2Api' | 'extends:oAuth1Api' | 'has:authenticate' | 'has:genericAuth'
+	>;
 }
 export interface INodePropertyOptions {
 	name: string;
