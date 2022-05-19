@@ -1,22 +1,24 @@
 Error:
   $ref: './error.yml'
-ExecutionInformation:
-  $ref: './../../../handlers/executions/spec/schemas/executionInformation.yml'
-NodeInformation:
-  $ref: './../../../handlers/workflows/spec/schemas/nodeInformation.yml'
-RoleInformation:
-  $ref: './../../../handlers/users/spec/schemas/roleInformation.yml'
-TagInformation:
-  $ref: './../../../handlers/workflows/spec/schemas/tagInformation.yml'
-UserInformation:
-  $ref: './../../../handlers/users/spec/schemas/userInformation.yml'
-WorkflowInformation:
-  $ref: './../../../handlers/workflows/spec/schemas/workflowInformation.yml'
-WorkflowSettingInformation:
-  $ref: './../../../handlers/workflows/spec/schemas/workflowSettingInformation.yml'
-UserDetailsResponse:
-  $ref: './../../../handlers/users/spec/schemas/userDetailsResponse.yml'
-ExecutionDetailsResponse:
-  $ref: './../../../handlers/executions/spec/schemas/executionDetailsResponse.yml'
-WorkflowDetailsResponse:
-  $ref: './../../../handlers/workflows/spec/schemas/workflowDetailsResponse.yml'
+Execution:
+  $ref: './../../../handlers/executions/spec/schemas/execution.yml'
+Node:
+  $ref: './../../../handlers/workflows/spec/schemas/node.yml'
+Role:
+  $ref: './../../../handlers/users/spec/schemas/role.yml'
+Tag:
+  $ref: './../../../handlers/workflows/spec/schemas/tag.yml'
+User:
+  $ref: './../../../handlers/users/spec/schemas/user.yml'
+Workflow:
+  $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
+WorkflowSettings:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
+UserList:
+  $ref: './../../../handlers/users/spec/schemas/userList.yml'
+ExecutionList:
+  $ref: './../../../handlers/executions/spec/schemas/executionList.yml'
+WorkflowList:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
+Credential:
+  $ref: './../../../handlers/credentials/spec/schemas/credential.yml'

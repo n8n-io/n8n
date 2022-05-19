@@ -2,32 +2,32 @@ get:
   x-eov-operation-id: getUser
   x-eov-operation-handler: v1/handlers/users/users.handler
   tags:
-  - User
+    - User
   summary: Get user by ID/Email
   description: Retrieve a user from your instance. Only available for the instance owner.
   parameters:
-  - $ref: '../../../../shared/spec/parameters/userIdentifier.yml'
-  - $ref: '../../../../shared/spec/parameters/includeRole.yml'
+    - $ref: '../schemas/parameters/userIdentifier.yml'
+    - $ref: '../schemas/parameters/includeRole.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/userInformation.yml'
+            $ref: '../schemas/user.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 delete:
   x-eov-operation-id: deleteUser
   x-eov-operation-handler: v1/handlers/users/users.handler
   tags:
-  - User
+    - User
   summary: Delete user by ID/Email
   description: Deletes a user from your instance. Only available for the instance owner.
   operationId: deleteUser
   parameters:
-    - $ref: '../../../../shared/spec/parameters/userIdentifier.yml'
-    - $ref: '../../../../shared/spec/parameters/includeRole.yml'
+    - $ref: '../schemas/parameters/userIdentifier.yml'
+    - $ref: '../schemas/parameters/includeRole.yml'
     - name: transferId
       in: query
       description: ID of the user to transfer workflows and credentials to. Must not be equal to the to-be-deleted user.
@@ -40,7 +40,6 @@ delete:
       content:
         application/json:
           schema:
-            $ref: '../schemas/userInformation.yml'
+            $ref: '../schemas/user.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
-

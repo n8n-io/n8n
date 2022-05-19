@@ -2,18 +2,18 @@ get:
   x-eov-operation-id: getWorkflow
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
-  - Workflow
+    - Workflow
   summary: Retrive all workflows
   description: Retrieve all workflows from your instance.
   parameters:
-    - $ref: '../../../../shared/spec/parameters/workflowId.yml'
+    - $ref: '../schemas/parameters/workflowId.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflowInformation.yml'
+            $ref: '../schemas/workflow.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
@@ -22,18 +22,18 @@ delete:
   x-eov-operation-id: deleteWorkflow
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
-  - Workflow
+    - Workflow
   summary: Delete a workflow
   description: Deletes a workflow from your instance.
   parameters:
-    - $ref: '../../../../shared/spec/parameters/workflowId.yml'
+    - $ref: '../schemas/parameters/workflowId.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflowInformation.yml'
+            $ref: '../schemas/workflow.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
@@ -42,17 +42,17 @@ put:
   x-eov-operation-id: updateWorkflow
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
-  - Workflow
+    - Workflow
   summary: Update a workflow
   description: Update a workflow.
   parameters:
-    - $ref: '../../../../shared/spec/parameters/workflowId.yml'
+    - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:
     description: Updated workflow object.
     content:
       application/json:
         schema:
-          $ref: '../schemas/workflowInformation.yml'
+          $ref: '../schemas/workflow.yml'
     required: true
   responses:
     '200':
@@ -60,6 +60,6 @@ put:
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflowInformation.yml'
+            $ref: '../schemas/workflow.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'

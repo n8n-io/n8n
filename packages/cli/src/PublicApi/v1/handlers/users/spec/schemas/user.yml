@@ -1,5 +1,5 @@
 required:
-- email
+  - email
 type: object
 properties:
   id:
@@ -37,4 +37,4 @@ properties:
     format: date-time
     readOnly: true
   globalRole:
-    $ref: './roleInformation.yml'
+    $ref: './role.yml'
