@@ -1437,9 +1437,13 @@ export interface INodeGraphItem {
 	type: string;
 	resource?: string;
 	operation?: string;
-	domain?: string;
+	domain?: string; // HTTP Request node v1
+	domain_base?: string; // HTTP Request node v2
+	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
+	credential_type?: string; // HTTP Request node v2
+	credential_set?: boolean; // HTTP Request node v2
 }
 
 export interface INodeNameIndex {
