@@ -8,7 +8,7 @@ export class HttpDigestAuth implements ICredentialType {
 	name = 'httpDigestAuth';
 	displayName = 'Digest Auth';
 	documentationUrl = 'httpRequest';
-	isGenericAuth = true;
+	genericAuth = true;
 	icon = 'node:n8n-nodes-base.httpRequest';
 	properties: INodeProperties[] = [
 		{

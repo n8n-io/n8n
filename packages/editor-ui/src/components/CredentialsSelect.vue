@@ -77,48 +77,46 @@ export default Vue.extend({
 			return this.getScopesByCredentialType(this.activeCredentialType);
 		},
 		supportedCredentialTypes(): ICredentialType[] {
-			if (this.parameter.name === 'genericAuthType') {
-				return this.allCredentialTypes.filter((c: ICredentialType) => c.isGenericAuth);
-			}
-			return this.allCredentialTypes.filter((c: ICredentialType) => this.supportsProxyAuth(c.name));
+			return this.allCredentialTypes.filter((c: ICredentialType) => this.isSupported(c.name));
 		},
 	},
 	methods: {
-		supportsProxyAuth(name: string): boolean {
-			if (this.parameter.type !== 'credentialsSelect') return false;
+		/**
+		 * Check if a credential type belongs to one of the supported sets defined
+		 * in the `credentialTypes` key in a `credentialsSelect` parameter
+		 */
+		isSupported(name: string): boolean {
+			const supported = this.getSupportedSets(this.parameter.credentialTypes);
 
-			// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
-			if (name === 'httpHeaderAuth') return false;
-
-			const supported = this.getSupportedCredentialTypes(this.parameter.credentialTypes);
-
-			const credType = this.$store.getters['credentials/getCredentialTypeByName'](name);
+			const checkedCredType = this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			for (const property of supported.has) {
-				if (credType[property] !== undefined) return true;
+				if (checkedCredType[property] !== undefined) {
+					return true;
+				}
 			}
 
 			if (
-				credType.extends &&
-				credType.extends.some(
+				checkedCredType.extends &&
+				checkedCredType.extends.some(
 					(parentType: string) => supported.extends.includes(parentType),
 				)
 			) {
 				return true;
 			}
 
-			if (credType.extends) {
+			if (checkedCredType.extends && supported.extends.length) {
 				// recurse upward until base credential type
 				// e.g. microsoftDynamicsOAuth2Api -> microsoftOAuth2Api -> oAuth2Api
-				return credType.extends.reduce(
-					(acc: boolean, parentType: string) => acc || this.supportsProxyAuth(parentType),
+				return checkedCredType.extends.reduce(
+					(acc: boolean, parentType: string) => acc || this.isSupported(parentType),
 					false,
 				);
 			}
 
 			return false;
 		},
-		getSupportedCredentialTypes(credentialTypes: string[]) {
+		getSupportedSets(credentialTypes: string[]) {
 			return credentialTypes.reduce<{ extends: string[]; has: string[] }>((acc, cur) => {
 				const _extends = cur.split('extends:');
 

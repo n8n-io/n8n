@@ -277,35 +277,12 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Generic Auth Type',
 				name: 'genericAuthType',
-				type: 'options',
+				type: 'credentialsSelect',
 				required: true,
-				options: [
-					{
-						name: 'Basic Auth',
-						value: 'httpBasicAuth',
-					},
-					{
-						name: 'Digest Auth',
-						value: 'httpDigestAuth',
-					},
-					{
-						name: 'Header Auth',
-						value: 'httpHeaderAuth',
-					},
-					{
-						name: 'Query Auth',
-						value: 'httpQueryAuth',
-					},
-					{
-						name: 'OAuth1',
-						value: 'oAuth1Api',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2Api',
-					},
+				default: '',
+				credentialTypes: [
+					'has:genericAuth',
 				],
-				default: 'httpBasicAuth',
 				displayOptions: {
 					show: {
 						authentication: [

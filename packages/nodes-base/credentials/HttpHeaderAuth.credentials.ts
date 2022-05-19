@@ -9,7 +9,7 @@ export class HttpHeaderAuth implements ICredentialType {
 	name = 'httpHeaderAuth';
 	displayName = 'Header Auth';
 	documentationUrl = 'httpRequest';
-	isGenericAuth = true;
+	genericAuth = true;
 	icon = 'node:n8n-nodes-base.httpRequest';
 	properties: INodeProperties[] = [
 		{

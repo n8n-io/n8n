@@ -206,7 +206,7 @@
 	/>
 
 	<parameter-options
-		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect' && parameter.name !== 'genericAuthType'"
+		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
 		:displayOptionsComputed="displayOptionsComputed"
 		:parameter="parameter"
 		:isValueExpression="isValueExpression"
@@ -415,7 +415,7 @@ export default mixins(
 					returnValue = this.expressionValueComputed;
 				}
 
-				if (this.parameter.type === 'credentialsSelect' || this.parameter.name === 'genericAuthType') {
+				if (this.parameter.type === 'credentialsSelect') {
 					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
 					if (credType) {
 						returnValue = credType.displayName;
@@ -539,13 +539,11 @@ export default mixins(
 
 					const checkValues: string[] = [];
 
-					const isGenericAuth = this.parameter.name === 'genericAuthType';
-
 					if (!this.skipCheck(this.displayValue)) {
 						if (Array.isArray(this.displayValue)) {
-							checkValues.push.apply(checkValues, isGenericAuth ? this.value : this.displayValue);
+							checkValues.push.apply(checkValues, this.displayValue);
 						} else {
-							checkValues.push(isGenericAuth ? this.value : this.displayValue as string);
+							checkValues.push(this.displayValue as string);
 						}
 					}
 
@@ -628,10 +626,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (
-					this.parameter.type === 'credentialsSelect' ||
-					this.parameter.name === 'genericAuthType'
-				) {
+				if (this.parameter.type === 'credentialsSelect') {
 					return styles;
 				}
 				if (this.displayOptionsComputed === true) {

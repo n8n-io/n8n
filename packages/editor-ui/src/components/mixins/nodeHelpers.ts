@@ -44,7 +44,7 @@ export const nodeHelpers = mixins(
 		},
 		methods: {
 			hasProxyAuth (node: INodeUi): boolean {
-				return ['nodeCredentialType', 'genericAuthType'].some(t => Object.keys(node.parameters).includes(t));
+				return Object.keys(node.parameters).includes('nodeCredentialType');
 			},
 
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
@@ -242,8 +242,8 @@ export const nodeHelpers = mixins(
 				} = node.parameters as HttpRequestNode.V2.AuthParams;
 
 				if (
-					this.hasProxyAuth(node) &&
 					authentication === 'genericCredentialType' &&
+					genericAuthType !== '' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
 					const credential = this.getCredentialTypeByName(genericAuthType);
