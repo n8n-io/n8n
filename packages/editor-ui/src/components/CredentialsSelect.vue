@@ -40,7 +40,7 @@
 		<div>
 			<node-credentials
 				:node="node"
-				:overrideCredType="node.parameters.nodeCredentialType || node.parameters.genericAuthType"
+				:overrideCredType="node.parameters[parameter.name]"
 				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
