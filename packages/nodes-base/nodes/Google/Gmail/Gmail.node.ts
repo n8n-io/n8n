@@ -481,16 +481,14 @@ export class Gmail implements INodeType {
 						if (toStr === '') {
 							for (const header of payload.headers as IDataObject[]) {
 								if (header.name === 'From') {
-									console.log(header.value);
 									toStr = `<${extractEmail(header.value as string)}>,`;
 									break;
 								}
 							}
 						}
 
-						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0].value  || '';
-
-						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0].value || '';
+						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
+						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
 
 						const email: IEmail = {
 							from: additionalFields.senderName as string || '',
