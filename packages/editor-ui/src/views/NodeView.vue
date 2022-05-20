@@ -143,10 +143,13 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	Connection, Endpoint, N8nPlusEndpoint,
+	Connection,
+	Endpoint,
+	N8nPlusEndpoint,
+	jsPlumb,
+	OnConnectionBindInfo
 } from 'jsplumb';
-import { MessageBoxInputData } from 'element-ui/types/message-box';
-import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';

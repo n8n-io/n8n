@@ -24,6 +24,7 @@ export default {
 	resolve: {
 		alias: {
 			'@': resolve(__dirname, 'src'),
+			'vue2-boring-avatars': resolve(__dirname, '..', '..', 'node_modules', 'vue2-boring-avatars', 'dist', 'vue-2-boring-avatars.umd.js'), // Workaround for wrong main/module/exports field in vue2-boring-avatar's package.json
 		},
 	},
 	base: publicPath,

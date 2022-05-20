@@ -6,7 +6,6 @@ import {
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
-	NodeHelpers,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
@@ -20,6 +19,7 @@ import {
 	ITaskDataConnections,
 	INode,
 	INodePropertyOptions,
+	NodeHelpers,
 } from 'n8n-workflow';
 
 import {
