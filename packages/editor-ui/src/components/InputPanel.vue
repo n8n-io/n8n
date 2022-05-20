@@ -59,7 +59,7 @@
 
 <script lang="ts">
 import { INodeUi } from '@/Interface';
-import { INodeSearch, Workflow } from 'n8n-workflow';
+import { IConnectedNode, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
@@ -119,11 +119,11 @@ export default mixins(
 			}
 			return undefined;
 		},
-		parentNodes (): INodeSearch[] {
+		parentNodes (): IConnectedNode[] {
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: INodeSearch[] = (this.workflow as Workflow).getParentConnections(this.activeNode.name);
+			const nodes: IConnectedNode[] = (this.workflow as Workflow).getParentNodesByDepth(this.activeNode.name);
 
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},

@@ -46,7 +46,7 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import { IConnection, IDataObject, INodeSearch, IObservableObject } from './Interfaces';
+import { IConnection, IDataObject, IConnectedNode, IObservableObject } from './Interfaces';
 
 function dedupe<T>(arr: Array<T>): Array<T> {
 	return [...new Set(arr)];
@@ -721,13 +721,12 @@ export class Workflow {
 	 * Returns all the nodes before the given one
 	 *
 	 * @param {string} nodeName
-	 * @param {string} [type='main']
-	 * @param {*} [depth=-1]
+	 * @param {*} [maxDepth=-1]
 	 * @returns {string[]}
 	 * @memberof Workflow
 	 */
-	getParentConnections(nodeName: string, depth = -1): INodeSearch[] {
-		return this.getConnections(this.connectionsByDestinationNode, nodeName, depth);
+	getParentNodesByDepth(nodeName: string, maxDepth = -1): IConnectedNode[] {
+		return this.searchNodesBFS(this.connectionsByDestinationNode, nodeName, maxDepth);
 	}
 
 	/**
@@ -742,23 +741,23 @@ export class Workflow {
 	 * @returns {string[]}
 	 * @memberof Workflow
 	 */
-	getConnections(
+	searchNodesBFS(
 		connections: IConnections,
 		sourceNode: string,
 		maxDepth = -1,
-	): INodeSearch[] {
+	): IConnectedNode[] {
 
-		const returnConns: INodeSearch[] =[];
+		const returnConns: IConnectedNode[] =[];
 
 		const type = 'main';
-		let queue: INodeSearch[] = [];
+		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
 			depth: 0,
 			indicies: [],
 		});
 
-		const visited: {[key: string]: INodeSearch} = {};
+		const visited: {[key: string]: IConnectedNode} = {};
 
 		let depth = 0;
 		while (queue.length > 0) {

@@ -1458,7 +1458,7 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export interface INodeSearch {
+export interface IConnectedNode {
 	name: string;
 	indicies: number[];
 	depth: number;
