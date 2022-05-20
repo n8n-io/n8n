@@ -365,7 +365,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Property Versions	',
+				displayName: 'Include Property Versions',
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,

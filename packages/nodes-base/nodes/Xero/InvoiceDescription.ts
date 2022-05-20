@@ -204,7 +204,7 @@ export const invoiceFields: INodeProperties[] = [
 								value: 'OUTPUT',
 							},
 							{
-								name: 'Sales Tax on Imports	',
+								name: 'Sales Tax on Imports',
 								value: 'GSTONIMPORTS',
 							},
 						],
@@ -380,7 +380,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'Exclusive',
 			},
 			{
-				displayName: 'Planned Payment Date ',
+				displayName: 'Planned Payment Date',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -661,7 +661,7 @@ export const invoiceFields: INodeProperties[] = [
 										value: 'OUTPUT',
 									},
 									{
-										name: 'Sales Tax on Imports	',
+										name: 'Sales Tax on Imports',
 										value: 'GSTONIMPORTS',
 									},
 								],
@@ -739,7 +739,7 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Planned Payment Date ',
+				displayName: 'Planned Payment Date',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
