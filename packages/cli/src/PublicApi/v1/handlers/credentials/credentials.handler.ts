@@ -1,5 +1,4 @@
 import express = require('express');
-import { INodeProperties } from 'n8n-workflow';
 import { CredentialsHelper } from '../../../../CredentialsHelper';
 import { CredentialTypes } from '../../../../CredentialTypes';
 

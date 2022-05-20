@@ -5,7 +5,7 @@ import {StoryFn} from "@storybook/vue";
 
 export default {
 	title: 'Atoms/Card',
-	component: N8nCard
+	component: N8nCard,
 };
 
 export const Default: StoryFn = (args, {argTypes}) => ({

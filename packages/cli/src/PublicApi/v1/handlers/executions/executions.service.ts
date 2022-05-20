@@ -38,7 +38,6 @@ export async function getExecutions(data: {
 	status?: ExecutionStatus;
 	excludedWorkflowIds?: number[];
 }): Promise<IExecutionFlattedDb[]> {
-
 	const executions = await Db.collections.Execution.find({
 		select: getExecutionSelectableProperties(),
 		where: {
