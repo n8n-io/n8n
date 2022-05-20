@@ -192,14 +192,6 @@ export const paymentFields: INodeProperties[] = [
 						value: 22,
 					},
 					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
 						name: 'Swich',
 						value: 23,
 					},

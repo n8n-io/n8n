@@ -900,6 +900,9 @@ export class Nasa implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
