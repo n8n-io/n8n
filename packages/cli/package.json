@@ -19,7 +19,9 @@
     "bin": "n8n"
   },
   "scripts": {
-    "build": "tsc && cp -r ./src/UserManagement/email/templates ./dist/src/UserManagement/email",
+    "build": "run-script-os",
+    "build:default": "tsc && cp -r ./src/UserManagement/email/templates ./dist/src/UserManagement/email",
+    "build:windows": "tsc && xcopy /E /I src\\UserManagement\\email\\templates dist\\src\\UserManagement\\email\\templates",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
