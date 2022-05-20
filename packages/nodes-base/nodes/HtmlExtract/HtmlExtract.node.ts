@@ -74,7 +74,7 @@ export class HtmlExtract implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'If HTML should be read from binary or json data',
+				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
 				displayName: 'Binary Property',
@@ -104,7 +104,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the json property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
+				description: 'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
 				displayName: 'Extraction Values',

@@ -91,6 +91,7 @@ export class RealtimeDatabase implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. /app/users',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 				description: 'Object path on database. Do not append .json.',
 				required: true,
 				displayOptions: {
@@ -105,6 +106,7 @@ export class RealtimeDatabase implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. /app/users',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 				description: 'Object path on database. Do not append .json.',
 				hint: 'Leave blank to get a whole database object',
 				displayOptions: {
