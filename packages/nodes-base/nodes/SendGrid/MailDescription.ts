@@ -23,7 +23,6 @@ export const mailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 

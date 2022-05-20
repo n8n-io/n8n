@@ -51,7 +51,6 @@ export const tableOperations: INodeProperties[] = [
 			},
 		],
 		default: 'createRow',
-		description: 'The operation to perform.',
 	},
 ];
 

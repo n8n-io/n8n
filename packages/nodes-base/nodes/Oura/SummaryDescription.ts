@@ -33,7 +33,6 @@ export const summaryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getSleep',
-		description: 'Operation to perform.',
 	},
 ];
 

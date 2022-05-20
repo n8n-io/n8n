@@ -122,6 +122,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -130,7 +131,6 @@ export class Mandrill implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
@@ -157,7 +157,6 @@ export class Mandrill implements INodeType {
 					},
 				],
 				default: 'sendTemplate',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Template',

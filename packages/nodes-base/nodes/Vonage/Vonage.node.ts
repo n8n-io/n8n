@@ -38,14 +38,15 @@ export class Vonage implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -66,7 +67,6 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: 'send',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'From',

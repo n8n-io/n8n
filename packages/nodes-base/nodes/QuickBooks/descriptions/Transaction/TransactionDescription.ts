@@ -23,7 +23,6 @@ export const transactionOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'getReport',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Report',
@@ -59,7 +58,7 @@ export const transactionFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Filters',

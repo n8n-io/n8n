@@ -86,7 +86,6 @@ export class TypeformTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Form',
@@ -105,6 +104,7 @@ export class TypeformTrigger implements INodeType {
 				name: 'simplifyAnswers',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
 				description: 'Converts the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
 			},
 			{

@@ -92,6 +92,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Spreadsheet',
@@ -104,7 +105,6 @@ export class GoogleSheets implements INodeType {
 
 				],
 				default: 'sheet',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -137,7 +137,7 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Create or Update',
 						value: 'upsert',
-						description: 'Create a new record, or update the current one if it already exists',
+						description: 'Create a new record, or update the current one if it already exists (upsert)',
 					},
 					{
 						name: 'Delete',
@@ -166,7 +166,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -712,7 +711,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         spreadsheet:create
@@ -865,7 +863,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'When set to true a simplify version of the response will be used else the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Options',

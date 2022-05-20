@@ -41,7 +41,6 @@ export const leadOpeations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

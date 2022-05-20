@@ -36,7 +36,6 @@ export const expenseOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -207,14 +206,6 @@ export const expenseFields: INodeProperties[] = [
 					{
 						name: 'Solo',
 						value: 22,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
 					},
 					{
 						name: 'Swich',

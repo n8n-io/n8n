@@ -49,6 +49,7 @@ export class Chargebee implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -64,7 +65,6 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'invoice',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -92,7 +92,6 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -117,7 +116,7 @@ export class Chargebee implements INodeType {
 				placeholder: 'Add Property',
 				options: [
 					{
-						displayName: 'User Id',
+						displayName: 'User ID',
 						name: 'id',
 						type: 'string',
 						default: '',
@@ -204,7 +203,6 @@ export class Chargebee implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				default: 'list',
-				description: 'The operation to perform.',
 				type: 'options',
 				noDataExpression: true,
 				displayOptions: {
@@ -370,7 +368,7 @@ export class Chargebee implements INodeType {
 			//         invoice:pdfUrl
 			// ----------------------------------
 			{
-				displayName: 'Invoice Id',
+				displayName: 'Invoice ID',
 				name: 'invoiceId',
 				description: 'The ID of the invoice to get',
 				type: 'string',
@@ -418,14 +416,13 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'delete',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
 			//         subscription:cancel
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
+				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				description: 'The ID of the subscription to cancel',
 				type: 'string',
@@ -464,7 +461,7 @@ export class Chargebee implements INodeType {
 			//         subscription:delete
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
+				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				description: 'The ID of the subscription to delete',
 				type: 'string',

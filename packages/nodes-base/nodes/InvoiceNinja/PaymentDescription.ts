@@ -36,7 +36,6 @@ export const paymentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -191,14 +190,6 @@ export const paymentFields: INodeProperties[] = [
 					{
 						name: 'Solo',
 						value: 22,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
 					},
 					{
 						name: 'Swich',

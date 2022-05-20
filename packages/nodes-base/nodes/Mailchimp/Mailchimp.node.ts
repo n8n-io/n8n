@@ -106,12 +106,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -132,7 +132,6 @@ export class Mailchimp implements INodeType {
 				],
 				default: 'member',
 				required: true,
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
@@ -175,7 +174,6 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -203,7 +201,6 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -226,7 +223,6 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -275,7 +271,6 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */

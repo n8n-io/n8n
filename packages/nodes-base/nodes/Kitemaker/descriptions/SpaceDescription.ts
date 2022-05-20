@@ -9,7 +9,6 @@ export const spaceOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'getAll',
-		description: 'Operation to perform.',
 		options: [
 			{
 				name: 'Get All',

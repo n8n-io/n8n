@@ -23,7 +23,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -49,6 +49,7 @@ export class Egoi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -57,7 +58,6 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -88,7 +88,6 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'List ID',
@@ -530,7 +529,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

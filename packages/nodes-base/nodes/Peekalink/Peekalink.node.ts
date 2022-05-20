@@ -52,7 +52,6 @@ export class Peekalink implements INodeType {
 					},
 				],
 				default: 'preview',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'URL',

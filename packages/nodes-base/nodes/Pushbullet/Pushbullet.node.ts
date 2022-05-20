@@ -45,6 +45,7 @@ export class Pushbullet implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Push',
@@ -52,7 +53,6 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -89,7 +89,6 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',

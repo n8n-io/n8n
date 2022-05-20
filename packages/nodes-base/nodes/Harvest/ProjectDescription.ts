@@ -45,7 +45,6 @@ export const projectOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -109,7 +108,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Id',
+				displayName: 'Client ID',
 				name: 'client_id',
 				type: 'string',
 				default: '',
@@ -146,7 +145,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -166,7 +165,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -202,7 +201,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The name of the project',
 	},
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
 		displayOptions: {
@@ -407,7 +406,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -484,7 +483,7 @@ export const projectFields: INodeProperties[] = [
 				description: 'Option to have the budget reset every month. Defaults to false.',
 			},
 			{
-				displayName: 'Client Id',
+				displayName: 'Client ID',
 				name: 'client_id',
 				type: 'string',
 				default: '',

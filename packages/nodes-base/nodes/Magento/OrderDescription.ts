@@ -42,7 +42,6 @@ export const orderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform',
 	},
 ];
 

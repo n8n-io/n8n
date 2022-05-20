@@ -80,6 +80,7 @@ export class Ssh implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Command',
@@ -112,7 +113,6 @@ export class Ssh implements INodeType {
 					},
 				],
 				default: 'execute',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Command',
@@ -173,7 +173,6 @@ export class Ssh implements INodeType {
 					},
 				],
 				default: 'upload',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Binary Property',

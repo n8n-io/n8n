@@ -33,7 +33,6 @@ export const urlOperations: INodeProperties[] = [
 			},
 		],
 		default: 'shorten',
-		description: 'The operation to perform.',
 	},
 ];
 

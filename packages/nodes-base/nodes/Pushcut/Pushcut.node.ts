@@ -40,6 +40,7 @@ export class Pushcut implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -47,7 +48,6 @@ export class Pushcut implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -69,7 +69,6 @@ export class Pushcut implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Notification Name',

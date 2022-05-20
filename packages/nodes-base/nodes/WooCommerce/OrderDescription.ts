@@ -41,7 +41,6 @@ export const orderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -359,14 +358,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class	',
+						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
 						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status	',
+						displayName: 'Tax Status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -383,7 +382,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Tax class of fee',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -690,14 +689,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Shipping method name',
 					},
 					{
-						displayName: 'Method ID	',
+						displayName: 'Method ID',
 						name: 'method ID',
 						type: 'string',
 						description: 'Shipping method ID',
 						default: '',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -1061,14 +1060,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class	',
+						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
 						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status	',
+						displayName: 'Tax Status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -1085,7 +1084,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Tax class of fee',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -1392,14 +1391,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Shipping method name',
 					},
 					{
-						displayName: 'Method ID	',
+						displayName: 'Method ID',
 						name: 'method ID',
 						type: 'string',
 						description: 'Shipping method ID',
 						default: '',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',

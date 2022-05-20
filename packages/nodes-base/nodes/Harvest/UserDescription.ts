@@ -51,7 +51,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -145,7 +144,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -165,7 +164,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -352,7 +351,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',

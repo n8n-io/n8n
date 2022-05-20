@@ -75,6 +75,7 @@ export class Twake implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -83,7 +84,6 @@ export class Twake implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -105,7 +105,6 @@ export class Twake implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Channel ID',

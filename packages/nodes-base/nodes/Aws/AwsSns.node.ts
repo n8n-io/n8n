@@ -46,7 +46,6 @@ export class AwsSns implements INodeType {
 					},
 				],
 				default: 'publish',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Topic',

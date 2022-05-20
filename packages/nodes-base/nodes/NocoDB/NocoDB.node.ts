@@ -47,6 +47,7 @@ export class NocoDB implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -54,7 +55,6 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
@@ -96,7 +96,6 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			...operationFields,
 		],

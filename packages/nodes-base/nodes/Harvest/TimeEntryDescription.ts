@@ -65,7 +65,6 @@ export const timeEntryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -192,7 +191,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -212,7 +211,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -232,7 +231,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:deleteExternal                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -252,7 +251,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:stopTime                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -272,7 +271,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:restartTime                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -292,7 +291,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -362,7 +361,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:createByDuration                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
 		displayOptions: {
@@ -378,7 +377,7 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the project to associate with the time entry',
 	},
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
 		displayOptions: {
@@ -455,7 +454,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:createByStartEnd                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
 		displayOptions: {
@@ -471,7 +470,7 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the project to associate with the time entry',
 	},
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
 		displayOptions: {

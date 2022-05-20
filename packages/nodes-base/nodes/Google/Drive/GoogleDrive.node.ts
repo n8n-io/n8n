@@ -74,6 +74,7 @@ export class GoogleDrive implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Drive',
@@ -89,7 +90,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -146,7 +146,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -179,7 +178,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 
@@ -529,7 +527,6 @@ export class GoogleDrive implements INodeType {
 
 								],
 								default: 'contains',
-								description: 'Operation to perform.',
 							},
 							{
 								displayName: 'Value',
@@ -555,7 +552,7 @@ export class GoogleDrive implements INodeType {
 										value: 'custom',
 									},
 									{
-										name: '	3rd party shortcut',
+										name: '3rd party shortcut',
 										value: 'application/vnd.google-apps.drive-sdk',
 									},
 									{
@@ -977,7 +974,7 @@ export class GoogleDrive implements INodeType {
 								value: 'hasThumbnail',
 							},
 							{
-								name: 'id',
+								name: 'ID',
 								value: 'id',
 							},
 							{
@@ -1210,7 +1207,7 @@ export class GoogleDrive implements INodeType {
 								value: 'hasThumbnail',
 							},
 							{
-								name: 'id',
+								name: 'ID',
 								value: 'id',
 							},
 							{
@@ -1535,7 +1532,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         drive:create

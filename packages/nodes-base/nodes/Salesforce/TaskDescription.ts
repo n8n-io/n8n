@@ -48,7 +48,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -380,14 +379,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
-				displayName: 'What Id',
+				displayName: 'What ID',
 				name: 'whatId',
 				type: 'string',
 				default: '',
 				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
-				displayName: 'Who Id',
+				displayName: 'Who ID',
 				name: 'whoId',
 				type: 'string',
 				default: '',
@@ -729,14 +728,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
-				displayName: 'What Id',
+				displayName: 'What ID',
 				name: 'whatId',
 				type: 'string',
 				default: '',
 				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
-				displayName: 'Who Id',
+				displayName: 'Who ID',
 				name: 'whoId',
 				type: 'string',
 				default: '',

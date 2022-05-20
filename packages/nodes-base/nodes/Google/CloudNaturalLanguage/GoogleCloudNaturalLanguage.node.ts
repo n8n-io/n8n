@@ -43,6 +43,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -50,7 +51,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -72,7 +72,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				],
 				default: 'analyzeSentiment',
-				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All
@@ -205,7 +204,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 								value: 'ar',
 							},
 							{
-								name: 'Chinese (Simplified)	',
+								name: 'Chinese (Simplified)',
 								value: 'zh',
 							},
 							{

@@ -46,7 +46,6 @@ export const clientOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -130,7 +129,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -150,7 +149,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -228,7 +227,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',

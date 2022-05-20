@@ -43,7 +43,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'post',
-		description: 'The operation to perform.',
 	},
 ];
 

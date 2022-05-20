@@ -80,12 +80,12 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -113,7 +113,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -161,7 +160,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -204,7 +202,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -252,7 +249,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'getIssues',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -280,7 +276,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'getRepositories',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -323,7 +318,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -361,7 +355,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

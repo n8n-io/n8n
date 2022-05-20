@@ -46,7 +46,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'sendPrivate',
-		description: 'The operation to perform.',
 	},
 ];
 

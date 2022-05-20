@@ -33,6 +33,7 @@ export class Rundeck implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Job',
@@ -40,7 +41,6 @@ export class Rundeck implements INodeType {
 					},
 				],
 				default: 'job',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -60,14 +60,13 @@ export class Rundeck implements INodeType {
 					},
 				],
 				default: 'execute',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
 			//         job:execute
 			// ----------------------------------
 			{
-				displayName: 'Job Id',
+				displayName: 'Job ID',
 				name: 'jobid',
 				type: 'string',
 				displayOptions: {
@@ -131,7 +130,7 @@ export class Rundeck implements INodeType {
 			//         job:getMetadata
 			// ----------------------------------
 			{
-				displayName: 'Job Id',
+				displayName: 'Job ID',
 				name: 'jobid',
 				type: 'string',
 				displayOptions: {
