@@ -110,7 +110,7 @@
 					<tr v-for="(row, index1) in tableData.data" :key="index1">
 						<td>
 							<n8n-text>
-								{{ emptyOutputMessage }}
+								{{ $locale.baseText('runData.emptyItemHint') }}
 							</n8n-text>
 						</td>
 					</tr>
@@ -292,9 +292,6 @@ export default mixins(
 			},
 			canLinkRuns: {
 				type: Boolean,
-			},
-			emptyOutputMessage: {
-				type: String,
 			},
 			tooMuchDataTitle: {
 				type: String,

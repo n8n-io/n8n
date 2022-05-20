@@ -4,7 +4,6 @@
 		:runIndex="runIndex"
 		:linkedRuns="linkedRuns"
 		:canLinkRuns="canLinkRuns"
-		:emptyOutputMessage="$locale.baseText('ndv.input.emptyOutput')"
 		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
 		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		:isExecuting="isExecutingPrevious"
