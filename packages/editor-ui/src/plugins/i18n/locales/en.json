@@ -594,7 +594,7 @@
 	"pushConnection.workflowExecutedSuccessfully": "Workflow executed successfully",
 	"pushConnectionTracker.cannotConnectToServer": "You have a connection issue or the server is down. <br />n8n should reconnect automatically once the issue is resolved.",
 	"pushConnectionTracker.connectionLost": "Connection lost",
-	"runData.emptyItemHint": "This is an item, but it's empty. It will still trigger the next node",
+	"runData.emptyItemHint": "This is an item, but it's empty. It will still trigger the next node.",
 	"runData.switchToBinary.info": "This item only has",
 	"runData.switchToBinary.binary": "binary data",
 	"runData.linking.hint": "Link displayed input and output runs",
