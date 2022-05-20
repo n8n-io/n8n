@@ -225,10 +225,6 @@ export const buildFields: INodeProperties[] = [
 						value: 'finished_at',
 					},
 					{
-						name: 'Finished At',
-						value: 'finished_at',
-					},
-					{
 						name: 'Number',
 						value: 'number',
 					},
