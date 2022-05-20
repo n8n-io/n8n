@@ -78,7 +78,7 @@ export class SeaTableTrigger implements INodeType {
 				default: 'rowCreated',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,

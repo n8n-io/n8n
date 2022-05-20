@@ -144,7 +144,7 @@ export const ticketFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,

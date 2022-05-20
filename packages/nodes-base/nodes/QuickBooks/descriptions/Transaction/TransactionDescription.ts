@@ -44,7 +44,7 @@ export const transactionFields: INodeProperties[] = [
 	//       transaction: getReport
 	// ----------------------------------
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

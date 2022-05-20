@@ -849,7 +849,7 @@ export class GoogleSheets implements INodeType {
 			//         sheet:create
 			// ----------------------------------
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,

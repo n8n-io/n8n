@@ -509,7 +509,7 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		displayOptions: {

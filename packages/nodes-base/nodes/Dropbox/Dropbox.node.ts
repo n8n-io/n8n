@@ -534,7 +534,7 @@ export class Dropbox implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

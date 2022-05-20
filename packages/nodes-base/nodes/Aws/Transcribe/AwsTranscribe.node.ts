@@ -282,7 +282,7 @@ export class AwsTranscribe implements INodeType {
 				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

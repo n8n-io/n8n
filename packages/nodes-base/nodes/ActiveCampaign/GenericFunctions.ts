@@ -160,7 +160,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 			description: 'Max number of results to return',
 		},
 		{
-			displayName: 'Simplify Response',
+			displayName: 'Simplify',
 			name: 'simple',
 			type: 'boolean',
 			displayOptions: {

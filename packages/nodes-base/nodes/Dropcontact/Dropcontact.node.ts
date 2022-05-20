@@ -108,6 +108,7 @@ export class Dropcontact implements INodeType {
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 				displayName: 'Simplify Output (Faster)',
 				name: 'simplify',
 				type: 'boolean',

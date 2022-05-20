@@ -143,7 +143,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,

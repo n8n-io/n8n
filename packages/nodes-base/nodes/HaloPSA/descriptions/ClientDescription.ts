@@ -172,7 +172,7 @@ export const clientFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,

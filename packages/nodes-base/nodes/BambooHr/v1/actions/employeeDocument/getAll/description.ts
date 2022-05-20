@@ -62,7 +62,7 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,

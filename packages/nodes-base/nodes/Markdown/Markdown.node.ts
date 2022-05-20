@@ -317,7 +317,8 @@ export class Markdown implements INodeType {
 							'Whether to open all links in new windows (by adding the attribute target="_blank" to <a> tags)',
 					},
 					{
-						displayName: 'Automatic Linking To URLs',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
+						displayName: 'Automatic Linking to URLs',
 						name: 'simplifiedAutoLink',
 						type: 'boolean',
 						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
@@ -473,6 +474,7 @@ export class Markdown implements INodeType {
 						description: 'Whether to prevent showdown from modifying the prefix',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 						displayName: 'Simple Line Breaks',
 						name: 'simpleLineBreaks',
 						type: 'boolean',

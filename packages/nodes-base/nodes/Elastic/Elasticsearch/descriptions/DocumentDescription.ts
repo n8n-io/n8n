@@ -129,7 +129,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -248,7 +248,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,

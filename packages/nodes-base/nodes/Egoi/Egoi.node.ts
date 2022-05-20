@@ -514,7 +514,7 @@ export class Egoi implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

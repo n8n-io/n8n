@@ -158,7 +158,7 @@ export class AwsComprehend implements INodeType {
 				description: 'The text to send',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

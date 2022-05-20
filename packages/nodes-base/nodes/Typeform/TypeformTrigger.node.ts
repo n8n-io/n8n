@@ -100,6 +100,7 @@ export class TypeformTrigger implements INodeType {
 				description: 'Form which should trigger workflow on submission',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 				displayName: 'Simplify Answers',
 				name: 'simplifyAnswers',
 				type: 'boolean',
