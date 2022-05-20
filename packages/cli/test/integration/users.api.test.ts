@@ -27,6 +27,7 @@ let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
+let isSmtpAvailable = false;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
@@ -47,6 +48,8 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
+
+	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
 });
 
 beforeEach(async () => {
@@ -482,6 +485,8 @@ test('POST /users should fail if user management is disabled', async () => {
 test(
 	'POST /users should email invites and create user shells but ignore existing',
 	async () => {
+		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const memberShell = await testDb.createUserShell(globalMemberRole);
@@ -534,6 +539,8 @@ test(
 test(
 	'POST /users should fail with invalid inputs',
 	async () => {
+		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
@@ -563,6 +570,8 @@ test(
 test(
 	'POST /users should ignore an empty payload',
 	async () => {
+		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
