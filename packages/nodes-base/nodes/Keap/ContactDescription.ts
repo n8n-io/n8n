@@ -19,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/update a contact',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
