@@ -83,7 +83,7 @@ export class Bitly implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: ' Link',
+						name: 'Link',
 						value: 'link',
 					},
 				],

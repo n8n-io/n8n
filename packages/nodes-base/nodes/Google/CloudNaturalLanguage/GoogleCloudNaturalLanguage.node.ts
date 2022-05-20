@@ -204,7 +204,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 								value: 'ar',
 							},
 							{
-								name: 'Chinese (Simplified)	',
+								name: 'Chinese (Simplified)',
 								value: 'zh',
 							},
 							{
