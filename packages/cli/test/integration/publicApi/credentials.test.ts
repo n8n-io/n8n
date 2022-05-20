@@ -187,7 +187,8 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 });
 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	let member = await testDb.createUser({ globalRole: globalMemberRole });
+	member = await testDb.addApiKey(member);
 	const authMemberAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
@@ -217,7 +218,8 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	let member = await testDb.createUser({ globalRole: globalMemberRole });
+	member = await testDb.addApiKey(member);
 	const authMemberAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
