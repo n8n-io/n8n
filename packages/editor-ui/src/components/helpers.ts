@@ -1,6 +1,7 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
+import { INode } from 'n8n-workflow';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
@@ -66,4 +67,10 @@ export function isString(value: unknown): value is string {
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+// Single source of truth for the credentials fields position
+// This method should be used whenever default value is needed
+export function getDefaultCredentialsIndex(node: INode): number {
+	return node.type === WEBHOOK_NODE_TYPE ? 1 : 0;
 }

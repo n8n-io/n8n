@@ -90,6 +90,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { getDefaultCredentialsIndex } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -188,6 +190,7 @@ export default mixins(
 					maxTries: 3,
 					waitBetweenTries: 1000,
 					notes: '',
+					nodeCredentialsIndex: 0,
 					parameters: {},
 				} as INodeParameters,
 
@@ -280,6 +283,18 @@ export default mixins(
 						default: false,
 						noDataExpression: true,
 						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.nodeCredentialsIndex.displayName'),
+						name: 'nodeCredentialsIndex',
+						type: 'number',
+						default: getDefaultCredentialsIndex(this.$store.getters.activeNode),
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.nodeCredentialsIndex.description'),
+						typeOptions: {
+							minValue: 0,
+							maxValue: 10,
+						},
 					},
 				] as INodeProperties[],
 
@@ -527,6 +542,11 @@ export default mixins(
 					if (this.node.waitBetweenTries) {
 						foundNodeSettings.push('waitBetweenTries');
 						Vue.set(this.nodeValues, 'waitBetweenTries', this.node.waitBetweenTries);
+					}
+
+					if (this.node.nodeCredentialsIndex) {
+						foundNodeSettings.push('nodeCredentialsIndex');
+						Vue.set(this.nodeValues, 'nodeCredentialsIndex', this.node.nodeCredentialsIndex);
 					}
 
 					// Set default node settings

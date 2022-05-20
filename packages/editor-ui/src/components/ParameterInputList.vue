@@ -101,7 +101,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { getDefaultCredentialsIndex } from './helpers';
 
 export default mixins(
 	genericHelpers,
@@ -131,9 +131,13 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
+				// Since `nodeCredentialsIndex` is an optional setting and can be undefined at this point
+				// try to read it from node settings, otherwise use the default value
+				const index = this.node.nodeCredentialsIndex ?
+					this.node.nodeCredentialsIndex :
+					getDefaultCredentialsIndex(this.node);
 
-				return 0;
+				return index;
 			},
 		},
 		methods: {
