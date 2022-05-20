@@ -413,6 +413,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-excess-inner-whitespace': 'error',
 				'n8n-nodes-base/node-param-description-miscased-json': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-simplify': 'error',
+				'n8n-nodes-base/node-param-display-name-miscased-id': 'error',
 			},
 		},
 	],

@@ -277,7 +277,7 @@ export const payoutFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Payout Batch Id',
+		displayName: 'Payout Batch ID',
 		name: 'payoutBatchId',
 		type: 'string',
 		default: '',
@@ -374,7 +374,7 @@ export const payoutItemFields: INodeProperties[] = [
 	/*                                 payoutItem:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payout Item Id',
+		displayName: 'Payout Item ID',
 		name: 'payoutItemId',
 		type: 'string',
 		default: '',
@@ -397,7 +397,7 @@ export const payoutItemFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Payout Item Id',
+		displayName: 'Payout Item ID',
 		name: 'payoutItemId',
 		type: 'string',
 		default: '',

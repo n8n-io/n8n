@@ -290,7 +290,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'contactIds',
 				type: 'string',
 				typeOptions: {
@@ -468,7 +468,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Expected Value of deal',
 			},
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'contactIds',
 				type: 'string',
 				typeOptions: {

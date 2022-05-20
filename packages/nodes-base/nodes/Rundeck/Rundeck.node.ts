@@ -65,7 +65,7 @@ export class Rundeck implements INodeType {
 			//         job:execute
 			// ----------------------------------
 			{
-				displayName: 'Job Id',
+				displayName: 'Job ID',
 				name: 'jobid',
 				type: 'string',
 				displayOptions: {
@@ -129,7 +129,7 @@ export class Rundeck implements INodeType {
 			//         job:getMetadata
 			// ----------------------------------
 			{
-				displayName: 'Job Id',
+				displayName: 'Job ID',
 				name: 'jobid',
 				type: 'string',
 				displayOptions: {

@@ -128,7 +128,7 @@ export const checklistFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Id Of Checklist Source',
+				displayName: 'ID Of Checklist Source',
 				name: 'idChecklistSource',
 				type: 'string',
 				default: '',
