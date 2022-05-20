@@ -39,7 +39,7 @@ export const recordOperations: INodeProperties[] = [
 			{
 				name: 'Upsert',
 				value: 'upsert',
-				description: 'Upsert a record',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'create',
