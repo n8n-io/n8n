@@ -132,7 +132,7 @@ export class ServiceNow implements INodeType {
 						value: 'businessService',
 					},
 					{
-						name: 'Configuration Items',
+						name: 'Configuration Item',
 						value: 'configurationItems',
 					},
 					{
@@ -165,7 +165,6 @@ export class ServiceNow implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume',
 			},
 
 			// BUSINESS SERVICE

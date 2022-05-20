@@ -79,7 +79,6 @@ export class GithubTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Repository Owner',

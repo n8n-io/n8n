@@ -279,7 +279,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'greaterOrEqual',
 							},
 							{
-								name: ' Child of',
+								name: 'Child of',
 								value: 'childOf',
 							},
 							{
