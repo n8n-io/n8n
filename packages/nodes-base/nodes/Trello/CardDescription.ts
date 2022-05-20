@@ -244,7 +244,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url.',
+				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, URL.',
 			},
 			{
 				displayName: 'Board',
@@ -258,7 +258,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'board_fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs.',
+				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, URL, prefs.',
 			},
 			{
 				displayName: 'Custom Field Items',

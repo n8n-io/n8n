@@ -1437,7 +1437,7 @@ export class Telegram implements INodeType {
 														name: 'url',
 														type: 'string',
 														default: '',
-														description: 'HTTP or tg:// url to be opened when button is pressed',
+														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
 												],
 											},

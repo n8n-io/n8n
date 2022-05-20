@@ -442,7 +442,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
+				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,URL.',
 			},
 			{
 				displayName: 'Formats',
@@ -489,7 +489,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
+				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,URL.',
 			},
 			{
 				displayName: 'Formats',
@@ -606,7 +606,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
+				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,URL.',
 			},
 			{
 				displayName: 'Formats',
@@ -671,7 +671,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
+				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,URL.',
 			},
 			{
 				displayName: 'Formats',
