@@ -531,7 +531,7 @@ export const videoFields: INodeProperties[] = [
 				description: 'The videoCategoryId parameter identifies the video category for which the chart should be retrieved',
 			},
 			{
-				displayName: 'Video Syndicated ',
+				displayName: 'Video Syndicated',
 				name: 'videoSyndicated',
 				type: 'boolean',
 				default: false,

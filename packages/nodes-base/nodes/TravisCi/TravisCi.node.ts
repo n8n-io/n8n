@@ -47,7 +47,7 @@ export class TravisCi implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: ' Build',
+						name: 'Build',
 						value: 'build',
 					},
 				],
