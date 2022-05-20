@@ -7,7 +7,7 @@ import { InternalHooksManager } from '../../../../InternalHooksManager';
 import { externalHooks } from '../../../../Server';
 import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
-import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
+import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
 import {
@@ -127,13 +127,13 @@ export = {
 
 				count = await getWorkflowsCount(query);
 			} else {
-				const shareWorkflows = await getSharedWorkflows(req.user);
+				const sharedWorkflows = await getSharedWorkflows(req.user);
 
-				if (!shareWorkflows.length) {
+				if (!sharedWorkflows.length) {
 					return res.status(404).json();
 				}
 
-				const workflowsIds = shareWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
+				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
 
 				Object.assign(query.where, { id: In(workflowsIds) });
 

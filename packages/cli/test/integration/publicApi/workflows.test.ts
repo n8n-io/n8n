@@ -47,16 +47,6 @@ beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
 	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
 
-	await testDb.createUser({
-		id: INITIAL_TEST_USER.id,
-		email: INITIAL_TEST_USER.email,
-		password: INITIAL_TEST_USER.password,
-		firstName: INITIAL_TEST_USER.firstName,
-		lastName: INITIAL_TEST_USER.lastName,
-		globalRole: globalOwnerRole,
-		apiKey: INITIAL_TEST_USER.apiKey,
-	});
-
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', 'smtp');
@@ -71,7 +61,7 @@ afterAll(async () => {
 });
 
 test('GET /workflows should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -86,7 +76,7 @@ test('GET /workflows should fail due to missing API Key', async () => {
 });
 
 test('GET /workflows should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -103,7 +93,7 @@ test('GET /workflows should fail due to invalid API Key', async () => {
 });
 
 test('GET /workflows should return all workflows', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -148,7 +138,7 @@ test('GET /workflows should return all workflows', async () => {
 });
 
 test('GET /workflows/:workflowId should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -163,7 +153,7 @@ test('GET /workflows/:workflowId should fail due to missing API Key', async () =
 });
 
 test('GET /workflows/:workflowId should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -180,7 +170,7 @@ test('GET /workflows/:workflowId should fail due to invalid API Key', async () =
 });
 
 test('GET /workflows/:workflowId should fail due to non existing workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -195,7 +185,7 @@ test('GET /workflows/:workflowId should fail due to non existing workflow', asyn
 });
 
 test('GET /workflows/:workflowId should retrieve workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -226,7 +216,7 @@ test('GET /workflows/:workflowId should retrieve workflow', async () => {
 });
 
 test('DELETE /workflows/:workflowId should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -241,7 +231,7 @@ test('DELETE /workflows/:workflowId should fail due to missing API Key', async (
 });
 
 test('DELETE /workflows/:workflowId should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -258,7 +248,7 @@ test('DELETE /workflows/:workflowId should fail due to invalid API Key', async (
 });
 
 test('DELETE /workflows/:workflowId should fail due to non existing workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -273,7 +263,7 @@ test('DELETE /workflows/:workflowId should fail due to non existing workflow', a
 });
 
 test('DELETE /workflows/:workflowId should delete the workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -312,7 +302,7 @@ test('DELETE /workflows/:workflowId should delete the workflow', async () => {
 });
 
 test('POST /workflows/:workflowId/activate should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -327,7 +317,7 @@ test('POST /workflows/:workflowId/activate should fail due to missing API Key', 
 });
 
 test('POST /workflows/:workflowId/activate should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -344,7 +334,7 @@ test('POST /workflows/:workflowId/activate should fail due to invalid API Key', 
 });
 
 test('POST /workflows/:workflowId/activate should fail due to non existing workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -359,7 +349,7 @@ test('POST /workflows/:workflowId/activate should fail due to non existing workf
 });
 
 test('POST /workflows/:workflowId/activate should fail due to trying to activate a workflow without a trigger', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -376,7 +366,7 @@ test('POST /workflows/:workflowId/activate should fail due to trying to activate
 });
 
 test('POST /workflows/:workflowId/activate should active workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -421,7 +411,7 @@ test('POST /workflows/:workflowId/activate should active workflow', async () => 
 });
 
 test('POST /workflows/:workflowId/deactivate should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -436,7 +426,7 @@ test('POST /workflows/:workflowId/deactivate should fail due to missing API Key'
 });
 
 test('POST /workflows/:workflowId/deactivate should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -453,7 +443,7 @@ test('POST /workflows/:workflowId/deactivate should fail due to invalid API Key'
 });
 
 test('POST /workflows/:workflowId/deactivate should fail due to non existing workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -468,7 +458,7 @@ test('POST /workflows/:workflowId/deactivate should fail due to non existing wor
 });
 
 test('POST /workflows/:workflowId/deactivate should deactive workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -534,7 +524,7 @@ test('POST /workflows/:workflowId/deactivate should deactive workflow', async ()
 });
 
 test('POST /workflows should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -549,7 +539,7 @@ test('POST /workflows should fail due to missing API Key', async () => {
 });
 
 test('POST /workflows should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -566,7 +556,7 @@ test('POST /workflows should fail due to invalid API Key', async () => {
 });
 
 test('POST /workflows should fail due to invalid body', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -581,7 +571,7 @@ test('POST /workflows should fail due to invalid body', async () => {
 });
 
 test('POST /workflows should create workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -654,7 +644,7 @@ test('POST /workflows should create workflow', async () => {
 });
 
 test('PUT /workflows/:workflowId should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -669,7 +659,7 @@ test('PUT /workflows/:workflowId should fail due to missing API Key', async () =
 });
 
 test('PUT /workflows/:workflowId should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
@@ -686,7 +676,7 @@ test('PUT /workflows/:workflowId should fail due to invalid API Key', async () =
 });
 
 test('PUT /workflows/:workflowId should fail due to non existing workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -722,7 +712,7 @@ test('PUT /workflows/:workflowId should fail due to non existing workflow', asyn
 });
 
 test('PUT /workflows/:workflowId should fail due to invalid body', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -757,7 +747,7 @@ test('PUT /workflows/:workflowId should fail due to invalid body', async () => {
 });
 
 test('PUT /workflows/:workflowId should update workflow', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const workflow = await testDb.createWorkflow({}, owner);
 

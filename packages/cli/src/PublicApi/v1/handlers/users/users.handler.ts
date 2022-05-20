@@ -21,7 +21,7 @@ import {
 } from './users.service';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
+import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import {
 	deletingOwnUser,
 	getMailerInstance,
@@ -29,7 +29,7 @@ import {
 	transferingToDeletedUser,
 	userManagmentEnabled,
 	emailSetup,
-} from './users.midleware';
+} from './users.middleware';
 import { UserRequest } from '../../../types';
 import { InternalHooksManager } from '../../../../InternalHooksManager';
 

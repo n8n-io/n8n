@@ -9,7 +9,7 @@ import {
 } from './executions.service';
 
 import { ActiveExecutions } from '../../../..';
-import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
+import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 
 import { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';

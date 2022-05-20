@@ -5,7 +5,7 @@ import { CredentialTypes } from '../../../../CredentialTypes';
 import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
 import { CredentialRequest } from '../../../../requests';
 import { CredentialTypeRequest } from '../../../types';
-import { authorize } from '../../shared/midlewares/global.midleware';
+import { authorize } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
 import {
