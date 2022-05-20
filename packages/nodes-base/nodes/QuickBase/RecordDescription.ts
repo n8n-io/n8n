@@ -39,7 +39,7 @@ export const recordOperations: INodeProperties[] = [
 			{
 				name: 'Upsert',
 				value: 'upsert',
-				description: 'Upsert a record',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'create',
@@ -102,7 +102,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -397,7 +397,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -542,7 +542,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',

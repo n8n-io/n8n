@@ -49,6 +49,7 @@ export class Chargebee implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -115,7 +116,7 @@ export class Chargebee implements INodeType {
 				placeholder: 'Add Property',
 				options: [
 					{
-						displayName: 'User Id',
+						displayName: 'User ID',
 						name: 'id',
 						type: 'string',
 						default: '',
@@ -367,7 +368,7 @@ export class Chargebee implements INodeType {
 			//         invoice:pdfUrl
 			// ----------------------------------
 			{
-				displayName: 'Invoice Id',
+				displayName: 'Invoice ID',
 				name: 'invoiceId',
 				description: 'The ID of the invoice to get',
 				type: 'string',
@@ -421,7 +422,7 @@ export class Chargebee implements INodeType {
 			//         subscription:cancel
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
+				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				description: 'The ID of the subscription to cancel',
 				type: 'string',
@@ -460,7 +461,7 @@ export class Chargebee implements INodeType {
 			//         subscription:delete
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
+				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				description: 'The ID of the subscription to delete',
 				type: 'string',

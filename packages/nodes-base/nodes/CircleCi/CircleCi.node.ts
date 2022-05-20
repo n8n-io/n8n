@@ -44,9 +44,10 @@ export class CircleCi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Pipeline',
+						name: 'Pipeline',
 						value: 'pipeline',
 					},
 				],

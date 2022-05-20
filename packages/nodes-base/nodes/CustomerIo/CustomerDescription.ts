@@ -17,7 +17,7 @@ export const customerOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/Update a customer',
+				description: 'Create a new customer, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -91,7 +91,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {

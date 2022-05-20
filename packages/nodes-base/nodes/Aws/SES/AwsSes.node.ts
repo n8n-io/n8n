@@ -48,6 +48,7 @@ export class AwsSes implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Custom Verification Email',
@@ -381,6 +382,9 @@ export class AwsSes implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
@@ -883,6 +887,9 @@ export class AwsSes implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {

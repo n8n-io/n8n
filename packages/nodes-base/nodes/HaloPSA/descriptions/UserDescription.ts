@@ -147,7 +147,7 @@ export const userFields: INodeProperties[] = [
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether output should be simplified',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
 				resource: ['user'],

@@ -43,6 +43,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -203,7 +204,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 								value: 'ar',
 							},
 							{
-								name: 'Chinese (Simplified)	',
+								name: 'Chinese (Simplified)',
 								value: 'zh',
 							},
 							{

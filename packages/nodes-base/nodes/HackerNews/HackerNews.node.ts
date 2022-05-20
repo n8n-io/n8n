@@ -37,6 +37,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'All',
@@ -181,6 +182,9 @@ export class HackerNews implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: 100,
 				description: 'Max number of results to return',
 				displayOptions: {

@@ -51,6 +51,7 @@ export class Beeminder implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{

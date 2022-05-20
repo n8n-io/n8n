@@ -66,7 +66,7 @@ export class FileMaker implements INodeType {
 						value: 'records',
 					},
 					{
-						name: 'Get Records By Id',
+						name: 'Get Records By ID',
 						value: 'record',
 					},
 					{
@@ -110,7 +110,7 @@ export class FileMaker implements INodeType {
 				description: 'FileMaker Layout Name',
 			},
 			{
-				displayName: 'Record Id',
+				displayName: 'Record ID',
 				name: 'recid',
 				type: 'number',
 				default: '',
@@ -150,6 +150,9 @@ export class FileMaker implements INodeType {
 				placeholder: '100',
 				description: 'Max number of results to return',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: '100',
 				displayOptions: {
 					show: {
@@ -566,7 +569,7 @@ export class FileMaker implements INodeType {
 				}
 			},*/
 			{
-				displayName: 'Mod Id',
+				displayName: 'Mod ID',
 				name: 'modId',
 				description: 'The last modification ID. When you use modId, a record is edited only when the modId matches.',
 				type: 'number',

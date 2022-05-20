@@ -76,6 +76,7 @@ export class Dropbox implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -513,6 +514,9 @@ export class Dropbox implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -544,7 +548,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Filters',
@@ -697,6 +701,9 @@ export class Dropbox implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -738,21 +745,21 @@ export class Dropbox implements INodeType {
 						description: 'If true, the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
 					},
 					{
-						displayName: 'Include Shared Members ',
+						displayName: 'Include Shared Members',
 						name: 'include_has_explicit_shared_members',
 						type: 'boolean',
 						default: false,
 						description: 'If true, the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
 					},
 					{
-						displayName: 'Include Mounted Folders ',
+						displayName: 'Include Mounted Folders',
 						name: 'include_mounted_folders',
 						type: 'boolean',
 						default: true,
 						description: 'If true, the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
 					},
 					{
-						displayName: 'Include Non Downloadable Files ',
+						displayName: 'Include Non Downloadable Files',
 						name: 'include_non_downloadable_files',
 						type: 'boolean',
 						default: true,

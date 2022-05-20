@@ -127,6 +127,7 @@ export class Harvest implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 
 					{
@@ -162,7 +163,7 @@ export class Harvest implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'Time Entries',
+						name: 'Time Entry',
 						value: 'timeEntry',
 					},
 					{
