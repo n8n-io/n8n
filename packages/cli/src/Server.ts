@@ -328,6 +328,7 @@ class App {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
+			executionMode: config.getEnv('executions.mode'),
 		};
 	}
 
