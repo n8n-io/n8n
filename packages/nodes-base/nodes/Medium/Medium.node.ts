@@ -70,7 +70,6 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
@@ -87,7 +86,6 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -108,7 +106,6 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -349,7 +346,6 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'publication',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         publication:getAll

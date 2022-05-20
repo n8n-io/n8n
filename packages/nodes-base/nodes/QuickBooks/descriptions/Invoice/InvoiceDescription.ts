@@ -12,7 +12,6 @@ export const invoiceOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',

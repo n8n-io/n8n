@@ -78,7 +78,6 @@ export class Salesmate implements INodeType {
 					},
 				],
 				default: 'activity',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...activityOperations,

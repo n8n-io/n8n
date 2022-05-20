@@ -120,7 +120,6 @@ export class Harvest implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 
 
@@ -172,7 +171,6 @@ export class Harvest implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 
 			// operations

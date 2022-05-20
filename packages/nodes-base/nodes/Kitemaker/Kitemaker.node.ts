@@ -89,7 +89,6 @@ export class Kitemaker implements INodeType {
 				],
 				default: 'workItem',
 				required: true,
-				description: 'Resource to operate on.',
 			},
 			...organizationOperations,
 			...spaceOperations,

@@ -88,7 +88,6 @@ export class ConvertKit implements INodeType {
 					},
 				],
 				default: 'form',
-				description: 'The resource to operate on.',
 			},
 			//--------------------
 			// Field Description

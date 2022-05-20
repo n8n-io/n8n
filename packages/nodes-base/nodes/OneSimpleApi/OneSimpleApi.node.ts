@@ -140,7 +140,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'exchangeRate',
-				description: 'The operation to perform.',
 			},
 			// Utility
 			{
@@ -172,7 +171,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'validateEmail',
-				description: 'The operation to perform.',
 			},
 			// website: pdf
 			{

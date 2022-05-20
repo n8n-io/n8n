@@ -75,7 +75,6 @@ export class Webflow implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
@@ -88,7 +87,6 @@ export class Webflow implements INodeType {
 					},
 				],
 				default: 'item',
-				description: 'Resource to consume',
 			},
 			...itemOperations,
 			...itemFields,

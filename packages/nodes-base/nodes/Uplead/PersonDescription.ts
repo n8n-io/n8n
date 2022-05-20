@@ -19,7 +19,6 @@ export const personOperations: INodeProperties[] = [
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -40,7 +40,6 @@ export class OpenThesaurus implements INodeType {
 					},
 				],
 				default: 'getSynonyms',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Text',

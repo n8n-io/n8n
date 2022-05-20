@@ -8,7 +8,6 @@ export const couponOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',

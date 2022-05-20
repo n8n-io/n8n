@@ -21,7 +21,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'Operation to perform',
 	},
 ];
 

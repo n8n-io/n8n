@@ -63,7 +63,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'email',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -109,7 +108,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -420,7 +418,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Is Body HTML',
@@ -740,7 +737,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Template Name',

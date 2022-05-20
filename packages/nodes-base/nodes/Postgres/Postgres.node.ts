@@ -53,7 +53,6 @@ export class Postgres implements INodeType {
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

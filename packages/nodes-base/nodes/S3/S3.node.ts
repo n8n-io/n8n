@@ -80,7 +80,6 @@ export class S3 implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The operation to perform.',
 			},
 			// BUCKET
 			...bucketOperations,

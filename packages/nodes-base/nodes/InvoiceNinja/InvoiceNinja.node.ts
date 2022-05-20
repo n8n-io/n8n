@@ -128,7 +128,6 @@ export class InvoiceNinja implements INodeType {
 					},
 				],
 				default: 'client',
-				description: 'Resource to consume.',
 			},
 			...clientOperations,
 			...clientFields,

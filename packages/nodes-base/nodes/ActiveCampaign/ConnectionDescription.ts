@@ -46,7 +46,6 @@ export const connectionOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 
 ];

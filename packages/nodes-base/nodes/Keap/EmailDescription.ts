@@ -32,7 +32,6 @@ export const emailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'createRecord',
-		description: 'The operation to perform.',
 	},
 ];
 

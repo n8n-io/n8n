@@ -100,7 +100,6 @@ export class MondayCom implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -125,7 +124,6 @@ export class MondayCom implements INodeType {
 					},
 				],
 				default: 'board',
-				description: 'Resource to consume.',
 			},
 			//BOARD
 			...boardOperations,

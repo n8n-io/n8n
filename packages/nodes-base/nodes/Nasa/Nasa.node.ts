@@ -112,7 +112,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'astronomyPictureOfTheDay',
-				description: 'The resource to operate on',
 			},
 			// ----------------------------------
 			//            operations
@@ -136,7 +135,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -157,7 +155,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -178,7 +175,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -199,7 +195,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -220,7 +215,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -241,7 +235,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -262,7 +255,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -283,7 +275,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -304,7 +295,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -325,7 +315,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -346,7 +335,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -367,7 +355,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -388,7 +375,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -409,7 +395,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -430,7 +415,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -451,7 +435,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -472,7 +455,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -493,7 +475,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -514,7 +495,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -535,7 +515,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------

@@ -27,7 +27,6 @@ export const trackOperations: INodeProperties[] = [
 			},
 		],
 		default: 'event',
-		description: 'The operation to perform.',
 	},
 ];
 

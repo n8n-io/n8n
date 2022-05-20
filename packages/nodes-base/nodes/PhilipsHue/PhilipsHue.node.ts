@@ -53,7 +53,6 @@ export class PhilipsHue implements INodeType {
 					},
 				],
 				default: 'light',
-				description: 'The resource to operate on.',
 			},
 			...lightOperations,
 			...lightFields,

@@ -97,7 +97,6 @@ export class Copper implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,

@@ -22,7 +22,6 @@ export const mmsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 

@@ -50,7 +50,6 @@ export class OpenWeatherMap implements INodeType {
 					},
 				],
 				default: 'currentWeather',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Format',

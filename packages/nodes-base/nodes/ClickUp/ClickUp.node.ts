@@ -225,7 +225,6 @@ export class ClickUp implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			// CHECKLIST
 			...checklistOperations,

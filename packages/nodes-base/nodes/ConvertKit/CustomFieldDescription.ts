@@ -37,7 +37,6 @@ export const customFieldOperations: INodeProperties[] = [
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 

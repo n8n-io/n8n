@@ -43,7 +43,6 @@ export const dealOperations: INodeProperties[] = [
 
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

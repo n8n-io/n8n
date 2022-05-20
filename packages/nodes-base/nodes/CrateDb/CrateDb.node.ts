@@ -60,7 +60,6 @@ export class CrateDb implements INodeType {
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

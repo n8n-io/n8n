@@ -97,7 +97,6 @@ export class Storyblok implements INodeType {
 					},
 				],
 				default: 'story',
-				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
 						source: [
@@ -118,7 +117,6 @@ export class Storyblok implements INodeType {
 					},
 				],
 				default: 'story',
-				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
 						source: [

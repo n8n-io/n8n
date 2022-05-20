@@ -92,7 +92,6 @@ export class YouTube implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,

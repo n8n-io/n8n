@@ -79,7 +79,6 @@ export class SpreadsheetFile implements INodeType {
 					},
 				],
 				default: 'fromFile',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

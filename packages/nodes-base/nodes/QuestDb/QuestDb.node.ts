@@ -51,7 +51,6 @@ export class QuestDb implements INodeType {
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

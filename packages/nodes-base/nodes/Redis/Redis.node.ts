@@ -75,7 +75,6 @@ export class Redis implements INodeType {
 					},
 				],
 				default: 'info',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

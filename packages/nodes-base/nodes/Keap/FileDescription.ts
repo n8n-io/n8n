@@ -32,7 +32,6 @@ export const fileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'delete',
-		description: 'The operation to perform.',
 	},
 ];
 

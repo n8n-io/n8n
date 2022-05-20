@@ -22,7 +22,6 @@ export const callOperations: INodeProperties[] = [
 			},
 		],
 		default: 'make',
-		description: 'Operation to perform.',
 	},
 ];
 

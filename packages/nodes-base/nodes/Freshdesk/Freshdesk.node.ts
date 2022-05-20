@@ -115,7 +115,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -157,7 +156,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Requester Identification',

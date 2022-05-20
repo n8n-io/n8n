@@ -104,7 +104,6 @@ export class GoogleSheets implements INodeType {
 
 				],
 				default: 'sheet',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -165,7 +164,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -710,7 +708,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         spreadsheet:create

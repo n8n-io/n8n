@@ -42,7 +42,6 @@ export const buildOperations: INodeProperties[] = [
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -63,7 +63,6 @@ export class Baserow implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -104,7 +103,6 @@ export class Baserow implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform',
 			},
 			...operationFields,
 		],

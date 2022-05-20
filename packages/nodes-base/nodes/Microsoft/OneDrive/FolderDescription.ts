@@ -47,7 +47,6 @@ export const folderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getChildren',
-		description: 'The operation to perform.',
 	},
 ];
 

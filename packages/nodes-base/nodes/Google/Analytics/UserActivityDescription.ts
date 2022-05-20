@@ -22,7 +22,6 @@ export const userActivityOperations: INodeProperties[] = [
 			},
 		],
 		default: 'search',
-		description: 'The operation to perform.',
 	},
 ];
 

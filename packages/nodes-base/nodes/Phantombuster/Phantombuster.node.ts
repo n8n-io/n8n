@@ -57,7 +57,6 @@ export class Phantombuster implements INodeType {
 					},
 				],
 				default: 'agent',
-				description: 'The resource to operate on.',
 			},
 			...agentOperations,
 			...agentFields,

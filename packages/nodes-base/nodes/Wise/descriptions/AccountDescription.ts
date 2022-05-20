@@ -8,7 +8,6 @@ export const accountOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'getBalances',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Balances',

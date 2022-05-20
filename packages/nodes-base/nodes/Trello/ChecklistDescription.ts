@@ -65,7 +65,6 @@ export const checklistOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -538,7 +537,6 @@ export const checklistFields: INodeProperties[] = [
 					},
 				],
 				default: 'complete',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Checklist ID',

@@ -22,6 +22,5 @@ export const profileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform.',
 	},
 ];

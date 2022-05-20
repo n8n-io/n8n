@@ -52,7 +52,6 @@ export const listOperations: INodeProperties[] = [
 			},
 		],
 		default: 'customFields',
-		description: 'The operation to perform.',
 	},
 ];
 

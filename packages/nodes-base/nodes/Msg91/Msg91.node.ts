@@ -44,7 +44,6 @@ export class Msg91 implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -65,7 +64,6 @@ export class Msg91 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Sender ID',

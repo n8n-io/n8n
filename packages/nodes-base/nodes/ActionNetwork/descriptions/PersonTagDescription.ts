@@ -25,7 +25,6 @@ export const personTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform',
 	},
 ];
 

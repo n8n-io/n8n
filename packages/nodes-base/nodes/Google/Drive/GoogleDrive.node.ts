@@ -89,7 +89,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -145,7 +144,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -177,7 +175,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 
@@ -526,7 +523,6 @@ export class GoogleDrive implements INodeType {
 
 								],
 								default: 'contains',
-								description: 'Operation to perform.',
 							},
 							{
 								displayName: 'Value',
@@ -1531,7 +1527,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         drive:create

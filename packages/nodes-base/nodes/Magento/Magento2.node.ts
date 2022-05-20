@@ -108,7 +108,6 @@ export class Magento2 implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'The resource to operate on',
 			},
 			...customerOperations,
 			...customerFields,

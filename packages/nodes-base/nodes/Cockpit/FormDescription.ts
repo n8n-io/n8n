@@ -21,7 +21,6 @@ export const formOperations: INodeProperties[] = [
 
 		],
 		default: 'submit',
-		description: 'The operation to perform.',
 	},
 ];
 

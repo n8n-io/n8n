@@ -93,7 +93,6 @@ export class Ghost implements INodeType {
 				],
 				noDataExpression: true,
 				default: 'post',
-				description: 'The resource to operate on',
 			},
 			...postOperations,
 			...postFields,

@@ -80,7 +80,6 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'chat',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -101,7 +100,6 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'postMessage',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Channel',

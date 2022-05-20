@@ -61,7 +61,6 @@ export class Clearbit implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,

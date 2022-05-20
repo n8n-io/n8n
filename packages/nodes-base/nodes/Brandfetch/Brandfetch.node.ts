@@ -67,7 +67,6 @@ export class Brandfetch implements INodeType {
 					},
 				],
 				default: 'logo',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------

@@ -56,7 +56,6 @@ export const labelOperations: INodeProperties[] = [
 
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];

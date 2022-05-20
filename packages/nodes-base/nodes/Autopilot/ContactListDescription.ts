@@ -37,7 +37,6 @@ export const contactListOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform.',
 	},
 ];
 

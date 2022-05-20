@@ -86,7 +86,6 @@ export class Git implements INodeType {
 				name: 'operation',
 				type: 'options',
 				default: 'log',
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Add',

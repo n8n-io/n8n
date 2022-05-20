@@ -100,7 +100,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Type',

@@ -12,7 +12,6 @@ export const billOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',

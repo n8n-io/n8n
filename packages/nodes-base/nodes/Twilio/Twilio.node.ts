@@ -45,7 +45,6 @@ export class Twilio implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 
 			{
@@ -67,7 +66,6 @@ export class Twilio implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 
 

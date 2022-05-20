@@ -35,7 +35,6 @@ export const tableOperations: INodeProperties[] = [
 			},
 		],
 		default: 'addRow',
-		description: 'The operation to perform.',
 	},
 ];
 

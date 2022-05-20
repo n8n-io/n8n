@@ -22,7 +22,6 @@ export const cameraProxyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getScreenshot',
-		description: 'The operation to perform.',
 	},
 ];
 

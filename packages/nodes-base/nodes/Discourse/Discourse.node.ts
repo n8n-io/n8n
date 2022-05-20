@@ -104,7 +104,6 @@ export class Discourse implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to operate on.',
 			},
 			...categoryOperations,
 			...categoryFields,

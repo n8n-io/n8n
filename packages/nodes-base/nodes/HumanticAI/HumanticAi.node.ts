@@ -53,7 +53,6 @@ export class HumanticAi implements INodeType {
 					},
 				],
 				default: 'profile',
-				description: 'Resource to consume.',
 			},
 			// PROFILE
 			...profileOperations,

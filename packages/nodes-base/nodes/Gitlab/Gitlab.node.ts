@@ -69,7 +69,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -94,7 +93,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -141,7 +139,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -168,7 +165,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'getIssues',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -190,7 +186,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'getRepositories',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -232,7 +227,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 

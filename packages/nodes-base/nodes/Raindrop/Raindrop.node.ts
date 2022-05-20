@@ -76,7 +76,6 @@ export class Raindrop implements INodeType {
 					},
 				],
 				default: 'collection',
-				description: 'Resource to consume',
 			},
 			...bookmarkOperations,
 			...bookmarkFields,

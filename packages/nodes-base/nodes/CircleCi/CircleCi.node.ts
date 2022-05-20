@@ -51,7 +51,6 @@ export class CircleCi implements INodeType {
 					},
 				],
 				default: 'pipeline',
-				description: 'Resource to consume.',
 			},
 			...pipelineOperations,
 			...pipelineFields,

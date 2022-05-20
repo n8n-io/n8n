@@ -82,7 +82,6 @@ export class Intercom implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...leadOpeations,
 			...userOpeations,

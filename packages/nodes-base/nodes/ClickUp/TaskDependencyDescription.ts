@@ -27,7 +27,6 @@ export const taskDependencyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

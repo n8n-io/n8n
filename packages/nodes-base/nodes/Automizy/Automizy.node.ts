@@ -62,7 +62,6 @@ export class Automizy implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 
 			...contactOperations,

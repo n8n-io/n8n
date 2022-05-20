@@ -44,7 +44,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
 

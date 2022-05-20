@@ -76,7 +76,6 @@ export class Zulip implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume.',
 			},
 			// MESSAGE
 			...messageOperations,

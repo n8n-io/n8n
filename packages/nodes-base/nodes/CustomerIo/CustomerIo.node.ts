@@ -74,7 +74,6 @@ export class CustomerIo implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'Resource to consume.',
 			},
 			// CAMPAIGN
 			...campaignOperations,

@@ -92,7 +92,6 @@ export class Bitwarden implements INodeType {
 					},
 				],
 				default: 'collection',
-				description: 'Resource to consume',
 			},
 			...collectionOperations,
 			...collectionFields,

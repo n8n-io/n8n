@@ -27,7 +27,6 @@ export const ticketFieldOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

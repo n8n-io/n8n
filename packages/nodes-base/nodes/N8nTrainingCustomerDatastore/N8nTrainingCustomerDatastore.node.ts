@@ -84,7 +84,6 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					},
 				],
 				default: 'getOnePerson',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Return All',

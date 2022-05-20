@@ -25,7 +25,6 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 			},
 		],
 		default: 'download',
-		description: 'Operation to perform',
 	},
 ];
 

@@ -22,7 +22,6 @@ export const transactionOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'getReport',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Report',

@@ -53,7 +53,6 @@ export class Bubble implements INodeType {
 					},
 				],
 				default: 'object',
-				description: 'Resource to consume',
 			},
 			...objectOperations,
 			...objectFields,

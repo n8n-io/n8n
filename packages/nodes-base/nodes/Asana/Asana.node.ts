@@ -88,7 +88,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -125,7 +124,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			// ----------------------------------
 			//         subtask
@@ -154,7 +152,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -446,7 +443,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -975,7 +971,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -1143,7 +1138,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         taskProject:add
@@ -1299,7 +1293,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -1423,7 +1416,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -1517,7 +1509,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

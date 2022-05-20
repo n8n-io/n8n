@@ -46,7 +46,6 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'transcriptionJob',
-				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -75,7 +74,6 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Job Name',

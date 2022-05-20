@@ -46,7 +46,6 @@ export class Gotify implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -74,7 +73,6 @@ export class Gotify implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Message',

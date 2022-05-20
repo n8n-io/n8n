@@ -50,7 +50,6 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'message',
-			description: 'The resource to operate on',
 		},
 		...channel.descriptions,
 		...message.descriptions,

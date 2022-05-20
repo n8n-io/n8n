@@ -70,7 +70,6 @@ export class Twitter implements INodeType {
 					},
 				],
 				default: 'tweet',
-				description: 'The resource to operate on.',
 			},
 			// DIRECT MESSAGE
 			...directMessageOperations,

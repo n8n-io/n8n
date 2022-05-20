@@ -46,7 +46,6 @@ export class LinkedIn implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to consume',
 			},
 			//POST
 			...postOperations,

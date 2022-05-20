@@ -68,7 +68,6 @@ export class Airtable implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

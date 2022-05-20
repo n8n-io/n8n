@@ -53,7 +53,6 @@ export class MySql implements INodeType {
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

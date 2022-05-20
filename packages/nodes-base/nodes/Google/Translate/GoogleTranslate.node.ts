@@ -86,7 +86,6 @@ export class GoogleTranslate implements INodeType {
 					},
 				],
 				default: 'language',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -107,7 +106,6 @@ export class GoogleTranslate implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All

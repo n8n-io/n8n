@@ -22,6 +22,5 @@ export const companyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getSetting',
-		description: 'The operation to perform.',
 	},
 ];

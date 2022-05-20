@@ -69,7 +69,6 @@ export class Plivo implements INodeType {
 				],
 				default: 'sms',
 				required: true,
-				description: 'The resource to operate on.',
 			},
 			...smsOperations,
 			...smsFields,

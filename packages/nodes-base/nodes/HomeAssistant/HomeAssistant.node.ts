@@ -120,7 +120,6 @@ export class HomeAssistant implements INodeType {
 					},
 				],
 				default: 'config',
-				description: 'Resource to consume.',
 			},
 			...cameraProxyOperations,
 			...cameraProxyFields,

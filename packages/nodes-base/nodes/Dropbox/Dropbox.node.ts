@@ -91,7 +91,6 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -136,7 +135,6 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -178,7 +176,6 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -199,7 +196,6 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'query',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

@@ -71,7 +71,6 @@ export class DeepL implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			...textOperations,
 		],

@@ -54,7 +54,6 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
@@ -95,7 +94,6 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			...operationFields,
 		],

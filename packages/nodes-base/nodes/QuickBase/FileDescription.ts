@@ -27,7 +27,6 @@ export const fileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'download',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -244,7 +244,6 @@ export class Salesforce implements INodeType {
 					},
 				],
 				default: 'lead',
-				description: 'Resource to consume.',
 			},
 			...leadOperations,
 			...leadFields,

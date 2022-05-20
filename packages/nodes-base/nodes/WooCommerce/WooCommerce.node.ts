@@ -84,7 +84,6 @@ export class WooCommerce implements INodeType {
 					},
 				],
 				default: 'product',
-				description: 'Resource to consume.',
 			},
 			...customerOperations,
 			...customerFields,

@@ -27,7 +27,6 @@ export const messageLabelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform',
 	},
 ];
 
