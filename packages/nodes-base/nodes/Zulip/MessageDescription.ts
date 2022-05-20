@@ -42,7 +42,6 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Upload a File',
 				value: 'updateFile',
-				description: 'Upload a file',
 			},
 		],
 		default: 'sendPrivate',

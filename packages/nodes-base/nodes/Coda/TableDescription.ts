@@ -27,7 +27,6 @@ export const tableOperations: INodeProperties[] = [
 			{
 				name: 'Get All Columns',
 				value: 'getAllColumns',
-				description: 'Get all columns',
 			},
 			{
 				name: 'Get All Rows',

@@ -76,12 +76,10 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					{
 						name: 'Get One Person',
 						value: 'getOnePerson',
-						description: 'Get one person',
 					},
 					{
 						name: 'Get All People',
 						value: 'getAllPeople',
-						description: 'Get all people',
 					},
 				],
 				default: 'getOnePerson',

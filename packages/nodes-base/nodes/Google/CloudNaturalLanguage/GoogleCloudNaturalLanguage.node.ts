@@ -68,7 +68,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					{
 						name: 'Analyze Sentiment',
 						value: 'analyzeSentiment',
-						description: 'Analyze Sentiment',
 					},
 				],
 				default: 'analyzeSentiment',
