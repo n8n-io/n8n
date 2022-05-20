@@ -128,7 +128,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact Id',
+		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -148,7 +148,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact Id',
+		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -184,7 +184,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'The first name of the contact',
 	},
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
 		displayOptions: {
@@ -264,7 +264,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact Id',
+		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -295,7 +295,7 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Client Id',
+				displayName: 'Client ID',
 				name: 'client_id',
 				type: 'string',
 				default: '',

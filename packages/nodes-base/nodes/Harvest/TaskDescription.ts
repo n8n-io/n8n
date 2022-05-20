@@ -137,7 +137,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -157,7 +157,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',

@@ -715,7 +715,7 @@ export const issueFields: INodeProperties[] = [
 				description: 'Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
 			},
 			{
-				displayName: ' JQL',
+				displayName: 'JQL',
 				name: 'jql',
 				type: 'string',
 				default: '',
