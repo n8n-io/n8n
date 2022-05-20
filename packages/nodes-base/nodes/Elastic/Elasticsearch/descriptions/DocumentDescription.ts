@@ -221,6 +221,9 @@ export const documentFields: INodeProperties[] = [
 				operation: [
 					'getAll',
 				],
+				paginate: [
+					false,
+				],
 			},
 		},
 	},
@@ -260,6 +263,45 @@ export const documentFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Paginate',
+		name: 'paginate',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to search for more than 10,000 hits',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Sort Field',
+		name: 'sortField',
+		required: true,
+		description: 'Timestamp or date field in a target data stream',
+		placeholder: 'e.g. order_date',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'getAll',
+				],
+				paginate: [
+					true,
 				],
 			},
 		},
