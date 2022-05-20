@@ -83,7 +83,6 @@ export class PostHog implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.',
 			},
 			...aliasOperations,
 			...aliasFields,

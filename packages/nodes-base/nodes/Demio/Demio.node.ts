@@ -61,7 +61,6 @@ export class Demio implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'Resource to consume.',
 			},
 			// Event
 			...eventOperations,

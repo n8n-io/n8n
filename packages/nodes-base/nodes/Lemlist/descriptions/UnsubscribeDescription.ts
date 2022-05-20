@@ -9,7 +9,6 @@ export const unsubscribeOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'add',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Add',

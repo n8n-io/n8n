@@ -37,7 +37,6 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 

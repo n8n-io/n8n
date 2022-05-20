@@ -83,7 +83,6 @@ export class Orbit implements INodeType {
 					},
 				],
 				default: 'member',
-				description: 'Resource to consume.',
 			},
 			// ACTIVITY
 			...activityOperations,

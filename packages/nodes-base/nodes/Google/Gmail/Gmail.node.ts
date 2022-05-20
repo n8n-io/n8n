@@ -141,7 +141,6 @@ export class Gmail implements INodeType {
 					},
 				],
 				default: 'draft',
-				description: 'The resource to operate on.',
 			},
 			//-------------------------------
 			// Draft Operations

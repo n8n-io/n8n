@@ -129,7 +129,6 @@ export class QuickBooks implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'Resource to consume',
 			},
 			...billOperations,
 			...billFields,

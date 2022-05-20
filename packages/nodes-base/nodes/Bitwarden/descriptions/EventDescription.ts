@@ -9,7 +9,6 @@ export const eventOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get All',

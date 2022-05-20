@@ -85,7 +85,6 @@ export class GoogleSlides implements INodeType {
 					},
 				],
 				default: 'presentation',
-				description: 'Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
@@ -122,7 +121,6 @@ export class GoogleSlides implements INodeType {
 					},
 				},
 				default: 'create',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -149,7 +147,6 @@ export class GoogleSlides implements INodeType {
 					},
 				},
 				default: 'get',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Title',

@@ -95,7 +95,6 @@ export class Clockify implements INodeType {
 					},
 				],
 				default: 'project',
-				description: 'The resource to operate on.',
 			},
 			...projectOperations,
 			...tagOperations,

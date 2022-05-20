@@ -49,7 +49,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -63,7 +62,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'analyze',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -102,7 +100,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'detectFaces',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Binary Data',

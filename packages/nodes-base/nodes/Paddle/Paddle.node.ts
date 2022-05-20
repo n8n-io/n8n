@@ -103,7 +103,6 @@ export class Paddle implements INodeType {
 					},
 				],
 				default: 'coupon',
-				description: 'Resource to consume.',
 			},
 			// COUPON
 			...couponOperations,

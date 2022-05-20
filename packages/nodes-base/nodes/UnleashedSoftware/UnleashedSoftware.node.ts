@@ -63,7 +63,6 @@ export class UnleashedSoftware implements INodeType {
 					},
 				],
 				default: 'salesOrder',
-				description: 'The resource to operate on.',
 			},
 			...salesOrderOperations,
 			...salesOrderFields,

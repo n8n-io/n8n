@@ -103,7 +103,6 @@ export class ActionNetwork implements INodeType {
 					},
 				],
 				default: 'attendance',
-				description: 'Resource to consume',
 			},
 			...attendanceOperations,
 			...attendanceFields,

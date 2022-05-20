@@ -45,7 +45,6 @@ export class Signl4 implements INodeType {
 					},
 				],
 				default: 'alert',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -72,7 +71,6 @@ export class Signl4 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Message',

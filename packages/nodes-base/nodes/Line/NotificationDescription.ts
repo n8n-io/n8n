@@ -23,7 +23,6 @@ export const notificationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 

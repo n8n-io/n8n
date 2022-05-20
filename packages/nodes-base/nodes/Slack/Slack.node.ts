@@ -162,7 +162,6 @@ export class Slack implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 
 			{
@@ -204,7 +203,6 @@ export class Slack implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			...channelOperations,

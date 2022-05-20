@@ -54,7 +54,6 @@ export class Flow implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			...taskOpeations,
 			...taskFields,

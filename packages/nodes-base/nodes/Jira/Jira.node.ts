@@ -141,7 +141,6 @@ export class Jira implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'Resource to consume.',
 			},
 			...issueOperations,
 			...issueFields,

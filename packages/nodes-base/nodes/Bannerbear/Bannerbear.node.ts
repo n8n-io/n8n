@@ -62,7 +62,6 @@ export class Bannerbear implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume.',
 			},
 			// IMAGE
 			...imageOperations,

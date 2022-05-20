@@ -60,7 +60,6 @@ export class Oura implements INodeType {
 					},
 				],
 				default: 'summary',
-				description: 'Resource to consume.',
 			},
 			...profileOperations,
 			...summaryOperations,

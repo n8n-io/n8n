@@ -67,7 +67,6 @@ export class BitbucketTrigger implements INodeType {
 					},
 				],
 				default: 'workspace',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Workspace',

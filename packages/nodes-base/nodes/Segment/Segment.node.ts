@@ -82,7 +82,6 @@ export class Segment implements INodeType {
 					},
 				],
 				default: 'identify',
-				description: 'Resource to consume.',
 			},
 			...groupOperations,
 			...groupFields,

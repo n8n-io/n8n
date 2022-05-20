@@ -51,7 +51,6 @@ export class Spontit implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			...pushOperations,
 			...pushFields,

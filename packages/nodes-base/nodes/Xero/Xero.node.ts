@@ -74,7 +74,6 @@ export class Xero implements INodeType {
 					},
 				],
 				default: 'invoice',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

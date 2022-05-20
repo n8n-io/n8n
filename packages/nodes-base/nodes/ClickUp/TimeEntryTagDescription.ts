@@ -33,7 +33,6 @@ export const timeEntryTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 

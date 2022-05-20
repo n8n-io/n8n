@@ -73,7 +73,6 @@ export class Tapfiliate implements INodeType {
 				],
 				default: 'affiliate',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...affiliateOperations,
 			...affiliateFields,

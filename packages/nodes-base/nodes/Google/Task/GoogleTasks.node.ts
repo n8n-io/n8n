@@ -53,7 +53,6 @@ export class GoogleTasks implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			...taskOperations,
 			...taskFields,

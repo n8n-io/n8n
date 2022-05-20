@@ -58,7 +58,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'The resource to operate on',
 			},
 			...accountOperations,
 			...accountFields,

@@ -57,7 +57,6 @@ export const salesOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 

@@ -51,7 +51,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
 
 ];

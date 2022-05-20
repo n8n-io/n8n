@@ -28,7 +28,6 @@ export const flowOperations: INodeProperties[] = [
 			},
 		],
 		default: 'invoke',
-		description: 'The operation to perform.',
 	},
 ];
 

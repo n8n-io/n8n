@@ -100,7 +100,6 @@ export class HelpScout implements INodeType {
 					},
 				],
 				default: 'conversation',
-				description: 'The resource to operate on.',
 			},
 			...conversationOperations,
 			...conversationFields,

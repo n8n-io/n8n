@@ -58,7 +58,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 

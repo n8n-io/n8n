@@ -38,7 +38,6 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

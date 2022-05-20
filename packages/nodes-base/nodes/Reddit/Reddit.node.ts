@@ -97,7 +97,6 @@ export class Reddit implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume',
 			},
 			...postCommentOperations,
 			...postCommentFields,

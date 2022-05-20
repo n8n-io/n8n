@@ -28,7 +28,6 @@ export const trackOperations: INodeProperties[] = [
 			},
 		],
 		default: 'page',
-		description: 'The operation to perform.',
 	},
 ];
 

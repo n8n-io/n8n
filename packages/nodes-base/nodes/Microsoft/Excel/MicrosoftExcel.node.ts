@@ -77,7 +77,6 @@ export class MicrosoftExcel implements INodeType {
 					},
 				],
 				default: 'workbook',
-				description: 'The resource to operate on.',
 			},
 			...workbookOperations,
 			...workbookFields,

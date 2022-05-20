@@ -98,7 +98,6 @@ export class Matrix implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 			...accountOperations,
 			...eventOperations,

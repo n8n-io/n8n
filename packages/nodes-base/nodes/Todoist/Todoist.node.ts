@@ -86,7 +86,6 @@ export class Todoist implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -101,7 +100,6 @@ export class Todoist implements INodeType {
 				],
 				default: 'task',
 				required: true,
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
@@ -154,7 +152,6 @@ export class Todoist implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Project',

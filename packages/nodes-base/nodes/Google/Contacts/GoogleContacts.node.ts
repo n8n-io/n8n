@@ -58,7 +58,6 @@ export class GoogleContacts implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 			...contactOperations,
 			...contactFields,

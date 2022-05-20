@@ -28,7 +28,6 @@ export const contactSegmentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 

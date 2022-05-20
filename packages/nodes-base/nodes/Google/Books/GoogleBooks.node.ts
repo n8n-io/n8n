@@ -94,7 +94,6 @@ export class GoogleBooks implements INodeType {
 					},
 				],
 				default: 'bookshelf',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -121,7 +120,6 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -163,7 +161,6 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -190,7 +187,6 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'My Library',

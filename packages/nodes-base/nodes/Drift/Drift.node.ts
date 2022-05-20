@@ -72,7 +72,6 @@ export class Drift implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -85,7 +84,6 @@ export class Drift implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			...contactOperations,
 			...contactFields,

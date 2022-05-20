@@ -96,7 +96,6 @@ export class Stripe implements INodeType {
 					},
 				],
 				default: 'balance',
-				description: 'Resource to consume',
 			},
 			...balanceOperations,
 			...customerCardOperations,

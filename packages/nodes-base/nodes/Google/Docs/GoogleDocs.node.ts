@@ -96,7 +96,6 @@ export class GoogleDocs implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'The resource to operate on.',
 			},
 			...documentOperations,
 			...documentFields,

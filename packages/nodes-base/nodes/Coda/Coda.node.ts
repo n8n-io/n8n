@@ -80,7 +80,6 @@ export class Coda implements INodeType {
 					},
 				],
 				default: 'table',
-				description: 'Resource to consume.',
 			},
 			...tableOperations,
 			...tableFields,

@@ -87,7 +87,6 @@ export class Odoo implements INodeType {
 						value: 'opportunity',
 					},
 				],
-				description: 'The resource to operate on',
 			},
 
 			...customResourceOperations,

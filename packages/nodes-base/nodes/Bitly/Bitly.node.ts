@@ -75,7 +75,6 @@ export class Bitly implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -88,7 +87,6 @@ export class Bitly implements INodeType {
 					},
 				],
 				default: 'link',
-				description: 'Resource to consume.',
 			},
 			...linkOperations,
 			...linkFields,
