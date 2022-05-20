@@ -49,6 +49,7 @@ export class Mocean implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -80,7 +81,6 @@ export class Mocean implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'From',

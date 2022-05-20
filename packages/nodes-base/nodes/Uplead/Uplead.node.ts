@@ -44,6 +44,7 @@ export class Uplead implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -57,7 +58,6 @@ export class Uplead implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,

@@ -80,7 +80,6 @@ export class GetResponseTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Events',

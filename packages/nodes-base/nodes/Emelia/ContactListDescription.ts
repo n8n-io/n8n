@@ -8,7 +8,6 @@ export const contactListOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'getAll',
-		description: 'Operation to perform',
 		noDataExpression: true,
 		options: [
 			{

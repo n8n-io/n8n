@@ -5,6 +5,7 @@ export const formOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -21,7 +22,6 @@ export const formOperations: INodeProperties[] = [
 
 		],
 		default: 'submit',
-		description: 'The operation to perform.',
 	},
 ];
 

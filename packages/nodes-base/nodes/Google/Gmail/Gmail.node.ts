@@ -122,6 +122,7 @@ export class Gmail implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Draft',
@@ -141,7 +142,6 @@ export class Gmail implements INodeType {
 					},
 				],
 				default: 'draft',
-				description: 'The resource to operate on.',
 			},
 			//-------------------------------
 			// Draft Operations
