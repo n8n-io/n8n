@@ -12,14 +12,14 @@ gulp.task(
 	gulp.series([
 		'build:theme',
 		() => {
-			gulp.watch('./theme/src/**/*.scss', gulp.series(['build:theme']));
+			gulp.watch('./src/theme/**/*.scss', gulp.series(['build:theme']));
 		},
 	]),
 );
 
 function compileTheme() {
 	return gulp
-		.src('./theme/src/index.scss')
+		.src('./src/theme/index.scss')
 		.pipe(sass.sync())
 		.pipe(
 			autoprefixer({
@@ -28,9 +28,9 @@ function compileTheme() {
 			}),
 		)
 		.pipe(cleanCSS())
-		.pipe(gulp.dest('./theme/dist'));
+		.pipe(gulp.dest('./dist/theme'));
 }
 
 function copyThemeFonts() {
-	return gulp.src('./theme/src/fonts/**').pipe(gulp.dest('./theme/dist/fonts'));
+	return gulp.src('./src/theme/fonts/**').pipe(gulp.dest('./dist/theme/fonts'));
 }

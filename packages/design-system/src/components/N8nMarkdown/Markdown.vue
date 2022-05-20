@@ -24,9 +24,9 @@
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
 import Markdown from 'markdown-it';
-const markdownLink = require('markdown-it-link-attributes');
-const markdownEmoji = require('markdown-it-emoji');
-const markdownTasklists = require('markdown-it-task-lists');
+import markdownLink from 'markdown-it-link-attributes';
+import markdownEmoji from 'markdown-it-emoji';
+import markdownTasklists from 'markdown-it-task-lists';
 
 import xss from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';

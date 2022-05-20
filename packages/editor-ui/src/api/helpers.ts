@@ -49,7 +49,7 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		baseURL,
 		headers,
 	};
-	if (process.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io') ) {
+	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io') ) {
 		options.withCredentials = true;
 	}
 	if (['PATCH', 'POST', 'PUT'].includes(method)) {

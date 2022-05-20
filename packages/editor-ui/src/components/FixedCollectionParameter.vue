@@ -125,6 +125,9 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers)
 	.extend({
 		name: 'FixedCollectionParameter',
+		components: {
+			ParameterInputList: () => import('@/components/ParameterInputList.vue'),
+		},
 		props: [
 			'nodeValues', // INodeParameters
 			'parameter', // INodeProperties
@@ -277,11 +280,11 @@ export default mixins(genericHelpers)
 				this.$emit('valueChanged', parameterData);
 			},
 		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
-		},
+		// beforeCreate: function () { // tslint:disable-line
+		// 	// Because we have a circular dependency on ParameterInputList import it here
+		// 	// to not break Vue.
+		// 	this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
+		// },
 	});
 </script>
 

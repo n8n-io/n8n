@@ -12,6 +12,7 @@ export default {
 		},
 	},
 	build: {
+		emptyOutDir: false,
 		lib: {
 			entry: resolve(__dirname, 'src', 'main.js'),
 			name: 'N8nDesignSystem',

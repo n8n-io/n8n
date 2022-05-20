@@ -54,6 +54,9 @@ export default mixins(
 )
 	.extend({
 		name: 'CollectionParameter',
+		components: {
+			ParameterInputList: () => import('@/components/ParameterInputList.vue'),
+		},
 		props: [
 			'hideDelete', // boolean
 			'nodeValues', // NodeParameters
@@ -178,11 +181,11 @@ export default mixins(
 				this.$emit('valueChanged', parameterData);
 			},
 		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
-		},
+		// beforeCreate: function () { // tslint:disable-line
+		// 	// Because we have a circular dependency on ParameterInputList import it here
+		// 	// to not break Vue.
+		// 	this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
+		// },
 	});
 </script>
 

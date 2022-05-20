@@ -111,6 +111,8 @@ export default mixins(
 		components: {
 			MultipleParameter,
 			ParameterInputFull,
+			FixedCollectionParameter: () => import('@/components/FixedCollectionParameter.vue'),
+			CollectionParameter: () => import('@/components/CollectionParameter.vue'),
 		},
 		props: [
 			'nodeValues', // INodeParameters
@@ -250,12 +252,12 @@ export default mixins(
 				}
 			},
 		},
-		beforeCreate: function () { // tslint:disable-line
-		// Because we have a circular dependency on CollectionParameter import it here
-		// to not break Vue.
-		this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
-		this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
-		},
+		// beforeCreate: function () { // tslint:disable-line
+		// // Because we have a circular dependency on CollectionParameter import it here
+		// // to not break Vue.
+		// this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
+		// this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
+		// },
 	});
 </script>
 

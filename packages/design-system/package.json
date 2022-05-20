@@ -7,15 +7,25 @@
     "name": "Mutasem Aldmour",
     "email": "mutasem@n8n.io"
   },
-  "main": "src/main.js",
+  "main": "dist/n8n-design-system.umd.js",
+  "module": "dist/n8n-design-system.es.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/n8n-design-system.umd.js",
+      "import": "./dist/n8n-design-system.es.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
-    "build": "npm run build:theme",
+    "build": "npm-run-all --parallel build:vue build:theme",
     "build:vue": "vite build",
-    "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
+    "build:tsc": "vue-tsc --emitDeclarationOnly",
     "build:storybook": "build-storybook",
     "build:theme": "gulp build:theme",
     "dev": "npm run watch:theme",
@@ -73,6 +83,7 @@
     "markdown-it-link-attributes": "^4.0.0",
     "markdown-it-task-lists": "^2.1.1",
     "node-notifier": ">=8.0.1",
+    "npm-run-all": "^4.1.5",
     "prettier": "^2.3.2",
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
@@ -88,9 +99,9 @@
     "vue-loader": "^15.9.7",
     "vue-property-decorator": "^9.1.2",
     "vue-template-compiler": "^2.6.11",
+    "vue-tsc": "0.34.8",
     "vue-typed-mixins": "^0.2.0",
     "vue2-boring-avatars": "0.3.4",
-    "vue-tsc": "0.34.8",
     "xss": "^1.0.10"
   },
   "dependencies": {

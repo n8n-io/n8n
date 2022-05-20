@@ -315,8 +315,10 @@
  * POSSIBILITY OF SUCH DAMAGES.
  *
  */
+import { jsPlumb, jsPlumbUtil } from 'jsplumb';
+
 (function () {
-	var root = this, _jp = root.jsPlumb, _ju = root.jsPlumbUtil;
+	var root = this, _jp = jsPlumb, _ju = jsPlumbUtil;
 
 	var DOMElementEndpoint = function (params) {
 		_jp.jsPlumbUIComponent.apply(this, arguments);
