@@ -66,6 +66,7 @@ export class SpreadsheetFile implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Read from file',

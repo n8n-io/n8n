@@ -42,6 +42,7 @@ export class Snowflake implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',

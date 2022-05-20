@@ -71,6 +71,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get One Person',

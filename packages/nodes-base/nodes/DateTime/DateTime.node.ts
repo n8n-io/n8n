@@ -238,6 +238,7 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Add',

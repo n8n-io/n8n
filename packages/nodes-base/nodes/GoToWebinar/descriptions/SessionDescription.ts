@@ -7,6 +7,7 @@ export const sessionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
 		options: [
 			{

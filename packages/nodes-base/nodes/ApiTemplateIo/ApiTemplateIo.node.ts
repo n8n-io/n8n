@@ -64,6 +64,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'create',
 				required: true,
 				options: [
@@ -85,6 +86,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'get',
 				required: true,
 				options: [

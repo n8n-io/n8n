@@ -38,6 +38,7 @@ export class TimescaleDb implements INodeType {
 			},
 		],
 		properties: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 			{
 				displayName: 'Operation',
 				name: 'operation',

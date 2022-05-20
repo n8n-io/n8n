@@ -7,6 +7,7 @@ export const exchangeRateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
 		options: [
 			{

@@ -136,6 +136,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -177,6 +178,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -203,6 +205,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -224,6 +227,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type:'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions : {
 					show: {

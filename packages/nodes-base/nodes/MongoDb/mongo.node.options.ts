@@ -28,6 +28,7 @@ export const nodeDescription: INodeTypeDescription = {
 			displayName: 'Operation',
 			name: 'operation',
 			type: 'options',
+			noDataExpression: true,
 			options: [
 				{
 					name: 'Aggregate',

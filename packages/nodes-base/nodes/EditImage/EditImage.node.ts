@@ -868,6 +868,7 @@ export class EditImage implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get Information',
@@ -926,6 +927,7 @@ export class EditImage implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: nodeOperations,
 								default: '',
 							},

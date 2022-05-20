@@ -11,6 +11,7 @@ export const vendorOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
 		options: [
 			{
