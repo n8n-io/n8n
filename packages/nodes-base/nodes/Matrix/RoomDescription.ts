@@ -87,7 +87,6 @@ export const roomFields: INodeProperties[] = [
 			{
 				name: 'Private Chat',
 				value: 'private_chat',
-				description: 'Private chat',
 			},
 			{
 				name: 'Public Chat',

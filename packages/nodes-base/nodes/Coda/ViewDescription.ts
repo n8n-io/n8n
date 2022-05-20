@@ -42,7 +42,6 @@ export const viewOperations: INodeProperties[] = [
 			{
 				name: 'Update Row',
 				value: 'updateViewRow',
-				description: 'Update row',
 			},
 			{
 				name: 'Push Button',
