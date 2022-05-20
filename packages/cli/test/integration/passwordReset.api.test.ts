@@ -21,6 +21,7 @@ let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
+let isSmtpAvailable = false;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
@@ -32,6 +33,8 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
+
+	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
 });
 
 beforeEach(async () => {
@@ -50,6 +53,8 @@ afterAll(async () => {
 test(
 	'POST /forgot-password should send password reset email',
 	async () => {
+		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 		const authlessAgent = utils.createAgent(app);
