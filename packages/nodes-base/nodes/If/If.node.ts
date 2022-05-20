@@ -50,11 +50,11 @@ export class If implements INodeType {
 								default: false,
 								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
-								noDataExpression: true,
 								options: [
 									{
 										name: 'Equal',
@@ -88,11 +88,11 @@ export class If implements INodeType {
 								default: '',
 								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
-								noDataExpression: true,
 								options: [
 									{
 										name: 'Occurred after',
