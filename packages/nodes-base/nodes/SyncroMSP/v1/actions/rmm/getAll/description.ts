@@ -25,9 +25,6 @@ export const rmmGetAllDescription: RmmProperties = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
 		displayOptions: {
 			show: {
 				resource: [

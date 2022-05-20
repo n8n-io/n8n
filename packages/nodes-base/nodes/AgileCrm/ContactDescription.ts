@@ -93,9 +93,6 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
 		displayOptions: {
 			show: {
 				resource: [

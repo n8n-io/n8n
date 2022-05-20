@@ -513,9 +513,6 @@ export class Dropbox implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -700,9 +697,6 @@ export class Dropbox implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
 				displayOptions: {
 					show: {
 						resource: [

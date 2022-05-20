@@ -150,9 +150,6 @@ export class FileMaker implements INodeType {
 				placeholder: '100',
 				description: 'Max number of results to return',
 				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
 				default: '100',
 				displayOptions: {
 					show: {
