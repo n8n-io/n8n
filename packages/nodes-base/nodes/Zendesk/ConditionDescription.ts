@@ -7,6 +7,7 @@ export const conditionFields: INodeProperties[] = [
 		displayName: 'Resource',
 		name: 'resource',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Ticket',
