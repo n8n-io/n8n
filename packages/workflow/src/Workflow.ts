@@ -48,7 +48,7 @@ import {
 
 import { IConnection, IDataObject, IConnectedNode, IObservableObject } from './Interfaces';
 
-function dedupe<T>(arr: Array<T>): Array<T> {
+function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
 }
 
