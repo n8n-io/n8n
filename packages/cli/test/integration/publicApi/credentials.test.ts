@@ -1,7 +1,7 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { Db } from '../../../src';
-import { randomName, randomString } from '../shared/random';
+import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import type { Role } from '../../../src/databases/entities/Role';
@@ -187,8 +187,8 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 });
 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
-	let member = await testDb.createUser({ globalRole: globalMemberRole });
-	member = await testDb.addApiKey(member);
+	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+
 	const authMemberAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
@@ -218,8 +218,8 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	let member = await testDb.createUser({ globalRole: globalMemberRole });
-	member = await testDb.addApiKey(member);
+	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+
 	const authMemberAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,

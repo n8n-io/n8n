@@ -7,7 +7,13 @@ import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
-import { randomValidPassword, randomEmail, randomName, randomString } from './shared/random';
+import {
+	randomApiKey,
+	randomEmail,
+	randomName,
+	randomString,
+	randomValidPassword,
+} from './shared/random';
 import * as testDb from './shared/testDb';
 
 jest.mock('../../src/telemetry');
@@ -389,8 +395,10 @@ describe('Member', () => {
 	});
 
 	test('POST /me/api-key should create an api key', async () => {
-		let member = await testDb.createUser({ globalRole: globalMemberRole });
-		member = await testDb.addApiKey(member);
+		const member = await testDb.createUser({
+			globalRole: globalMemberRole,
+			apiKey: randomApiKey(),
+		});
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const response = await authMemberAgent.post('/me/api-key');
@@ -405,8 +413,10 @@ describe('Member', () => {
 	});
 
 	test('GET /me/api-key should fetch the api key', async () => {
-		let member = await testDb.createUser({ globalRole: globalMemberRole });
-		member = await testDb.addApiKey(member);
+		const member = await testDb.createUser({
+			globalRole: globalMemberRole,
+			apiKey: randomApiKey(),
+		});
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const response = await authMemberAgent.get('/me/api-key');
@@ -416,8 +426,10 @@ describe('Member', () => {
 	});
 
 	test('DELETE /me/api-key should fetch the api key', async () => {
-		let member = await testDb.createUser({ globalRole: globalMemberRole });
-		member = await testDb.addApiKey(member);
+		const member = await testDb.createUser({
+			globalRole: globalMemberRole,
+			apiKey: randomApiKey(),
+		});
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const response = await authMemberAgent.delete('/me/api-key');

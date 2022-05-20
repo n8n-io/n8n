@@ -6,7 +6,7 @@ import { CredentialsEntity } from '../../../../databases/entities/CredentialsEnt
 import { CredentialRequest } from '../../../../requests';
 import { CredentialTypeRequest } from '../../../types';
 import { authorize } from '../../shared/midlewares/global.midleware';
-import { validCredentialsProperties, validCredentialType } from './credentials.midleware';
+import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
 import {
 	createCredential,

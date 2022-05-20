@@ -1,16 +1,29 @@
-import {MigrationInterface, QueryRunner} from "typeorm";
-import config from "../../../../config";
+import { MigrationInterface, QueryRunner } from 'typeorm';
+import config from '../../../../config';
 
 export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
-		name = 'AddAPIKeyColumn1652905585850'
+	name = 'AddAPIKeyColumn1652905585850';
 
-		public async up(queryRunner: QueryRunner): Promise<void> {
-			const tablePrefix = config.get('database.tablePrefix');
-			await queryRunner.query(`ALTER TABLE ${tablePrefix}user ADD COLUMN apiKey VARCHAR(120)`);
-		}
+	public async up(queryRunner: QueryRunner): Promise<void> {
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		public async down(queryRunner: QueryRunner): Promise<void> {
-			const tablePrefix = config.get('database.tablePrefix');
-			await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN apiKey`);
-		}
+		await queryRunner.query(
+			'ALTER TABLE `' + tablePrefix + 'user` ADD COLUMN `apiKey` VARCHAR(255)',
+		);
+		await queryRunner.query(
+			'CREATE UNIQUE INDEX `UQ_' +
+				tablePrefix +
+				'ogeryrmjvtiycvlwecbiswoyqh` ON `' +
+				tablePrefix +
+				'user` (`apiKey`)',
+		);
+	}
+
+	public async down(queryRunner: QueryRunner): Promise<void> {
+		const tablePrefix = config.get('database.tablePrefix');
+		await queryRunner.query(
+			'DROP INDEX `IDX_81fc04c8a17de15835713505e4` ON `' + tablePrefix + 'execution_entity`',
+		);
+		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'user` DROP COLUMN `apiKey`');
+	}
 }

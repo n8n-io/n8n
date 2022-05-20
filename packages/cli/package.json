@@ -36,7 +36,7 @@
     "test:postgres": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=postgresdb && jest",
     "test:mysql": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=mysqldb && jest",
     "watch": "tsc --watch",
-    "typeorm": "ts-node --files ../../node_modules/typeorm/cli.js"
+    "typeorm": "ts-node -T ../../node_modules/typeorm/cli.js"
   },
   "bin": {
     "n8n": "./bin/n8n"

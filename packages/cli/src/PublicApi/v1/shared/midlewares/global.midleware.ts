@@ -1,32 +1,24 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable consistent-return */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RequestHandler } from 'express';
 import { PaginatatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 type Role = 'member' | 'owner';
 
-export const authorize: (role: Role[]) => RequestHandler =
-	(role: Role[]) =>
-	(req, res, next): any => {
-		const {
-			globalRole: { name: userRole },
-		} = req.user as { globalRole: { name: Role } };
-		if (role.includes(userRole)) {
-			return next();
-		}
-		return res.status(403).json({
-			message: 'Unauthorized',
-		});
-	};
+export const authorize: (role: Role[]) => RequestHandler = (role: Role[]) => (req, res, next) => {
+	const {
+		globalRole: { name: userRole },
+	} = req.user as { globalRole: { name: Role } };
+	if (role.includes(userRole)) {
+		return next();
+	}
+	return res.status(403).json({
+		message: 'Forbidden',
+	});
+};
 
 // @ts-ignore
-export const validCursor: RequestHandler = (req: PaginatatedRequest, res, next): any => {
+export const validCursor: RequestHandler = (req: PaginatatedRequest, res, next) => {
 	if (req.query.cursor) {
 		const { cursor } = req.query;
 		try {

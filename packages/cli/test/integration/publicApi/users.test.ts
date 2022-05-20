@@ -102,7 +102,7 @@ test('GET /users should fail due to invalid API Key', async () => {
 });
 
 test('GET /users should fail due to member trying to access owner only endpoint', async () => {
-	const member = await testDb.createUser();
+	const member = await testDb.createUser({ apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -232,7 +232,7 @@ test('GET /users/:identifier should fail due to invalid API Key', async () => {
 });
 
 test('GET /users/:identifier should fail due to member trying to access owner only endpoint', async () => {
-	const member = await testDb.createUser();
+	const member = await testDb.createUser({ apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -409,7 +409,7 @@ test('POST /users should fail due to invalid API Key', async () => {
 });
 
 test('POST /users should fail due to member trying to access owner only endpoint', async () => {
-	const member = await testDb.createUser();
+	const member = await testDb.createUser({ apiKey: randomApiKey() });
 
 	await utils.configureSmtp();
 
@@ -560,7 +560,7 @@ test('DELETE /users/:identifier should fail due to invalid API Key', async () =>
 });
 
 test('DELETE /users/identifier should fail due to member trying to access owner only endpoint', async () => {
-	const member = await testDb.createUser();
+	const member = await testDb.createUser({ apiKey: randomApiKey() });
 
 	const authMemberAgent = utils.createAgent(app, {
 		apiPath: 'public',
