@@ -51,6 +51,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
