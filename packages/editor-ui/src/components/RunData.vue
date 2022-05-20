@@ -35,7 +35,7 @@
 
 		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
 			<n8n-text>
-				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'ndv.output.item' : 'ndv.output.items') }}
+				{{ dataCount }} {{ $locale.baseText('ndv.output.items', {adjustToNumber: dataCount}) }}
 			</n8n-text>
 		</div>
 
@@ -478,7 +478,7 @@ export default mixins(
 						continue;
 					}
 					const itemsCount = this.getDataCount(this.runIndex, i);
-					const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
+					const items = this.$locale.baseText('ndv.output.items', {adjustToNumber: itemsCount});
 					let outputName = this.getOutputName(i);
 					if (`${outputName}` === `${i}`) {
 						outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
@@ -584,7 +584,7 @@ export default mixins(
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
 					itemsCount += this.getDataCount(option - 1, i);
 				}
-				const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
+				const items = this.$locale.baseText('ndv.output.items', {adjustToNumber: itemsCount});
 				const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 				return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex+1) + itemsLabel;
 			},
