@@ -14,6 +14,7 @@ import { authorize, validCursor } from '../../shared/midlewares/global.midleware
 import { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { InternalHooksManager } from '../../../../InternalHooksManager';
 
 export = {
 	deleteExecution: [
@@ -69,6 +70,13 @@ export = {
 				return res.status(404).json();
 			}
 
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: true,
+			};
+
+			void InternalHooksManager.getInstance().onUserRetrievedExecution(telemetryData);
+
 			return res.json(execution);
 		},
 	],
@@ -114,6 +122,13 @@ export = {
 			filters.lastId = newLastId;
 
 			const count = await getExecutionsCount(filters);
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: true,
+			};
+
+			void InternalHooksManager.getInstance().onUserRetrievedAllExecutions(telemetryData);
 
 			return res.json({
 				data: executions,

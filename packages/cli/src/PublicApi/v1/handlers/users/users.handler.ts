@@ -6,8 +6,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express = require('express');
 
-import { UserRequest } from '../../../../requests';
-
 import { User } from '../../../../databases/entities/User';
 
 import {
@@ -32,6 +30,8 @@ import {
 	userManagmentEnabled,
 	emailSetup,
 } from './users.midleware';
+import { UserRequest } from '../../../types';
+import { InternalHooksManager } from '../../../../InternalHooksManager';
 
 export = {
 	createUser: [
@@ -127,6 +127,13 @@ export = {
 				});
 			}
 
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: true,
+			};
+
+			void InternalHooksManager.getInstance().onUserRetrievedUser(telemetryData);
+
 			return res.json(clean(user, { includeRole }));
 		},
 	],
@@ -142,6 +149,13 @@ export = {
 				limit,
 				offset,
 			});
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: true,
+			};
+
+			void InternalHooksManager.getInstance().onUserRetrievedAllUsers(telemetryData);
 
 			return res.json({
 				data: clean(users, { includeRole }),

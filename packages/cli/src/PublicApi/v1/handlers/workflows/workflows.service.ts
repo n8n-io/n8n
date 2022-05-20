@@ -2,10 +2,9 @@ import type { INode } from 'n8n-workflow';
 import { FindManyOptions } from 'typeorm';
 import { User } from '../../../../databases/entities/User';
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
-import { Db, InternalHooksManager } from '../../../..';
+import { Db } from '../../../..';
 import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { isInstanceOwner } from '../users/users.service';
-import { externalHooks } from '../../../../Server';
 import { Role } from '../../../../databases/entities/Role';
 
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
@@ -70,8 +69,6 @@ export async function createWorkflow(
 			workflow: savedWorkflow,
 		});
 		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-		await externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(user.id, newWorkflow, true);
 	});
 	return savedWorkflow as WorkflowEntity;
 }
@@ -84,10 +81,8 @@ export async function desactiveWorkflow(workflow: WorkflowEntity): Promise<void>
 	await Db.collections.Workflow.update(workflow.id, { active: false, updatedAt: new Date() });
 }
 
-export async function deleteWorkflow(workflow: WorkflowEntity, user: User): Promise<void> {
+export async function deleteWorkflow(workflow: WorkflowEntity): Promise<void> {
 	await Db.collections.Workflow.remove(workflow);
-	void InternalHooksManager.getInstance().onWorkflowDeleted(user.id, workflow.id.toString(), true);
-	await externalHooks.run('workflow.afterDelete', [workflow.id.toString()]);
 }
 
 export async function getWorkflows(
@@ -105,11 +100,8 @@ export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>
 export async function updateWorkflow(
 	workflowId: number,
 	updateData: WorkflowEntity,
-	user: User,
 ): Promise<void> {
 	await Db.collections.Workflow.update(workflowId, updateData);
-	await externalHooks.run('workflow.afterUpdate', [updateData]);
-	void InternalHooksManager.getInstance().onWorkflowSaved(user.id, updateData, true);
 }
 
 export function hasStartNode(workflow: WorkflowEntity): boolean {

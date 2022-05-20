@@ -247,6 +247,48 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User resent new user invite email', userReinviteData);
 	}
 
+	async onUserRetrievedUser(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved user', userRetrievedData);
+	}
+
+	async onUserRetrievedAllUsers(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all users', userRetrievedData);
+	}
+
+	async onUserRetrievedExecution(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved execution', userRetrievedData);
+	}
+
+	async onUserRetrievedAllExecutions(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all executions', userRetrievedData);
+	}
+
+	async onUserRetrievedWorkflow(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved workflow', userRetrievedData);
+	}
+
+	async onUserRetrievedAllWorkflows(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all workflows', userRetrievedData);
+	}
+
 	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
 		return this.telemetry.track('User changed personal settings', userUpdateData);
 	}
@@ -271,6 +313,29 @@ export class InternalHooksClass implements IInternalHooksClass {
 			'Instance sent transacptional email to user',
 			userTransactionalEmailData,
 		);
+	}
+
+	async onUserInvokedApi(userInvokedApiData: {
+		user_id: string;
+		path: string;
+		method: string;
+		api_version: string;
+	}): Promise<void> {
+		return this.telemetry.track('User invoked API', userInvokedApiData);
+	}
+
+	async onApiKeyDeleted(apiKeyDeletedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('API key deleted', apiKeyDeletedData);
+	}
+
+	async onApiKeyCreated(apiKeyCreatedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('API key created', apiKeyCreatedData);
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void> {

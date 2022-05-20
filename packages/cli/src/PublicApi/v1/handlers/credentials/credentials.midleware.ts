@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable consistent-return */
 import express = require('express');
 import { CredentialTypes } from '../../../..';
 import { CredentialRequest } from '../../../types';
 import { validateCredentialsProperties } from './credentials.service';
-
 
 export const validCredentialType = async (
 	req: CredentialRequest.Create,

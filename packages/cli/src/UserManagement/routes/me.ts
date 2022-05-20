@@ -164,6 +164,13 @@ export function meNamespace(this: N8nApp): void {
 				apiKey,
 			});
 
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: false,
+			};
+
+			void InternalHooksManager.getInstance().onApiKeyCreated(telemetryData);
+
 			return { apiKey };
 		}),
 	);
@@ -177,6 +184,13 @@ export function meNamespace(this: N8nApp): void {
 			await Db.collections.User.update(req.user.id, {
 				apiKey: null,
 			});
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: false,
+			};
+
+			void InternalHooksManager.getInstance().onApiKeyDeleted(telemetryData);
 
 			return { success: true };
 		}),

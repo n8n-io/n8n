@@ -12,7 +12,7 @@ import path from 'path';
 import * as swaggerUi from 'swagger-ui-express';
 import validator from 'validator';
 import * as YAML from 'yamljs';
-import { Db } from '..';
+import { Db, InternalHooksManager } from '..';
 import config from '../../config';
 import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
 
@@ -81,6 +81,13 @@ function createApiRouter(
 						if (!user) {
 							return false;
 						}
+
+						void InternalHooksManager.getInstance().onUserInvokedApi({
+							user_id: user.id,
+							path: req.path,
+							method: req.method,
+							api_version: version,
+						});
 
 						req.user = user;
 

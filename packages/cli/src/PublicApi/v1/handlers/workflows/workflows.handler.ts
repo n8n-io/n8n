@@ -3,6 +3,8 @@ import { FindManyOptions, In } from 'typeorm';
 import { ActiveWorkflowRunner, Db } from '../../../..';
 import config = require('../../../../../config');
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
+import { InternalHooksManager } from '../../../../InternalHooksManager';
+import { externalHooks } from '../../../../Server';
 import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/midlewares/global.midleware';
@@ -41,6 +43,9 @@ export = {
 
 			workflow = await createWorkflow(workflow, req.user, role);
 
+			await externalHooks.run('workflow.afterCreate', [workflow]);
+			void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, workflow, true);
+
 			return res.json(workflow);
 		},
 	],
@@ -66,6 +71,13 @@ export = {
 
 			await Db.collections.Workflow.delete(workflowId);
 
+			void InternalHooksManager.getInstance().onWorkflowDeleted(
+				req.user.id,
+				workflowId.toString(),
+				true,
+			);
+			await externalHooks.run('workflow.afterDelete', [workflowId.toString()]);
+
 			return res.json(sharedWorkflow.workflow);
 		},
 	],
@@ -81,6 +93,13 @@ export = {
 				// or workflow does not exist
 				return res.status(404).json();
 			}
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: true,
+			};
+
+			void InternalHooksManager.getInstance().onUserRetrievedWorkflow(telemetryData);
 
 			return res.json(sharedWorkflow.workflow);
 		},
@@ -122,6 +141,13 @@ export = {
 
 				count = await getWorkflowsCount(query);
 			}
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: true,
+			};
+
+			void InternalHooksManager.getInstance().onUserRetrievedAllWorkflows(telemetryData);
 
 			return res.json({
 				data: workflows,
@@ -165,7 +191,7 @@ export = {
 				await workflowRunner.remove(workflowId.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData, req.user);
+			await updateWorkflow(sharedWorkflow.workflowId, updateData);
 
 			if (sharedWorkflow.workflow.active) {
 				try {
@@ -179,6 +205,9 @@ export = {
 			}
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
+
+			await externalHooks.run('workflow.afterUpdate', [updateData]);
+			void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updateData, true);
 
 			return res.json(updatedWorkflow);
 		},
