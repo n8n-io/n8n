@@ -11,6 +11,7 @@ export const estimateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
 		description: 'Operation to perform',
 		options: [
