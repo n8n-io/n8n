@@ -174,7 +174,7 @@ export default Vue.extend({
 		},
 		openSettings() {
 			this.$emit('openSettings');
-			this.$telemetry.track('User clicked ndv input or output pane link', {
+			this.$telemetry.track('User clicked ndv link', {
 				node_type: this.node.type,
 				workflow_id: this.$store.getters.workflowId,
 				session_id: this.sessionId,

@@ -156,7 +156,7 @@ export default mixins(
 		},
 		onConnectionHelpClick() {
 			if (this.activeNode) {
-				this.$telemetry.track('User clicked ndv input or output pane link', {
+				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.$store.getters.workflowId,
 					session_id: this.sessionId,

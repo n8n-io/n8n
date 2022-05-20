@@ -9,7 +9,7 @@
 					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
 				</div>
 			</div>
-			<NodeTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
+			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -59,7 +59,7 @@ import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeTabs from '@/components/NodeTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
@@ -82,7 +82,7 @@ export default mixins(
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
-			NodeTabs,
+			NodeSettingsTabs,
 			NodeWebhooks,
 			NodeExecuteButton,
 		},

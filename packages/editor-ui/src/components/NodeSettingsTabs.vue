@@ -16,7 +16,7 @@ import mixins from 'vue-typed-mixins';
 export default mixins(
 	externalHooks,
 ).extend({
-	name: 'NodeTabs',
+	name: 'NodeSettingsTabs',
 	props: {
 		value: {
 			type: String,
@@ -76,7 +76,7 @@ export default mixins(
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
 				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType as INodeTypeDescription, documentationUrl: this.documentationUrl });
-				this.$telemetry.track('User clicked ndv input or output pane link', {
+				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.$store.getters.workflowId,
 					session_id: this.sessionId,

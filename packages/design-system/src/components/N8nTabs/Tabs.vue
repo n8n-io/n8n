@@ -13,7 +13,7 @@
 					target="_blank"
 					:href="option.href"
 					:class="[$style.link, $style.tab]"
-					@click="handleTabClick"
+					@click="() => handleTabClick(option.value)"
 				>
 					<div>
 						{{ option.label }}
