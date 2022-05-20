@@ -16,15 +16,15 @@
     "build": "npm run build:theme",
     "build:vue": "vite build",
     "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
+    "build:storybook": "build-storybook",
+    "build:theme": "gulp build:theme",
     "dev": "npm run watch:theme",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",
     "test:dev": "vitest",
-    "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
     "lint": "tslint -p tsconfig.json -c tslint.json",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
-    "build:theme": "gulp build:theme",
     "watch:theme": "gulp watch:theme"
   },
   "peerDependencies": {

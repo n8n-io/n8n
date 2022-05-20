@@ -21,21 +21,22 @@ module.exports = {
 		},
 	},
 	configureWebpack: {
+		// ???
 		devServer: {
 			disableHostCheck: true,
 		},
-		plugins: [
-			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
-		],
+		// plugins: [
+		// 	new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
+		// ],
 	},
-	css: {
-		loaderOptions: {
-			sass: {
-				prependData: `
-					@import "@/n8n-theme-variables.scss";
-				`,
-			},
-		},
-	},
-	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
+	// css: {
+	// 	loaderOptions: {
+	// 		sass: {
+	// 			prependData: `
+	// 				@import "@/n8n-theme-variables.scss";
+	// 			`,
+	// 		},
+	// 	},
+	// },
+	// publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
 };

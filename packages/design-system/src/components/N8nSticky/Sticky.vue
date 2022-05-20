@@ -66,7 +66,7 @@
 <script lang="ts">
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import Resize from './Resize';
+import Resize from './Resize.vue';
 import N8nText from '../N8nText';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
