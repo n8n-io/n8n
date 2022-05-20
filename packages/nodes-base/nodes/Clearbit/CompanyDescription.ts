@@ -26,7 +26,6 @@ export const companyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
 ];
 

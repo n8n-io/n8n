@@ -44,7 +44,6 @@ export class Disqus implements INodeType {
 					},
 				],
 				default: 'forum',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -85,7 +84,6 @@ export class Disqus implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -169,7 +167,6 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'The resource to operate on.',
 					},
 					{
 						displayName: 'Related',

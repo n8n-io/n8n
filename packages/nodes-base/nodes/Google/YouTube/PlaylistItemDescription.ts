@@ -38,7 +38,6 @@ export const playlistItemOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 

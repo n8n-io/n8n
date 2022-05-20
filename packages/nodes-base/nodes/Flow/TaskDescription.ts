@@ -36,7 +36,6 @@ export const taskOpeations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

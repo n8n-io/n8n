@@ -72,7 +72,6 @@ export class SeaTable implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The resource to operate on',
 			},
 			...rowOperations,
 			...rowFields,

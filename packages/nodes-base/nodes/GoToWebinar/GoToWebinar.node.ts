@@ -97,7 +97,6 @@ export class GoToWebinar implements INodeType {
 					},
 				],
 				default: 'attendee',
-				description: 'Resource to consume',
 			},
 			...attendeeOperations,
 			...attendeeFields,

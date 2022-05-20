@@ -9,7 +9,6 @@ export const userOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'getAll',
-		description: 'Operation to perform.',
 		options: [
 			{
 				name: 'Get All',

@@ -50,7 +50,6 @@ export class Yourls implements INodeType {
 					},
 				],
 				default: 'url',
-				description: 'The resource to operate on.',
 			},
 			...urlOperations,
 			...urlFields,

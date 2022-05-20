@@ -23,7 +23,6 @@ export const smsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 

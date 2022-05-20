@@ -57,7 +57,6 @@ export const nodeDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'find',
-			description: 'The operation to perform.',
 		},
 
 		{

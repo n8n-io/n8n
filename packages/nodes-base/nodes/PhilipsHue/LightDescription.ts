@@ -38,7 +38,6 @@ export const lightOperations: INodeProperties[] = [
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 

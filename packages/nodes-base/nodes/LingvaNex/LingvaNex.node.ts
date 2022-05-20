@@ -49,7 +49,6 @@ export class LingvaNex implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All

@@ -74,7 +74,6 @@ export class MicrosoftToDo implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			...linkedResourceOperations,
 			...linkedResourceFields,

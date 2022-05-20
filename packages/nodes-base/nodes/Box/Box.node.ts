@@ -68,7 +68,6 @@ export class Box implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 			...fileOperations,
 			...fileFields,

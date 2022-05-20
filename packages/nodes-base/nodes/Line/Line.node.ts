@@ -59,7 +59,6 @@ export class Line implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			...notificationOperations,
 			...notificationFields,

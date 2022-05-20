@@ -22,7 +22,6 @@ export const customerSourceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'Operation to perform',
 	},
 ];
 

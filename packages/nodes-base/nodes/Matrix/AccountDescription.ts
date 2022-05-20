@@ -23,6 +23,5 @@ export const accountOperations: INodeProperties[] = [
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
 ];

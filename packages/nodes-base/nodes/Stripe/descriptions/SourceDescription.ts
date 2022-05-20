@@ -9,7 +9,6 @@ export const sourceOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',

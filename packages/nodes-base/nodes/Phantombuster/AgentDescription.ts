@@ -43,7 +43,6 @@ export const agentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'launch',
-		description: 'The operation to perform.',
 	},
 ];
 

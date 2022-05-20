@@ -82,7 +82,6 @@ export class QuickBase implements INodeType {
 					},
 				],
 				default: 'record',
-				description: 'The resource to operate on.',
 			},
 			...fieldOperations,
 			...fieldFields,

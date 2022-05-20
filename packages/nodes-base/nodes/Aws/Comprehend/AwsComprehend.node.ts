@@ -70,7 +70,6 @@ export class AwsComprehend implements INodeType {
 					},
 				],
 				default: 'detectDominantLanguage',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Language Code',

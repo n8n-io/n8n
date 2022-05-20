@@ -112,7 +112,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
@@ -161,7 +160,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'deal',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -209,7 +207,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -262,7 +259,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -369,7 +365,6 @@ export class Pipedrive implements INodeType {
 					// },
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -453,7 +448,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -501,7 +495,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -549,7 +542,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -572,7 +564,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 
 

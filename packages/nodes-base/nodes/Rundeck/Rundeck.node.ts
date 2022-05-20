@@ -40,7 +40,6 @@ export class Rundeck implements INodeType {
 					},
 				],
 				default: 'job',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -60,7 +59,6 @@ export class Rundeck implements INodeType {
 					},
 				],
 				default: 'execute',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

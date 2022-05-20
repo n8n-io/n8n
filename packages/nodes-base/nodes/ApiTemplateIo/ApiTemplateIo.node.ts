@@ -59,7 +59,6 @@ export class ApiTemplateIo implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume',
 			},
 			{
 				displayName: 'Operation',
@@ -68,7 +67,6 @@ export class ApiTemplateIo implements INodeType {
 				noDataExpression: true,
 				default: 'create',
 				required: true,
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Create',
@@ -91,7 +89,6 @@ export class ApiTemplateIo implements INodeType {
 				noDataExpression: true,
 				default: 'get',
 				required: true,
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Get',

@@ -71,7 +71,6 @@ export class Contentful implements INodeType {
 					SpaceDescription.resource,
 				],
 				default: 'entry',
-				description: 'The resource to operate on.',
 			},
 
 			// Operations:

@@ -72,7 +72,6 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -93,7 +92,6 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -146,7 +144,6 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -194,7 +191,6 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -237,7 +233,6 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

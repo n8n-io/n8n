@@ -125,7 +125,6 @@ export class PagerDuty implements INodeType {
 					},
 				],
 				default: 'incident',
-				description: 'Resource to consume.',
 			},
 			// INCIDENT
 			...incidentOperations,

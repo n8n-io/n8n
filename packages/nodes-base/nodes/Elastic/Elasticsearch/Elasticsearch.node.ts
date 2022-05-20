@@ -65,7 +65,6 @@ export class Elasticsearch implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'Resource to consume',
 			},
 			...documentOperations,
 			...documentFields,

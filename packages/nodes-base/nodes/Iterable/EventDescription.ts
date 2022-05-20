@@ -23,7 +23,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'track',
-		description: 'The operation to perform.',
 	},
 ];
 

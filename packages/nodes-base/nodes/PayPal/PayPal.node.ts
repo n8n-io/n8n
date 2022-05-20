@@ -71,7 +71,6 @@ export class PayPal implements INodeType {
 					},
 				],
 				default: 'payout',
-				description: 'Resource to consume.',
 			},
 
 			// Payout

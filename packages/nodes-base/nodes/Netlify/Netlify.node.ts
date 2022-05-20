@@ -62,7 +62,6 @@ export class Netlify implements INodeType {
 					},
 				],
 				default: 'deploy',
-				description: 'Resource to consume',
 				required: true,
 			},
 			...deployOperations,

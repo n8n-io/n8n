@@ -51,7 +51,6 @@ export class TravisCi implements INodeType {
 					},
 				],
 				default: 'build',
-				description: 'Resource to consume.',
 			},
 			...buildOperations,
 			...buildFields,

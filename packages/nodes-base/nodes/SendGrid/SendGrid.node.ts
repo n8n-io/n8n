@@ -76,7 +76,6 @@ export class SendGrid implements INodeType {
 				],
 				default: 'list',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...listOperations,
 			...listFields,

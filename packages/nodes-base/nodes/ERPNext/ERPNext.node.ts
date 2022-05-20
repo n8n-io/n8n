@@ -60,7 +60,6 @@ export class ERPNext implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'Resource to consume.',
 			},
 			...documentOperations,
 			...documentFields,

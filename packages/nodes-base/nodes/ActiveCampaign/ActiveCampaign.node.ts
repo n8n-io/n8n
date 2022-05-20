@@ -184,7 +184,6 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------

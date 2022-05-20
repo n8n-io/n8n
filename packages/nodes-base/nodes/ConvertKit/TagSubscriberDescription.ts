@@ -33,7 +33,6 @@ export const tagSubscriberOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

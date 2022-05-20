@@ -28,7 +28,6 @@ export const logOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getErroLogs',
-		description: 'The operation to perform.',
 	},
 ];
 

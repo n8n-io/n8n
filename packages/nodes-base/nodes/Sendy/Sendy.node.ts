@@ -61,7 +61,6 @@ export class Sendy implements INodeType {
 					},
 				],
 				default: 'subscriber',
-				description: 'The resource to operate on.',
 			},
 			...campaignOperations,
 			...campaignFields,

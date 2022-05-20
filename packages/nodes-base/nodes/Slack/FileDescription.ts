@@ -31,7 +31,6 @@ export const fileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 

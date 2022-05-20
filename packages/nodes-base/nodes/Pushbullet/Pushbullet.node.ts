@@ -52,7 +52,6 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -89,7 +88,6 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',

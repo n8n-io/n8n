@@ -74,7 +74,6 @@ export class Iterable implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,

@@ -62,7 +62,6 @@ export class ProfitWell implements INodeType {
 					},
 				],
 				default: 'metric',
-				description: 'Resource to consume.',
 			},
 			// COMPANY
 			...companyOperations,

@@ -75,7 +75,6 @@ export class Shopify implements INodeType {
 					},
 				],
 				default: 'order',
-				description: 'Resource to consume.',
 			},
 			// ORDER
 			...orderOperations,

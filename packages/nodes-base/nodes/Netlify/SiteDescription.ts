@@ -33,7 +33,6 @@ export const siteOperations: INodeProperties[] = [
 			},
 		],
 		default: 'delete',
-		description: 'The operation to perform.',
 	},
 ];
 

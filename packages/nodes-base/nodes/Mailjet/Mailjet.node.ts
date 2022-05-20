@@ -83,7 +83,6 @@ export class Mailjet implements INodeType {
 					},
 				],
 				default: 'email',
-				description: 'Resource to consume',
 			},
 			...emailOperations,
 			...emailFields,

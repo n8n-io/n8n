@@ -83,7 +83,6 @@ export class Twist implements INodeType {
 					},
 				],
 				default: 'messageConversation',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,

@@ -63,7 +63,6 @@ export class GSuiteAdmin implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...groupOperations,
 			...groupFields,

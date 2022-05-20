@@ -57,7 +57,6 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -88,7 +87,6 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'List ID',

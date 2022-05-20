@@ -100,7 +100,6 @@ export class Wekan implements INodeType {
 					},
 				],
 				default: 'card',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------

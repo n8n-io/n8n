@@ -70,7 +70,6 @@ export class CiscoWebex implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume',
 			},
 			...meetingOperations,
 			...meetingFields,

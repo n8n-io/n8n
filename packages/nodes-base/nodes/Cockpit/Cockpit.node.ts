@@ -57,7 +57,6 @@ export class Cockpit implements INodeType {
 				name: 'resource',
 				type: 'options',
 				default: 'collection',
-				description: 'Resource to consume.',
 				options: [
 					{
 						name: 'Collection',

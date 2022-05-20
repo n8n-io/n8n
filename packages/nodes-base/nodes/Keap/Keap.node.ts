@@ -162,7 +162,6 @@ export class Keap implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'The resource to operate on.',
 			},
 			// COMPANY
 			...companyOperations,

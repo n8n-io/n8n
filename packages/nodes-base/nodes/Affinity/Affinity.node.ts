@@ -88,7 +88,6 @@ export class Affinity implements INodeType {
 					},
 				],
 				default: 'organization',
-				description: 'Resource to consume.',
 			},
 			...listOperations,
 			...listFields,

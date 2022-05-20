@@ -80,7 +80,6 @@ export class Lemlist implements INodeType {
 					},
 				],
 				default: 'activity',
-				description: 'Resource to consume',
 			},
 			...activityOperations,
 			...activityFields,

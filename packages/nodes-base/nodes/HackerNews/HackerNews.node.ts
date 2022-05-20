@@ -52,7 +52,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'article',
-				description: 'Resource to consume.',
 			},
 
 
@@ -79,7 +78,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -101,7 +99,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
@@ -123,7 +120,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			// ----------------------------------
 			//         Fields

@@ -90,7 +90,6 @@ export class FileMaker implements INodeType {
 						value: 'delete',
 					},
 				],
-				description: 'Action to perform.',
 			},
 
 			// ----------------------------------

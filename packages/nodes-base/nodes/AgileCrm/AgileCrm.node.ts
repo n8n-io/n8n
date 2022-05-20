@@ -89,7 +89,6 @@ export class AgileCrm implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

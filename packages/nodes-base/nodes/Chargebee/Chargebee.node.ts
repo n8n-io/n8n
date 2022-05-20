@@ -64,7 +64,6 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'invoice',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -92,7 +91,6 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -204,7 +202,6 @@ export class Chargebee implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				default: 'list',
-				description: 'The operation to perform.',
 				type: 'options',
 				noDataExpression: true,
 				displayOptions: {
@@ -418,7 +415,6 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'delete',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

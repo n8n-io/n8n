@@ -60,7 +60,6 @@ export class Vero implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...userOperations,
 			...eventOperations,
