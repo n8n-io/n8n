@@ -308,13 +308,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						input_connectors: this.parentNodes.length,
 						output_connectors:
 							outogingConnections && outogingConnections.main && outogingConnections.main.length,
+						input_displayed_run_index: this.inputRun,
+						output_displayed_run_index: this.outputRun,
 						// todo
-						// input_state with the following events: node has no connection, no input data yet, no input data
-						// input_displayed_run_index
 						// input_displayed_run_rows int
 						// input_displayed_run_columns int
-						// output_state with the following events: no output data returned, output data is too large, execute node to output data
-						// output_displayed_run_index
 						// output_displayed_run_rows int
 						// output_displayed_run_columns int
 					});
