@@ -1849,7 +1849,7 @@ export default mixins(
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
 					// For novice users (onboardingFlowEnabled == true)
 					// Inject welcome sticky note and zoom to fit
-					if(newWorkflow.onboardingFlowEnabled) {
+					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
 						this.$nextTick(async () => {
 							await this.addNodes([
 								{
