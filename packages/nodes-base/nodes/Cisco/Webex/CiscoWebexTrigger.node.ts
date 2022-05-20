@@ -87,7 +87,7 @@ export class CiscoWebexTrigger implements INodeType {
 						value: 'room',
 					},
 					{
-						name: '*',
+						name: '[All]',
 						value: 'all',
 					},
 				],
