@@ -418,6 +418,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-untrimmed': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-upsert': 'error',
 				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
+				'n8n-nodes-base/node-param-option-name-wrong-for-get-all': 'error',
 			},
 		},
 	],

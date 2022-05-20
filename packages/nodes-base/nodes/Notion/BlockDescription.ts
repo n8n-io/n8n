@@ -26,7 +26,7 @@ export const blockOperations = [
 				description: 'Append a block',
 			},
 			{
-				name: 'Get Child Blocks',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all children blocks',
 			},

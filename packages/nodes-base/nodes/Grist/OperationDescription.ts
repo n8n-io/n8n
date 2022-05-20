@@ -20,7 +20,7 @@ export const operationFields: INodeProperties[] = [
 				description: 'Delete rows from a table',
 			},
 			{
-				name: 'Get All Rows',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Read rows from a table',
 			},
