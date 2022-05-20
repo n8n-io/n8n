@@ -58,7 +58,7 @@
 				</div>
 			</div>
 		</div>
-		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			class="node-buttons-wrapper"
 			v-if="!createNodeActive && !isReadOnly"
@@ -161,7 +161,7 @@ import { newVersions } from '@/components/mixins/newVersions';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
-import DataDisplay from '@/components/DataDisplay.vue';
+import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -231,7 +231,7 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
-			DataDisplay,
+			NodeDetailsView,
 			Node,
 			NodeCreator,
 			NodeSettings,

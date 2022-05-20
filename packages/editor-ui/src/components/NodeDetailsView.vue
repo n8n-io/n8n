@@ -105,7 +105,7 @@ const MAIN_PANEL_WIDTH = 360;
 const SIDE_MARGIN = 24;
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
-	name: 'DataDisplay',
+	name: 'NodeDetailsView',
 	components: {
 		NodeSettings,
 		InputPanel,
