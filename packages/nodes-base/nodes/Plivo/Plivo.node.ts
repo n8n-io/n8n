@@ -60,9 +60,11 @@ export class Plivo implements INodeType {
 						value: 'call',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'MMS',
 						value: 'mms',
 					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 					{
 						name: 'SMS',
 						value: 'sms',

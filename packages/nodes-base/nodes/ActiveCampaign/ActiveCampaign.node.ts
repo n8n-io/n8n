@@ -172,7 +172,7 @@ export class ActiveCampaign implements INodeType {
 						value: 'ecommerceCustomer',
 					},
 					{
-						name: 'E-commerce Order Products',
+						name: 'E-commerce Order Product',
 						value: 'ecommerceOrderProducts',
 					},
 					{
