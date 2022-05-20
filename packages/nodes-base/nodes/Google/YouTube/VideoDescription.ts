@@ -7,6 +7,7 @@ export const videoOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const videoOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -531,7 +531,7 @@ export const videoFields: INodeProperties[] = [
 				description: 'The videoCategoryId parameter identifies the video category for which the chart should be retrieved',
 			},
 			{
-				displayName: 'Video Syndicated ',
+				displayName: 'Video Syndicated',
 				name: 'videoSyndicated',
 				type: 'boolean',
 				default: false,

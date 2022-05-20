@@ -7,6 +7,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -29,7 +30,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -120,7 +120,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -134,7 +134,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'When set to true the document text content will be used else the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -159,7 +159,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -173,7 +173,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplified version of the response will be used else the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Actions',

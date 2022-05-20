@@ -47,6 +47,7 @@ export class Spotify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Album',
@@ -78,7 +79,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'player',
-				description: 'The resource to operate on.',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -90,6 +90,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -145,7 +146,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'addSongToQueue',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Resource ID',
@@ -194,6 +194,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -224,7 +225,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Album ID',
@@ -278,6 +278,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -313,7 +314,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Artist ID',
@@ -383,6 +383,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -428,7 +429,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Playlist ID',
@@ -582,6 +582,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -607,7 +608,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'track',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Track ID',
@@ -657,6 +657,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -682,6 +683,7 @@ export class Spotify implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -697,7 +699,6 @@ export class Spotify implements INodeType {
 					},
 				],
 				default: 'getFollowingArtists',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Return All',

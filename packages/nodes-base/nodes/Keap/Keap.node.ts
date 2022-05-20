@@ -127,6 +127,7 @@ export class Keap implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -162,7 +163,6 @@ export class Keap implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'The resource to operate on.',
 			},
 			// COMPANY
 			...companyOperations,

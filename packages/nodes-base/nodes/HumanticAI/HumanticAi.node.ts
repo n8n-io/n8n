@@ -46,6 +46,7 @@ export class HumanticAi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Profile',
@@ -53,7 +54,6 @@ export class HumanticAi implements INodeType {
 					},
 				],
 				default: 'profile',
-				description: 'Resource to consume.',
 			},
 			// PROFILE
 			...profileOperations,

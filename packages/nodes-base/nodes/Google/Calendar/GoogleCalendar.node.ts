@@ -74,7 +74,6 @@ export class GoogleCalendar implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on',
 			},
 			...calendarOperations,
 			...calendarFields,

@@ -7,6 +7,7 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 			},
 		],
 		default: 'download',
-		description: 'Operation to perform',
 	},
 ];
 
