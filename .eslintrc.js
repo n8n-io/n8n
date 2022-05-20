@@ -416,6 +416,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-wrong-for-simplify': 'error',
 				'n8n-nodes-base/node-param-display-name-miscased-id': 'error',
 				'n8n-nodes-base/node-param-display-name-untrimmed': 'error',
+				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
 			},
 		},
 	],

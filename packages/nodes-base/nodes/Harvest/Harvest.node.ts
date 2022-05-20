@@ -163,7 +163,7 @@ export class Harvest implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'Time Entries',
+						name: 'Time Entry',
 						value: 'timeEntry',
 					},
 					{

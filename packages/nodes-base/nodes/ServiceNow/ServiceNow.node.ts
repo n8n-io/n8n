@@ -132,7 +132,7 @@ export class ServiceNow implements INodeType {
 						value: 'businessService',
 					},
 					{
-						name: 'Configuration Items',
+						name: 'Configuration Item',
 						value: 'configurationItems',
 					},
 					{
