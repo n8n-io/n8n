@@ -736,7 +736,7 @@
     "eventsource": "^2.0.2",
     "fast-glob": "^3.2.5",
     "fflate": "^0.7.0",
-    "formidable": "^1.2.1",
+    "formidable": "^3.2.4",
     "get-system-fonts": "^2.0.2",
     "gm": "^1.23.1",
     "iconv-lite": "^0.6.2",
