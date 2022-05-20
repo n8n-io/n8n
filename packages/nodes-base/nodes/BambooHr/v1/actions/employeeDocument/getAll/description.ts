@@ -76,6 +76,6 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 				],
 			},
 		},
-		description: 'Whether to simplify the output or not',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];
