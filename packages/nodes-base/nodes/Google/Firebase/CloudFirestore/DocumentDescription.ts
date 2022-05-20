@@ -24,7 +24,7 @@ export const documentOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				description: 'Create a new document, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',

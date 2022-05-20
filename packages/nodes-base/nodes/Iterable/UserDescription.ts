@@ -19,7 +19,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				description: 'Create a new user, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',

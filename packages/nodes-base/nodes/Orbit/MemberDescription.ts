@@ -44,7 +44,7 @@ export const memberOperations: INodeProperties[] = [
 			{
 				name: 'Upsert',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				description: 'Create a new member, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'get',
