@@ -170,7 +170,7 @@ export const companyFields: INodeProperties[] = [
 		default: 'anyFilter',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

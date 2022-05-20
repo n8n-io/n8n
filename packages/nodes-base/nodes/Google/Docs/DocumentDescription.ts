@@ -120,7 +120,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -159,7 +159,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

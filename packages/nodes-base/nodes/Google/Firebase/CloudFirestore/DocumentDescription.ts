@@ -137,7 +137,7 @@ export const documentFields: INodeProperties[] = [
 		placeholder: 'productId, modelName, description',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -232,7 +232,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -352,7 +352,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -724,7 +724,7 @@ export const documentFields: INodeProperties[] = [
 		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

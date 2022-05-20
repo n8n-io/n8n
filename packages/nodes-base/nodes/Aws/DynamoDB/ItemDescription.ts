@@ -353,7 +353,7 @@ export const itemFields: INodeProperties[] = [
 		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -514,7 +514,7 @@ export const itemFields: INodeProperties[] = [
 		default: 'ALL_ATTRIBUTES',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -860,7 +860,7 @@ export const itemFields: INodeProperties[] = [
 		default: 'ALL_ATTRIBUTES',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

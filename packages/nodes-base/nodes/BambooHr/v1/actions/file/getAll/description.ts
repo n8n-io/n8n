@@ -45,7 +45,7 @@ export const fileGetAllDescription: FileProperties = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,

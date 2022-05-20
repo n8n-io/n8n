@@ -69,7 +69,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'The name of the company to create',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -281,7 +281,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'The ID of the company to update',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -499,7 +499,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'The ID of the company to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -561,7 +561,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -651,7 +651,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'The ID of the company to delete',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

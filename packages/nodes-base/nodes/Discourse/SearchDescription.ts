@@ -51,7 +51,7 @@ export const searchFields: INodeProperties[] = [
 		description: 'Term to search for',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

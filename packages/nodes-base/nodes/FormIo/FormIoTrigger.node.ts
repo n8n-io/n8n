@@ -87,7 +87,7 @@ export class FormIoTrigger implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,

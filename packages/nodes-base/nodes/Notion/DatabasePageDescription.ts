@@ -139,7 +139,7 @@ export const databasePageFields = [
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -552,7 +552,7 @@ export const databasePageFields = [
 		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -964,7 +964,7 @@ export const databasePageFields = [
 		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -1048,7 +1048,7 @@ export const databasePageFields = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

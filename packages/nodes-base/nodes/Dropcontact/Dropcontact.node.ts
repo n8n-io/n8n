@@ -108,7 +108,7 @@ export class Dropcontact implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Simplify Output (Faster)',
+				displayName: 'Simplify',
 				name: 'simplify',
 				type: 'boolean',
 				displayOptions: {

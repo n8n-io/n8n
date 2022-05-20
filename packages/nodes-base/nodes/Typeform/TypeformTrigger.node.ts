@@ -100,7 +100,7 @@ export class TypeformTrigger implements INodeType {
 				description: 'Form which should trigger workflow on submission',
 			},
 			{
-				displayName: 'Simplify Answers',
+				displayName: 'Simplify',
 				name: 'simplifyAnswers',
 				type: 'boolean',
 				default: true,
