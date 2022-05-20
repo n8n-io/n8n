@@ -27,7 +27,7 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @dragstart="onDragStart" @dragend="onDragEnd">
+			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @init="onPanelsInit" @dragstart="onDragStart" @dragend="onDragEnd">
 				<template #input>
 					<InputPanel
 						:workflow="workflow"
@@ -126,6 +126,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
 			isDragging: false,
+			mainPanelPosition: 0,
 		};
 	},
 	mounted() {
@@ -297,7 +298,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						node_type: this.activeNodeType ? this.activeNodeType.name : '',
 						workflow_id: this.$store.getters.workflowId,
 						session_id: this.sessionId,
-						// parameters_pane_position: this.getRelativePosition(),
+						parameters_pane_position: this.mainPanelPosition,
 						input_first_connector_runs: this.maxInputRun,
 						output_first_connector_runs: this.maxOutputRun,
 						selected_view_inputs: this.isTriggerNode
@@ -341,19 +342,24 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				type: 'i-wish-this-node-would',
 			});
 		},
-		onDragStart() {
-			this.isDragging = true;
+		onPanelsInit(e: { position: number }) {
+			this.mainPanelPosition = e.position;
 		},
-		onDragEnd(e: {windowWidth: number, startPosition: number, endPosition: number}) {
+		onDragStart(e: { position: number }) {
+			this.isDragging = true;
+			this.mainPanelPosition = e.position;
+		},
+		onDragEnd(e: { windowWidth: number, position: number }) {
 			this.isDragging = false;
 			this.$telemetry.track('User moved parameters pane', {
 				window_width: e.windowWidth,
-				start_position: e.startPosition,
-				end_position: e.endPosition,
+				start_position: this.mainPanelPosition,
+				end_position: e.position,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
 				workflow_id: this.$store.getters.workflowId,
 			});
+			this.mainPanelPosition = e.position;
 		},
 		onLinkRunToInput() {
 			this.runOutputIndex = this.runInputIndex;

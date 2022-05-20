@@ -44,12 +44,12 @@ export default Vue.extend({
 		return {
 			windowWidth: 0,
 			isDragging: false,
-			dragStartPosition: 0,
 		};
 	},
 	mounted() {
 		this.setTotalWidth();
 		window.addEventListener('resize', this.setTotalWidth);
+		this.$emit('init', { position: this.getRelativePosition() });
 	},
 	destroyed() {
 		window.removeEventListener('resize', this.setTotalWidth);
@@ -119,14 +119,14 @@ export default Vue.extend({
 		getRelativePosition() {
 			const current = this.mainPanelFinalPositionPx + MAIN_PANEL_WIDTH / 2 - this.windowWidth / 2;
 
-			return Math.floor(
+			const pos = Math.floor(
 				(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2)) * 100,
 			);
+			return pos;
 		},
 		onDragStart() {
-			this.dragStartPosition = this.getRelativePosition();
 			this.isDragging = true;
-			this.$emit('dragstart');
+			this.$emit('dragstart', { position: this.getRelativePosition() });
 		},
 		onDrag(e: {x: number, y: number}) {
 			const relativePosition = e.x / this.windowWidth;
@@ -137,8 +137,7 @@ export default Vue.extend({
 				this.isDragging = false;
 				this.$emit('dragend', {
 					windowWidth: this.windowWidth,
-					startPosition: this.dragStartPosition,
-					endPosition: this.getRelativePosition(),
+					position: this.getRelativePosition(),
 				});
 			}, 0);
 		},
