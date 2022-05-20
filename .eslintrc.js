@@ -405,6 +405,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-wrong-for-limit': 'error',
 				'n8n-nodes-base/node-param-description-wrong-for-return-all': 'error',
 				'n8n-nodes-base/node-param-required-false': 'error',
+				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
 			},
 		},
 	],
