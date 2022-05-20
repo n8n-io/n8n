@@ -19,9 +19,9 @@
 			</div>
 			<div :class="$style.backToCanvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">{{
-					$locale.baseText('ndv.backToCanvas')
-				}}</n8n-text>
+				<n8n-text color="text-xlight" size="medium" :bold="true">
+					{{ $locale.baseText('ndv.backToCanvas') }}
+				</n8n-text>
 			</div>
 		</n8n-tooltip>
 
@@ -58,7 +58,7 @@
 			<div :class="$style.mainPanel" :style="mainPanelStyles">
 				<div :class="$style.dragButtonContainer" @click="close">
 					<PanelDragButton
-						:class="{[$style.draggable]: true, [$style.visible]: isDragging}"
+						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
 						v-if="!isTriggerNode"
 						:isDragging="isDragging"
 						:canMoveLeft="canMoveLeft"
@@ -73,7 +73,12 @@
 					@valueChanged="valueChanged"
 					@execute="onNodeExecute"
 				/>
-				<a v-if="featureRequestUrl" @click="onFeatureRequestClick" :class="$style.featureRequest" target="_blank">
+				<a
+					v-if="featureRequestUrl"
+					@click="onFeatureRequestClick"
+					:class="$style.featureRequest"
+					target="_blank"
+				>
 					<font-awesome-icon icon="lightbulb" />
 					{{ $locale.baseText('ndv.featureRequest') }}
 				</a>
@@ -83,7 +88,13 @@
 </template>
 
 <script lang="ts">
-import { INodeConnections, INodeTypeDescription, IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
+import {
+	INodeConnections,
+	INodeTypeDescription,
+	IRunData,
+	IRunExecutionData,
+	Workflow,
+} from 'n8n-workflow';
 import { IExecutionResponse, INodeUi, IUpdateInformation } from '../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -188,7 +199,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
-				return this.workflow.getParentConnections(this.activeNode.name, 1).map(({name}) => name) || [];
+				return (
+					this.workflow.getParentConnections(this.activeNode.name, 1).map(({ name }) => name) || []
+				);
 			}
 
 			return [];
@@ -279,13 +292,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return this.isLinkingEnabled && this.canLinkRuns;
 		},
 		inputPanelMargin(): number {
-			return this.isTriggerNode ? 0: 80;
+			return this.isTriggerNode ? 0 : 80;
 		},
 		minimumLeftPosition(): number {
 			return SIDE_MARGIN + this.inputPanelMargin;
 		},
 		maximumRightPosition(): number {
-			return  this.windowWidth - MAIN_PANEL_WIDTH - this.minimumLeftPosition;
+			return this.windowWidth - MAIN_PANEL_WIDTH - this.minimumLeftPosition;
 		},
 		mainPanelFinalPositionPx(): number {
 			const padding = this.minimumLeftPosition;
@@ -306,17 +319,23 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				left: `${this.mainPanelFinalPositionPx}px`,
 			};
 		},
-		inputPanelStyles(): {width: string} {
+		inputPanelStyles(): { width: string } {
 			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
-			width = Math.min(width, this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH);
+			width = Math.min(
+				width,
+				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
+			);
 			width = Math.max(320, width);
 			return {
 				width: `${width}px`,
 			};
 		},
-		outputPanelStyles(): {width: string} {
+		outputPanelStyles(): { width: string } {
 			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
-			width = Math.min(width, this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH);
+			width = Math.min(
+				width,
+				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
+			);
 			width = Math.max(320, width);
 			return {
 				width: `${width}px`,
@@ -345,7 +364,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				});
 
 				setTimeout(() => {
-					const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(this.activeNode.name) as INodeConnections;
+					const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(
+						this.activeNode.name,
+					) as INodeConnections;
 
 					this.$telemetry.track('User opened node modal', {
 						node_type: this.activeNodeType ? this.activeNodeType.name : '',
@@ -354,10 +375,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						parameters_pane_position: this.getRelativePosition(),
 						input_first_connector_runs: this.maxInputRun,
 						output_first_connector_runs: this.maxOutputRun,
-						selected_view_inputs: this.isTriggerNode? 'trigger': this.$store.getters['ui/inputPanelDispalyMode'],
+						selected_view_inputs: this.isTriggerNode
+							? 'trigger'
+							: this.$store.getters['ui/inputPanelDispalyMode'],
 						selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
 						input_connectors: this.parentNodes.length,
-						output_connectors: outogingConnections && outogingConnections.main && outogingConnections.main.length,
+						output_connectors:
+							outogingConnections && outogingConnections.main && outogingConnections.main.length,
 						// todo
 						// input_state with the following events: node has no connection, no input data yet, no input data
 						// input_displayed_run_index
@@ -395,7 +419,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		getRelativePosition() {
 			const current = this.mainPanelFinalPositionPx + MAIN_PANEL_WIDTH / 2 - this.windowWidth / 2;
 
-			return Math.floor(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2) * 100);
+			return Math.floor(
+				(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2)) * 100,
+			);
 		},
 		onDragStart(e: MouseEvent) {
 			e.preventDefault();
@@ -508,7 +534,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.$telemetry.track('User changed ndv run dropdown', {
 				session_id: this.sessionId,
 				run_index: run,
-				node_type: this.activeNodeType? this.activeNodeType.name: '',
+				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				pane,
 			});
 		},
@@ -522,7 +548,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				session_id: this.sessionId,
 				workflow_id: this.$store.getters.workflowId,
 				selection_value: index,
-				input_node_type: this.inputNode? this.inputNode.type: '',
+				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
 		},
 	},
@@ -676,5 +702,4 @@ $--main-panel-width: 360px;
 .visible {
 	visibility: visible;
 }
-
 </style>
