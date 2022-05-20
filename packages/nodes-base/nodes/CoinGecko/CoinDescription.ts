@@ -524,10 +524,6 @@ export const coinFields: INodeProperties[] = [
 						value: 'market_cap_asc',
 					},
 					{
-						name: 'Market Cap Desc',
-						value: 'market_cap_desc',
-					},
-					{
 						name: 'Volume Asc',
 						value: 'volume_asc',
 					},

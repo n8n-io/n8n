@@ -407,6 +407,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-required-false': 'error',
 				'n8n-nodes-base/node-param-description-weak': 'error',
 				'n8n-nodes-base/node-param-operation-without-no-data-expression': 'error',
+				'n8n-nodes-base/node-param-option-value-duplicate': 'error',
 			},
 		},
 	],
