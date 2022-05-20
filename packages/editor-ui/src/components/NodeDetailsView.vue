@@ -101,7 +101,7 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
-import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { BASE_NODE_SURVEY_URL, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { editor } from 'monaco-editor';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
@@ -272,7 +272,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			if (!this.activeNodeType) {
 				return '';
 			}
-			return `https://n8n-community.typeform.com/to/BvmzxqYv#nodename=${this.activeNodeType.name}`;
+			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
 	},
 	watch: {
