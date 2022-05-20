@@ -5,6 +5,7 @@
 		:label="buttonLabel"
 		:type="type"
 		:size="size"
+		:transparentBackground="transparent"
 		@click="onClick"
 	/>
 </template>
@@ -30,6 +31,10 @@ export default mixins(
 		},
 		size: {
 			type: String,
+		},
+		transparent: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	computed: {
