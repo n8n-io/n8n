@@ -5,16 +5,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import express = require('express');
-import config = require('../../../../../config');
-import { PaginatatedRequest, UserRequest } from '../../../types';
+import { RequestHandler } from 'express';
+import { PaginatatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 type Role = 'member' | 'owner';
 
-export const authorize =
+export const authorize: (role: Role[]) => RequestHandler =
 	(role: Role[]) =>
-	(req: express.Request, res: express.Response, next: express.NextFunction): any => {
+	(req, res, next): any => {
 		const {
 			globalRole: { name: userRole },
 		} = req.user as { globalRole: { name: Role } };
@@ -26,11 +25,8 @@ export const authorize =
 		});
 	};
 
-export const validCursor = (
-	req: PaginatatedRequest,
-	res: express.Response,
-	next: express.NextFunction,
-): any => {
+// @ts-ignore
+export const validCursor: RequestHandler = (req: PaginatatedRequest, res, next): any => {
 	if (req.query.cursor) {
 		const { cursor } = req.query;
 		try {

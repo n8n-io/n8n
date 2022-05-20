@@ -6,7 +6,7 @@ post:
   summary: Create a workflow
   description: Create a workflow in your instance.
   requestBody:
-    description: Created user object.
+    description: Created workflow object.
     content:
       application/json:
         schema:
@@ -14,7 +14,7 @@ post:
     required: true
   responses:
     '200':
-      description: A User object
+      description: A workflow object
       content:
         application/json:
           schema:

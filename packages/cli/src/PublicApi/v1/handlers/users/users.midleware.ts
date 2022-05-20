@@ -1,17 +1,14 @@
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import express = require('express');
+import { RequestHandler } from 'express';
 import config = require('../../../../../config');
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
 import { isEmailSetUp } from '../../../../UserManagement/UserManagementHelper';
 import { UserRequest } from '../../../types';
 import { getGlobalMemberRole } from './users.service';
 
-export const deletingOwnUser = (
-	req: UserRequest.Delete,
-	res: express.Response,
-	next: express.NextFunction,
-): any => {
+// @ts-ignore
+export const deletingOwnUser: RequestHandler = (req: UserRequest.Delete, res, next): any => {
 	if (req.user.id === req.params.identifier || req.user.email === req.params.identifier) {
 		return res.status(400).json({
 			message: `Cannot delete your own user`,
@@ -20,10 +17,11 @@ export const deletingOwnUser = (
 	next();
 };
 
-export const transferingToDeletedUser = (
+// @ts-ignore
+export const transferingToDeletedUser: RequestHandler = (
 	req: UserRequest.Delete,
-	res: express.Response,
-	next: express.NextFunction,
+	res,
+	next,
 ): any => {
 	if (req.query.transferId === req.params.identifier) {
 		return res.status(400).json({
@@ -33,10 +31,10 @@ export const transferingToDeletedUser = (
 	next();
 };
 
-export const getMailerInstance = async (
+export const getMailerInstance: RequestHandler = async (
 	req: UserRequest.Invite,
-	res: express.Response,
-	next: express.NextFunction,
+	res,
+	next,
 ): Promise<any> => {
 	let mailer: UserManagementMailer.UserManagementMailer | undefined;
 	try {
@@ -52,10 +50,10 @@ export const getMailerInstance = async (
 	next();
 };
 
-export const globalMemberRoleSetup = async (
+export const globalMemberRoleSetup: RequestHandler = async (
 	req: UserRequest.Invite,
-	res: express.Response,
-	next: express.NextFunction,
+	res,
+	next,
 ): Promise<any> => {
 	try {
 		const role = await getGlobalMemberRole();
@@ -68,11 +66,7 @@ export const globalMemberRoleSetup = async (
 	next();
 };
 
-export const userManagmentEnabled = async (
-	req: express.Request,
-	res: express.Response,
-	next: express.NextFunction,
-): Promise<any> => {
+export const userManagmentEnabled: RequestHandler = async (req, res, next): Promise<any> => {
 	if (
 		config.getEnv('userManagement.disabled') ||
 		!config.getEnv('userManagement.isInstanceOwnerSetUp')
@@ -85,11 +79,7 @@ export const userManagmentEnabled = async (
 	next();
 };
 
-export const emailSetup = (
-	req: express.Request,
-	res: express.Response,
-	next: express.NextFunction,
-): any => {
+export const emailSetup: RequestHandler = (req, res, next): any => {
 	if (!isEmailSetUp()) {
 		return res.status(500).json({ message: 'Email is not set up' });
 	}

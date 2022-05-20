@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable consistent-return */
-import express = require('express');
+import { RequestHandler } from 'express';
 import { CredentialTypes } from '../../../..';
 import { CredentialRequest } from '../../../types';
 import { validateCredentialsProperties } from './credentials.service';
 
-export const validCredentialType = async (
+export const validCredentialType: RequestHandler = async (
 	req: CredentialRequest.Create,
-	res: express.Response,
-	next: express.NextFunction,
+	res,
+	next,
 ): Promise<any> => {
 	const { type } = req.body;
 	try {
@@ -21,10 +21,10 @@ export const validCredentialType = async (
 	next();
 };
 
-export const validCredentialsProperties = async (
+export const validCredentialsProperties: RequestHandler = async (
 	req: CredentialRequest.Create,
-	res: express.Response,
-	next: express.NextFunction,
+	res,
+	next,
 ): Promise<any> => {
 	const { type, data } = req.body;
 	const formatError = (propertyName: string) => {
