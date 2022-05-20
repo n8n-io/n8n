@@ -416,7 +416,7 @@ export const ecomOrderFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Add Field',
+		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
