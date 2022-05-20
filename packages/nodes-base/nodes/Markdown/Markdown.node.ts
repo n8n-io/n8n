@@ -322,6 +322,7 @@ export class Markdown implements INodeType {
 						type: 'boolean',
 						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
 						description: 'Whether to enable automatic linking to urls',
 					},
 					{
@@ -477,6 +478,7 @@ export class Markdown implements INodeType {
 						type: 'boolean',
 						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
 						description:
 							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
 					},
