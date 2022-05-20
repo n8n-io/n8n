@@ -100,7 +100,7 @@ export class Nasa implements INodeType {
 						value: 'donkiWsaEnlilSimulation',
 					},
 					{
-						name: 'DONKI Notifications',
+						name: 'DONKI Notification',
 						value: 'donkiNotifications',
 					},
 					{
@@ -108,7 +108,7 @@ export class Nasa implements INodeType {
 						value: 'earthImagery',
 					},
 					{
-						name: 'Earth Assets',
+						name: 'Earth Asset',
 						value: 'earthAssets',
 					},
 				],
