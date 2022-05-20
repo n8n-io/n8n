@@ -421,6 +421,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-option-description-identical-to-name': 'error',
 				'n8n-nodes-base/node-param-option-name-containing-star': 'error',
 				'n8n-nodes-base/node-param-display-name-wrong-for-update-fields': 'error',
+				'n8n-nodes-base/node-param-option-name-wrong-for-get-all': 'error',
 			},
 		},
 	],

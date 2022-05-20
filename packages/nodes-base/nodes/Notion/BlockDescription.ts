@@ -26,6 +26,7 @@ export const blockOperations = [
 				description: 'Append a block',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
 				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
