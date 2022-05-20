@@ -55,6 +55,7 @@ export class AwsRekognition implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze',

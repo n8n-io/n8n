@@ -48,6 +48,7 @@ export class AwsTextract implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze Receipt or Invoice',

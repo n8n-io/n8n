@@ -7,6 +7,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
 		description: 'Operation to perform',
 		options: [
