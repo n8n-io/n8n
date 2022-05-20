@@ -1,41 +1,46 @@
 <template>
-	<div
-		:class="{ [$style.dragButton]: true, [$style.dragging]: isDragging }"
-		@mousedown="onMousedown"
-	>
-		<span v-if="canMoveLeft" :class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }">
-			<font-awesome-icon icon="arrow-left" />
-		</span>
-		<span v-if="canMoveRight" :class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }">
-			<font-awesome-icon icon="arrow-right" />
-		</span>
-		<div :class="$style.grid">
-			<div>
-				<div></div>
-				<div></div>
-				<div></div>
-				<div></div>
-				<div></div>
+	<Draggable @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd">
+		<template v-slot="{ isDragging }">
+			<div
+				:class="{ [$style.dragButton]: true }"
+			>
+				<span v-if="canMoveLeft" :class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }">
+					<font-awesome-icon icon="arrow-left" />
+				</span>
+				<span v-if="canMoveRight" :class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }">
+					<font-awesome-icon icon="arrow-right" />
+				</span>
+				<div :class="$style.grid">
+					<div>
+						<div></div>
+						<div></div>
+						<div></div>
+						<div></div>
+						<div></div>
+					</div>
+					<div>
+						<div></div>
+						<div></div>
+						<div></div>
+						<div></div>
+						<div></div>
+					</div>
+				</div>
 			</div>
-			<div>
-				<div></div>
-				<div></div>
-				<div></div>
-				<div></div>
-				<div></div>
-			</div>
-		</div>
-	</div>
+		</template>
+	</Draggable>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import Draggable from './Draggable.vue';
+import dragging from './Draggable.vue';
 
-export default Vue.extend({
+export default mixins(dragging).extend({
+	components: {
+		Draggable,
+	},
 	props: {
-		isDragging: {
-			type: Boolean,
-		},
 		canMoveRight: {
 			type: Boolean,
 		},
@@ -44,8 +49,14 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onMousedown(e: MouseEvent) {
-			this.$emit('mousedown', e);
+		onDrag(e: {x: number, y: number}) {
+			this.$emit('drag', e);
+		},
+		onDragStart() {
+			this.$emit('dragstart');
+		},
+		onDragEnd() {
+			this.$emit('dragend');
 		},
 	},
 });
@@ -73,11 +84,6 @@ export default Vue.extend({
 
 .visible {
 	visibility: visible !important;
-}
-
-.dragging {
-	visibility: visible;
-	cursor: grabbing;
 }
 
 .arrow {

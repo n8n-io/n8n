@@ -63,7 +63,9 @@
 						:isDragging="isDragging"
 						:canMoveLeft="canMoveLeft"
 						:canMoveRight="canMoveRight"
-						@mousedown="onDragStart"
+						@dragstart="onDragStart"
+						@drag="onDrag"
+						@dragend="onDragEnd"
 					/>
 				</div>
 				<NodeSettings
@@ -423,33 +425,15 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2)) * 100,
 			);
 		},
-		onDragStart(e: MouseEvent) {
-			e.preventDefault();
-			e.stopPropagation();
-			this.isDragging = true;
-
+		onDragStart() {
 			this.dragStartPosition = this.getRelativePosition();
-			document.body.style.cursor = 'grabbing';
-
-			window.addEventListener('mousemove', this.onDrag);
-			window.addEventListener('mouseup', this.onDragEnd);
+			this.isDragging = true;
 		},
-		onDrag(e: MouseEvent) {
-			e.preventDefault();
-			e.stopPropagation();
-
-			const newPosition = e.pageX;
-			const relativePosition = newPosition / this.windowWidth;
+		onDrag(e: {x: number, y: number}) {
+			const relativePosition = e.x / this.windowWidth;
 			this.$store.commit('ui/setMainPanelRelativePosition', relativePosition);
 		},
-		onDragEnd(e: MouseEvent) {
-			e.preventDefault();
-			e.stopPropagation();
-
-			document.body.style.cursor = 'unset';
-			window.removeEventListener('mousemove', this.onDrag);
-			window.removeEventListener('mouseup', this.onDragEnd);
-
+		onDragEnd() {
 			this.$telemetry.track('User moved parameters pane', {
 				window_width: this.windowWidth,
 				start_position: this.dragStartPosition,
