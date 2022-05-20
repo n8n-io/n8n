@@ -275,7 +275,7 @@ export const companyFields: INodeProperties[] = [
 	/*                            company:create/update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company Id',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		default: '',

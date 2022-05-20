@@ -42,7 +42,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',

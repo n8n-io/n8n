@@ -974,7 +974,7 @@ export class GoogleDrive implements INodeType {
 								value: 'hasThumbnail',
 							},
 							{
-								name: 'id',
+								name: 'ID',
 								value: 'id',
 							},
 							{
@@ -1207,7 +1207,7 @@ export class GoogleDrive implements INodeType {
 								value: 'hasThumbnail',
 							},
 							{
-								name: 'id',
+								name: 'ID',
 								value: 'id',
 							},
 							{
