@@ -27,64 +27,54 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
-				<InputPanel
-					:workflow="workflow"
-					:canLinkRuns="canLinkRuns"
-					:runIndex="inputRun"
-					:linkedRuns="linked"
-					:currentNodeName="inputNodeName"
-					:sessionId="sessionId"
-					@linkRun="onLinkRunToInput"
-					@unlinkRun="() => onUnlinkRun('input')"
-					@runChange="onRunInputIndexChange"
-					@openSettings="openSettings"
-					@select="onInputSelect"
-					@execute="onNodeExecute"
-				/>
-			</div>
-			<div :class="$style.outputPanel" :style="outputPanelStyles">
-				<OutputPanel
-					:canLinkRuns="canLinkRuns"
-					:runIndex="outputRun"
-					:linkedRuns="linked"
-					:sessionId="sessionId"
-					@linkRun="onLinkRunToOutput"
-					@unlinkRun="() => onUnlinkRun('output')"
-					@runChange="onRunOutputIndexChange"
-					@openSettings="openSettings"
-				/>
-			</div>
-			<div :class="$style.mainPanel" :style="mainPanelStyles">
-				<div :class="$style.dragButtonContainer" @click="close">
-					<PanelDragButton
-						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-						v-if="!isTriggerNode"
-						:isDragging="isDragging"
-						:canMoveLeft="canMoveLeft"
-						:canMoveRight="canMoveRight"
-						@dragstart="onDragStart"
-						@drag="onDrag"
-						@dragend="onDragEnd"
+			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @dragstart="onDragStart" @dragend="onDragEnd">
+				<template #input>
+					<InputPanel
+						:workflow="workflow"
+						:canLinkRuns="canLinkRuns"
+						:runIndex="inputRun"
+						:linkedRuns="linked"
+						:currentNodeName="inputNodeName"
+						:sessionId="sessionId"
+						@linkRun="onLinkRunToInput"
+						@unlinkRun="() => onUnlinkRun('input')"
+						@runChange="onRunInputIndexChange"
+						@openSettings="openSettings"
+						@select="onInputSelect"
+						@execute="onNodeExecute"
 					/>
-				</div>
-				<NodeSettings
-					:eventBus="settingsEventBus"
-					:dragging="isDragging"
-					:sessionId="sessionId"
-					@valueChanged="valueChanged"
-					@execute="onNodeExecute"
-				/>
-				<a
-					v-if="featureRequestUrl"
-					@click="onFeatureRequestClick"
-					:class="$style.featureRequest"
-					target="_blank"
-				>
-					<font-awesome-icon icon="lightbulb" />
-					{{ $locale.baseText('ndv.featureRequest') }}
-				</a>
-			</div>
+				</template>
+				<template #output>
+					<OutputPanel
+						:canLinkRuns="canLinkRuns"
+						:runIndex="outputRun"
+						:linkedRuns="linked"
+						:sessionId="sessionId"
+						@linkRun="onLinkRunToOutput"
+						@unlinkRun="() => onUnlinkRun('output')"
+						@runChange="onRunOutputIndexChange"
+						@openSettings="openSettings"
+					/>
+				</template>
+				<template #main>
+					<NodeSettings
+						:eventBus="settingsEventBus"
+						:dragging="isDragging"
+						:sessionId="sessionId"
+						@valueChanged="valueChanged"
+						@execute="onNodeExecute"
+					/>
+					<a
+						v-if="featureRequestUrl"
+						@click="onFeatureRequestClick"
+						:class="$style.featureRequest"
+						target="_blank"
+					>
+						<font-awesome-icon icon="lightbulb" />
+						{{ $locale.baseText('ndv.featureRequest') }}
+					</a>
+				</template>
+			</NDVDraggablePanels>
 		</div>
 	</el-dialog>
 </template>
@@ -104,6 +94,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
+import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
@@ -112,10 +103,6 @@ import InputPanel from './InputPanel.vue';
 import { mapGetters } from 'vuex';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { editor } from 'monaco-editor';
-import PanelDragButton from './PanelDragButton.vue';
-
-const MAIN_PANEL_WIDTH = 360;
-const SIDE_MARGIN = 24;
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'NodeDetailsView',
@@ -123,7 +110,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		NodeSettings,
 		InputPanel,
 		OutputPanel,
-		PanelDragButton,
+		NDVDraggablePanels,
 	},
 	props: {
 		renaming: {
@@ -138,32 +125,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			isLinkingEnabled: true,
 			selectedInput: undefined as string | undefined,
 			triggerWaitingWarningEnabled: false,
-			windowWidth: 0,
 			isDragging: false,
-			dragStartPosition: 0,
 		};
 	},
 	mounted() {
-		this.setTotalWidth();
 		this.$store.commit('ui/setNDVSessionId');
-		window.addEventListener('resize', this.setTotalWidth);
-	},
-	destroyed() {
-		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
 		sessionId(): string {
 			return this.$store.getters['ui/ndvSessionId'];
-		},
-		mainPanelPosition(): number {
-			if (this.isTriggerNode) {
-				return 0;
-			}
-
-			const relativePosition = this.$store.getters['ui/mainPanelPosition'] as number;
-
-			return relativePosition * this.windowWidth;
 		},
 		workflowRunning(): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -296,53 +267,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		inputPanelMargin(): number {
 			return this.isTriggerNode ? 0 : 80;
 		},
-		minimumLeftPosition(): number {
-			return SIDE_MARGIN + this.inputPanelMargin;
-		},
-		maximumRightPosition(): number {
-			return this.windowWidth - MAIN_PANEL_WIDTH - this.minimumLeftPosition;
-		},
-		mainPanelFinalPositionPx(): number {
-			const padding = this.minimumLeftPosition;
-			let pos = this.mainPanelPosition + MAIN_PANEL_WIDTH / 2;
-			pos = Math.max(padding, pos - MAIN_PANEL_WIDTH);
-			pos = Math.min(pos, this.maximumRightPosition);
-
-			return pos;
-		},
-		canMoveLeft(): boolean {
-			return this.mainPanelFinalPositionPx > this.minimumLeftPosition;
-		},
-		canMoveRight(): boolean {
-			return this.mainPanelFinalPositionPx < this.maximumRightPosition;
-		},
-		mainPanelStyles(): { left: string } {
-			return {
-				left: `${this.mainPanelFinalPositionPx}px`,
-			};
-		},
-		inputPanelStyles(): { width: string } {
-			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
-			width = Math.min(
-				width,
-				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
-			);
-			width = Math.max(320, width);
-			return {
-				width: `${width}px`,
-			};
-		},
-		outputPanelStyles(): { width: string } {
-			let width = this.windowWidth - this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
-			width = Math.min(
-				width,
-				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
-			);
-			width = Math.max(320, width);
-			return {
-				width: `${width}px`,
-			};
-		},
 		featureRequestUrl(): string {
 			if (!this.activeNodeType) {
 				return '';
@@ -358,7 +282,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				this.isLinkingEnabled = true;
 				this.selectedInput = undefined;
 				this.triggerWaitingWarningEnabled = false;
-				this.setTotalWidth();
 
 				this.$store.commit('ui/setNDVSessionId');
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
@@ -374,7 +297,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 						node_type: this.activeNodeType ? this.activeNodeType.name : '',
 						workflow_id: this.$store.getters.workflowId,
 						session_id: this.sessionId,
-						parameters_pane_position: this.getRelativePosition(),
+						// parameters_pane_position: this.getRelativePosition(),
 						input_first_connector_runs: this.maxInputRun,
 						output_first_connector_runs: this.maxOutputRun,
 						selected_view_inputs: this.isTriggerNode
@@ -418,37 +341,19 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				type: 'i-wish-this-node-would',
 			});
 		},
-		getRelativePosition() {
-			const current = this.mainPanelFinalPositionPx + MAIN_PANEL_WIDTH / 2 - this.windowWidth / 2;
-
-			return Math.floor(
-				(current / ((this.maximumRightPosition - this.minimumLeftPosition) / 2)) * 100,
-			);
-		},
 		onDragStart() {
-			this.dragStartPosition = this.getRelativePosition();
 			this.isDragging = true;
 		},
-		onDrag(e: {x: number, y: number}) {
-			const relativePosition = e.x / this.windowWidth;
-			this.$store.commit('ui/setMainPanelRelativePosition', relativePosition);
-		},
-		onDragEnd() {
+		onDragEnd(e: {windowWidth: number, startPosition: number, endPosition: number}) {
+			this.isDragging = false;
 			this.$telemetry.track('User moved parameters pane', {
-				window_width: this.windowWidth,
-				start_position: this.dragStartPosition,
-				end_position: this.getRelativePosition(),
+				window_width: e.windowWidth,
+				start_position: e.startPosition,
+				end_position: e.endPosition,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
 				workflow_id: this.$store.getters.workflowId,
 			});
-
-			setTimeout(() => {
-				this.isDragging = false;
-			}, 0);
-		},
-		setTotalWidth() {
-			this.windowWidth = window.innerWidth;
 		},
 		onLinkRunToInput() {
 			this.runOutputIndex = this.runInputIndex;
@@ -570,16 +475,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	display: flex;
 }
 
-.fade-enter-active,
-.fade-enter-to,
-.fade-leave-active {
-	transition: all 0.75s ease;
-	opacity: 1;
-}
-
-.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
-	opacity: 0;
-}
 </style>
 
 <style lang="scss" module>
@@ -588,44 +483,6 @@ $--main-panel-width: 360px;
 .modalBackground {
 	height: 100%;
 	width: 100%;
-}
-
-.dataPanel {
-	position: absolute;
-	height: calc(100% - 2 * var(--spacing-l));
-	position: absolute;
-	top: var(--spacing-l);
-	z-index: 0;
-}
-
-.inputPanel {
-	composes: dataPanel;
-	left: var(--spacing-l);
-
-	> * {
-		border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
-	}
-}
-
-.outputPanel {
-	composes: dataPanel;
-	right: var(--spacing-l);
-	width: $--main-panel-width;
-
-	> * {
-		border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
-	}
-}
-
-.mainPanel {
-	position: absolute;
-	height: 100%;
-
-	&:hover {
-		.draggable {
-			visibility: visible;
-		}
-	}
 }
 
 .triggerWarning {
@@ -664,26 +521,5 @@ $--main-panel-width: 360px;
 	* {
 		margin-right: var(--spacing-3xs);
 	}
-}
-
-.draggable {
-	position: absolute;
-	left: 40%;
-	visibility: hidden;
-}
-
-.dragButtonContainer {
-	position: absolute;
-	top: -12px;
-	width: $--main-panel-width;
-	height: 12px;
-
-	&:hover .draggable {
-		visibility: visible;
-	}
-}
-
-.visible {
-	visibility: visible;
 }
 </style>
