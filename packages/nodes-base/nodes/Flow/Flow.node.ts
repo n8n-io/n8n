@@ -46,6 +46,7 @@ export class Flow implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
@@ -54,7 +55,6 @@ export class Flow implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			...taskOpeations,
 			...taskFields,

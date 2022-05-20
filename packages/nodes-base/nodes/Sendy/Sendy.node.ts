@@ -50,6 +50,7 @@ export class Sendy implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -61,7 +62,6 @@ export class Sendy implements INodeType {
 					},
 				],
 				default: 'subscriber',
-				description: 'The resource to operate on.',
 			},
 			...campaignOperations,
 			...campaignFields,

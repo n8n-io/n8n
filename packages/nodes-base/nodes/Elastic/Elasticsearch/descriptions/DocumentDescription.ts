@@ -9,6 +9,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -44,7 +45,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -129,7 +129,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -248,7 +248,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
