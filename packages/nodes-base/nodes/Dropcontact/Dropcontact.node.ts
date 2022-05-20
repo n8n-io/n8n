@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-simplify */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
