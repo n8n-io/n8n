@@ -7,6 +7,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -33,7 +34,6 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,7 +42,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',

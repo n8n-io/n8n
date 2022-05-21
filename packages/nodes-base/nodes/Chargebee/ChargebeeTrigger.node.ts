@@ -38,7 +38,6 @@ export class ChargebeeTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'The operation to perform.',
 				options: [
 					{
 						name: '*',

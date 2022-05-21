@@ -57,6 +57,7 @@ export class Coda implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Control',
@@ -80,7 +81,6 @@ export class Coda implements INodeType {
 					},
 				],
 				default: 'table',
-				description: 'Resource to consume.',
 			},
 			...tableOperations,
 			...tableFields,
