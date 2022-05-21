@@ -20,6 +20,7 @@ export class WhatsApp implements INodeType {
         icon: 'file:whatsapp.svg',
         group: ['transform'],
         version: 1,
+								subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
         description: 'Access WhatsApp API',
         defaults: {
             name: 'WhatsApp',
@@ -34,8 +35,19 @@ export class WhatsApp implements INodeType {
           },
         ],
         properties: [
-            // Node properties which the user gets displayed and
-            // can change on the node.
+            {
+			    displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Messages',
+						value: 'messages',
+					}
+				],
+				default: 'messages',
+				description: 'The resource to operate on.',
+			}
         ],
     };
 
