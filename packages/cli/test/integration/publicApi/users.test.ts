@@ -8,6 +8,7 @@ import config = require('../../../config');
 import { SUCCESS_RESPONSE_BODY } from '../shared/constants';
 import { Role } from '../../../src/databases/entities/Role';
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../shared/random';
+import { isUserManagementDisabled } from '../../../src/UserManagement/UserManagementHelper';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
@@ -48,15 +49,7 @@ beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
 	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
 
-	await testDb.createUser({
-		id: INITIAL_TEST_USER.id,
-		email: INITIAL_TEST_USER.email,
-		password: INITIAL_TEST_USER.password,
-		firstName: INITIAL_TEST_USER.firstName,
-		lastName: INITIAL_TEST_USER.lastName,
-		globalRole: globalOwnerRole,
-		apiKey: INITIAL_TEST_USER.apiKey,
-	});
+	jest.mock('../../../config');
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -68,12 +61,12 @@ afterAll(async () => {
 });
 
 test('GET /users should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
-		auth: false,
+		auth: true,
 		user: owner,
 	});
 
@@ -85,14 +78,14 @@ test('GET /users should fail due to missing API Key', async () => {
 });
 
 test('GET /users should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
-		auth: false,
+		auth: true,
 		user: owner,
 	});
 
@@ -117,9 +110,11 @@ test('GET /users should fail due to member trying to access owner only endpoint'
 });
 
 test('GET /users should fail due to instance owner not setup', async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
+	// @ts-ignore
+	isUserManagementDisabled = jest.fn().mockReturnValue(true);
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	let owner = await testDb.createUserShell(globalOwnerRole);
+	owner = await testDb.addApiKey(owner);
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -136,7 +131,8 @@ test('GET /users should fail due to instance owner not setup', async () => {
 test('GET /users should fail due to UM disabled', async () => {
 	config.set('userManagement.disabled', true);
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	let owner = await testDb.createUserShell(globalOwnerRole);
+	owner = await testDb.addApiKey(owner);
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -151,7 +147,7 @@ test('GET /users should fail due to UM disabled', async () => {
 });
 
 test('GET /users should return all users', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -198,12 +194,12 @@ test('GET /users should return all users', async () => {
 });
 
 test('GET /users/:identifier should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
-		auth: false,
+		auth: true,
 		user: owner,
 	});
 
@@ -215,14 +211,14 @@ test('GET /users/:identifier should fail due to missing API Key', async () => {
 });
 
 test('GET /users/:identifier should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
-		auth: false,
+		auth: true,
 		user: owner,
 	});
 
@@ -249,7 +245,8 @@ test('GET /users/:identifier should fail due to member trying to access owner on
 test('GET /users/:identifier should fail due no instance owner not setup', async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	let owner = await testDb.createUserShell(globalOwnerRole);
+	owner = await testDb.addApiKey(owner);
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -263,8 +260,8 @@ test('GET /users/:identifier should fail due no instance owner not setup', async
 	expect(response.statusCode).toBe(500);
 });
 
-test('GET /users/:email with unexisting email should return 404', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+test('GET /users/:email with non-existing email should return 404', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -278,8 +275,8 @@ test('GET /users/:email with unexisting email should return 404', async () => {
 	expect(response.statusCode).toBe(404);
 });
 
-test('GET /users/:id with unexisting id should return 404', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+test('GET /users/:id with non-existing id should return 404', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -288,13 +285,13 @@ test('GET /users/:id with unexisting id should return 404', async () => {
 		user: owner,
 	});
 
-	const response = await authOwnerAgent.get(`/users/test@gmail.com`);
+	const response = await authOwnerAgent.get(`/users/${uuid()}`);
 
 	expect(response.statusCode).toBe(404);
 });
 
 test('GET /users/:email should return a user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -335,7 +332,7 @@ test('GET /users/:email should return a user', async () => {
 });
 
 test('GET /users/:id should return a user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -375,12 +372,12 @@ test('GET /users/:id should return a user', async () => {
 });
 
 test('POST /users should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
-		auth: false,
+		auth: true,
 		user: owner,
 	});
 
@@ -392,14 +389,14 @@ test('POST /users should fail due to missing API Key', async () => {
 });
 
 test('POST /users should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		version: 1,
-		auth: false,
+		auth: true,
 		user: owner,
 	});
 
@@ -428,7 +425,7 @@ test('POST /users should fail due to member trying to access owner only endpoint
 test('POST /users should fail due instance owner not setup', async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -445,7 +442,7 @@ test('POST /users should fail due instance owner not setup', async () => {
 test('POST /users should fail due smtp email not setup', async () => {
 	config.set('userManagement.emails.mode', '');
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -460,7 +457,7 @@ test('POST /users should fail due smtp email not setup', async () => {
 });
 
 test('POST /users should fail due not valid body structure', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -475,7 +472,7 @@ test('POST /users should fail due not valid body structure', async () => {
 });
 
 test('POST /users should fail due invalid email', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -494,7 +491,7 @@ test('POST /users should fail due invalid email', async () => {
 });
 
 test('POST /users should invite member user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	await utils.configureSmtp();
 
@@ -526,11 +523,11 @@ test('POST /users should invite member user', async () => {
 });
 
 test('POST /users should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -543,13 +540,13 @@ test('POST /users should fail due to missing API Key', async () => {
 });
 
 test('DELETE /users/:identifier should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -577,7 +574,7 @@ test('DELETE /users/identifier should fail due to member trying to access owner 
 test('DELETE /users/:identifier should fail due instance owner not setup', async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -594,7 +591,7 @@ test('DELETE /users/:identifier should fail due instance owner not setup', async
 test('DELETE /users/:identifier should fail due instance owner not setup', async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -609,7 +606,7 @@ test('DELETE /users/:identifier should fail due instance owner not setup', async
 });
 
 test('DELETE /users/:identifier should fail due user triying to delete itself', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -624,7 +621,7 @@ test('DELETE /users/:identifier should fail due user triying to delete itself', 
 });
 
 test('DELETE /users/:email should delete user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const member = await testDb.createUser();
 
@@ -635,17 +632,17 @@ test('DELETE /users/:email should delete user', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.delete(`/users/${member.email}`).send([]);
+	const response = await authOwnerAgent.delete(`/users/${member.email}`);
 
 	expect(response.statusCode).toBe(200);
 
-	const savedMember = await Db.collections.User!.findOne({ email: member.email });
+	const savedMember = await Db.collections.User.findOne({ email: member.email });
 
 	expect(savedMember).toBe(undefined);
 });
 
 test('DELETE /users/:id should delete user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const member = await testDb.createUser();
 
@@ -656,17 +653,17 @@ test('DELETE /users/:id should delete user', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.delete(`/users/${member.id}`).send([]);
+	const response = await authOwnerAgent.delete(`/users/${member.id}`);
 
 	expect(response.statusCode).toBe(200);
 
-	const savedMember = await Db.collections.User!.findOne({ id: member.id });
+	const savedMember = await Db.collections.User.findOne({ id: member.id });
 
 	expect(savedMember).toBe(undefined);
 });
 
 test('DELETE /users/:id should delete user and transfer data to owner', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const member = await testDb.createUser();
 
@@ -688,7 +685,7 @@ test('DELETE /users/:id should delete user and transfer data to owner', async ()
 	expect(response.statusCode).toBe(200);
 
 	// make sure the user is deleted
-	const savedMember = await Db.collections.User!.findOne({ id: member.id });
+	const savedMember = await Db.collections.User.findOne({ id: member.id });
 
 	expect(savedMember).toBe(undefined);
 
@@ -702,7 +699,7 @@ test('DELETE /users/:id should delete user and transfer data to owner', async ()
 });
 
 test('DELETE /users/:email should delete user and transfer data to owner', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const member = await testDb.createUser();
 
@@ -724,7 +721,7 @@ test('DELETE /users/:email should delete user and transfer data to owner', async
 	expect(response.statusCode).toBe(200);
 
 	// make sure the user is deleted
-	const savedMember = await Db.collections.User!.findOne({ id: member.email });
+	const savedMember = await Db.collections.User.findOne({ id: member.email });
 
 	expect(savedMember).toBe(undefined);
 
@@ -738,7 +735,7 @@ test('DELETE /users/:email should delete user and transfer data to owner', async
 });
 
 test('DELETE /users/:email should fail due valid email not found in db', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -753,7 +750,7 @@ test('DELETE /users/:email should fail due valid email not found in db', async (
 });
 
 test('DELETE /users/:id should fail due valid id not found in db', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',

@@ -73,7 +73,6 @@ export = {
 			const { identifier: idToDelete } = req.params;
 			const { transferId = '', includeRole = false } = req.query;
 			const apiKeyUserOwner = req.user;
-
 			const users = await getUsers({
 				withIdentifiers: [idToDelete, transferId],
 				includeRole,

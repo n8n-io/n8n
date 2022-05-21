@@ -3,7 +3,10 @@
 import { RequestHandler } from 'express';
 import config = require('../../../../../config');
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
-import { isEmailSetUp } from '../../../../UserManagement/UserManagementHelper';
+import {
+	isEmailSetUp,
+	isUserManagementDisabled,
+} from '../../../../UserManagement/UserManagementHelper';
 import { UserRequest } from '../../../types';
 import { getGlobalMemberRole } from './users.service';
 
@@ -67,10 +70,7 @@ export const globalMemberRoleSetup: RequestHandler = async (
 };
 
 export const userManagmentEnabled: RequestHandler = async (req, res, next): Promise<any> => {
-	if (
-		config.getEnv('userManagement.disabled') ||
-		!config.getEnv('userManagement.isInstanceOwnerSetUp')
-	) {
+	if (isUserManagementDisabled()) {
 		return res.status(500).json({
 			message: 'Users endpoints can only be used with UM enabled and an instance owner setup',
 		});

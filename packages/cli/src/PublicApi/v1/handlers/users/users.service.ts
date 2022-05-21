@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
 import { validate as uuidValidate } from 'uuid';
-import { In } from 'typeorm';
+import { FindConditions, In } from 'typeorm';
 import { User } from '../../../../databases/entities/User';
 import type { Role } from '../../../../databases/entities/Role';
 import {
@@ -150,11 +150,29 @@ export async function getUsers(data: {
 	includeRole?: boolean;
 	withIdentifiers: string[];
 }): Promise<User[] | undefined> {
+	const conditions: FindConditions<User> = {};
+	const idIdentifiers: string[] = [];
+	const emailIdentifiers: string[] = [];
+
+	data.withIdentifiers
+		.filter((identifier) => !!identifier)
+		.forEach((identifier) => {
+			if (uuidValidate(identifier)) {
+				idIdentifiers.push(identifier);
+			} else {
+				emailIdentifiers.push(identifier);
+			}
+		});
+
+	if (idIdentifiers.length) {
+		conditions.id = In(idIdentifiers);
+	}
+	if (emailIdentifiers.length) {
+		conditions.email = In(emailIdentifiers);
+	}
+
 	return Db.collections.User?.find({
-		where: {
-			...(uuidValidate(data.withIdentifiers[0]) && { id: In(data.withIdentifiers) }),
-			...(!uuidValidate(data.withIdentifiers[0]) && { email: In(data.withIdentifiers) }),
-		},
+		where: conditions,
 		relations: data?.includeRole ? ['globalRole'] : undefined,
 	});
 }

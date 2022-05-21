@@ -78,7 +78,7 @@ test('GET /executions/:executionId should fail due to missing API Key', async ()
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -95,7 +95,7 @@ test('GET /executions/:executionId should fail due to invalid API Key', async ()
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -159,7 +159,7 @@ test('DELETE /executions/:executionId should fail due to missing API Key', async
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -176,7 +176,7 @@ test('DELETE /executions/:executionId should fail due to invalid API Key', async
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -240,7 +240,7 @@ test('GET /executions should fail due to missing API Key', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -257,7 +257,7 @@ test('GET /executions should fail due to invalid API Key', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});

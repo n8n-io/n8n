@@ -20,7 +20,7 @@ let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 jest.mock('../../../src/telemetry');
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
+	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -65,7 +65,7 @@ test('GET /workflows should fail due to missing API Key', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -82,7 +82,7 @@ test('GET /workflows should fail due to invalid API Key', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -142,7 +142,7 @@ test('GET /workflows/:workflowId should fail due to missing API Key', async () =
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -159,7 +159,7 @@ test('GET /workflows/:workflowId should fail due to invalid API Key', async () =
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -220,7 +220,7 @@ test('DELETE /workflows/:workflowId should fail due to missing API Key', async (
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -237,7 +237,7 @@ test('DELETE /workflows/:workflowId should fail due to invalid API Key', async (
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -306,7 +306,7 @@ test('POST /workflows/:workflowId/activate should fail due to missing API Key', 
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -415,7 +415,7 @@ test('POST /workflows/:workflowId/deactivate should fail due to missing API Key'
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -528,7 +528,7 @@ test('POST /workflows should fail due to missing API Key', async () => {
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
@@ -648,7 +648,7 @@ test('PUT /workflows/:workflowId should fail due to missing API Key', async () =
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
-		auth: false,
+		auth: true,
 		user: owner,
 		version: 1,
 	});
