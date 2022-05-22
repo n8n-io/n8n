@@ -86,7 +86,6 @@ export class Todoist implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Authentication method to use',
 			},
 			{
 				displayName: 'Resource',

@@ -7,6 +7,7 @@ export const buildOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const buildOperations: INodeProperties[] = [
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -219,10 +219,6 @@ export const buildFields: INodeProperties[] = [
 					{
 						name: 'Started At',
 						value: 'started_at',
-					},
-					{
-						name: 'Finished At',
-						value: 'finished_at',
 					},
 					{
 						name: 'Finished At',

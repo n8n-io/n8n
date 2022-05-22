@@ -7,8 +7,8 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getBalances',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Balances',

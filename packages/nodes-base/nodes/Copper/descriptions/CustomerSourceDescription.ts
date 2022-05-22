@@ -7,6 +7,7 @@ export const customerSourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -21,7 +22,6 @@ export const customerSourceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'Operation to perform',
 	},
 ];
 
