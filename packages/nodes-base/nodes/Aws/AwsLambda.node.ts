@@ -38,6 +38,7 @@ export class AwsLambda implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Invoke',
@@ -46,7 +47,6 @@ export class AwsLambda implements INodeType {
 					},
 				],
 				default: 'invoke',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Function',

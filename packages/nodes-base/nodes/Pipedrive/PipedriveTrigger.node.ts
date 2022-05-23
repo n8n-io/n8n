@@ -109,7 +109,6 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Incoming Authentication',

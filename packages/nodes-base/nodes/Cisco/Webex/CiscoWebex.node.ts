@@ -55,6 +55,7 @@ export class CiscoWebex implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Meeting',
@@ -70,7 +71,6 @@ export class CiscoWebex implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume',
 			},
 			...meetingOperations,
 			...meetingFields,

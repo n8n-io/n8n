@@ -51,7 +51,6 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Operation',
@@ -72,7 +71,6 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'User Key',

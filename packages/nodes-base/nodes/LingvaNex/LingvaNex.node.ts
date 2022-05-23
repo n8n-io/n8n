@@ -40,6 +40,7 @@ export class LingvaNex implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Translate',
@@ -48,7 +49,6 @@ export class LingvaNex implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All

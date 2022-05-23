@@ -57,6 +57,7 @@ export class Raindrop implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Bookmark',
@@ -76,7 +77,6 @@ export class Raindrop implements INodeType {
 					},
 				],
 				default: 'collection',
-				description: 'Resource to consume',
 			},
 			...bookmarkOperations,
 			...bookmarkFields,

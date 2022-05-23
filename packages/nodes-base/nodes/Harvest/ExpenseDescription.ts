@@ -11,6 +11,7 @@ export const expenseOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -44,7 +45,6 @@ export const expenseOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -173,7 +173,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                expense:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense Id',
+		displayName: 'Expense ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -193,7 +193,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                expense:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense Id',
+		displayName: 'Expense ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -213,7 +213,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                expense:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
 		displayOptions: {
@@ -229,7 +229,7 @@ export const expenseFields: INodeProperties[] = [
 		description: 'The ID of the project associated with this expense',
 	},
 	{
-		displayName: 'Expense Category Id',
+		displayName: 'Expense Category ID',
 		name: 'expenseCategoryId',
 		type: 'string',
 		displayOptions: {
@@ -304,7 +304,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'The quantity of units to use in calculating the total_cost of the expense',
 			},
 			{
-				displayName: 'User Id',
+				displayName: 'User ID',
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
@@ -317,7 +317,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                invoice:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Id',
+		displayName: 'Invoice ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -355,7 +355,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Whether this expense is billable or not. Defaults to true.',
 			},
 			{
-				displayName: 'Expense Category Id',
+				displayName: 'Expense Category ID',
 				name: 'expense_category_id',
 				type: 'string',
 				default: '',
@@ -369,7 +369,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Notes about the expense',
 			},
 			{
-				displayName: 'Project Id',
+				displayName: 'Project ID',
 				name: 'project_id',
 				type: 'string',
 				default: '',
@@ -397,7 +397,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'The quantity of units to use in calculating the total_cost of the expense',
 			},
 			{
-				displayName: 'User Id',
+				displayName: 'User ID',
 				name: 'user_id',
 				type: 'boolean',
 				default: true,

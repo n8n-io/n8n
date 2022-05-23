@@ -8,7 +8,6 @@ export const campaignOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'get',
-		description: 'Operation to perform',
 		noDataExpression: true,
 		options: [
 			{

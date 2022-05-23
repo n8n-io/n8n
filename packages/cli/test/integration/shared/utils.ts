@@ -26,6 +26,7 @@ import { credentialsController } from '../../../src/api/credentials.api';
 import type { User } from '../../../src/databases/entities/User';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
 
 /**
  * Initialize a test server.
@@ -227,6 +228,21 @@ export async function configureSmtp() {
 	config.set('userManagement.emails.smtp.secure', secure);
 	config.set('userManagement.emails.smtp.auth.user', user);
 	config.set('userManagement.emails.smtp.auth.pass', pass);
+}
+
+export async function isTestSmtpServiceAvailable() {
+	try {
+		await configureSmtp();
+		await UserManagementMailer.getInstance();
+		return true;
+	} catch (_) {
+		return false;
+	}
+}
+
+export function skipSmtpTest(expect: jest.Expect) {
+	console.warn(`SMTP service unavailable - Skipping test ${expect.getState().currentTestName}`);
+	return;
 }
 
 // ----------------------------------
