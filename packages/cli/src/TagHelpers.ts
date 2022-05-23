@@ -142,11 +142,7 @@ export async function setTagsForImport(
 		return;
 	}
 	for (let i = 0; i < workflowTags.length; i++) {
-		if (
-			workflowTags[i] &&
-			typeof workflowTags[i].name !== 'undefined' &&
-			typeof workflowTags[i].id !== 'undefined'
-		) {
+		if (workflowTags[i] && typeof workflowTags[i].name !== 'undefined') {
 			// eslint-disable-next-line no-await-in-loop
 			const tag = await findOrCreateTag(transactionManager, workflowTags[i], tags);
 			workflowTags[i] = {
