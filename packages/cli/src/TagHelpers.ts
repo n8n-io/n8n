@@ -95,7 +95,11 @@ const createTag = async (transactionManager: EntityManager, name: string): Promi
 	return transactionManager.save<TagEntity>(tag);
 };
 
-const findOrCreateTag = async (transactionManager: EntityManager, importTag: ITagToImport, tagsEntities: TagEntity[]): Promise<TagEntity> => {
+const findOrCreateTag = async (
+	transactionManager: EntityManager,
+	importTag: ITagToImport,
+	tagsEntities: TagEntity[],
+): Promise<TagEntity> => {
 	// Assume tag is identical if createdAt date is the same to preserve a changed tag name
 	const identicalMatch = tagsEntities.find(
 		(existingTag) =>
@@ -132,15 +136,18 @@ export async function setTagsForImport(
 	workflow: { tags: ITagToImport[] },
 	tags: TagEntity[],
 ): Promise<void> {
-
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const workflowTags = workflow.tags;
 	if (!workflowTags || !Array.isArray(workflowTags) || workflowTags.length === 0) {
 		return;
 	}
 	for (let i = 0; i < workflowTags.length; i++) {
-		// eslint-disable-next-line no-await-in-loop
-		if (workflowTags[i] && typeof workflowTags[i].name !== 'undefined' && typeof workflowTags[i].id !== 'undefined') {
+		if (
+			workflowTags[i] &&
+			typeof workflowTags[i].name !== 'undefined' &&
+			typeof workflowTags[i].id !== 'undefined'
+		) {
+			// eslint-disable-next-line no-await-in-loop
 			const tag = await findOrCreateTag(transactionManager, workflowTags[i], tags);
 			workflowTags[i] = {
 				id: tag.id,
@@ -149,4 +156,3 @@ export async function setTagsForImport(
 		}
 	}
 }
-

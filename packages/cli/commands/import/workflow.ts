@@ -17,7 +17,7 @@ import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
-import { Db, ICredentialsDb, ITagToImport } from '../../src';
+import { Db, ICredentialsDb, ITagToImport, IWorkflowToImport } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
@@ -26,6 +26,14 @@ import { setTagsForImport } from '../../src/TagHelpers';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
+
+function assertWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
+	if (!Array.isArray(workflows)) {
+		throw new Error(
+			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
+		);
+	}
+}
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -113,7 +121,7 @@ export class ImportWorkflowsCommand extends Command {
 							});
 						}
 
-						if (workflow.hasOwnProperty('tags')) {
+						if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
 							await setTagsForImport(
 								transactionManager,
 								workflow as { tags: ITagToImport[] },
@@ -133,11 +141,7 @@ export class ImportWorkflowsCommand extends Command {
 
 			totalImported = workflows.length;
 
-			if (!Array.isArray(workflows)) {
-				throw new Error(
-					'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
-				);
-			}
+			assertWorkflowsToImport(workflows);
 
 			await getConnection().transaction(async (transactionManager) => {
 				this.transactionManager = transactionManager;
@@ -149,12 +153,8 @@ export class ImportWorkflowsCommand extends Command {
 						});
 					}
 
-					if (workflow.hasOwnProperty('tags')) {
-						await setTagsForImport(
-							transactionManager,
-							workflow as { tags: ITagToImport[] },
-							tags,
-						);
+					if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
+						await setTagsForImport(transactionManager, workflow, tags);
 					}
 
 					await this.storeWorkflow(workflow, user);

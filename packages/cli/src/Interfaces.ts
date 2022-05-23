@@ -141,6 +141,10 @@ export interface IWorkflowDb extends IWorkflowBase {
 	tags: ITagDb[];
 }
 
+export interface IWorkflowToImport extends IWorkflowBase {
+	tags: ITagToImport[];
+}
+
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
