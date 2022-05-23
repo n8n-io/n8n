@@ -122,11 +122,7 @@ export class ImportWorkflowsCommand extends Command {
 						}
 
 						if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
-							await setTagsForImport(
-								transactionManager,
-								workflow as { tags: ITagToImport[] },
-								tags,
-							);
+							await setTagsForImport(transactionManager, workflow, tags);
 						}
 
 						await this.storeWorkflow(workflow, user);
