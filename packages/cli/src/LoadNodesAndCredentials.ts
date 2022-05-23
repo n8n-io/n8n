@@ -425,7 +425,11 @@ class LoadNodesAndCredentialsClass {
 				);
 			}
 		} else {
-			nodeVersion = (tempNode as INodeType).description.version;
+			// Short renaming to avoid type issues
+			const tmpNode = tempNode as INodeType;
+			nodeVersion = Array.isArray(tmpNode.description.version)
+				? tmpNode.description.version.slice(-1)[0]
+				: tmpNode.description.version;
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
