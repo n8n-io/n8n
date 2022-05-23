@@ -1277,7 +1277,7 @@ export default mixins(
 						})
 							.filter((id) => !!id);
 
-						this.$store.commit('setWorkflowTagIds', tagIds || []);
+						this.$store.commit('addWorkflowTagIds', tagIds || []);
 					}
 
 				} catch (error) {
