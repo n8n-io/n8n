@@ -17,7 +17,7 @@ import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
-import { Db, ICredentialsDb, ITagToImport, IWorkflowToImport } from '../../src';
+import { Db, ICredentialsDb, IWorkflowToImport } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
