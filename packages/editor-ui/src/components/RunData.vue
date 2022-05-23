@@ -3,21 +3,7 @@
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
-			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
-				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
-					<div>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
-					</div>
-				</n8n-info-tip>
-
-				<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasNodeRun && staleData">
-					<template>
-						<span v-html="$locale.baseText('ndv.output.staleDataWarning')"></span>
-					</template>
-				</n8n-info-tip>
-			</div>
+			<slot name="header"></slot>
 
 			<div v-if="!hasRunError" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
@@ -29,19 +15,27 @@
 		</div>
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
-			<n8n-select size="small" v-model="runIndex" @click.stop>
+			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop>
 				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
+
+
+			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" type="text" size="small" @click="linkRun" />
+			</n8n-tooltip>
+
+			<slot name="run-info"></slot>
 		</div>
 
 		<div v-if="maxOutputIndex > 0" :class="{[$style.tabs]: displayMode === 'table'}">
-			<n8n-tabs v-model="outputIndex" :options="branches" />
+			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
 		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
 			<n8n-text>
-				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'ndv.output.item' : 'ndv.output.items') }}
+				{{ dataCount }} {{ $locale.baseText('ndv.output.items', {adjustToNumber: dataCount}) }}
 			</n8n-text>
 		</div>
 
@@ -65,44 +59,47 @@
 				</el-dropdown>
 			</div>
 
-			<div v-if="!hasNodeRun" :class="$style.center">
-				<div v-if="workflowRunning">
-					<div :class="$style.spinner"><n8n-spinner /></div>
-					<n8n-text>{{ $locale.baseText('ndv.output.executing') }}</n8n-text>
-				</div>
-				<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
-				<n8n-text v-else-if="isTriggerNode && !isScheduleTrigger">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
-				<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+			<div v-if="isExecuting" :class="$style.center">
+				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
+				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">
+			<div v-else-if="!hasNodeRun" :class="$style.center">
+				<slot name="node-not-run"></slot>
+			</div>
+
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
 				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
 				<n8n-text>
-					{{ $locale.baseText('ndv.output.noOutputDataInBranch') }}
+					{{ noDataInBranchMessage }}
 				</n8n-text>
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
-				<n8n-text>
-					{{ $locale.baseText('ndv.output.noOutputData.message') }}
-					<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
-					{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
-				</n8n-text>
+				<slot name="no-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('ndv.output.tooMuchData.title') }}</n8n-text>
+				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
 				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('ndv.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
 
 				<n8n-button
 					type="outline"
 					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
-					@click="showData = true"
+					@click="showTooMuchData"
 				/>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0 && binaryData.length > 0" :class="$style.center">
+				<n8n-text>
+					{{ $locale.baseText('runData.switchToBinary.info') }}
+					<a @click="switchToBinary">
+						{{ $locale.baseText('runData.switchToBinary.binary') }}
+					</a>
+				</n8n-text>
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
@@ -112,7 +109,7 @@
 					</tr>
 					<tr v-for="(row, index1) in tableData.data" :key="index1">
 						<td>
-							<n8n-text>{{ $locale.baseText('ndv.output.emptyOutput') }}</n8n-text>
+							<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
 						</td>
 					</tr>
 				</table>
@@ -198,6 +195,7 @@
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
+				@current-change="onCurrentPageChange"
 				:total="dataCount">
 			</el-pagination>
 
@@ -241,6 +239,7 @@ import {
 	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
+	IRunDataDisplayMode,
 	ITab,
 	ITableData,
 } from '@/Interface';
@@ -260,7 +259,6 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import Vue from 'vue/types/umd';
 
 import { saveAs } from 'file-saver';
 
@@ -281,17 +279,49 @@ export default mixins(
 			VueJsonPretty,
 			WarningTooltip,
 		},
+		props: {
+			nodeUi: {
+			}, // INodeUi | null
+			runIndex: {
+				type: Number,
+			},
+			linkedRuns: {
+				type: Boolean,
+			},
+			canLinkRuns: {
+				type: Boolean,
+			},
+			tooMuchDataTitle: {
+				type: String,
+			},
+			noDataInBranchMessage: {
+				type: String,
+			},
+			isExecuting: {
+				type: Boolean,
+			},
+			executingMessage: {
+				type: String,
+			},
+			sessionId: {
+				type: String,
+			},
+			paneType: {
+				type: String,
+			},
+			overrideOutputs: {
+				type: Array,
+			},
+		},
 		data () {
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: 'table',
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
 				},
-				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
@@ -308,20 +338,20 @@ export default mixins(
 			this.init();
 		},
 		computed: {
+			activeNode(): INodeUi {
+				return this.$store.getters.activeNode;
+			},
+			displayMode(): IRunDataDisplayMode {
+				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
+			},
+			node(): INodeUi | null {
+				return (this.nodeUi as INodeUi | null) || null;
+			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
-			},
-			isTriggerNode (): boolean {
-				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
-			},
-			isPollingTypeNode (): boolean {
-				return !!(this.nodeType && this.nodeType.polling);
-			},
-			isScheduleTrigger (): boolean {
-				return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
@@ -337,13 +367,10 @@ export default mixins(
 				return defaults;
 			},
 			hasNodeRun(): boolean {
-				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+				return Boolean(!this.isExecuting && this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
@@ -358,48 +385,8 @@ export default mixins(
 				}
 				return null;
 			},
-			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
-			},
-			runTaskData (): ITaskData | null {
-				if (!this.node || this.workflowExecution === null) {
-					return null;
-				}
-
-				const runData = this.workflowRunData;
-
-				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-					return null;
-				}
-
-				if (runData[this.node.name].length <= this.runIndex) {
-					return null;
-				}
-
-				return runData[this.node.name][this.runIndex];
-			},
-			runMetadata (): {executionTime: number, startTime: string} | null {
-				if (!this.runTaskData) {
-					return null;
-				}
-				return {
-					executionTime: this.runTaskData.executionTime,
-					startTime: new Date(this.runTaskData.startTime).toLocaleString(),
-				};
-			},
-			staleData(): boolean {
-				if (!this.node) {
-					return false;
-				}
-				const updatedAt = this.$store.getters.getParametersLastUpdated(this.node.name);
-				if (!updatedAt || !this.runTaskData) {
-					return false;
-				}
-				const runAt = this.runTaskData.startTime;
-				return updatedAt > runAt;
-			},
 			dataCount (): number {
-				return this.getDataCount(this.runIndex, this.outputIndex);
+				return this.getDataCount(this.runIndex, this.currentOutputIndex);
 			},
 			dataSizeInMB(): string {
 				return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -419,13 +406,14 @@ export default mixins(
 					return 0;
 				}
 
-				if (runData[this.node.name][this.runIndex].data === undefined ||
-					runData[this.node.name][this.runIndex].data!.main === undefined
-				) {
-					return 0;
+				if (runData[this.node.name][this.runIndex]) {
+					const taskData = runData[this.node.name][this.runIndex].data;
+					if (taskData && taskData.main) {
+						return taskData.main.length - 1;
+					}
 				}
 
-				return runData[this.node.name][this.runIndex].data!.main.length - 1;
+				return 0;
 			},
 			maxRunIndex (): number {
 				if (this.node === null) {
@@ -445,7 +433,7 @@ export default mixins(
 				return 0;
 			},
 			inputData (): INodeExecutionData[] {
-				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				let inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
 				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
 				}
@@ -462,11 +450,18 @@ export default mixins(
 				return this.convertToTable(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
-				if (this.node === null) {
+				if (!this.node) {
 					return [];
 				}
 
-				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
+				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
+			},
+			currentOutputIndex(): number {
+				if (this.overrideOutputs && this.overrideOutputs.length && !this.overrideOutputs.includes(this.outputIndex)) {
+					return this.overrideOutputs[0] as number;
+				}
+
+				return this.outputIndex;
 			},
 			branches (): ITab[] {
 				function capitalize(name: string) {
@@ -474,8 +469,11 @@ export default mixins(
 				}
 				const branches: ITab[] = [];
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
+					if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
+						continue;
+					}
 					const itemsCount = this.getDataCount(this.runIndex, i);
-					const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
+					const items = this.$locale.baseText('ndv.output.items', {adjustToNumber: itemsCount});
 					let outputName = this.getOutputName(i);
 					if (`${outputName}` === `${i}`) {
 						outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
@@ -492,16 +490,67 @@ export default mixins(
 			},
 		},
 		methods: {
+			switchToBinary() {
+				this.onDisplayModeChange('binary');
+			},
+			onBranchChange(value: number) {
+				this.outputIndex = value;
+
+				this.$telemetry.track('User changed ndv branch', {
+					session_id: this.sessionId,
+					branch_index: value,
+					node_type: this.activeNode.type,
+					node_type_input_selection: this.nodeType? this.nodeType.name: '',
+					pane: this.paneType,
+				});
+			},
+			showTooMuchData() {
+				this.showData = true;
+				this.$telemetry.track('User clicked ndv button', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					type: 'showTooMuchData',
+				});
+			},
+			linkRun() {
+				this.$emit('linkRun');
+			},
+			unlinkRun() {
+				this.$emit('unlinkRun');
+			},
+			onCurrentPageChange() {
+				this.$telemetry.track('User changed ndv page', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					page_selected: this.currentPage,
+					page_size: this.pageSize,
+					items_total: this.dataCount,
+				});
+			},
 			onPageSizeChange(pageSize: number) {
 				this.pageSize = pageSize;
 				const maxPage = Math.ceil(this.dataCount / this.pageSize);
 				if (maxPage < this.currentPage) {
 					this.currentPage = maxPage;
 				}
+
+				this.$telemetry.track('User changed ndv page size', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					page_selected: this.currentPage,
+					page_size: this.pageSize,
+					items_total: this.dataCount,
+				});
 			},
-			onDisplayModeChange(displayMode: string) {
+			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.displayMode = displayMode;
+				this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {
@@ -514,9 +563,15 @@ export default mixins(
 
 				this.closeBinaryDataDisplay();
 				this.$externalHooks().run('runData.displayModeChanged', { newValue: displayMode, oldValue: previous });
-				if(this.node) {
-					const nodeType = this.node ? this.node.type : '';
-					this.$telemetry.track('User changed node output view mode', { old_mode: previous, new_mode: displayMode, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
+				if(this.activeNode) {
+					this.$telemetry.track('User changed ndv item view', {
+						previous_view: previous,
+						new_view: displayMode,
+						node_type: this.activeNode.type,
+						workflow_id: this.$store.getters.workflowId,
+						session_id: this.sessionId,
+						pane: this.paneType,
+					});
 				}
 			},
 			getRunLabel(option: number) {
@@ -524,7 +579,7 @@ export default mixins(
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
 					itemsCount += this.getDataCount(option - 1, i);
 				}
-				const items = this.$locale.baseText(itemsCount === 1 ? 'ndv.output.item': 'ndv.output.items');
+				const items = this.$locale.baseText('ndv.output.items', {adjustToNumber: itemsCount});
 				const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 				return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex+1) + itemsLabel;
 			},
@@ -557,18 +612,16 @@ export default mixins(
 
 				return inputData.length;
 			},
-			openSettings() {
-				this.$emit('openSettings');
-			},
 			init() {
 				// Reset the selected output index every time another node gets selected
 				this.outputIndex = 0;
 				this.refreshDataSize();
-				if (this.displayMode === 'binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'table';
-					}
+				this.closeBinaryDataDisplay();
+				if (this.binaryData.length > 0) {
+					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'binary'});
+				}
+				else if (this.displayMode === 'binary') {
+					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'table'});
 				}
 			},
 			closeBinaryDataDisplay () {
@@ -671,7 +724,7 @@ export default mixins(
 				this.binaryDataDisplayData = {
 					node: this.node!.name,
 					runIndex: this.runIndex,
-					outputIndex: this.outputIndex,
+					outputIndex: this.currentOutputIndex,
 					index,
 					key,
 				};
@@ -760,7 +813,7 @@ export default mixins(
 				this.showData = false;
 
 				// Check how much data there is to display
-				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
 
 				const offset = this.pageSize * (this.currentPage - 1);
 				const jsonItems = inputData.slice(offset, offset + this.pageSize).map(item => item.json);
@@ -772,6 +825,9 @@ export default mixins(
 					this.showData = true;
 				}
 			},
+			onRunIndexChange(run: number) {
+				this.$emit('runChange', run);
+			},
 		},
 		watch: {
 			node() {
@@ -780,8 +836,13 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			maxRunIndex () {
-				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
+			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
+				if (newData.length && !prevData.length && this.displayMode !== 'binary') {
+					this.switchToBinary();
+				}
+				else if (!newData.length && this.displayMode === 'binary') {
+					this.onDisplayModeChange('table');
+				}
 			},
 		},
 	});
@@ -798,7 +859,7 @@ export default mixins(
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
 	text-align: center;
 
 	> * {
@@ -807,39 +868,11 @@ export default mixins(
 	}
 }
 
-.spinner {
-	* {
-		color: var(--color-primary);
-		min-height: 40px;
-		min-width: 40px;
-	}
-
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--spacing-s);
-}
-
-.title {
-	text-transform: uppercase;
-	color: var(--color-text-light);
-	letter-spacing: 3px;
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
-}
-
-.titleSection {
-	display: flex;
-
-	> * {
-		margin-right: var(--spacing-2xs);
-	}
-}
-
 .container {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-light);
+	background-color: var(--color-background-base);
 	display: flex;
 	flex-direction: column;
 }
@@ -872,6 +905,11 @@ export default mixins(
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
+}
+
+.errorDisplay {
+	composes: dataDisplay;
+	padding-right: var(--spacing-s);
 }
 
 .jsonDisplay {
@@ -928,6 +966,11 @@ export default mixins(
 	max-width: 200px;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
+	display: flex;
+
+	> * {
+		margin-right: var(--spacing-4xs);
+	}
 }
 
 .copyButton {
@@ -1015,8 +1058,21 @@ export default mixins(
 }
 
 .displayModes {
-	position: absolute;
-	right: var(--spacing-s);
+	display: flex;
+	justify-content: flex-end;
+	flex-grow: 1;
+}
+
+.spinner {
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
+
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--spacing-s);
 }
 
 </style>

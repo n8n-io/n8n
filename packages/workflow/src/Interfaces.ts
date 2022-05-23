@@ -1457,3 +1457,9 @@ export interface ITelemetrySettings {
 	enabled: boolean;
 	config?: ITelemetryClientConfig;
 }
+
+export interface IConnectedNode {
+	name: string;
+	indicies: number[];
+	depth: number;
+}

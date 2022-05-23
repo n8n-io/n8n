@@ -46,7 +46,11 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import { IConnection, IDataObject, IObservableObject } from './Interfaces';
+import { IConnection, IDataObject, IConnectedNode, IObservableObject } from './Interfaces';
+
+function dedupe<T>(arr: T[]): T[] {
+	return [...new Set(arr)];
+}
 
 export class Workflow {
 	id: string | undefined;
@@ -711,6 +715,86 @@ export class Workflow {
 		});
 
 		return returnNodes;
+	}
+
+	/**
+	 * Returns all the nodes before the given one
+	 *
+	 * @param {string} nodeName
+	 * @param {*} [maxDepth=-1]
+	 * @returns {string[]}
+	 * @memberof Workflow
+	 */
+	getParentNodesByDepth(nodeName: string, maxDepth = -1): IConnectedNode[] {
+		return this.searchNodesBFS(this.connectionsByDestinationNode, nodeName, maxDepth);
+	}
+
+	/**
+	 * Gets all the nodes which are connected nodes starting from
+	 * the given one
+	 * Uses BFS traversal
+	 *
+	 * @param {IConnections} connections
+	 * @param {string} sourceNode
+	 * @param {*} [maxDepth=-1]
+	 * @returns {IConnectedNode[]}
+	 * @memberof Workflow
+	 */
+	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
+		const returnConns: IConnectedNode[] = [];
+
+		const type = 'main';
+		let queue: IConnectedNode[] = [];
+		queue.push({
+			name: sourceNode,
+			depth: 0,
+			indicies: [],
+		});
+
+		const visited: { [key: string]: IConnectedNode } = {};
+
+		let depth = 0;
+		while (queue.length > 0) {
+			if (maxDepth !== -1 && depth > maxDepth) {
+				break;
+			}
+			depth++;
+
+			const toAdd = [...queue];
+			queue = [];
+
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			toAdd.forEach((curr) => {
+				if (visited[curr.name]) {
+					visited[curr.name].indicies = dedupe(visited[curr.name].indicies.concat(curr.indicies));
+					return;
+				}
+
+				visited[curr.name] = curr;
+				if (curr.name !== sourceNode) {
+					returnConns.push(curr);
+				}
+
+				if (
+					!connections.hasOwnProperty(curr.name) ||
+					!connections[curr.name].hasOwnProperty(type)
+				) {
+					return;
+				}
+
+				connections[curr.name][type].forEach((connectionsByIndex) => {
+					connectionsByIndex.forEach((connection) => {
+						queue.push({
+							name: connection.node,
+							indicies: [connection.index],
+							depth,
+						});
+					});
+				});
+			});
+		}
+
+		return returnConns;
 	}
 
 	/**
