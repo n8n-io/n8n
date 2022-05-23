@@ -740,13 +740,8 @@ export class Workflow {
 	 * @returns {IConnectedNode[]}
 	 * @memberof Workflow
 	 */
-	searchNodesBFS(
-		connections: IConnections,
-		sourceNode: string,
-		maxDepth = -1,
-	): IConnectedNode[] {
-
-		const returnConns: IConnectedNode[] =[];
+	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
+		const returnConns: IConnectedNode[] = [];
 
 		const type = 'main';
 		let queue: IConnectedNode[] = [];
@@ -756,7 +751,7 @@ export class Workflow {
 			indicies: [],
 		});
 
-		const visited: {[key: string]: IConnectedNode} = {};
+		const visited: { [key: string]: IConnectedNode } = {};
 
 		let depth = 0;
 		while (queue.length > 0) {
@@ -779,7 +774,10 @@ export class Workflow {
 					returnConns.push(curr);
 				}
 
-				if (!connections.hasOwnProperty(curr.name) || !connections[curr.name].hasOwnProperty(type)) {
+				if (
+					!connections.hasOwnProperty(curr.name) ||
+					!connections[curr.name].hasOwnProperty(type)
+				) {
 					return;
 				}
 
