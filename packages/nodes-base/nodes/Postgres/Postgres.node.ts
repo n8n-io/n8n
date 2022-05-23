@@ -228,6 +228,13 @@ export class Postgres implements INodeType {
 						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 					},
 					{
+						displayName: 'Parse INT8(bigInt) And NUMERIC',
+						name: 'parseNumeric',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to parse INT8(bigInt) and NUMERIC values or return them as strings',
+					},
+					{
 						displayName: 'Query Parameters',
 						name: 'queryParams',
 						type: 'string',
@@ -249,8 +256,18 @@ export class Postgres implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('postgres');
+		const parseNumeric = this.getNodeParameter('additionalFields.parseNumeric', 0, false) as boolean;
 
 		const pgp = pgPromise();
+
+		if (parseNumeric) {
+			pgp.pg.types.setTypeParser(20, (value: string) => {
+				return parseInt(value, 10);
+			});
+			pgp.pg.types.setTypeParser(1700, (value: string) => {
+				return parseFloat(value);
+			});
+		}
 
 		const config: IDataObject = {
 			host: credentials.host as string,
