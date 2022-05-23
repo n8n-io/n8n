@@ -96,6 +96,12 @@ Outline.args = {
 	label: 'Button',
 };
 
+export const Tertiary = ManyTemplate.bind({});
+Tertiary.args = {
+	type: 'tertiary',
+	label: 'Button',
+};
+
 export const Light = ManyTemplate.bind({});
 Light.args = {
 	type: 'light',
