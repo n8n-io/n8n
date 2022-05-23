@@ -732,13 +732,12 @@ export class Workflow {
 	/**
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
+	 * Uses BFS traversal
 	 *
 	 * @param {IConnections} connections
-	 * @param {string} nodeName
-	 * @param {string} [type='main']
-	 * @param {*} [depth=-1]
-	 * @param {string[]} [checkedNodes]
-	 * @returns {string[]}
+	 * @param {string} sourceNode
+	 * @param {*} [maxDepth=-1]
+	 * @returns {IConnectedNode[]}
 	 * @memberof Workflow
 	 */
 	searchNodesBFS(
