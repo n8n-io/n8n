@@ -21,19 +21,19 @@ describe('getDomainBase should return protocol plus domain', () => {
 	});
 });
 
-describe('getDomainPath should return pathname plus query string', () => {
-	describe('anonymizing numeric IDs', () => {
+describe('getDomainPath should return pathname, excluding query string', () => {
+	describe('anonymizing strings containing at least one number', () => {
 		test('in valid URLs', () => {
-			for (const url of validUrls(numericId)) {
-				const { full, pathnamePlusQs } = url;
-				expect(getDomainPath(full)).toBe(pathnamePlusQs);
+			for (const url of validUrls(alphanumericId)) {
+				const { full, pathname } = url;
+				expect(getDomainPath(full)).toBe(pathname);
 			}
 		});
 
 		test('in malformed URLs', () => {
-			for (const url of malformedUrls(numericId)) {
-				const { full, pathnamePlusQs } = url;
-				expect(getDomainPath(full)).toBe(pathnamePlusQs);
+			for (const url of malformedUrls(alphanumericId)) {
+				const { full, pathname } = url;
+				expect(getDomainPath(full)).toBe(pathname);
 			}
 		});
 	});
@@ -41,15 +41,15 @@ describe('getDomainPath should return pathname plus query string', () => {
 	describe('anonymizing UUIDs', () => {
 		test('in valid URLs', () => {
 			for (const url of uuidUrls(validUrls)) {
-				const { full, pathnamePlusQs } = url;
-				expect(getDomainPath(full)).toBe(pathnamePlusQs);
+				const { full, pathname } = url;
+				expect(getDomainPath(full)).toBe(pathname);
 			}
 		});
 
 		test('in malformed URLs', () => {
 			for (const url of uuidUrls(malformedUrls)) {
-				const { full, pathnamePlusQs } = url;
-				expect(getDomainPath(full)).toBe(pathnamePlusQs);
+				const { full, pathname } = url;
+				expect(getDomainPath(full)).toBe(pathname);
 			}
 		});
 	});
@@ -57,21 +57,21 @@ describe('getDomainPath should return pathname plus query string', () => {
 	describe('anonymizing emails', () => {
 		test('in valid URLs', () => {
 			for (const url of validUrls(email)) {
-				const { full, pathnamePlusQs } = url;
-				expect(getDomainPath(full)).toBe(pathnamePlusQs);
+				const { full, pathname } = url;
+				expect(getDomainPath(full)).toBe(pathname);
 			}
 		});
 
 		test('in malformed URLs', () => {
 			for (const url of malformedUrls(email)) {
-				const { full, pathnamePlusQs } = url;
-				expect(getDomainPath(full)).toBe(pathnamePlusQs);
+				const { full, pathname } = url;
+				expect(getDomainPath(full)).toBe(pathname);
 			}
 		});
 	});
 });
 
-function validUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
+function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	const firstId = idMaker();
 	const secondId = idMaker();
 	const firstIdObscured = char.repeat(firstId.length);
@@ -81,37 +81,42 @@ function validUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}`,
+			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}/`,
+			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
+			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
+			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
+			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users?id=${firstIdObscured}`,
+			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
 			protocolPlusDomain: 'https://test.com',
-			pathnamePlusQs: `/api/v1/users?id=${firstIdObscured}&post=${secondIdObscured}`,
+			pathname: '/api/v1/users',
+		},
+		{
+			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
+			protocolPlusDomain: 'https://test.com',
+			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
 }
@@ -126,22 +131,22 @@ function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		{
 			full: `test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
+			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'htp://test.com',
-			pathnamePlusQs: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
+			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `test.com/api/v1/users?id=${firstId}`,
 			protocolPlusDomain: 'test.com',
-			pathnamePlusQs: `/api/v1/users?id=${firstIdObscured}`,
+			pathname: '/api/v1/users',
 		},
 		{
 			full: `test.com/api/v1/users?id=${firstId}&post=${secondId}`,
 			protocolPlusDomain: 'test.com',
-			pathnamePlusQs: `/api/v1/users?id=${firstIdObscured}&post=${secondIdObscured}`,
+			pathname: '/api/v1/users',
 		},
 	];
 }
@@ -174,3 +179,13 @@ function positiveDigit(): number {
 function numericId(length = positiveDigit()) {
 	return Array.from({ length }, digit).join('');
 }
+
+function alphanumericId() {
+	return chooseRandomly([
+		`john${numericId()}`,
+		`title${numericId(1)}`,
+		numericId(),
+	]);
+}
+
+const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];

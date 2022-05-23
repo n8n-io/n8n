@@ -60,7 +60,7 @@ function areOverlapping(
 	);
 }
 
-const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathnamePlusQs>\/.*)/;
+const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
 
 export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
@@ -77,7 +77,9 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 }
 
 function isSensitive(segment: string) {
-	return /%40/.test(segment) || /^\d+$/.test(segment) || /^[0-9A-F]{8}/i.test(segment);
+	if (/^v\d+$/.test(segment)) return false;
+
+	return /%40/.test(segment) || /\d/.test(segment) || /^[0-9A-F]{8}/i.test(segment);
 }
 
 export const ANONYMIZATION_CHARACTER = '*';
@@ -89,26 +91,6 @@ function sanitizeRoute(raw: string, check = isSensitive, char = ANONYMIZATION_CH
 		.join('/');
 }
 
-function sanitizeQuery(raw: string, check = isSensitive, char = ANONYMIZATION_CHARACTER) {
-	return raw
-		.split('&')
-		.map((segment) => {
-			const [key, value] = segment.split('=');
-			return [key, check(value) ? char.repeat(value.length) : value].join('=');
-		})
-		.join('&');
-}
-
-function sanitizeUrl(raw: string) {
-	if (/\?/.test(raw)) {
-		const [route, query] = raw.split('?');
-
-		return [sanitizeRoute(route), sanitizeQuery(query)].join('?');
-	}
-
-	return sanitizeRoute(raw);
-}
-
 /**
  * Return pathname plus query string from URL, anonymizing IDs in route and query params.
  */
@@ -118,13 +100,16 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 
 		if (!url.hostname) throw new Error('Malformed URL');
 
-		return sanitizeUrl(url.pathname + url.search);
+		return sanitizeRoute(url.pathname);
 	} catch (_) {
 		const match = urlParts.exec(raw);
 
-		if (!match?.groups?.pathnamePlusQs) return '';
+		if (!match?.groups?.pathname) return '';
 
-		return sanitizeUrl(match.groups.pathnamePlusQs);
+		// discard query string
+		const route = match.groups.pathname.split('?').shift() as string;
+
+		return sanitizeRoute(route);
 	}
 }
 
@@ -191,6 +176,7 @@ export function generateNodesGraph(
 
 				nodeItem.domain_base = getDomainBase(url);
 				nodeItem.domain_path = getDomainPath(url);
+				nodeItem.method = node.parameters.requestMethod as string;
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
