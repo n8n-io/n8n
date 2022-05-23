@@ -209,12 +209,10 @@ export class Gmail implements INodeType {
 					'/gmail/v1/users/me/labels',
 				);
 				for (const label of labels) {
-					if (label.type === 'user') {
-						returnData.push({
-							name: label.name,
-							value: label.id,
-						});
-					}
+					returnData.push({
+						name: label.name,
+						value: label.id,
+					});
 				}
 				return returnData.sort((a, b) => {
 					if (a.name < b.name) { return -1; }
@@ -909,8 +907,6 @@ export class Gmail implements INodeType {
 						if (responseData === undefined) {
 							responseData = [];
 						}
-
-						returnData.push(...responseData);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
