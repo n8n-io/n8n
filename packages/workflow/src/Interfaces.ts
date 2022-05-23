@@ -1444,6 +1444,7 @@ export interface INodeGraphItem {
 	mode?: string;
 	credential_type?: string; // HTTP Request node v2
 	credential_set?: boolean; // HTTP Request node v2
+	method?: string; // HTTP Request node v2
 }
 
 export interface INodeNameIndex {
