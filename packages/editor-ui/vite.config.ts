@@ -11,7 +11,7 @@ export default {
 		createHtmlPlugin({
 			inject: {
 				data: {
-					publicPath,
+					BASE_PATH: publicPath,
 				},
 			},
 		}),
