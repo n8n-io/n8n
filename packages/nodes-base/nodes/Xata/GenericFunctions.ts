@@ -60,7 +60,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 		const columns = (this.getNodeParameter('columns', index, []) as string[])?.map(el => typeof el === 'string' ? el.trim() : null) as string[];
 		const ignore = false;
-		const returnData = filterItemsColumns(item, columns, ignore);
+		const returnData = filterItemColumns(item, columns, ignore);
 		return returnData;
 
 	} else {
@@ -71,7 +71,7 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 			const columns = additionalOptions['ignoreColumns'] as string[];
 			const ignore = true;
-			const returnData = filterItemsColumns(item, columns, ignore);
+			const returnData = filterItemColumns(item, columns, ignore);
 			return returnData;
 
 		} else {
@@ -84,24 +84,10 @@ export function getItem(this: IExecuteFunctions, index: number, item: IDataObjec
 
 }
 
-export function filterItemsColumns(item: IDataObject, filterColumns: string[], ignore: boolean) {
+export function filterItemColumns(item: IDataObject, filterColumns: string[], ignore: boolean) {
 
 	const returnData = ignore ? item : {} as IDataObject; // if ignore column option is used, take the data and eliminate columns
-
-	for (const key of filterColumns) {
-
-		if (ignore) {
-
-			delete returnData[key];
-
-		} else {
-
-			returnData[key] = item[key];
-
-		}
-
-	}
-
+	filterColumns.forEach((el: string) => ignore ? delete returnData[el] : returnData[el] = item[el]);
 	return returnData;
 
 }
@@ -157,12 +143,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 				const responseData = await xataApiRequest.call(this, apiKey, method, slug, database, branch, table, resource, body);
 				const crs = responseData.meta.page.cursor;
 				const recs = responseData.records;
-
-				for (const rec of recs) {
-
-					records.push(rec);
-
-				}
+				recs.forEach((el: IDataObject)=>records.push(el))
 
 				Object.assign(body, { 'page': { 'after': crs, 'size' : size } });
 
@@ -189,6 +170,7 @@ export async function xataApiList(this: IExecuteFunctions, apiKey: string, metho
 
 
 	} else {
+
 		const offset = page ? page['offset'] ? page['offset']  : 0 : 0;
 		const size = this.getNodeParameter('size', 0) as number;
 		Object.assign(body, { 'page': { 'size': size, 'offset':offset } });
