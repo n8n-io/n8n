@@ -1487,7 +1487,7 @@ describe('Workflow', () => {
 								index: 0,
 							},
 						],
-						[], // todo why is null not accepted
+						null,
 						[
 							{
 								node: 'Switch',
