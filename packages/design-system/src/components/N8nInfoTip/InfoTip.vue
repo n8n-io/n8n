@@ -65,7 +65,7 @@ export default {
 
 .tooltip {
 	composes: base;
-	display: inline-block;
+	display: inline-flex;
 }
 
 .info-light {

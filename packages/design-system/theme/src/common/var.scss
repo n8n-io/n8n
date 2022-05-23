@@ -691,7 +691,7 @@ $button-disabled-background-color: var(
 	var(--color-foreground-base)
 );
 /// color||Color|0
-$button-disabled-border-color: var(--border-color-base);
+$button-disabled-border-color: var(--button-disabled-border-color, var(--border-color-base));
 
 /// color||Color|0
 $button-primary-border-color: var(--color-primary);

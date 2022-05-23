@@ -1,15 +1,15 @@
 <template>
-	<div class="node-settings" @keydown.stop>
+	<div :class="{'node-settings': true, 'dragging': dragging}" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
 				</div>
 			</div>
-			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
+			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -59,7 +59,7 @@ import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeTabs from '@/components/NodeTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
@@ -82,7 +82,7 @@ export default mixins(
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
-			NodeTabs,
+			NodeSettingsTabs,
 			NodeWebhooks,
 			NodeExecuteButton,
 		},
@@ -150,6 +150,12 @@ export default mixins(
 		},
 		props: {
 			eventBus: {
+			},
+			dragging: {
+				type: Boolean,
+			},
+			sessionId: {
+				type: String,
 			},
 		},
 		data () {
@@ -542,8 +548,13 @@ export default mixins(
 <style lang="scss">
 .node-settings {
 	overflow: hidden;
-	min-width: 350px;
-	max-width: 350px;
+	min-width: 360px;
+	max-width: 360px;
+	background-color: var(--color-background-xlight);
+	height: 100%;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
@@ -568,6 +579,11 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+	}
+
+	&.dragging {
+		border-color: var(--color-primary);
+		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
 
