@@ -7,6 +7,7 @@ export const trackOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const trackOperations: INodeProperties[] = [
 			},
 		],
 		default: 'event',
-		description: 'The operation to perform.',
 	},
 ];
 

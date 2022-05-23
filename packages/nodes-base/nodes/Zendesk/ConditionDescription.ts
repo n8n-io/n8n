@@ -7,6 +7,7 @@ export const conditionFields: INodeProperties[] = [
 		displayName: 'Resource',
 		name: 'resource',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Ticket',
@@ -50,6 +51,7 @@ export const conditionFields: INodeProperties[] = [
 		],
 		default: 'status',
 	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -105,6 +107,7 @@ export const conditionFields: INodeProperties[] = [
 		},
 		default: 'is',
 	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 	{
 		displayName: 'Operation',
 		name: 'operation',

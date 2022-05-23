@@ -64,6 +64,7 @@ export class Intercom implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -82,7 +83,6 @@ export class Intercom implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...leadOpeations,
 			...userOpeations,

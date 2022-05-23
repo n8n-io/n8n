@@ -32,6 +32,7 @@ export class OpenThesaurus implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get Synonyms',
@@ -40,7 +41,6 @@ export class OpenThesaurus implements INodeType {
 					},
 				],
 				default: 'getSynonyms',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Text',

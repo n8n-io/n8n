@@ -39,6 +39,7 @@ export class LinkedIn implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -46,7 +47,6 @@ export class LinkedIn implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to consume',
 			},
 			//POST
 			...postOperations,

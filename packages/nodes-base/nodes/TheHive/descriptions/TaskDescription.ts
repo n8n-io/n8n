@@ -8,6 +8,7 @@ export const taskOperations: INodeProperties[] = [
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {

@@ -51,6 +51,7 @@ export class AwsSqs implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Send message',
@@ -59,7 +60,6 @@ export class AwsSqs implements INodeType {
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Queue',
@@ -97,7 +97,6 @@ export class AwsSqs implements INodeType {
 					},
 				],
 				default: 'standard',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Send Input Data',
