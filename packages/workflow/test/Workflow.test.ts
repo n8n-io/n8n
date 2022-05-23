@@ -1625,7 +1625,6 @@ describe('Workflow', () => {
 
 		test('Should handle loops within workflows', () => {
 			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Start')).toEqual([]);
-			// todo
 			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Set')).toEqual([
 				{
 					depth: 1,
