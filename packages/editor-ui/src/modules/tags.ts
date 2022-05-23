@@ -77,7 +77,7 @@ const module: Module<ITagsState, IRootState> = {
 
 			return tags;
 		},
-		create: async (context: ActionContext<ITagsState, IRootState>, name: string) => {
+		create: async (context: ActionContext<ITagsState, IRootState>, name: string): Promise<ITag> => {
 			const tag = await createTag(context.rootGetters.getRestApiContext, { name });
 			context.commit('upsertTags', [tag]);
 

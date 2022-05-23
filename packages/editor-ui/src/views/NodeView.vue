@@ -1263,13 +1263,12 @@ export default mixins(
 
 						const workflowTags = workflowData.tags as ITag[];
 						const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
-						notFound.forEach(async (tag) => {
-							await this.$store.dispatch('tags/create', tag.name);
-						});
+						for (const tag of notFound) {
+							allTags.push(await this.$store.dispatch('tags/create', tag.name));
+						}
 
-						const updatedTags: ITag[] = this.$store.getters['tags/allTags'];
 						const tagIds = workflowTags.map((imported) => {
-							const tag = updatedTags.find(tag => tag.name === imported.name);
+							const tag = allTags.find(tag => tag.name === imported.name);
 							if (tag) {
 								return tag.id;
 							}
