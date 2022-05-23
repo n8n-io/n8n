@@ -763,6 +763,7 @@ export class Workflow {
 			const toAdd = [...queue];
 			queue = [];
 
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			toAdd.forEach((curr) => {
 				if (visited[curr.name]) {
 					visited[curr.name].indicies = dedupe(visited[curr.name].indicies.concat(curr.indicies));
