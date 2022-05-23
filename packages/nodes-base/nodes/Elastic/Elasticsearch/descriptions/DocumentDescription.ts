@@ -268,7 +268,13 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Paginate',
+		displayName: 'By default, you cannot page through more than 10,000 hits. To page through more hits, use "Paginate Request".',
+		name: 'paginateNotice',
+		type: 'notice',
+		default: '',
+	},
+	{
+		displayName: 'Paginate Request',
 		name: 'paginate',
 		type: 'boolean',
 		default: false,

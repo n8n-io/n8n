@@ -1,5 +1,10 @@
 import {
+	IAuthenticateHeaderAuth,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IDataObject,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -32,4 +37,25 @@ export class ElasticsearchApi implements ICredentialType {
 			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		const token = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+
+		requestOptions.headers = {
+			...requestOptions.headers,
+			Authorization: `Basic ${token}`,
+		};
+
+		if (requestOptions.body && Object.keys(requestOptions.body).length === 0) {
+			delete requestOptions.body;
+		}
+
+		return requestOptions;
+	}
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/_aliases',
+			method: 'GET',
+		},
+	};
 }
