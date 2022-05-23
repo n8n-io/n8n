@@ -322,7 +322,7 @@ export const memberFields: INodeProperties[] = [
 				value: 'twitter',
 			},
 		],
-		default: '',
+		default: 'discourse',
 		required: true,
 		displayOptions: {
 			show: {
@@ -334,7 +334,6 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created',
 	},
 	{
 		displayName: 'Search By',
