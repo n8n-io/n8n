@@ -125,7 +125,6 @@ export class Ftp implements INodeType {
 					},
 				],
 				default: 'download',
-				description: 'Operation to perform.',
 				noDataExpression: true,
 			},
 

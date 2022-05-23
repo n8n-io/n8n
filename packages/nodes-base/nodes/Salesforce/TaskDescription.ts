@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -379,14 +379,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
-				displayName: 'What Id',
+				displayName: 'What ID',
 				name: 'whatId',
 				type: 'string',
 				default: '',
 				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
-				displayName: 'Who Id',
+				displayName: 'Who ID',
 				name: 'whoId',
 				type: 'string',
 				default: '',
@@ -728,14 +728,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents Type of the task, such as Call or Meeting',
 			},
 			{
-				displayName: 'What Id',
+				displayName: 'What ID',
 				name: 'whatId',
 				type: 'string',
 				default: '',
 				description: 'The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object.',
 			},
 			{
-				displayName: 'Who Id',
+				displayName: 'Who ID',
 				name: 'whoId',
 				type: 'string',
 				default: '',
@@ -874,6 +874,7 @@ export const taskFields: INodeProperties[] = [
 								default: '',
 								description: 'For date, number, or boolean, please use expressions',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',

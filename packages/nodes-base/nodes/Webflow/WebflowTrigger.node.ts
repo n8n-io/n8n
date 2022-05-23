@@ -77,7 +77,6 @@ export class WebflowTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Site',

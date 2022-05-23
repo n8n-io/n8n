@@ -184,7 +184,7 @@
 					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $locale.baseText('parameterInput.addExpression') }}</el-dropdown-item>
 					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $locale.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
 					<el-dropdown-item command="refreshOptions" v-if="hasRemoteMethod">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" :divided="!parameter.noDataExpression || hasRemoteMethod">{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 	</div>

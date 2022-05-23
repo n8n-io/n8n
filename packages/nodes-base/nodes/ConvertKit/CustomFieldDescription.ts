@@ -7,6 +7,7 @@ export const customFieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const customFieldOperations: INodeProperties[] = [
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 

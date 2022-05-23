@@ -7,8 +7,8 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getAll',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get All',

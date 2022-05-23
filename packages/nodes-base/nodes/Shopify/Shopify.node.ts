@@ -64,6 +64,7 @@ export class Shopify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Order',
@@ -75,7 +76,6 @@ export class Shopify implements INodeType {
 					},
 				],
 				default: 'order',
-				description: 'Resource to consume.',
 			},
 			// ORDER
 			...orderOperations,
