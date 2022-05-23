@@ -90,7 +90,6 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Service',

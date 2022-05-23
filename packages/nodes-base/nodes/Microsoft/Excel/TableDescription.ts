@@ -5,6 +5,7 @@ export const tableOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,7 +36,6 @@ export const tableOperations: INodeProperties[] = [
 			},
 		],
 		default: 'addRow',
-		description: 'The operation to perform.',
 	},
 ];
 

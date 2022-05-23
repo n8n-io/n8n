@@ -7,6 +7,7 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -43,7 +44,6 @@ export const dealOperations: INodeProperties[] = [
 
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -78,6 +78,9 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
@@ -244,7 +247,7 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -287,7 +290,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'contactIds',
 				type: 'string',
 				typeOptions: {
@@ -465,7 +468,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Expected Value of deal',
 			},
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'contactIds',
 				type: 'string',
 				typeOptions: {
