@@ -586,7 +586,14 @@ export class RoutingNode {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		if (!NodeHelpers.displayParameter(this.node.parameters, nodeProperties, this.node.parameters)) {
+		if (
+			!NodeHelpers.displayParameter(
+				this.node.parameters,
+				nodeProperties,
+				this.node,
+				this.node.parameters,
+			)
+		) {
 			return undefined;
 		}
 		if (nodeProperties.routing) {

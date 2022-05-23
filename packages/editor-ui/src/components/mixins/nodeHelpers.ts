@@ -48,8 +48,8 @@ export const nodeHelpers = mixins(
 			},
 
 			// Returns if the given parameter should be displayed or not
-			displayParameter (nodeValues: INodeParameters, parameter: INodeProperties | INodeCredentialDescription, path: string) {
-				return NodeHelpers.displayParameterPath(nodeValues, parameter, path);
+			displayParameter (nodeValues: INodeParameters, parameter: INodeProperties | INodeCredentialDescription, path: string, node: INodeUi | null) {
+				return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
 			},
 
 			// Returns all the issues of the node
@@ -200,7 +200,7 @@ export const nodeHelpers = mixins(
 				let selectedCredentials: INodeCredentialsDetails;
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
-					if (this.displayParameter(node.parameters, credentialTypeDescription, '') !== true) {
+					if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) !== true) {
 						continue;
 					}
 

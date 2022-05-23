@@ -23,6 +23,7 @@ import {
 import {
 	getItemCopy,
 	handleDateFields,
+	handleDateFieldsWithDotNotation,
 	validateAndResolveMongoCredentials
 } from './mongo.node.utils';
 
@@ -145,8 +146,10 @@ export class MongoDb implements INodeType {
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertItems = getItemCopy(items, fields);
 
-				if (options.dateFields) {
+				if (options.dateFields && !options.useDotNotation) {
 					handleDateFields(insertItems, options.dateFields as string);
+				} else if (options.dateFields && options.useDotNotation) {
+					handleDateFieldsWithDotNotation(insertItems, options.dateFields as string);
 				}
 
 				const { insertedIds } = await mdb
@@ -194,8 +197,10 @@ export class MongoDb implements INodeType {
 			// Prepare the data to update and copy it to be returned
 			const updateItems = getItemCopy(items, fields);
 
-			if (options.dateFields) {
+			if (options.dateFields && !options.useDotNotation) {
 				handleDateFields(updateItems, options.dateFields as string);
+			} else if (options.dateFields && options.useDotNotation) {
+				handleDateFieldsWithDotNotation(updateItems, options.dateFields as string);
 			}
 
 			for (const item of updateItems) {

@@ -133,6 +133,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -171,7 +172,7 @@ export class ActiveCampaign implements INodeType {
 						value: 'ecommerceCustomer',
 					},
 					{
-						name: 'E-commerce Order Products',
+						name: 'E-commerce Order Product',
 						value: 'ecommerceOrderProducts',
 					},
 					{
@@ -184,7 +185,6 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------

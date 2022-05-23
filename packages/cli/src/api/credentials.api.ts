@@ -53,12 +53,12 @@ credentialsController.get(
 
 		try {
 			if (req.user.globalRole.name === 'owner') {
-				credentials = await Db.collections.Credentials!.find({
+				credentials = await Db.collections.Credentials.find({
 					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
 					where: filter,
 				});
 			} else {
-				const shared = await Db.collections.SharedCredentials!.find({
+				const shared = await Db.collections.SharedCredentials.find({
 					where: whereClause({
 						user: req.user,
 						entityType: 'credentials',
@@ -67,7 +67,7 @@ credentialsController.get(
 
 				if (!shared.length) return [];
 
-				credentials = await Db.collections.Credentials!.find({
+				credentials = await Db.collections.Credentials.find({
 					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
 					where: {
 						id: In(shared.map(({ credentialId }) => credentialId)),
@@ -98,10 +98,12 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.NewName): Promise<{ name: string }> => {
 		const { name: newName } = req.query;
 
-		return GenericHelpers.generateUniqueName(
-			newName ?? config.getEnv('credentials.defaultName'),
-			'credentials',
-		);
+		return {
+			name: await GenericHelpers.generateUniqueName(
+				newName ?? config.getEnv('credentials.defaultName'),
+				'credentials',
+			),
+		};
 	}),
 );
 
@@ -115,13 +117,15 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials, nodeToTestWith } = req.body;
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
-			return {
-				status: 'Error',
-				message: RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-			};
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
+			throw new ResponseHelper.ResponseError(
+				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+				undefined,
+				500,
+			);
 		}
 
 		const helper = new CredentialsHelper(encryptionKey);
@@ -149,9 +153,10 @@ credentialsController.post(
 			nodeAccess.date = new Date();
 		}
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 				undefined,
@@ -175,7 +180,7 @@ credentialsController.post(
 
 		await externalHooks.run('credentials.create', [encryptedData]);
 
-		const role = await Db.collections.Role!.findOneOrFail({
+		const role = await Db.collections.Role.findOneOrFail({
 			name: 'owner',
 			scope: 'credential',
 		});
@@ -213,7 +218,7 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials!.findOne({
+		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
 				user: req.user,
@@ -236,7 +241,7 @@ credentialsController.delete(
 
 		await externalHooks.run('credentials.delete', [credentialId]);
 
-		await Db.collections.Credentials!.remove(shared.credentials);
+		await Db.collections.Credentials.remove(shared.credentials);
 
 		return true;
 	}),
@@ -255,7 +260,7 @@ credentialsController.patch(
 
 		await validateEntity(updateData);
 
-		const shared = await Db.collections.SharedCredentials!.findOne({
+		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
 				user: req.user,
@@ -285,9 +290,10 @@ credentialsController.patch(
 			}
 		}
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 				undefined,
@@ -329,11 +335,11 @@ credentialsController.patch(
 		await externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Db.collections.Credentials!.update(credentialId, newCredentialData);
+		await Db.collections.Credentials.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		const responseData = await Db.collections.Credentials!.findOne(credentialId);
+		const responseData = await Db.collections.Credentials.findOne(credentialId);
 
 		if (responseData === undefined) {
 			throw new ResponseHelper.ResponseError(
@@ -363,7 +369,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials!.findOne({
+		const shared = await Db.collections.SharedCredentials.findOne({
 			relations: ['credentials'],
 			where: whereClause({
 				user: req.user,
@@ -393,9 +399,10 @@ credentialsController.get(
 
 		const { data, id, ...rest } = credential;
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		if (!encryptionKey) {
+		let encryptionKey: string;
+		try {
+			encryptionKey = await UserSettings.getEncryptionKey();
+		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 				undefined,

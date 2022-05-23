@@ -7,6 +7,7 @@ export const goalKeyResultOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const goalKeyResultOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -174,7 +174,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				name: 'unit',
 				type: 'string',
 				default: '',
-				description: `Only matters for type Number and Currency. For Currency the unit must be a valid currency code.`,
+				description: 'Only matters for type Number and Currency. For Currency the unit must be a valid currency code.',
 			},
 		],
 	},
@@ -284,7 +284,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				name: 'unit',
 				type: 'string',
 				default: '',
-				description: `Only matters for type Number and Currency. For Currency the unit must be a valid currency code.`,
+				description: 'Only matters for type Number and Currency. For Currency the unit must be a valid currency code.',
 			},
 		],
 	},

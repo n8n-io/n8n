@@ -7,6 +7,7 @@ export const roomMemberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const roomMemberOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -49,7 +49,6 @@ export const roomMemberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Room ID',
 		required: true,
 	},
 	{

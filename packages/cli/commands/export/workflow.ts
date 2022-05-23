@@ -110,8 +110,7 @@ export class ExportWorkflowsCommand extends Command {
 				findQuery.id = flags.id;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const workflows = await Db.collections.Workflow!.find({
+			const workflows = await Db.collections.Workflow.find({
 				where: findQuery,
 				relations: ['tags'],
 			});

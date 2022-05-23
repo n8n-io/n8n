@@ -8,6 +8,7 @@ export const taskOperations: INodeProperties[] = [
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -80,7 +81,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -105,7 +106,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Title',
@@ -159,7 +160,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Status of the task. Default=Waiting',
+		description: 'Status of the task. Default=Waiting.',
 	},
 	{
 		displayName: 'Flag',
@@ -177,7 +178,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Flag of the task. Default=false',
+		description: 'Flag of the task. Default=false.',
 	},
 	// required for responder execution
 	{
@@ -214,8 +215,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'collection',
 		name: 'options',
 		placeholder: 'Add Option',
-		required: false,
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -239,21 +239,21 @@ export const taskFields: INodeProperties[] = [
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the end of the task. This is automatically set when status is set to Completed',
+				description: 'Date of the end of the task. This is automatically set when status is set to Completed.',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: `User who owns the task. This is automatically set to current user when status is set to InProgress`,
+				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the beginning of the task. This is automatically set when status is set to Open',
+				description: 'Date of the beginning of the task. This is automatically set when status is set to Open.',
 			},
 		],
 	},
@@ -264,8 +264,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'collection',
 		name: 'updateFields',
 		placeholder: 'Add Field',
-		default: '',
-		required: false,
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -289,28 +288,28 @@ export const taskFields: INodeProperties[] = [
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the end of the task. This is automatically set when status is set to Completed',
+				description: 'Date of the end of the task. This is automatically set when status is set to Completed.',
 			},
 			{
 				displayName: 'Flag',
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false',
+				description: 'Flag of the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: `User who owns the task. This is automatically set to current user when status is set to InProgress`,
+				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the beginning of the task. This is automatically set when status is set to Open',
+				description: 'Date of the beginning of the task. This is automatically set when status is set to Open.',
 			},
 			{
 				displayName: 'Status',
@@ -335,7 +334,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'Waiting',
 					},
 				],
-				description: 'Status of the task. Default=Waiting',
+				description: 'Status of the task. Default=Waiting.',
 			},
 			{
 				displayName: 'Title',
@@ -381,7 +380,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -408,28 +406,28 @@ export const taskFields: INodeProperties[] = [
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the end of the task. This is automatically set when status is set to Completed',
+				description: 'Date of the end of the task. This is automatically set when status is set to Completed.',
 			},
 			{
 				displayName: 'Flag',
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false',
+				description: 'Flag of the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
-				description: `User who owns the task. This is automatically set to current user when status is set to InProgress`,
+				description: 'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Date of the beginning of the task. This is automatically set when status is set to Open',
+				description: 'Date of the beginning of the task. This is automatically set when status is set to Open.',
 			},
 			{
 				displayName: 'Status',
@@ -454,7 +452,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'Waiting',
 					},
 				],
-				description: 'Status of the task. Default=Waiting',
+				description: 'Status of the task. Default=Waiting.',
 			},
 			{
 				displayName: 'Title',

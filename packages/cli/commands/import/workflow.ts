@@ -83,7 +83,7 @@ export class ImportWorkflowsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			const credentials = (await Db.collections.Credentials?.find()) ?? [];
+			const credentials = (await Db.collections.Credentials.find()) ?? [];
 			const tags = (await Db.collections.Tag?.find()) ?? [];
 
 			let totalImported = 0;
@@ -175,7 +175,7 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async initOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role!.findOne({
+		const ownerWorkflowRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'workflow' },
 		});
 
@@ -205,11 +205,11 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async getOwner() {
-		const ownerGlobalRole = await Db.collections.Role!.findOne({
+		const ownerGlobalRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'global' },
 		});
 
-		const owner = await Db.collections.User!.findOne({ globalRole: ownerGlobalRole });
+		const owner = await Db.collections.User.findOne({ globalRole: ownerGlobalRole });
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
@@ -219,7 +219,7 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User!.findOne(userId);
+		const user = await Db.collections.User.findOne(userId);
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);
