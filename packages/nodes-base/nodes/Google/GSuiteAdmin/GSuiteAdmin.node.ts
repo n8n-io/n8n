@@ -52,6 +52,7 @@ export class GSuiteAdmin implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Group',
@@ -63,7 +64,6 @@ export class GSuiteAdmin implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...groupOperations,
 			...groupFields,

@@ -103,6 +103,7 @@ export class Freshdesk implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -115,12 +116,12 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -157,7 +158,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Requester Identification',
@@ -181,7 +181,7 @@ export class Freshdesk implements INodeType {
 						description: 'Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.',
 					},
 					{
-						name: 'Facebook Id',
+						name: 'Facebook ID',
 						value: 'facebookId',
 						description: 'Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.',
 					},
@@ -191,17 +191,17 @@ export class Freshdesk implements INodeType {
 						description: 'Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.',
 					},
 					{
-						name: 'Requester Id',
+						name: 'Requester ID',
 						value: 'requesterId',
 						description: 'User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester\'s email.',
 					},
 					{
-						name: 'Twitter Id',
+						name: 'Twitter ID',
 						value: 'twitterId',
 						description: 'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 					},
 					{
-						name: 'Unique External Id',
+						name: 'Unique External ID',
 						value: 'uniqueExternalId',
 						description: 'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
 					},
@@ -425,7 +425,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config Id',
+						displayName: 'Email config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -655,7 +655,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config Id',
+						displayName: 'Email config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -732,7 +732,7 @@ export class Freshdesk implements INodeType {
 								description: 'Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.',
 							},
 							{
-								name: 'Facebook Id',
+								name: 'Facebook ID',
 								value: 'facebookId',
 								description: 'Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.',
 							},
@@ -742,17 +742,17 @@ export class Freshdesk implements INodeType {
 								description: 'Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.',
 							},
 							{
-								name: 'Requester Id',
+								name: 'Requester ID',
 								value: 'requesterId',
 								description: 'User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester\'s email.',
 							},
 							{
-								name: 'Twitter Id',
+								name: 'Twitter ID',
 								value: 'twitterId',
 								description: 'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 							},
 							{
-								name: 'Unique External Id',
+								name: 'Unique External ID',
 								value: 'uniqueExternalId',
 								description: 'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
 							},

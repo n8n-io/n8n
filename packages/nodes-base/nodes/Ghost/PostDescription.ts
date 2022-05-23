@@ -31,7 +31,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 	{
 		displayName: 'Operation',
@@ -76,7 +75,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 

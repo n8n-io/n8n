@@ -65,6 +65,7 @@ export class Stripe implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Balance',
@@ -96,7 +97,6 @@ export class Stripe implements INodeType {
 					},
 				],
 				default: 'balance',
-				description: 'Resource to consume',
 			},
 			...balanceOperations,
 			...customerCardOperations,
