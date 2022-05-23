@@ -310,11 +310,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 							outogingConnections && outogingConnections.main && outogingConnections.main.length,
 						input_displayed_run_index: this.inputRun,
 						output_displayed_run_index: this.outputRun,
-						// todo
-						// input_displayed_run_rows int
-						// input_displayed_run_columns int
-						// output_displayed_run_rows int
-						// output_displayed_run_columns int
 					});
 				}, 0); // wait for display mode to be set correctly
 			}
