@@ -53,8 +53,8 @@ export const WELCOME_STICKY_NODE = {
 	type: STICKY_NODE_TYPE,
 	typeVersion: 1,
 	position: [
-		-240,
-		140,
+		-260,
+		200,
 	] as XYPosition,
 	parameters: {
 		height: 300,
