@@ -339,7 +339,7 @@ export class Slack implements INodeType {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const userId = this.getNodeParameter('userId', i) as string;
 						const body: IDataObject = {
-							name: channel,
+							channel,
 							user: userId,
 						};
 						responseData = await slackApiRequest.call(this, 'POST', '/conversations.kick', body, qs);
