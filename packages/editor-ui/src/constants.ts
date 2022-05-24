@@ -4,6 +4,9 @@ export const NODE_NAME_PREFIX = 'node-';
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
 
+// parameter input
+export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
 export const DEFAULT_NODETYPE_VERSION = 1;
