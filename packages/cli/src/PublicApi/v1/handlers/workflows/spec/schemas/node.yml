@@ -4,6 +4,14 @@ properties:
   name:
     type: string
     example: Jira
+  webhookId:
+    type: string
+  disabled:
+    type: boolean
+  notesInFlow:
+    type: boolean
+  notes:
+    type: string
   type:
     type: string
     example: n8n-nodes-base.Jira
