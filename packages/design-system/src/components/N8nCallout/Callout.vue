@@ -1,9 +1,9 @@
 <template>
 	<div :class="classes" role="alert">
-		<div :class="this.$style.icon">
+		<div :class="$style.icon">
 			<n8n-icon v-bind="$attrs" :icon="getIcon" size="xlarge"/>
 		</div>
-		<div :class="this.$style.message" >
+		<div :class="$style.message" >
 			<n8n-text v-bind="$attrs"><span v-html="message"></span></n8n-text>
 		</div>
 	</div>
