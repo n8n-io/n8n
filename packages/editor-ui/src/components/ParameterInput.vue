@@ -104,12 +104,44 @@
 			:placeholder="parameter.placeholder"
 		/>
 
+		<credentials-select
+			v-else-if="parameter.type === 'credentialsSelect' || (parameter.name === 'genericAuthType')"
+			ref="inputField"
+			:parameter="parameter"
+			:node="node"
+			:activeCredentialType="activeCredentialType"
+			:inputSize="inputSize"
+			:displayValue="displayValue"
+			:isReadOnly="isReadOnly"
+			:displayTitle="displayTitle"
+			@credentialSelected="credentialSelected"
+			@valueChanged="valueChanged"
+			@setFocus="setFocus"
+			@onBlur="onBlur"
+		>
+			<template v-slot:issues-and-options>
+				<parameter-issues
+					:issues="getIssues"
+				/>
+				<parameter-options
+				 	v-if="displayOptionsComputed"
+					:displayOptionsComputed="displayOptionsComputed"
+					:parameter="parameter"
+					:isValueExpression="isValueExpression"
+					:isDefault="isDefault"
+					:hasRemoteMethod="hasRemoteMethod"
+					@optionSelected="optionSelected"
+				/>
+			</template>
+		</credentials-select>
+
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
 			:size="inputSize"
 			filterable
 			:value="displayValue"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
@@ -168,26 +200,21 @@
 		/>
 	</div>
 
-	<div class="parameter-issues" v-if="getIssues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</n8n-tooltip>
-	</div>
+	<parameter-issues
+		v-if="parameter.type !== 'credentialsSelect'"
+		:issues="getIssues"
+	/>
 
-	<div class="parameter-options" v-if="displayOptionsComputed">
-			<el-dropdown trigger="click" @command="optionSelected" size="mini">
-				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$locale.baseText('parameterInput.parameterOptions')"/>
-				</span>
-				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $locale.baseText('parameterInput.addExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $locale.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="hasRemoteMethod">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" :divided="!parameter.noDataExpression || hasRemoteMethod">{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
-				</el-dropdown-menu>
-			</el-dropdown>
-	</div>
+	<parameter-options
+		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
+		:displayOptionsComputed="displayOptionsComputed"
+		:parameter="parameter"
+		:isValueExpression="isValueExpression"
+		:isDefault="isDefault"
+		:hasRemoteMethod="hasRemoteMethod"
+		@optionSelected="optionSelected"
+	/>
+
 	</div>
 </template>
 
@@ -196,6 +223,7 @@ import { get } from 'lodash';
 
 import {
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	NodeHelpers,
@@ -208,7 +236,12 @@ import {
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
+import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
+import NodeCredentials from '@/components/NodeCredentials.vue';
+import ScopesNotice from '@/components/ScopesNotice.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import ParameterIssues from '@/components/ParameterIssues.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -218,6 +251,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -230,7 +265,12 @@ export default mixins(
 		components: {
 			CodeEdit,
 			ExpressionEdit,
+			NodeCredentials,
+			CredentialsSelect,
 			PrismEditor,
+			ScopesNotice,
+			ParameterOptions,
+			ParameterIssues,
 			TextEdit,
 		},
 		props: [
@@ -257,6 +297,8 @@ export default mixins(
 				remoteParameterOptionsLoadingIssues: null as string | null,
 				textEditDialogVisible: false,
 				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
+				CUSTOM_API_CALL_KEY,
+				activeCredentialType: '',
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
@@ -303,6 +345,7 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapGetters('credentials', ['allCredentialTypes']),
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -371,6 +414,13 @@ export default mixins(
 					returnValue = this.value;
 				} else {
 					returnValue = this.expressionValueComputed;
+				}
+
+				if (this.parameter.type === 'credentialsSelect') {
+					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+					if (credType) {
+						returnValue = credType.displayName;
+					}
 				}
 
 				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
@@ -471,7 +521,17 @@ export default mixins(
 
 				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'), this.node);
 
-				if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
+				if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
+					issues.parameters = issues.parameters || {};
+
+					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
+
+					issues.parameters[this.parameter.name] = [issue];
+				} else if (
+					['options', 'multiOptions'].includes(this.parameter.type) &&
+					this.remoteParameterOptionsLoading === false &&
+					this.remoteParameterOptionsLoadingIssues === null
+				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
@@ -479,18 +539,28 @@ export default mixins(
 					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
 
 					const checkValues: string[] = [];
-					if (Array.isArray(this.displayValue)) {
-						checkValues.push.apply(checkValues, this.displayValue);
-					} else {
-						checkValues.push(this.displayValue as string);
+
+					if (!this.skipCheck(this.displayValue)) {
+						if (Array.isArray(this.displayValue)) {
+							checkValues.push.apply(checkValues, this.displayValue);
+						} else {
+							checkValues.push(this.displayValue as string);
+						}
 					}
 
 					for (const checkValue of checkValues) {
+						if (checkValue !== undefined && checkValue.includes(CUSTOM_API_CALL_KEY)) continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
 							}
-							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
+
+							const issue = this.$locale.baseText(
+								'parameterInput.theValueIsNotSupported',
+								{ interpolate: { checkValue } },
+							);
+
+							issues.parameters[this.parameter.name] = [issue];
 						}
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
@@ -557,6 +627,9 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
+				if (this.parameter.type === 'credentialsSelect') {
+					return styles;
+				}
 				if (this.displayOptionsComputed === true) {
 					deductWidth += 25;
 				}
@@ -583,6 +656,23 @@ export default mixins(
 			},
 		},
 		methods: {
+			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
+				// Update the values on the node
+				this.$store.commit('updateNodeProperties', updateInformation);
+
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
+
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			},
+			/**
+			 * Check whether a param value must be skipped when collecting node param issues for validation.
+			 */
+			skipCheck(value: string | number | boolean | null) {
+				return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+			},
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
@@ -737,6 +827,10 @@ export default mixins(
 				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string[] | string | number | boolean | Date | null) {
+				if (this.parameter.name === 'nodeCredentialType') {
+					this.activeCredentialType = value as string;
+				}
+
 				if (value instanceof Date) {
 					value = value.toISOString();
 				}
@@ -788,6 +882,10 @@ export default mixins(
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;
+			}
+
+			if (this.node && this.node.parameters.authentication === 'predefinedCredentialType') {
+				this.activeCredentialType = this.node.parameters.nodeCredentialType as string;
 			}
 
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && this.displayValue !== null && this.displayValue.toString().charAt(0) !== '#') {
@@ -854,20 +952,6 @@ export default mixins(
 
 .parameter-input {
 	display: inline-block;
-}
-
-.parameter-options {
-	width: 25px;
-	text-align: right;
-	float: right;
-}
-
-.parameter-issues {
-	width: 20px;
-	text-align: right;
-	float: right;
-	color: #ff8080;
-	font-size: var(--font-size-s);
 }
 
 ::v-deep .color-input {
