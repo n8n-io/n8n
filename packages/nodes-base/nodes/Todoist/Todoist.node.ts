@@ -175,6 +175,26 @@ export class Todoist implements INodeType {
 				description: 'The project you want to operate on',
 			},
 			{
+				displayName: 'Labels',
+				name: 'labels',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLabels',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: [],
+				description: 'Optional labels that will be assigned to a created task',
+			},
+			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
@@ -260,15 +280,6 @@ export class Todoist implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
-					},
-					{
-						displayName: 'Labels',
-						name: 'labels',
-						type: 'multiOptions',
-						typeOptions: {
-							loadOptionsMethod: 'getLabels',
-						},
-						default: [],
 					},
 					{
 						displayName: 'Parent ID',
@@ -627,6 +638,7 @@ export class Todoist implements INodeType {
 						//https://developer.todoist.com/rest/v1/#create-a-new-task
 						const content = this.getNodeParameter('content', i) as string;
 						const projectId = this.getNodeParameter('project', i) as number;
+						const labels = this.getNodeParameter('labels', i) as number[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IBodyCreateTask = {
@@ -651,8 +663,8 @@ export class Todoist implements INodeType {
 							body.due_lang = options.dueLang as string;
 						}
 
-						if (options.labels) {
-							body.label_ids = options.labels as number[];
+						if (labels !== undefined && labels.length !== 0) {
+							body.label_ids = labels as number[];
 						}
 
 						if (options.section) {
