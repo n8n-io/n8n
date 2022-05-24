@@ -478,6 +478,7 @@ export interface IN8nUISettings {
 		host: string;
 	};
 	missingPackages?: boolean;
+	executionMode: 'regular' | 'queue';
 }
 
 export interface IPersonalizationSurveyAnswers {

@@ -29,6 +29,7 @@ export default Vue.extend({
 		await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
 	},
 	computed: {
+		...mapGetters('settings', ['executionMode']),
 		getEmptyStateDescription() {
 			// Get the number for NPM packages with `n8n-community-node-package` keyword
 			// If there are > 31 packages available, show the number rounded to nearest 10 (floor) for nicer display
@@ -40,6 +41,7 @@ export default Vue.extend({
 	},
 	methods: {
 		openNPMPage() {
+			// TODO: This will open new modal once it is implemented
 			window.open('https://www.npmjs.com/search?q=keywords:n8n-community-node-package', '_blank');
 		},
 	},
