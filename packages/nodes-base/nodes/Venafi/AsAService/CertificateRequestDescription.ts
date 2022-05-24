@@ -135,6 +135,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		type: 'string',
 		default: 'n8n.io',
+		description: 'The Common Name field for the certificate Subject (CN)',
 	},
 	// Optional...
 	{
@@ -158,10 +159,11 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Country Code',
+				displayName: 'Country',
 				name: 'country',
 				type: 'string',
 				default: '',
+				description: 'A 2 letter country code',
 			},
 			{
 				displayName: 'Key Curve',
@@ -171,18 +173,22 @@ export const certificateRequestFields: INodeProperties[] = [
 					{
 						name: 'ED25519',
 						value: 'ED25519',
+						description: 'Use Edwards-curve Digital Signature Algorithm (EdDSA)',
 					},
 					{
 						name: 'P256',
 						value: 'P256',
+						description: 'Use Elliptic Prime Curve 256 bit encryption',
 					},
 					{
 						name: 'P384',
 						value: 'P384',
+						description: 'Use Elliptic Prime Curve 384 bit encryption',
 					},
 					{
 						name: 'P521',
 						value: 'P521',
+						description: 'Use Elliptic Prime Curve 521 bit encryption',
 					},
 					{
 						name: 'UNKNOWN',
@@ -196,6 +202,7 @@ export const certificateRequestFields: INodeProperties[] = [
 				name: 'keyLength',
 				type: 'number',
 				default: 2048,
+				description: 'The number of bits to allow for key generation',
 			},
 			{
 				displayName: 'Key Type',
@@ -205,25 +212,30 @@ export const certificateRequestFields: INodeProperties[] = [
 					{
 						name: 'EC',
 						value: 'EC',
+						description: 'Elliptic Curve (EC)',
 					},
 					{
 						name: 'RSA',
 						value: 'RSA',
+						description: 'Rivest, Shamir, Adleman key (RSA)',
 					},
 				],
 				default: 'RSA',
+				description: 'The encryption algorithm for the public key',
 			},
 			{
 				displayName: 'Locality',
 				name: 'locality',
 				type: 'string',
 				default: '',
+				description: 'The name of a city or town',
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
+				description: 'The name of a company or organization',
 			},
 			{
 				displayName: 'Organizational Units',
@@ -233,12 +245,14 @@ export const certificateRequestFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: '',
+				description: 'The name of a department or section',
 			},
 			{
 				displayName: 'State',
 				name: 'state',
 				type: 'string',
 				default: '',
+				description: 'The name of a state or province',
 			},
 			{
 				displayName: 'Subject Alt Names',
