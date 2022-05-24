@@ -21,7 +21,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object = {}, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('whatsAppApi');
 
 	query = query || {};
@@ -31,8 +31,8 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 			"Authorization": `Bearer ${credentials.accessToken}`
 		},
 		method,
-		body,
 		qs: query,
+		body: {...body, messaging_product: "whatsapp"},
 		uri: `https://graph.facebook.com/v13.0/${endpoint}`,
 		json: true,
 	};
