@@ -276,6 +276,7 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
 	test?: ICredentialTestRequest;
+	genericAuth?: boolean;
 }
 
 export interface ICredentialTypes {
@@ -831,7 +832,8 @@ export type NodePropertyTypes =
 	| 'multiOptions'
 	| 'number'
 	| 'options'
-	| 'string';
+	| 'string'
+	| 'credentialsSelect';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -861,8 +863,6 @@ export interface INodePropertyTypeOptions {
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
-	truncate?: boolean; // Supported by: notice
-	truncateAt?: number; // Supported by: notice
 	[key: string]: any;
 }
 
@@ -890,6 +890,9 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 	routing?: INodePropertyRouting;
+	credentialTypes?: Array<
+		'extends:oAuth2Api' | 'extends:oAuth1Api' | 'has:authenticate' | 'has:genericAuth'
+	>;
 }
 export interface INodePropertyOptions {
 	name: string;
@@ -1434,9 +1437,14 @@ export interface INodeGraphItem {
 	type: string;
 	resource?: string;
 	operation?: string;
-	domain?: string;
+	domain?: string; // HTTP Request node v1
+	domain_base?: string; // HTTP Request node v2
+	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
+	credential_type?: string; // HTTP Request node v2
+	credential_set?: boolean; // HTTP Request node v2
+	method?: string; // HTTP Request node v2
 }
 
 export interface INodeNameIndex {
