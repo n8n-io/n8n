@@ -32,6 +32,11 @@ export const accountOperations: INodeProperties[] = [
 				description: 'Create a new account, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an account',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
@@ -45,11 +50,6 @@ export const accountOperations: INodeProperties[] = [
 				name: 'Get Summary',
 				value: 'getSummary',
 				description: 'Returns an overview of account\'s metadata',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an account',
 			},
 			{
 				name: 'Update',
@@ -153,16 +153,6 @@ export const accountFields: INodeProperties[] = [
 				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Account Source',
-				name: 'accountSource',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountSources',
-				},
-				default: '',
-				description: 'The source of the account record',
-			},
-			{
 				displayName: 'Annual Revenue',
 				name: 'annualRevenue',
 				type: 'number',
@@ -171,6 +161,16 @@ export const accountFields: INodeProperties[] = [
 				},
 				default: '',
 				description: 'Estimated annual revenue of the account',
+			},
+			{
+				displayName: 'Account Source',
+				name: 'accountSource',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountSources',
+				},
+				default: '',
+				description: 'The source of the account record',
 			},
 			{
 				displayName: 'Billing City',
@@ -291,6 +291,13 @@ export const accountFields: INodeProperties[] = [
 				description: 'The owner of the account',
 			},
 			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				description: 'ID of the parent object, if any',
+			},
+			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
@@ -325,13 +332,6 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccountTypes',
 				},
 				description: 'Type of account',
-			},
-			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
-				default: '',
-				description: 'ID of the parent object, if any',
 			},
 			{
 				displayName: 'Shipping City',
@@ -546,6 +546,19 @@ export const accountFields: INodeProperties[] = [
 				description: 'References the ID of a company in Data.com',
 			},
 			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Name of the account. Maximum size is 255 characters.',
+			},
+			{
+				displayName: 'Number Of Employees',
+				name: 'numberOfEmployees',
+				type: 'number',
+				default: '',
+			},
+			{
 				displayName: 'Owner',
 				name: 'ownerId',
 				type: 'options',
@@ -554,6 +567,13 @@ export const accountFields: INodeProperties[] = [
 				},
 				default: '',
 				description: 'The owner of the account',
+			},
+			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				description: 'ID of the parent object, if any',
 			},
 			{
 				displayName: 'Phone',
@@ -570,36 +590,6 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getRecordTypes',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountTypes',
-				},
-				description: 'Type of account',
-			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Name of the account. Maximum size is 255 characters.',
-			},
-			{
-				displayName: 'Number Of Employees',
-				name: 'numberOfEmployees',
-				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
-				default: '',
-				description: 'ID of the parent object, if any',
 			},
 			{
 				displayName: 'SicDesc',
@@ -645,6 +635,16 @@ export const accountFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The street address of the shipping address for this account. Maximum of 255 characters.',
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountTypes',
+				},
+				description: 'Type of account',
 			},
 			{
 				displayName: 'Website',
@@ -906,7 +906,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner',
