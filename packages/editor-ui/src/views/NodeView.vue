@@ -1261,21 +1261,30 @@ export default mixins(
 
 						const workflowTags = workflowData.tags as ITag[];
 						const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
+
+						const creatingTagPromises: Array<Promise<ITag>> = [];
 						for (const tag of notFound) {
-							allTags.push(await this.$store.dispatch('tags/create', tag.name));
+							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+								.then((tag: ITag) => {
+									allTags.push(tag);
+									return tag;
+								});
+
+							creatingTagPromises.push(creationPromise);
 						}
 
-						const tagIds = workflowTags.map((imported) => {
+						await Promise.all(creatingTagPromises);
+
+						const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
 							const tag = allTags.find(tag => tag.name === imported.name);
 							if (tag) {
-								return tag.id;
+								accu.push(tag.id);
 							}
 
-							return undefined;
-						})
-							.filter((id) => !!id);
+							return accu;
+						}, []);
 
-						this.$store.commit('addWorkflowTagIds', tagIds || []);
+						this.$store.commit('addWorkflowTagIds', tagIds);
 					}
 
 				} catch (error) {
