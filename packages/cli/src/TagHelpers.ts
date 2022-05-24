@@ -112,31 +112,22 @@ const findOrCreateTag = async (
 		return identicalMatch;
 	}
 
-	// Find tag with identical name
 	const nameMatch = tagsEntities.find((existingTag) => existingTag.name === importTag.name);
 	if (nameMatch) {
 		return nameMatch;
 	}
 
-	// Create new Tag
-	const createdTag = await createTag(transactionManager, importTag.name);
-	return createdTag;
+	return createTag(transactionManager, importTag.name);
 };
 
 /**
- * Set tag ids to use existing tags, creates a new tag if no matching tag could be found
- *
- * @param transactionManager
- * @param workflow
- * @param tagsEntities
- * @returns
+ * Set tag IDs to use existing tags, creates a new tag if no matching tag could be found
  */
 export async function setTagsForImport(
 	transactionManager: EntityManager,
 	workflow: { tags: ITagToImport[] },
 	tags: TagEntity[],
 ): Promise<void> {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const workflowTags = workflow.tags;
 	if (!workflowTags || !Array.isArray(workflowTags) || workflowTags.length === 0) {
 		return;

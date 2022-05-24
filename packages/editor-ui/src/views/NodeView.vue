@@ -1255,7 +1255,7 @@ export default mixins(
 					});
 
 					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
-					if (Array.isArray(workflowData.tags) && tagsEnabled) {
+					if (tagsEnabled && Array.isArray(workflowData.tags)) {
 						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
 						const tagNames = new Set(allTags.map((tag) => tag.name));
 

@@ -91,8 +91,8 @@ export class ImportWorkflowsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			const credentials = (await Db.collections.Credentials.find()) ?? [];
-			const tags = (await Db.collections.Tag.find()) ?? [];
+			const credentials = await Db.collections.Credentials.find();
+			const tags = await Db.collections.Tag.find();
 
 			let totalImported = 0;
 
@@ -135,9 +135,9 @@ export class ImportWorkflowsCommand extends Command {
 
 			const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
-			totalImported = workflows.length;
-
 			assertWorkflowsToImport(workflows);
+
+			totalImported = workflows.length;
 
 			await getConnection().transaction(async (transactionManager) => {
 				this.transactionManager = transactionManager;
