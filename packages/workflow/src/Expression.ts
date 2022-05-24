@@ -122,7 +122,12 @@ export class Expression {
 		data.window = {};
 		data.Window = {};
 		data.this = {};
+		data.self = {};
+
+		// Alerts
 		data.alert = {};
+		data.prompt = {};
+		data.confirm = {};
 
 		// Prevent Remote Code Execution
 		data.eval = {};
@@ -144,12 +149,7 @@ export class Expression {
 
 		// Execute the expression
 		try {
-			if (
-				parameterValue.includes('window') &&
-				!/([a-zA-Z.]window|window[a-zA-Z]|['"](?!\s*[\\+\-*/|]+\s*)[^'"]*window)/g.test(
-					parameterValue,
-				)
-			) {
+			if (/([^a-zA-Z0-9"']window[^a-zA-Z0-9"'])/g.test(parameterValue)) {
 				throw new Error(`window is not allowed`);
 			}
 
