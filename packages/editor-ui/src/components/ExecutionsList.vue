@@ -105,7 +105,7 @@
 									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
 									 type="light"
 									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
-									 size="small"
+									 size="mini"
 									 :title="$locale.baseText('executionsList.retryExecution')"
 									 icon="redo"
 								/>
