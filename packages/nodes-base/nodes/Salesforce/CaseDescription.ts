@@ -25,6 +25,11 @@ export const caseOperations: INodeProperties[] = [
 				description: 'Create a case',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a case',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a case',
@@ -38,11 +43,6 @@ export const caseOperations: INodeProperties[] = [
 				name: 'Get Summary',
 				value: 'getSummary',
 				description: 'Returns an overview of case\'s metadata',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a case',
 			},
 			{
 				name: 'Update',
@@ -159,7 +159,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isEscalated',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the case has been escalated (true) or not',
+				description: 'Whether indicates whether the case has been escalated (true) or not',
 			},
 			{
 				displayName: 'Origin',
@@ -365,7 +365,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isEscalated',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the case has been escalated (true) or not',
+				description: 'Whether the case has been escalated (true) or not',
 			},
 			{
 				displayName: 'Origin',
@@ -713,7 +713,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false)',
+				description: 'Whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false)',
 			},
 		],
 	},
