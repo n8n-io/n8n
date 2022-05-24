@@ -323,7 +323,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	mounted() {
 		this.setSubtitle();
 		setTimeout(() => {
-			this.$emit('run', {name: this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
+			this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
 		}, 0);
 	},
 	data () {

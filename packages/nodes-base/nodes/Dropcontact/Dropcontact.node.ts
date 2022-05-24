@@ -108,6 +108,7 @@ export class Dropcontact implements INodeType {
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 				displayName: 'Simplify Output (Faster)',
 				name: 'simplify',
 				type: 'boolean',
@@ -123,6 +124,7 @@ export class Dropcontact implements INodeType {
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
 				description: 'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
 			},
 			{

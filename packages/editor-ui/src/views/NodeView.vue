@@ -58,7 +58,7 @@
 				</div>
 			</div>
 		</div>
-		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			class="node-buttons-wrapper"
 			v-if="!createNodeActive && !isReadOnly"
@@ -161,11 +161,10 @@ import { newVersions } from '@/components/mixins/newVersions';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
-import DataDisplay from '@/components/DataDisplay.vue';
+import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
 import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
@@ -232,11 +231,10 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
-			DataDisplay,
+			NodeDetailsView,
 			Node,
 			NodeCreator,
 			NodeSettings,
-			RunData,
 			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
@@ -1851,7 +1849,7 @@ export default mixins(
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
 					// For novice users (onboardingFlowEnabled == true)
 					// Inject welcome sticky note and zoom to fit
-					if(newWorkflow.onboardingFlowEnabled) {
+					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
 						this.$nextTick(async () => {
 							await this.addNodes([
 								{

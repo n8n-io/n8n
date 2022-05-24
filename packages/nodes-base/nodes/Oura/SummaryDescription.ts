@@ -7,6 +7,7 @@ export const summaryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const summaryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getSleep',
-		description: 'Operation to perform.',
 	},
 ];
 

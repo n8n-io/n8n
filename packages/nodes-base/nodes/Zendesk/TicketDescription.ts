@@ -7,6 +7,7 @@ export const ticketOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const ticketOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -250,7 +250,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -487,7 +487,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: ' Update Fields',
+		displayName: 'Update Fields',
 		name: 'updateFieldsJson',
 		type: 'json',
 		typeOptions: {

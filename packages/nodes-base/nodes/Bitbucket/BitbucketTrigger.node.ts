@@ -55,6 +55,7 @@ export class BitbucketTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -67,7 +68,6 @@ export class BitbucketTrigger implements INodeType {
 					},
 				],
 				default: 'workspace',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Workspace',
