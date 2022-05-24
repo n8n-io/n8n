@@ -1307,7 +1307,6 @@ export default mixins(
 				const node = this.$store.getters.getNodeByName(nodeName);
 				if (node) {
 					this.nodeSelected(node);
-					// console.log(node);
 				}
 
 				this.$store.commit('setLastSelectedNode', node.name);
