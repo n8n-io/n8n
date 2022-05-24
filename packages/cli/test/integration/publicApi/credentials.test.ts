@@ -286,16 +286,17 @@ test('GET /credentials/schema/:credentialType should retrieve credential type', 
 
 	const response = await authOwnerAgent.get('/credentials/schema/githubApi');
 
-	const names = response.body.map((data: INodeProperties) => data.name);
+	const { additionalProperties, type, properties, required } = response.body;
 
-	const githubApiTypeNames = utils
-		.gitHubCredentialType()
-		.properties.map((nodeProperty) => nodeProperty.name);
-
-	for (const name of names) {
-		expect(githubApiTypeNames.includes(name)).toBe(true);
-	}
-
+	expect(additionalProperties).toBe(false);
+	expect(type).toBe('object');
+	expect(properties.server).toBeDefined();
+	expect(properties.server.type).toBe('string');
+	expect(properties.user.type).toBeDefined();
+	expect(properties.user.type).toBe('string');
+	expect(properties.accessToken.type).toBeDefined();
+	expect(properties.accessToken.type).toBe('string');
+	expect(required).toEqual(expect.arrayContaining(['server', 'user', 'accessToken']));
 	expect(response.statusCode).toBe(200);
 });
 

@@ -1,18 +1,14 @@
 import express = require('express');
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
-import { compare } from 'bcryptjs';
 
 import { Db } from '../../../src';
 import config = require('../../../config');
-import { SUCCESS_RESPONSE_BODY } from '../shared/constants';
 import { Role } from '../../../src/databases/entities/Role';
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../shared/random';
-import { isUserManagementDisabled } from '../../../src/UserManagement/UserManagementHelper';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-import { createUser } from '../shared/testDb';
 
 let app: express.Application;
 let testDbName = '';
@@ -110,8 +106,8 @@ test('GET /users should fail due to member trying to access owner only endpoint'
 });
 
 test('GET /users should fail due to instance owner not setup', async () => {
-	// @ts-ignore
-	isUserManagementDisabled = jest.fn().mockReturnValue(true);
+
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	let owner = await testDb.createUserShell(globalOwnerRole);
 	owner = await testDb.addApiKey(owner);

@@ -76,6 +76,8 @@ afterAll(async () => {
 test('GET /executions/:executionId should fail due to missing API Key', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
+	owner.apiKey = null;
+
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		auth: true,
@@ -157,6 +159,8 @@ test('GET /executions/:executionId should get an execution', async () => {
 test('DELETE /executions/:executionId should fail due to missing API Key', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 
+	owner.apiKey = null;
+
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
 		auth: true,
@@ -237,6 +241,8 @@ test('DELETE /executions/:executionId should delete an execution', async () => {
 
 test('GET /executions should fail due to missing API Key', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
+
+	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',

@@ -20,7 +20,7 @@ let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 jest.mock('../../../src/telemetry');
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -139,6 +139,8 @@ test('GET /workflows should return all workflows', async () => {
 
 test('GET /workflows/:workflowId should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -645,6 +647,8 @@ test('POST /workflows should create workflow', async () => {
 
 test('PUT /workflows/:workflowId should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+	owner.apiKey = null;
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
