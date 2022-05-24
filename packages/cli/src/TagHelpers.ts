@@ -132,14 +132,21 @@ export async function setTagsForImport(
 	if (!workflowTags || !Array.isArray(workflowTags) || workflowTags.length === 0) {
 		return;
 	}
+
+	const tagLookupPromises = [];
 	for (let i = 0; i < workflowTags.length; i++) {
 		if (workflowTags[i] && typeof workflowTags[i].name !== 'undefined') {
-			// eslint-disable-next-line no-await-in-loop
-			const tag = await findOrCreateTag(transactionManager, workflowTags[i], tags);
-			workflowTags[i] = {
-				id: tag.id,
-				name: tag.name,
-			};
+			const lookupPromise = findOrCreateTag(transactionManager, workflowTags[i], tags).then(
+				(tag) => {
+					workflowTags[i] = {
+						id: tag.id,
+						name: tag.name,
+					};
+				},
+			);
+			tagLookupPromises.push(lookupPromise);
 		}
 	}
+
+	await Promise.all(tagLookupPromises);
 }
