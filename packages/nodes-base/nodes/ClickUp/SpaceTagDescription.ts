@@ -7,6 +7,7 @@ export const spaceTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const spaceTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -110,7 +110,7 @@ export const spaceTagFields: INodeProperties[] = [
 		displayName: 'New Name',
 		name: 'newName',
 		type: 'string',
-		description: 'New name to set for the tag.',
+		description: 'New name to set for the tag',
 		default: '',
 		displayOptions: {
 			show: {
@@ -175,7 +175,7 @@ export const spaceTagFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -199,6 +199,6 @@ export const spaceTagFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

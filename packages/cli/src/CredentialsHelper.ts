@@ -6,7 +6,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { get } from 'lodash';
 import { NodeVersionedType } from 'n8n-nodes-base';
 
 import {
@@ -234,13 +235,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const credential = userId
-			? await Db.collections
-					.SharedCredentials!.findOneOrFail({
-						relations: ['credentials'],
-						where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
-					})
-					.then((shared) => shared.credentials)
-			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
+			? await Db.collections.SharedCredentials.findOneOrFail({
+					relations: ['credentials'],
+					where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+			  }).then((shared) => shared.credentials)
+			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
 
 		if (!credential) {
 			throw new Error(
@@ -342,6 +341,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal as INodeParameters,
 			true,
 			false,
+			null,
 		) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
@@ -424,7 +424,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		if (Db.collections.Credentials === null) {
+		if (!Db.isInitialized) {
 			// The first time executeWorkflow gets called the Database has
 			// to get initialized first
 			await Db.init();
@@ -436,15 +436,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Add special database related data
 		newCredentialsData.updatedAt = new Date();
 
-		// TODO: also add user automatically depending on who is logged in, if anybody is logged in
-
 		// Save the credentials in DB
 		const findQuery = {
 			id: credentials.id,
 			type,
 		};
 
-		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
+		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
 	getCredentialTestFunction(
@@ -561,7 +559,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			parameters: {},
 			name: 'Temp-Node',
 			type: nodeType.description.name,
-			typeVersion: nodeType.description.version,
+			typeVersion: Array.isArray(nodeType.description.version)
+				? nodeType.description.version.slice(-1)[0]
+				: nodeType.description.version,
 			position: [0, 0],
 			credentials: {
 				[credentialType]: {
@@ -638,8 +638,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			additionalData,
 			mode,
 		);
+
+		let response: INodeExecutionData[][] | null | undefined;
+
 		try {
-			await routingNode.runNode(
+			response = await routingNode.runNode(
 				inputData,
 				runIndex,
 				nodeTypeCopy,
@@ -692,6 +695,24 @@ export class CredentialsHelper extends ICredentialsHelper {
 			};
 		}
 
+		if (
+			credentialTestFunction.testRequest.rules &&
+			Array.isArray(credentialTestFunction.testRequest.rules)
+		) {
+			// Special testing rules are defined so check all in order
+			for (const rule of credentialTestFunction.testRequest.rules) {
+				if (rule.type === 'responseSuccessBody') {
+					const responseData = response![0][0].json;
+					if (get(responseData, rule.properties.key) === rule.properties.value) {
+						return {
+							status: 'Error',
+							message: rule.properties.message,
+						};
+					}
+				}
+			}
+		}
+
 		return {
 			status: 'OK',
 			message: 'Connection successful!',
@@ -728,8 +749,7 @@ export async function getCredentialForUser(
 	credentialId: string,
 	user: User,
 ): Promise<ICredentialsDb | null> {
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
+	const sharedCredential = await Db.collections.SharedCredentials.findOne({
 		relations: ['credentials'],
 		where: whereClause({
 			user,
@@ -741,4 +761,14 @@ export async function getCredentialForUser(
 	if (!sharedCredential) return null;
 
 	return sharedCredential.credentials as ICredentialsDb;
+}
+
+/**
+ * Get a credential without user check
+ */
+export async function getCredentialWithoutUser(
+	credentialId: string,
+): Promise<ICredentialsDb | undefined> {
+	const credential = await Db.collections.Credentials.findOne(credentialId);
+	return credential;
 }

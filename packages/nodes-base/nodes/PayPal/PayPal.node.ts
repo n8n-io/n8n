@@ -60,6 +60,7 @@ export class PayPal implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Payout',
@@ -71,7 +72,6 @@ export class PayPal implements INodeType {
 					},
 				],
 				default: 'payout',
-				description: 'Resource to consume.',
 			},
 
 			// Payout
@@ -137,7 +137,7 @@ export class PayPal implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 

@@ -8,7 +8,7 @@ export const fileGetAllDescription: FileProperties = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				operation: [
@@ -25,7 +25,7 @@ export const fileGetAllDescription: FileProperties = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -45,7 +45,7 @@ export const fileGetAllDescription: FileProperties = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
@@ -59,6 +59,6 @@ export const fileGetAllDescription: FileProperties = [
 				],
 			},
 		},
-		description: 'Whether to simplify the output or not',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

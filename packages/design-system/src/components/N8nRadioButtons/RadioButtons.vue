@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts">
-import RadioButton from './RadioButton';
+import RadioButton from './RadioButton.vue';
 
 export default {
 	name: 'n8n-radio-buttons',

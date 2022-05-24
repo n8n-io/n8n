@@ -78,11 +78,11 @@ export class SeaTableTrigger implements INodeType {
 				default: 'rowCreated',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -109,7 +109,7 @@ export class SeaTableTrigger implements INodeType {
 		const simple = this.getNodeParameter('simple') as boolean;
 		const event = this.getNodeParameter('event') as string;
 		const ctx: ICtx = {};
-		const credentials = await this.getCredentials('seaTableApi') as IDataObject;
+		const credentials = await this.getCredentials('seaTableApi');
 
 		const timezone = credentials.timezone as string || 'Europe/Berlin';
 		const now = moment().utc().format();

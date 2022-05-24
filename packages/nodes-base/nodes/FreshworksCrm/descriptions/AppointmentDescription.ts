@@ -11,6 +11,7 @@ export const appointmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -352,7 +353,7 @@ export const appointmentFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -374,7 +375,7 @@ export const appointmentFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		default: '',
+		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {

@@ -211,7 +211,7 @@ export function getExecuteFunctions(
 			async getCredentials(
 				type: string,
 				itemIndex?: number,
-			): Promise<ICredentialDataDecryptedObject | undefined> {
+			): Promise<ICredentialDataDecryptedObject> {
 				return {
 					apiKey: '12345',
 				};
@@ -388,7 +388,7 @@ export function getExecuteSingleFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return {
 					apiKey: '12345',
 				};
@@ -608,6 +608,39 @@ class NodeTypesClass implements INodeTypes {
 									],
 								},
 							],
+						},
+					],
+				},
+			},
+		},
+		'test.switch': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Set',
+					name: 'set',
+					group: ['input'],
+					version: 1,
+					description: 'Switches',
+					defaults: {
+						name: 'Switch',
+						color: '#0000FF',
+					},
+					inputs: ['main'],
+					outputs: ['main', 'main', 'main', 'main'],
+					outputNames: ['0', '1', '2', '3'],
+					properties: [
+						{
+							displayName: 'Value1',
+							name: 'value1',
+							type: 'string',
+							default: 'default-value1',
+						},
+						{
+							displayName: 'Value2',
+							name: 'value2',
+							type: 'string',
+							default: 'default-value2',
 						},
 					],
 				},

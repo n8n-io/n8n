@@ -154,7 +154,6 @@ export class Mautic implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,
@@ -351,7 +350,7 @@ export class Mautic implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 

@@ -1,5 +1,9 @@
 <template>
-	<div class="node-view-root">
+	<div
+		class="node-view-root"
+	 	@dragover="onDragOver"
+	 	@drop="onDrop"
+	>
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
@@ -10,38 +14,67 @@
 			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
+		>
+			<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
+			<div
+				id="node-view"
+				class="node-view"
+				:style="workflowStyle"
 			>
-			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
-			<div id="node-view" class="node-view" :style="workflowStyle">
-				<node
-				v-for="nodeData in nodes"
-				@duplicateNode="duplicateNode"
-				@deselectAllNodes="deselectAllNodes"
-				@deselectNode="nodeDeselectedByName"
-				@nodeSelected="nodeSelectedByName"
-				@removeNode="removeNode"
-				@runWorkflow="runWorkflow"
-				@moved="onNodeMoved"
-				@run="onNodeRun"
-				:id="'node-' + getNodeIndex(nodeData.name)"
-				:key="getNodeIndex(nodeData.name)"
-				:name="nodeData.name"
-				:isReadOnly="isReadOnly"
-				:instance="instance"
-				:isActive="!!activeNode && activeNode.name === nodeData.name"
-				:hideActions="pullConnActive"
-				></node>
+				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
+					<node
+						v-if="nodeData.type !== STICKY_NODE_TYPE"
+						@duplicateNode="duplicateNode"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="removeNode"
+						@runWorkflow="runWorkflow"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						:id="'node-' + getNodeIndex(nodeData.name)"
+						:key="getNodeIndex(nodeData.name)"
+						:name="nodeData.name"
+						:isReadOnly="isReadOnly"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:hideActions="pullConnActive"
+					/>
+					<Sticky
+						v-else
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="removeNode"
+						:id="'node-' + getNodeIndex(nodeData.name)"
+						:name="nodeData.name"
+						:isReadOnly="isReadOnly"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:nodeViewScale="nodeViewScale"
+						:gridSize="GRID_SIZE"
+						:hideActions="pullConnActive"
+					/>
+				</div>
 			</div>
 		</div>
-		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
-		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$locale.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
-			<n8n-icon-button size="xlarge" icon="plus" />
+		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<div
+			class="node-buttons-wrapper"
+			v-if="!createNodeActive && !isReadOnly"
+		>
+			<div class="node-creator-button">
+				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
+				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
+					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+				</div>
+			</div>
 		</div>
 		<node-creator
 			:active="createNodeActive"
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
-			></node-creator>
+		/>
 		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
 				<font-awesome-icon icon="expand"/>
@@ -114,7 +147,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -128,11 +161,11 @@ import { newVersions } from '@/components/mixins/newVersions';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
-import DataDisplay from '@/components/DataDisplay.vue';
+import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
+import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -177,6 +210,11 @@ import {
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 
+interface AddNodeOptions {
+	position?: XYPosition;
+	dragAndDrop?: boolean;
+}
+
 export default mixins(
 	copyPaste,
 	externalHooks,
@@ -193,11 +231,11 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
-			DataDisplay,
+			NodeDetailsView,
 			Node,
 			NodeCreator,
 			NodeSettings,
-			RunData,
+			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -331,6 +369,8 @@ export default mixins(
 		},
 		data () {
 			return {
+				GRID_SIZE: CanvasHelpers.GRID_SIZE,
+				STICKY_NODE_TYPE,
 				createNodeActive: false,
 				instance: jsPlumb.getInstance(),
 				lastSelectedConnection: null as null | Connection,
@@ -554,7 +594,7 @@ export default mixins(
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
@@ -697,7 +737,7 @@ export default mixins(
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
-					if (lastSelectedNode !== null) {
+					if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
 				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
@@ -764,6 +804,9 @@ export default mixins(
 					const lastSelectedNode = this.lastSelectedNode;
 
 					if (lastSelectedNode !== null) {
+						if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnly) {
+							return;
+						}
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
@@ -1227,6 +1270,27 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 
+			onDragOver(event: DragEvent) {
+				event.preventDefault();
+			},
+
+			onDrop(event: DragEvent) {
+				if (!event.dataTransfer) {
+					return;
+				}
+
+				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+				if (nodeTypeName) {
+					const mousePosition = this.getMousePositionWithinNodeView(event);
+
+					this.addNodeButton(nodeTypeName, {
+						position: [mousePosition[0] - CanvasHelpers.NODE_SIZE / 2, mousePosition[1] - CanvasHelpers.NODE_SIZE / 2],
+						dragAndDrop: true,
+					});
+					this.createNodeActive = false;
+				}
+			},
+
 			nodeDeselectedByName (nodeName: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
 				if (node) {
@@ -1267,7 +1331,7 @@ export default mixins(
 					duration: 0,
 				});
 			},
-			async injectNode (nodeTypeName: string) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
 				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1290,14 +1354,19 @@ export default mixins(
 				const newNodeData: INodeUi = {
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
-					typeVersion: nodeTypeData.version,
+					typeVersion: Array.isArray(nodeTypeData.version)
+						? nodeTypeData.version.slice(-1)[0]
+						: nodeTypeData.version,
 					position: [0, 0],
 					parameters: {},
 				};
 
 				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;
-				if (lastSelectedNode) {
+
+				if (options.position) {
+					newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, options.position);
+				} else if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) { // set when injecting into a connection
 						const [diffX] = CanvasHelpers.getConnectorLengths(lastSelectedConnection);
@@ -1308,10 +1377,12 @@ export default mixins(
 
 					// set when pulling connections
 					if (this.newNodeInsertPosition) {
-						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0] + CanvasHelpers.GRID_SIZE, this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
+						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [
+							this.newNodeInsertPosition[0] + CanvasHelpers.GRID_SIZE,
+							this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2,
+						]);
 						this.newNodeInsertPosition = null;
-					}
-					else {
+					} else {
 						let yOffset = 0;
 
 						if (lastSelectedConnection) {
@@ -1352,14 +1423,22 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
-				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+				if (nodeTypeName === STICKY_NODE_TYPE) {
+					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
+				} else {
+					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+						node_type: nodeTypeName,
+						workflow_id: this.$store.getters.workflowId,
+						drag_and_drop: options.dragAndDrop,
+					} as IDataObject);
+				}
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
 				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, true);
+					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
 				});
 
 				return newNodeData;
@@ -1396,7 +1475,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNodeButton (nodeTypeName: string) {
+			async addNodeButton (nodeTypeName: string, options: AddNodeOptions = {}) {
 				if (this.editAllowedCheck() === false) {
 					return;
 				}
@@ -1405,7 +1484,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 
-				const newNodeData = await this.injectNode(nodeTypeName);
+				const newNodeData = await this.injectNode(nodeTypeName, options);
 				if (!newNodeData) {
 					return;
 				}
@@ -1755,7 +1834,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				await this.$store.dispatch('workflows/setNewWorkflowName');
+				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
+
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
@@ -1767,6 +1847,24 @@ export default mixins(
 				this.setZoomLevel(1);
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+					// For novice users (onboardingFlowEnabled == true)
+					// Inject welcome sticky note and zoom to fit
+					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
+						this.$nextTick(async () => {
+							await this.addNodes([
+								{
+									...CanvasHelpers.WELCOME_STICKY_NODE,
+									parameters: {
+										// Use parameters from the template but add translated content
+										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+									},
+								},
+							]);
+							this.zoomToFit();
+							this.$telemetry.track('welcome note inserted');
+						});
+					}
 				}, 0);
 			},
 			async initView (): Promise<void> {
@@ -2131,8 +2229,18 @@ export default mixins(
 					}
 				}
 
-				this.$externalHooks().run('node.deleteNode', { node });
-				this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
+				if(node.type === STICKY_NODE_TYPE) {
+					this.$telemetry.track(
+						'User deleted workflow note',
+						{
+							workflow_id: this.$store.getters.workflowId,
+							is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
+						},
+					);
+				} else {
+					this.$externalHooks().run('node.deleteNode', { node });
+					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
+				}
 
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
@@ -2362,7 +2470,7 @@ export default mixins(
 					if (nodeType !== null) {
 						let nodeParameters = null;
 						try {
-							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false);
+							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false, node);
 						} catch (e) {
 							console.error(this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') + `: "${node.name}"`); // eslint-disable-line no-console
 							console.error(e); // eslint-disable-line no-console
@@ -2670,10 +2778,13 @@ export default mixins(
 
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
-					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+					const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
+					if(!!nodeInfos.find(n => n.name === node.name && nodeVersions.includes(n.version)) && !node.hasOwnProperty('properties')) {
 						nodesToBeFetched.push({
 							name: node.name,
-							version: node.version,
+							version: Array.isArray(node.version)
+								? node.version.slice(-1)[0]
+								: node.version,
 						});
 					}
 				});
@@ -2824,6 +2935,28 @@ export default mixins(
 .demo-zoom-menu {
 	left: 10px;
 	bottom: 10px;
+}
+
+.node-buttons-wrapper {
+	position: fixed;
+	width: 150px;
+	height: 200px;
+	top: 0;
+	right: 0;
+	display: flex;
+
+	.add-sticky-button {
+		margin-top: var(--spacing-2xs);
+		opacity: 0;
+		transition: .1s;
+		transition-timing-function: linear;
+	}
+
+	&:hover {
+		.add-sticky-button {
+			opacity: 1;
+		}
+	}
 }
 
 .node-creator-button {

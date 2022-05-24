@@ -7,6 +7,7 @@ export const mediaOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const mediaOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -49,7 +49,7 @@ export const mediaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Room ID to post ',
+		description: 'Room ID to post',
 		required: true,
 	},
 	{

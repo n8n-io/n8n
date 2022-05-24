@@ -37,7 +37,7 @@ export function issueJWT(user: User): JwtToken {
 }
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User!.findOne(jwtPayload.id, {
+	const user = await Db.collections.User.findOne(jwtPayload.id, {
 		relations: ['globalRole'],
 	});
 

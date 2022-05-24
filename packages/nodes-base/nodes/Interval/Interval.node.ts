@@ -21,6 +21,7 @@ export class Interval implements INodeType {
 			name: 'Interval',
 			color: '#00FF00',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		properties: [
@@ -32,7 +33,7 @@ export class Interval implements INodeType {
 					minValue: 1,
 				},
 				default: 1,
-				description: 'Interval value.',
+				description: 'Interval value',
 			},
 			{
 				displayName: 'Unit',
@@ -53,7 +54,7 @@ export class Interval implements INodeType {
 					},
 				],
 				default: 'seconds',
-				description: 'Unit of the interval value.',
+				description: 'Unit of the interval value',
 			},
 		],
 	};

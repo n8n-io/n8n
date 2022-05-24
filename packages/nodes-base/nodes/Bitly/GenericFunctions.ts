@@ -31,9 +31,6 @@ export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions |
 	try{
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('bitlyApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 			options.headers = { Authorization: `Bearer ${credentials.accessToken}`};
 
 			return await this.helpers.request!(options);

@@ -64,7 +64,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Data to Send',
@@ -84,7 +83,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: `Don't send any column data`,
+				description: 'Don\'t send any column data',
 			},
 		],
 		displayOptions: {
@@ -117,7 +116,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
@@ -192,7 +190,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Return All',
@@ -233,7 +230,7 @@ export const tableRecordFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -432,7 +429,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The table name',
 	},
 	{
 		displayName: 'Table Record ID',
@@ -470,7 +466,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: `Don't send any column data`,
+				description: 'Don\'t send any column data',
 			},
 		],
 		displayOptions: {
@@ -503,7 +499,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{

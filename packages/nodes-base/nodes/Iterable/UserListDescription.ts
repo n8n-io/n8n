@@ -7,6 +7,7 @@ export const userListOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const userListOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -201,7 +201,7 @@ export const userListFields: INodeProperties[] = [
 				name: 'channelUnsubscribe',
 				type: 'boolean',
 				default: false,
-				description: `Unsubscribe email from list's associated channel - essentially a global unsubscribe`,
+				description: 'Unsubscribe email from list\'s associated channel - essentially a global unsubscribe',
 			},
 		],
 	},

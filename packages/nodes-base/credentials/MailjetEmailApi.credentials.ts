@@ -1,4 +1,6 @@
 import {
+	IAuthenticateBasicAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -25,7 +27,21 @@ export class MailjetEmailApi implements ICredentialType {
 			name: 'sandboxMode',
 			type: 'boolean',
 			default: false,
-			description: 'Allow to run the API call in a Sandbox mode, where all validations of the payload will be done without delivering the message',
+			description: 'Whether to allow to run the API call in a Sandbox mode, where all validations of the payload will be done without delivering the message',
 		},
 	];
+	authenticate: IAuthenticateBasicAuth = {
+		type: 'basicAuth',
+		properties: {
+		 userPropertyName: 'apiKey',
+		 passwordPropertyName: 'secretKey',
+	 },
+ };
+ test: ICredentialTestRequest = {
+		request: {
+			baseURL: `https://api.mailjet.com`,
+			url: '/v3/REST/template',
+			method: 'GET',
+		},
+	};
 }

@@ -25,7 +25,7 @@ import {
 } from './Types';
 
 export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('magento2Api') as IDataObject;
+	const credentials = await this.getCredentials('magento2Api');
 
 	let options: OptionsWithUri = {
 		method,
@@ -283,7 +283,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 					],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{
@@ -335,7 +335,6 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 				},
 			},
 			default: '',
-			description: '',
 		},
 		{
 			displayName: 'Options',
@@ -403,7 +402,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 										loadOptionsMethod: sortableAttributeFunction,
 									},
 									default: '',
-									description: `The sorting field`,
+									description: 'The sorting field',
 								},
 							],
 						},
@@ -571,7 +570,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			typeOptions: {
 				multipleValues: true,
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Custom Attribute',
 			options: [
 				{

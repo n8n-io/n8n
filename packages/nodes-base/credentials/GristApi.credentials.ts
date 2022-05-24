@@ -30,7 +30,7 @@ export class GristApi implements ICredentialType {
 					value: 'paid',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],
@@ -51,7 +51,7 @@ export class GristApi implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'Self-hosted URL',
+			displayName: 'Self-Hosted URL',
 			name: 'selfHostedUrl',
 			type: 'string',
 			default: '',

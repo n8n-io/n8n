@@ -4,6 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -108,7 +109,6 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Incoming Authentication',
@@ -125,7 +125,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If authentication should be activated for the webhook (makes it more secure).',
+				description: 'If authentication should be activated for the webhook (makes it more secure)',
 			},
 			{
 				displayName: 'Action',
@@ -159,7 +159,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of action to receive notifications about.',
+				description: 'Type of action to receive notifications about',
 			},
 			{
 				displayName: 'Object',
@@ -212,7 +212,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of object to receive notifications about.',
+				description: 'Type of object to receive notifications about',
 			},
 		],
 	};
@@ -267,7 +267,13 @@ export class PipedriveTrigger implements INodeType {
 				};
 
 				if (incomingAuthentication === 'basicAuth') {
-					const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					let httpBasicAuth;
+
+					try {
+						httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					} catch (error) {
+						// Do nothing
+					}
 
 					if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 						// Data is not defined on node so can not authenticate
@@ -323,7 +329,13 @@ export class PipedriveTrigger implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate

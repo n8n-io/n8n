@@ -19,12 +19,16 @@ export const contactGetAllDescription: ContactProperties = [
 		},
 		noDataExpression: true,
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				resource: [
