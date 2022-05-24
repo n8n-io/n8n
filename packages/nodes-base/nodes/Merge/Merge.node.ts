@@ -39,7 +39,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Keep Key Matches',
 						value: 'keepKeyMatches',
-						description: 'Keeps data of input 1 if it does find a match with data of input 2.',
+						description: 'Keeps data of input 1 if it does find a match with data of input 2',
 					},
 					{
 						name: 'Merge By Index',
@@ -64,7 +64,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Remove Key Matches',
 						value: 'removeKeyMatches',
-						description: 'Keeps data of input 1 if it does NOT find match with data of input 2.',
+						description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
 					},
 					{
 						name: 'Wait',
@@ -73,7 +73,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'append',
-				description: 'How data of branches should be merged.',
+				description: 'How data of branches should be merged',
 			},
 			{
 				displayName: 'Join',
@@ -90,21 +90,21 @@ export class Merge implements INodeType {
 					{
 						name: 'Inner Join',
 						value: 'inner',
-						description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items)',
+						description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
 					},
 					{
 						name: 'Left Join',
 						value: 'left',
-						description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items)',
+						description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
 					},
 					{
 						name: 'Outer Join',
 						value: 'outer',
-						description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items)',
+						description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
 					},
 				],
 				default: 'left',
-				description: 'How many items the output will contain if inputs contain different amount of items.',
+				description: 'How many items the output will contain if inputs contain different amount of items',
 			},
 			{
 				displayName: 'Property Input 1',
@@ -122,7 +122,7 @@ export class Merge implements INodeType {
 						],
 					},
 				},
-				description: 'Name of property which decides which items to merge of input 1.',
+				description: 'Name of property which decides which items to merge of input 1',
 			},
 			{
 				displayName: 'Property Input 2',
@@ -140,7 +140,7 @@ export class Merge implements INodeType {
 						],
 					},
 				},
-				description: 'Name of property which decides which items to merge of input 2.',
+				description: 'Name of property which decides which items to merge of input 2',
 			},
 			{
 				displayName: 'Output Data',
@@ -164,7 +164,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'input1',
-				description: 'Defines of which input the data should be used as output of node.',
+				description: 'Defines of which input the data should be used as output of node',
 			},
 			{
 				displayName: 'Overwrite',
@@ -181,21 +181,21 @@ export class Merge implements INodeType {
 					{
 						name: 'Always',
 						value: 'always',
-						description: 'Always overwrites everything.',
+						description: 'Always overwrites everything',
 					},
 					{
 						name: 'If Blank',
 						value: 'blank',
-						description: 'Overwrites only values of "null", "undefined" or empty string.',
+						description: 'Overwrites only values of "null", "undefined" or empty string',
 					},
 					{
 						name: 'If Missing',
 						value: 'undefined',
-						description: 'Only adds values which do not exist yet.',
+						description: 'Only adds values which do not exist yet',
 					},
 				],
 				default: 'always',
-				description: 'Select when to overwrite the values from Input1 with values from Input 2.',
+				description: 'Select when to overwrite the values from Input1 with values from Input 2',
 			},
 		],
 	};

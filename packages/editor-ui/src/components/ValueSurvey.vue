@@ -116,7 +116,8 @@ export default mixins(workflowHelpers).extend({
 					instance_id: this.$store.getters.instanceId,
 					nps: '',
 				});
-			} else {
+			}
+			if (this.form.value !== '' && this.form.email === '') {
 				this.$telemetry.track('User responded value survey email', {
 					instance_id: this.$store.getters.instanceId,
 					email: '',

@@ -330,7 +330,7 @@ export default mixins(
 								interpolate: {
 									defaultValue: this.defaultValues.saveDataErrorExecution === 'all'
 										? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
-										: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotsave'),
+										: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
 								},
 							},
 						),
@@ -584,7 +584,6 @@ export default mixins(
 
 .setting-name {
 	line-height: 32px;
-	font-weight: var(--font-weight-regular);
 }
 
 .setting-name:hover {

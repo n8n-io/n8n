@@ -4,6 +4,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	VIEWS,
 } from '@/constants';
 
 import {
@@ -248,9 +249,9 @@ export const workflowHelpers = mixins(
 				const workflowName = this.$store.getters.workflowName;
 
 				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				}
 			},
 
@@ -322,13 +323,18 @@ export const workflowHelpers = mixins(
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
 
-					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
 					// Add the node credentials if there are some set and if they should be displayed
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+							if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								continue;
+							}
+
 							const credentialTypeDescription = nodeType.credentials
 								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
 
@@ -337,7 +343,7 @@ export const workflowHelpers = mixins(
 								continue;
 							}
 
-							if (this.displayParameter(node.parameters, credentialTypeDescription, '') === false) {
+							if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) === false) {
 								// Credential should not be displayed so do also not save
 								continue;
 							}
@@ -407,7 +413,7 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
@@ -528,7 +534,7 @@ export const workflowHelpers = mixins(
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 					if (openInNewWindow) {
-						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
+						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
 						window.open(routeData.href, '_blank');
 						this.$store.commit('removeActiveAction', 'workflowSaving');
 						return true;
@@ -563,7 +569,7 @@ export const workflowHelpers = mixins(
 
 					if (redirect) {
 						this.$router.push({
-							name: 'NodeViewExisting',
+							name: VIEWS.WORKFLOW,
 							params: { name: workflowData.id as string, action: 'workflowSave' },
 						});
 					}

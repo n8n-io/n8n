@@ -16,7 +16,7 @@
 						v-if="template"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
+						@click="openWorkflow(template.id, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
@@ -63,6 +63,7 @@ import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/components/helpers';
+import { VIEWS } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesWorkflowView',
@@ -87,21 +88,19 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
-		navigateTo(id: string, page: string, e: PointerEvent) {
-			if (page === 'WorkflowTemplate') {
-				this.$telemetry.track('User inserted workflow template', {
-					source: 'workflow',
-					template_id: id,
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-				});
-			}
+		openWorkflow(id: string, e: PointerEvent) {
+			this.$telemetry.track('User inserted workflow template', {
+				source: 'workflow',
+				template_id: id,
+				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+			});
 
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
+				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 			}
 		},
 		onHidePreview() {

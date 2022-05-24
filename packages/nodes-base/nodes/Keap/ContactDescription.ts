@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/update a contact',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -72,7 +72,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: 'email',
-		description: `Performs duplicate checking by one of the following options: Email, EmailAndName. If a match is found using the option provided, the existing contact will be updated`,
+		description: 'Performs duplicate checking by one of the following options: Email, EmailAndName. If a match is found using the option provided, the existing contact will be updated.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -241,7 +241,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Address',
 		displayOptions: {
 			show: {
@@ -506,7 +506,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Social Account',
 		displayOptions: {
 			show: {
@@ -615,7 +615,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Comma-delimited list of Contact properties to include in the response. (Some fields such as lead_source_id, custom_fields, and job_title aren't included, by default.)`,
+				description: 'Comma-delimited list of Contact properties to include in the response. (Some fields such as lead_source_id, custom_fields, and job_title aren\'t included, by default.).',
 			},
 		],
 	},
@@ -637,7 +637,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -661,7 +661,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

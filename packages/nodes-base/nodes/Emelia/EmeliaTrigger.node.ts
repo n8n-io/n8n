@@ -10,6 +10,7 @@ import {
 
 import {
 	emeliaApiRequest,
+	emeliaApiTest,
 	emeliaGraphqlRequest,
 } from './GenericFunctions';
 
@@ -23,6 +24,7 @@ export class EmeliaTrigger implements INodeType {
 		displayName: 'Emelia Trigger',
 		name: 'emeliaTrigger',
 		icon: 'file:emelia.svg',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Emelia campaign activity events via webhooks',
@@ -35,6 +37,7 @@ export class EmeliaTrigger implements INodeType {
 			{
 				name: 'emeliaApi',
 				required: true,
+				testedBy: 'emeliaApiTest',
 			},
 		],
 		webhooks: [
@@ -93,6 +96,10 @@ export class EmeliaTrigger implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			emeliaApiTest,
+		},
+
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const responseData = await emeliaGraphqlRequest.call(this, {

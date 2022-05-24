@@ -7,6 +7,7 @@ export const fieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const fieldOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -63,7 +63,7 @@ export const fieldFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -87,7 +87,7 @@ export const fieldFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -111,7 +111,7 @@ export const fieldFields: INodeProperties[] = [
 				name: 'includeFieldPerms',
 				type: 'boolean',
 				default: false,
-				description: `Set to 'true' if you'd like to get back the custom permissions for the field(s)`,
+				description: 'Set to \'true\' if you\'d like to get back the custom permissions for the field(s)',
 			},
 		],
 	},
