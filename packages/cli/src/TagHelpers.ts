@@ -135,7 +135,7 @@ export async function setTagsForImport(
 
 	const tagLookupPromises = [];
 	for (let i = 0; i < workflowTags.length; i++) {
-		if (workflowTags[i] && typeof workflowTags[i].name !== 'undefined') {
+		if (workflowTags[i]?.name) {
 			const lookupPromise = findOrCreateTag(transactionManager, workflowTags[i], tags).then(
 				(tag) => {
 					workflowTags[i] = {
