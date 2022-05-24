@@ -60,6 +60,7 @@ export class SendGrid implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -76,7 +77,6 @@ export class SendGrid implements INodeType {
 				],
 				default: 'list',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...listOperations,
 			...listFields,
@@ -456,8 +456,10 @@ export class SendGrid implements INodeType {
 
 								const binaryProperty = items[i].binary![property];
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
+
 								attachmentsToSend.push({
-									content: binaryProperty.data,
+									content: dataBuffer.toString('base64'),
 									filename: binaryProperty.fileName || 'unknown',
 									type: binaryProperty.mimeType,
 								});

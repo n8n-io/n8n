@@ -43,6 +43,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -50,12 +51,12 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -67,11 +68,9 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					{
 						name: 'Analyze Sentiment',
 						value: 'analyzeSentiment',
-						description: 'Analyze Sentiment',
 					},
 				],
 				default: 'analyzeSentiment',
-				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All
@@ -91,7 +90,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				],
 				default: 'content',
-				description: 'The source of the document: a string containing the content or a Google Cloud Storage URI.',
+				description: 'The source of the document: a string containing the content or a Google Cloud Storage URI',
 				required: true,
 				displayOptions: {
 					show: {
@@ -106,7 +105,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the input in string format. Cloud audit logging exempt since it is based on user data. ',
+				description: 'The content of the input in string format. Cloud audit logging exempt since it is based on user data.',
 				required: true,
 				displayOptions: {
 					show: {
@@ -124,7 +123,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'gcsContentUri',
 				type: 'string',
 				default: '',
-				description: `The Google Cloud Storage URI where the file content is located. This URI must be of the form: <code>gs://bucket_name/object_name</code>. For more details, see <a href="https://cloud.google.com/storage/docs/reference-uris.">reference</a>.`,
+				description: 'The Google Cloud Storage URI where the file content is located. This URI must be of the form: <code>gs://bucket_name/object_name</code>. For more details, see <a href="https://cloud.google.com/storage/docs/reference-uris.">reference</a>.',
 				required: true,
 				displayOptions: {
 					show: {
@@ -166,7 +165,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							},
 						],
 						default: 'PLAIN_TEXT',
-						description: 'The type of input document.',
+						description: 'The type of input document',
 						required: true,
 					},
 					{
@@ -192,7 +191,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							},
 						],
 						default: 'UTF16',
-						description: 'The encoding type used by the API to calculate sentence offsets.',
+						description: 'The encoding type used by the API to calculate sentence offsets',
 					},
 					{
 						displayName: 'Language',
@@ -204,7 +203,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 								value: 'ar',
 							},
 							{
-								name: 'Chinese (Simplified)	',
+								name: 'Chinese (Simplified)',
 								value: 'zh',
 							},
 							{

@@ -86,6 +86,7 @@ export class QuickBooks implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Bill',
@@ -129,7 +130,6 @@ export class QuickBooks implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'Resource to consume',
 			},
 			...billOperations,
 			...billFields,

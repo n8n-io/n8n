@@ -47,7 +47,7 @@ for (item of items) {
 console.log('Done!');
 
 return items;`,
-				description: 'The JavaScript code to execute.',
+				description: 'The JavaScript code to execute',
 				noDataExpression: true,
 			},
 		],

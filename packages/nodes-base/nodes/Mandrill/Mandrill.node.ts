@@ -122,20 +122,21 @@ export class Mandrill implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
 						value: 'message',
-						description: 'Send a message.',
+						description: 'Send a message',
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -147,16 +148,15 @@ export class Mandrill implements INodeType {
 					{
 						name: 'Send template',
 						value: 'sendTemplate',
-						description: 'Send message based on template.',
+						description: 'Send message based on template',
 					},
 					{
 						name: 'Send HTML',
 						value: 'sendHtml',
-						description: 'Send message based on HTML.',
+						description: 'Send message based on HTML',
 					},
 				],
 				default: 'sendTemplate',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Template',
@@ -184,7 +184,7 @@ export class Mandrill implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'Admin <example@yourdomain.com>',
-				description: 'Email address of the sender optional with name.',
+				description: 'Email address of the sender optional with name',
 				displayOptions: {
 					show: {
 						operation: [
@@ -245,21 +245,21 @@ export class Mandrill implements INodeType {
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
+						description: 'Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the \'reject\' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.',
 					},
 					{
 						displayName: 'Auto Text',
 						name: 'autoText',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate a text part for messages that are not given text.',
+						description: 'Whether or not to automatically generate a text part for messages that are not given text',
 					},
 					{
 						displayName: 'Auto HTML',
 						name: 'autoHtml',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate an HTML part for messages that are not given HTML.',
+						description: 'Whether or not to automatically generate an HTML part for messages that are not given HTML',
 					},
 					{
 						displayName: 'BCC Address',
@@ -267,7 +267,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'message.bcc_address@example.com',
-						description: `An optional address to receive an exact copy of each recipient's email.`,
+						description: 'An optional address to receive an exact copy of each recipient\'s email',
 					},
 					{
 						displayName: 'From name',
@@ -275,7 +275,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'John Doe',
-						description: 'Optional from name to be used.',
+						description: 'Optional from name to be used',
 					},
 					{
 						displayName: 'Google Analytics Campaign',
@@ -283,7 +283,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn't provided the email's from address will be used instead.`,
+						description: 'Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn\'t provided the email\'s from address will be used instead.',
 					},
 					{
 						displayName: 'Google Analytics Domains',
@@ -291,7 +291,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
+						description: 'An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically',
 					},
 					{
 						displayName: 'HTML',
@@ -302,21 +302,21 @@ export class Mandrill implements INodeType {
 							rows: 5,
 						},
 						options: [],
-						description: 'The html you want to send.',
+						description: 'The html you want to send',
 					},
 					{
 						displayName: 'Important',
 						name: 'important',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not this message is important, and should be delivered ahead of non-important messages.',
+						description: 'Whether or not this message is important, and should be delivered ahead of non-important messages',
 					},
 					{
 						displayName: 'Inline CSS',
 						name: 'inlineCss',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size.',
+						description: 'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size',
 					},
 					{
 						displayName: 'Ip Pool',
@@ -324,14 +324,14 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.`,
+						description: 'The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.',
 					},
 					{
 						displayName: 'Preserve Recipients',
 						name: 'preserveRecipients',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to expose all recipients in to "To" header for each email.',
+						description: 'Whether or not to expose all recipients in to "To" header for each email',
 					},
 					{
 						displayName: 'Return Path Domain',
@@ -339,7 +339,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for the messages's return-path.`,
+						description: 'A custom domain to use for the messages\'s return-path',
 					},
 					{
 						displayName: 'Sent At',
@@ -347,7 +347,7 @@ export class Mandrill implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: `When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.`,
+						description: 'When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.',
 					},
 					{
 						displayName: 'Signing Domain',
@@ -355,7 +355,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients).`,
+						description: 'A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients)',
 					},
 					{
 						displayName: 'Subaccount',
@@ -363,7 +363,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'The unique id of a subaccount for this message - must already exist or will fail with an error',
+						description: 'The unique ID of a subaccount for this message - must already exist or will fail with an error',
 					},
 					{
 						displayName: 'Subject',
@@ -371,7 +371,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'My subject line',
-						description: 'Subject line of the email.',
+						description: 'Subject line of the email',
 					},
 					{
 						displayName: 'Tags',
@@ -379,7 +379,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
+						description: 'An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.',
 					},
 					{
 						displayName: 'Text',
@@ -390,21 +390,21 @@ export class Mandrill implements INodeType {
 							rows: 5,
 						},
 						options: [],
-						description: 'Example text content.',
+						description: 'Example text content',
 					},
 					{
 						displayName: 'Track Clicks',
 						name: 'trackClicks',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to turn on click tracking for the message.',
+						description: 'Whether or not to turn on click tracking for the message',
 					},
 					{
 						displayName: 'Track Opens',
 						name: 'trackOpens',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to turn on open tracking for the message.',
+						description: 'Whether or not to turn on open tracking for the message',
 					},
 					{
 						displayName: 'Tracking Domain',
@@ -412,21 +412,21 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for tracking opens and clicks instead of mandrillapp.com .`,
+						description: 'A custom domain to use for tracking opens and clicks instead of mandrillapp.com',
 					},
 					{
 						displayName: 'Url Strip Qs',
 						name: 'urlStripQs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to strip the query string from URLs when aggregating tracked URL data.',
+						description: 'Whether or not to strip the query string from URLs when aggregating tracked URL data',
 					},
 					{
 						displayName: 'View Content Link',
 						name: 'viewContentLink',
 						type: 'boolean',
 						default: false,
-						description: 'Set to false to remove content logging for sensitive emails.',
+						description: 'Set to false to remove content logging for sensitive emails',
 					},
 				],
 			},
@@ -523,7 +523,7 @@ export class Mandrill implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the metadata key.',
+								description: 'Value to set for the metadata key',
 							},
 						],
 					},
@@ -599,7 +599,7 @@ export class Mandrill implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'text/plain',
-								description: 'The MIME type of the attachment.',
+								description: 'The MIME type of the attachment',
 							},
 							{
 								displayName: 'Name',
@@ -607,7 +607,7 @@ export class Mandrill implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'myfile.txt',
-								description: 'The file name of the attachment.',
+								description: 'The file name of the attachment',
 							},
 							{
 								displayName: 'Content',
@@ -615,7 +615,7 @@ export class Mandrill implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'ZXhhbXBsZSBmaWxl',
-								description: 'The content of the attachment as a base64-encoded string.',
+								description: 'The content of the attachment as a base64-encoded string',
 							},
 						],
 					},
@@ -634,7 +634,7 @@ export class Mandrill implements INodeType {
 					},
 				],
 				default: {},
-				description: 'Array of supported attachments to add to the message.',
+				description: 'Array of supported attachments to add to the message',
 			},
 			{
 				displayName: 'Headers',
@@ -654,7 +654,7 @@ export class Mandrill implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Optional extra headers to add to the message (most headers are allowed).',
+				description: 'Optional extra headers to add to the message (most headers are allowed)',
 			},
 			{
 				displayName: 'Headers',
@@ -692,7 +692,7 @@ export class Mandrill implements INodeType {
 						],
 					},
 				],
-				description: 'Optional extra headers to add to the message (most headers are allowed).',
+				description: 'Optional extra headers to add to the message (most headers are allowed)',
 			},
 		],
 	};

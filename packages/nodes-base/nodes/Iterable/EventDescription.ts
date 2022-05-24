@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'track',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,7 +46,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the event to track.',
+		description: 'The name of the event to track',
 		default: '',
 	},
 	{
@@ -71,14 +71,14 @@ export const eventFields: INodeProperties[] = [
 				name: 'campaignId',
 				type: 'string',
 				default: '',
-				description: `Campaign tied to conversion`,
+				description: 'Campaign tied to conversion',
 			},
 			{
 				displayName: 'Created At',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
-				description: `Time event happened.`,
+				description: 'Time event happened',
 			},
 			{
 				displayName: 'Data Fields',
@@ -99,14 +99,14 @@ export const eventFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'The end event specified key of the event defined data.',
+								description: 'The end event specified key of the event defined data',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The end event specified value of the event defined data.',
+								description: 'The end event specified value of the event defined data',
 							},
 						],
 					},
@@ -117,14 +117,14 @@ export const eventFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: `Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.`,
+				description: 'Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.',
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: `Optional event id. If an event exists with that id, the event will be updated. If none is specified, a new id will automatically be generated and returned.`,
+				description: 'Optional event ID. If an event exists with that ID, the event will be updated. If none is specified, a new ID will automatically be generated and returned.',
 			},
 			{
 				displayName: 'Template ID',
@@ -137,7 +137,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description: `userId that was passed into the updateUser call`,
+				description: 'userId that was passed into the updateUser call',
 			},
 		],
 	},

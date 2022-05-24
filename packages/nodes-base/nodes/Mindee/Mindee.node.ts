@@ -60,6 +60,7 @@ export class Mindee implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Invoice',
@@ -71,12 +72,12 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 'receipt',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Predict',
@@ -84,7 +85,6 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 'predict',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -103,14 +103,14 @@ export class Mindee implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property which containsthe data for the file to be uploaded.',
+				description: 'Name of the binary property which containsthe data for the file to be uploaded',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 		],
 	};

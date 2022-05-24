@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +27,11 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Add note to a contact',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
@@ -36,11 +42,6 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a contact',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
@@ -48,7 +49,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of contact's metadata`,
+				description: 'Returns an overview of contact\'s metadata',
 			},
 			{
 				name: 'Get All',
@@ -62,7 +63,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -93,7 +93,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the contact already exists`,
+		description: 'The field to check to see if the contact already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -158,28 +158,28 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccounts',
 				},
 				default: '',
-				description: 'ID of the account that is the parent of this contact.',
+				description: 'ID of the account that is the parent of this contact',
 			},
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',
 				type: 'string',
 				default: '',
-				description: 'The name of the assistant.',
+				description: 'The name of the assistant',
 			},
 			{
 				displayName: 'Assistant Phone',
 				name: 'Assistant Phone',
 				type: 'string',
 				default: '',
-				description: 'The telephone number of the assistant.',
+				description: 'The telephone number of the assistant',
 			},
 			{
 				displayName: 'Birth Date',
 				name: 'birthdate',
 				type: 'dateTime',
 				default: '',
-				description: 'The birth date of the contact.',
+				description: 'The birth date of the contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -189,7 +189,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -204,14 +204,14 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -222,7 +222,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'The department of the contact.',
+				description: 'The department of the contact',
 			},
 			{
 				displayName: 'Description',
@@ -236,21 +236,21 @@ export const contactFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address for the contact.',
+				description: 'Email address for the contact',
 			},
 			{
 				displayName: 'Email Bounced Date',
 				name: 'otherPostalCode',
 				type: 'dateTime',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred',
 			},
 			{
 				displayName: 'Email Bounced Reason',
 				name: 'emailBouncedReason',
 				type: 'string',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
 				displayName: 'Fax',
@@ -288,7 +288,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained.',
+				description: 'Source from which the lead was obtained',
 			},
 			{
 				displayName: 'Mailing City',
@@ -307,7 +307,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number',
 			},
 			{
 				displayName: 'Mailing Postal Code',
@@ -326,7 +326,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mailingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for mailing address.',
+				description: 'Street address for mailing address',
 			},
 			{
 				displayName: 'Other City',
@@ -345,7 +345,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
-				description: 'Telephone for alternate address.',
+				description: 'Telephone for alternate address',
 			},
 			{
 				displayName: 'Other Postal Code',
@@ -364,7 +364,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherStreet',
 				type: 'string',
 				default: '',
-				description: 'Street for alternate address.',
+				description: 'Street for alternate address',
 			},
 			{
 				displayName: 'Owner',
@@ -374,14 +374,14 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the contact.',
+				description: 'The owner of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the contact.',
+				description: 'Phone number for the contact',
 			},
 			{
 				displayName: 'Record Type ID',
@@ -404,7 +404,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the contact such as CEO or Vice President.',
+				description: 'Title of the contact such as CEO or Vice President',
 			},
 		],
 	},
@@ -428,7 +428,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -455,28 +455,28 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccounts',
 				},
 				default: '',
-				description: 'ID of the account that is the parent of this contact.',
+				description: 'ID of the account that is the parent of this contact',
 			},
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',
 				type: 'string',
 				default: '',
-				description: 'The name of the assistant.',
+				description: 'The name of the assistant',
 			},
 			{
 				displayName: 'Assistant Phone',
 				name: 'Assistant Phone',
 				type: 'string',
 				default: '',
-				description: 'The telephone number of the assistant.',
+				description: 'The telephone number of the assistant',
 			},
 			{
 				displayName: 'Birth Date',
 				name: 'birthdate',
 				type: 'dateTime',
 				default: '',
-				description: 'The birth date of the contact.',
+				description: 'The birth date of the contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -486,7 +486,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -501,14 +501,14 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -519,7 +519,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'The department of the contact.',
+				description: 'The department of the contact',
 			},
 			{
 				displayName: 'Description',
@@ -533,21 +533,21 @@ export const contactFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address for the contact.',
+				description: 'Email address for the contact',
 			},
 			{
 				displayName: 'Email Bounced Date',
 				name: 'emailBouncedDate',
 				type: 'dateTime',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred',
 			},
 			{
 				displayName: 'Email Bounced Reason',
 				name: 'emailBouncedReason',
 				type: 'string',
 				default: '',
-				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred.',
+				description: 'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
 				displayName: 'Fax',
@@ -568,14 +568,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'homePhone',
 				type: 'string',
 				default: '',
-				description: 'Home telephone number for the contact.',
+				description: 'Home telephone number for the contact',
 			},
 			{
 				displayName: 'Jigsaw',
 				name: 'jigsaw',
 				type: 'string',
 				default: '',
-				description: 'references the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
+				description: 'References the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
 			},
 			{
 				displayName: 'Last Name',
@@ -592,7 +592,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained.',
+				description: 'Source from which the lead was obtained',
 			},
 			{
 				displayName: 'Mailing City',
@@ -617,7 +617,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mailingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for mailing address.',
+				description: 'Street address for mailing address',
 			},
 			{
 				displayName: 'Mailing Postal Code',
@@ -630,7 +630,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
-				description: `Contact’s mobile phone number.`,
+				description: 'Contact’s mobile phone number',
 			},
 			{
 				displayName: 'Other City',
@@ -649,7 +649,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
-				description: 'Telephone for alternate address.',
+				description: 'Telephone for alternate address',
 			},
 			{
 				displayName: 'Other Postal Code',
@@ -668,7 +668,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'otherStreet',
 				type: 'string',
 				default: '',
-				description: 'Street for alternate address.',
+				description: 'Street for alternate address',
 			},
 			{
 				displayName: 'Owner',
@@ -678,14 +678,14 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the contact.',
+				description: 'The owner of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the contact.',
+				description: 'Phone number for the contact',
 			},
 			{
 				displayName: 'Record Type ID',
@@ -708,7 +708,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the contact such as CEO or Vice President.',
+				description: 'Title of the contact such as CEO or Vice President',
 			},
 		],
 	},
@@ -732,7 +732,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -775,7 +775,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -799,7 +799,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -826,7 +826,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -841,8 +841,9 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -910,7 +911,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 	{
 		displayName: 'Campaign',
@@ -931,7 +932,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the campaign that needs to be fetched.',
+		description: 'ID of the campaign that needs to be fetched',
 	},
 	{
 		displayName: 'Options',
@@ -955,7 +956,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'Controls the HasResponded flag on this object.',
+				description: 'Controls the HasResponded flag on this object',
 			},
 		],
 	},
@@ -979,7 +980,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of contact that needs to be fetched.',
+		description: 'ID of contact that needs to be fetched',
 	},
 	{
 		displayName: 'Title',
@@ -997,7 +998,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Title of the note.',
+		description: 'Title of the note',
 	},
 	{
 		displayName: 'Options',
@@ -1031,7 +1032,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner',
@@ -1041,7 +1042,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note.',
+				description: 'ID of the user who owns the note',
 			},
 		],
 	},

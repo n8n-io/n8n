@@ -86,7 +86,7 @@ export const caseCommentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -326,7 +326,7 @@ export const caseCommentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

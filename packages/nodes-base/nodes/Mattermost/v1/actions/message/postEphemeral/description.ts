@@ -23,7 +23,7 @@ export const messagePostEphemeralDescription: MessageProperties = [
 				],
 			},
 		},
-		description: 'ID of the user to send the ephemeral message to.',
+		description: 'ID of the user to send the ephemeral message to',
 	},
 	{
 		displayName: 'Channel ID',
@@ -44,7 +44,7 @@ export const messagePostEphemeralDescription: MessageProperties = [
 				],
 			},
 		},
-		description: 'ID of the channel to send the ephemeral message in.',
+		description: 'ID of the channel to send the ephemeral message in',
 	},
 	{
 		displayName: 'Message',
@@ -64,6 +64,6 @@ export const messagePostEphemeralDescription: MessageProperties = [
 				],
 			},
 		},
-		description: 'Text to send in the ephemeral message.',
+		description: 'Text to send in the ephemeral message',
 	},
 ];

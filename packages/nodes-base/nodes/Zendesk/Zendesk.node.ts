@@ -98,12 +98,12 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Ticket',
@@ -127,7 +127,6 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'Resource to consume',
 			},
 			// TICKET
 			...ticketOperations,

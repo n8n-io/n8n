@@ -105,7 +105,7 @@ export class NetlifyTrigger implements INodeType {
 				description: 'Select a form',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

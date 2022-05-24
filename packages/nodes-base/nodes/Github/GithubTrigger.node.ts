@@ -79,7 +79,6 @@ export class GithubTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Repository Owner',
@@ -88,7 +87,7 @@ export class GithubTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n-io',
-				description: 'Owner of the repsitory.',
+				description: 'Owner of the repsitory',
 			},
 			{
 				displayName: 'Repository Name',
@@ -97,7 +96,7 @@ export class GithubTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n',
-				description: 'The name of the repsitory.',
+				description: 'The name of the repsitory',
 			},
 			{
 				displayName: 'Events',
@@ -107,22 +106,22 @@ export class GithubTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						name: 'check_run',
 						value: 'check_run',
-						description: 'Triggered when a check run is created, rerequested, completed, or has a requested_action.',
+						description: 'Triggered when a check run is created, rerequested, completed, or has a requested_action',
 					},
 					{
 						name: 'check_suite',
 						value: 'check_suite',
-						description: 'Triggered when a check suite is completed, requested, or rerequested.',
+						description: 'Triggered when a check suite is completed, requested, or rerequested',
 					},
 					{
 						name: 'commit_comment',
 						value: 'commit_comment',
-						description: 'Triggered when a commit comment is created.',
+						description: 'Triggered when a commit comment is created',
 					},
 					{
 						name: 'content_reference',
@@ -132,42 +131,42 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'create',
 						value: 'create',
-						description: 'Represents a created repository, branch, or tag.',
+						description: 'Represents a created repository, branch, or tag',
 					},
 					{
 						name: 'delete',
 						value: 'delete',
-						description: 'Represents a deleted branch or tag.',
+						description: 'Represents a deleted branch or tag',
 					},
 					{
 						name: 'deploy_key',
 						value: 'deploy_key',
-						description: 'Triggered when a deploy key is added or removed from a repository.',
+						description: 'Triggered when a deploy key is added or removed from a repository',
 					},
 					{
 						name: 'deployment',
 						value: 'deployment',
-						description: 'Represents a deployment.',
+						description: 'Represents a deployment',
 					},
 					{
 						name: 'deployment_status',
 						value: 'deployment_status',
-						description: 'Represents a deployment status.',
+						description: 'Represents a deployment status',
 					},
 					{
 						name: 'fork',
 						value: 'fork',
-						description: 'Triggered when a user forks a repository.',
+						description: 'Triggered when a user forks a repository',
 					},
 					{
 						name: 'github_app_authorization',
 						value: 'github_app_authorization',
-						description: 'Triggered when someone revokes their authorization of a GitHub App.',
+						description: 'Triggered when someone revokes their authorization of a GitHub App',
 					},
 					{
 						name: 'gollum',
 						value: 'gollum',
-						description: 'Triggered when a Wiki page is created or updated.',
+						description: 'Triggered when a Wiki page is created or updated',
 					},
 					{
 						name: 'installation',
@@ -177,32 +176,32 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'installation_repositories',
 						value: 'installation_repositories',
-						description: 'Triggered when a repository is added or removed from an installation.',
+						description: 'Triggered when a repository is added or removed from an installation',
 					},
 					{
 						name: 'issue_comment',
 						value: 'issue_comment',
-						description: 'Triggered when an issue comment is created, edited, or deleted.',
+						description: 'Triggered when an issue comment is created, edited, or deleted',
 					},
 					{
 						name: 'issues',
 						value: 'issues',
-						description: 'Triggered when an issue is opened, edited, deleted, transferred, pinned, unpinned, closed, reopened, assigned, unassigned, labeled, unlabeled, locked, unlocked, milestoned, or demilestoned.',
+						description: 'Triggered when an issue is opened, edited, deleted, transferred, pinned, unpinned, closed, reopened, assigned, unassigned, labeled, unlabeled, locked, unlocked, milestoned, or demilestoned',
 					},
 					{
 						name: 'label',
 						value: 'label',
-						description: 'Triggered when a repository\'s label is created, edited, or deleted.',
+						description: 'Triggered when a repository\'s label is created, edited, or deleted',
 					},
 					{
 						name: 'marketplace_purchase',
 						value: 'marketplace_purchase',
-						description: 'Triggered when someone purchases a GitHub Marketplace plan, cancels their plan, upgrades their plan (effective immediately), downgrades a plan that remains pending until the end of the billing cycle, or cancels a pending plan change.',
+						description: 'Triggered when someone purchases a GitHub Marketplace plan, cancels their plan, upgrades their plan (effective immediately), downgrades a plan that remains pending until the end of the billing cycle, or cancels a pending plan change',
 					},
 					{
 						name: 'member',
 						value: 'member',
-						description: 'Triggered when a user accepts an invitation or is removed as a collaborator to a repository, or has their permissions changed.',
+						description: 'Triggered when a user accepts an invitation or is removed as a collaborator to a repository, or has their permissions changed',
 					},
 					{
 						name: 'membership',
@@ -212,12 +211,12 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'meta',
 						value: 'meta',
-						description: 'Triggered when the webhook that this event is configured on is deleted.',
+						description: 'Triggered when the webhook that this event is configured on is deleted',
 					},
 					{
 						name: 'milestone',
 						value: 'milestone',
-						description: 'Triggered when a milestone is created, closed, opened, edited, or deleted.',
+						description: 'Triggered when a milestone is created, closed, opened, edited, or deleted',
 					},
 					{
 						name: 'organization',
@@ -232,43 +231,43 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'page_build',
 						value: 'page_build',
-						description: 'Triggered on push to a GitHub Pages enabled branch (gh-pages for project pages, master for user and organization pages).',
+						description: 'Triggered on push to a GitHub Pages enabled branch (gh-pages for project pages, master for user and organization pages)',
 					},
 					{
 						name: 'project_card',
 						value: 'project_card',
-						description: 'Triggered when a project card is created, edited, moved, converted to an issue, or deleted.',
+						description: 'Triggered when a project card is created, edited, moved, converted to an issue, or deleted',
 					},
 					{
 						name: 'project_column',
 						value: 'project_column',
-						description: 'Triggered when a project column is created, updated, moved, or deleted.',
+						description: 'Triggered when a project column is created, updated, moved, or deleted',
 					},
 					{
 						name: 'project',
 						value: 'project',
-						description: 'Triggered when a project is created, updated, closed, reopened, or deleted.',
+						description: 'Triggered when a project is created, updated, closed, reopened, or deleted',
 					},
 					{
 						name: 'public',
 						value: 'public',
-						description: 'Triggered when a private repository is open sourced.',
+						description: 'Triggered when a private repository is open sourced',
 					},
 					{
 						name: 'pull_request',
 						value: 'pull_request',
-						description: 'Triggered when a pull request is assigned, unassigned, labeled, unlabeled, opened, edited, closed, reopened, synchronize, ready_for_review, locked, unlocked, a pull request review is requested, or a review request is removed.',
+						description: 'Triggered when a pull request is assigned, unassigned, labeled, unlabeled, opened, edited, closed, reopened, synchronize, ready_for_review, locked, unlocked, a pull request review is requested, or a review request is removed',
 					},
 					{
 						name: 'pull_request_review',
 						value: 'pull_request_review',
-						description: 'Triggered when a pull request review is submitted into a non-pending state, the body is edited, or the review is dismissed.',
+						description: 'Triggered when a pull request review is submitted into a non-pending state, the body is edited, or the review is dismissed',
 					},
 
 					{
 						name: 'pull_request_review_comment',
 						value: 'pull_request_review_comment',
-						description: 'Triggered when a comment on a pull request\'s unified diff is created, edited, or deleted (in the Files Changed tab).',
+						description: 'Triggered when a comment on a pull request\'s unified diff is created, edited, or deleted (in the Files Changed tab)',
 					},
 					{
 						name: 'push',
@@ -278,7 +277,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'release',
 						value: 'release',
-						description: 'Triggered when a release is published, unpublished, created, edited, deleted, or prereleased.',
+						description: 'Triggered when a release is published, unpublished, created, edited, deleted, or prereleased',
 					},
 					{
 						name: 'repository',
@@ -288,27 +287,27 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'repository_import',
 						value: 'repository_import',
-						description: 'Triggered when a successful, cancelled, or failed repository import finishes for a GitHub organization or a personal repository.',
+						description: 'Triggered when a successful, cancelled, or failed repository import finishes for a GitHub organization or a personal repository',
 					},
 					{
 						name: 'repository_vulnerability_alert',
 						value: 'repository_vulnerability_alert',
-						description: 'Triggered when a security alert is created, dismissed, or resolved.',
+						description: 'Triggered when a security alert is created, dismissed, or resolved',
 					},
 					{
 						name: 'security_advisory',
 						value: 'security_advisory',
-						description: 'Triggered when a new security advisory is published, updated, or withdrawn.',
+						description: 'Triggered when a new security advisory is published, updated, or withdrawn',
 					},
 					{
 						name: 'star',
 						value: 'star',
-						description: 'Triggered when a star is added or removed from a repository.',
+						description: 'Triggered when a star is added or removed from a repository',
 					},
 					{
 						name: 'status',
 						value: 'status',
-						description: 'Triggered when the status of a Git commit changes.',
+						description: 'Triggered when the status of a Git commit changes',
 					},
 					{
 						name: 'team',
@@ -318,17 +317,17 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'team_add',
 						value: 'team_add',
-						description: 'Triggered when a repository is added to a team.',
+						description: 'Triggered when a repository is added to a team',
 					},
 					{
 						name: 'watch',
 						value: 'watch',
-						description: 'Triggered when someone stars a repository.',
+						description: 'Triggered when someone stars a repository',
 					},
 				],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 		],
 	};

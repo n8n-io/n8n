@@ -7,6 +7,7 @@ export const mmsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const mmsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -35,7 +35,7 @@ export const mmsFields: INodeProperties[] = [
 		name: 'from',
 		type: 'string',
 		default: '',
-		description: 'Plivo Number to send the MMS from.',
+		description: 'Plivo Number to send the MMS from',
 		placeholder: '+14156667777',
 		required: true,
 		displayOptions: {
@@ -54,7 +54,7 @@ export const mmsFields: INodeProperties[] = [
 		name: 'to',
 		type: 'string',
 		default: '',
-		description: 'Phone number to send the MMS to.',
+		description: 'Phone number to send the MMS to',
 		placeholder: '+14156667778',
 		required: true,
 		displayOptions: {
@@ -73,8 +73,7 @@ export const mmsFields: INodeProperties[] = [
 		name: 'message',
 		type: 'string',
 		default: '',
-		description: 'Message to send.',
-		required: false,
+		description: 'Message to send',
 		displayOptions: {
 			show: {
 				resource: [
@@ -91,7 +90,6 @@ export const mmsFields: INodeProperties[] = [
 		name: 'media_urls',
 		type: 'string',
 		default: '',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,6 +100,6 @@ export const mmsFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Comma-separated list of media URLs of the files from your file server.',
+		description: 'Comma-separated list of media URLs of the files from your file server',
 	},
 ];
