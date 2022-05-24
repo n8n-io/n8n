@@ -6,3 +6,4 @@ schema:
   type: number
   example: 100
   default: 100
+  maximum: 250
