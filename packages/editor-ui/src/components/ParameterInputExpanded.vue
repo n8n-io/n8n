@@ -19,6 +19,7 @@
 			@textInput="valueChanged"
 			@valueChanged="valueChanged"
 			inputSize="large"
+			:eventSource="eventSource"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
 			<n8n-text color="danger" size="small">
@@ -53,6 +54,9 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		documentationUrl: {
+			type: String,
+		},
+		eventSource: {
 			type: String,
 		},
 	},

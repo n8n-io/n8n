@@ -56,6 +56,8 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faLink,
+	faLightbulb,
 	faMapSigns,
 	faNetworkWired,
 	faPause,
@@ -90,6 +92,7 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
+	faUnlink,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
@@ -159,6 +162,8 @@ addIcon(faInbox);
 addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
+addIcon(faLink);
+addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faNetworkWired);
 addIcon(faPause);
@@ -195,6 +200,7 @@ addIcon(faThLarge);
 addIcon(faTimes);
 addIcon(faTrash);
 addIcon(faUndo);
+addIcon(faUnlink);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
