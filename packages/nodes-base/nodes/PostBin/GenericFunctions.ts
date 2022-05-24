@@ -1,11 +1,11 @@
 import {
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 // Regular expressions used to extract binId from parameter value
-const BIN_STRING_REGEX = /Bin '(\d+-\d+)'/g;
-const BIN_URL_REGEX = /https:\/\/www\.toptal\.com\/developers\/postbin\/b\/(\d+-\d+)/g;
+const BIN_ID_REGEX = /\b\d{13}-\d{13}\b/g;
 
 /**
  * Creates correctly-formatted PostBin API URL based on the entered binId.
@@ -17,15 +17,11 @@ const BIN_URL_REGEX = /https:\/\/www\.toptal\.com\/developers\/postbin\/b\/(\d+-
  * @param {IHttpRequestOptions} requestOptions
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
-export async function buildBinAPIURL(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions>  {
-	let binId = this.getNodeParameter('binId') as string;
-	// Parse binId from parameter value
-	binId = parseBinId(binId);
+export async function buildBinAPIURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+	const binId = parseBinId(this);
 	// Assemble the PostBin API URL and put it back to requestOptions
 	requestOptions.url = `/developers/postbin/api/bin/${binId}`;
+
 	return requestOptions;
 }
 
@@ -40,9 +36,8 @@ export async function buildBinAPIURL(
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
 export async function buildBinTestURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-	let binId = this.getNodeParameter('binId') as string;
-	// Parse binId from parameter value
-	binId = parseBinId(binId);
+	const binId = parseBinId(this);
+
 	// Assemble the PostBin API URL and put it back to requestOptions
 	requestOptions.url = `/developers/postbin/${binId}`;
 	return requestOptions;
@@ -60,9 +55,7 @@ export async function buildBinTestURL(this: IExecuteSingleFunctions, requestOpti
  */
 export async function buildRequestURL(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
 	const reqId = this.getNodeParameter('requestId', 'shift') as string;
-
-	let binId = this.getNodeParameter('binId') as string;
-	binId = parseBinId(binId);
+	const binId = parseBinId(this);
 
 	requestOptions.url = `/developers/postbin/api/bin/${binId}/req/${reqId}`;
 	return requestOptions;
@@ -78,20 +71,20 @@ export async function buildRequestURL(this: IExecuteSingleFunctions, requestOpti
  * @param {IHttpRequestOptions} requestOptions
  * @returns {Promise<IHttpRequestOptions>} requestOptions
  */
-function parseBinId(binId: string) {
-	// Test if bin id has been copied from website in the format `Bin '<binId>'`
-	const stringMatch = BIN_STRING_REGEX.exec(binId);
-	// Test if bin URL has been pasted instead if bin id
-	const urlMatch = BIN_URL_REGEX.exec(binId);
+function parseBinId(context: IExecuteSingleFunctions) {
+	const binId = context.getNodeParameter('binId') as string;
+	// Test if the Bin id is in the expected format
+	const idMatch = BIN_ID_REGEX.exec(binId);
 
 	// Return what is matched
-	if (stringMatch) {
-		return stringMatch[1];
+	if(idMatch) {
+		return idMatch[0];
 	}
 
-	if(urlMatch) {
-		return urlMatch[1];
-	}
-	// Fall back to returning whatever is passed in the first place
- return binId;
+	// If it's not recognized, error out
+ throw new NodeApiError(context.getNode(), {}, {
+	 message: 'Bin ID format is not valid',
+	 description: 'Please check the provided Bin ID and try again.',
+	 parseXml: false,
+ });
 }

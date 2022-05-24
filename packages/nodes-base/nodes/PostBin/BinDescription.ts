@@ -8,7 +8,6 @@ import {
 
 import {
 	buildBinAPIURL,
-	buildBinTestURL
 } from './GenericFunctions';
 
 
