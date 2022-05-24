@@ -16,6 +16,7 @@
 					v-for="credType in supportedCredentialTypes"
 					:value="credType.name"
 					:key="credType.name"
+					:label="credType.displayName"
 				>
 					<div class="list-option">
 						<div class="option-headline">
