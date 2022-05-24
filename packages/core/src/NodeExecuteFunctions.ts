@@ -472,6 +472,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		});
 	}
 
+	if (requestObject.maxBodyLength !== undefined) {
+		axiosConfig.maxBodyLength = requestObject.maxBodyLength as number;
+	}
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
@@ -547,6 +551,7 @@ async function proxyRequestToAxios(
 		auth?: { sendImmediately: boolean };
 		resolveWithFullResponse?: boolean;
 		simple?: boolean;
+		maxBodyLength?: number;
 	};
 	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
