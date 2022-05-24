@@ -4,7 +4,7 @@
 			<n8n-icon v-bind="$attrs" :icon="getIcon" size="large"/>
 		</div>
 		<div :class="$style.message" >
-			<n8n-text v-bind="$attrs"><span v-html="message"></span></n8n-text>
+			<n8n-text size="small" v-bind="$attrs"><span v-html="message"></span></n8n-text>
 		</div>
 	</div>
 </template>
@@ -66,7 +66,7 @@ export default Vue.extend({
 <style lang="scss" module>
 	.callout {
 		display: flex;
-		font-size: var(--font-size-2xs) !important;
+		font-size: var(--font-size-2xs);
 		padding: var(--spacing-xs);
 		border: var(--border-width-base) var(--border-style-base);
 		border-radius: var(--border-radius-base);
@@ -100,5 +100,4 @@ export default Vue.extend({
 	.icon {
 		margin-right: var(--spacing-xs);
 	}
-
 </style>
