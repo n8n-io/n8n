@@ -1,5 +1,8 @@
 version: '3.1'
 
+volumes:
+  db_storage:
+
 services:
 
   postgres:
@@ -12,6 +15,7 @@ services:
       - POSTGRES_NON_ROOT_USER
       - POSTGRES_NON_ROOT_PASSWORD
     volumes:
+      - db_storage:/var/lib/postgresql/data
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
 
   n8n:
