@@ -1,4 +1,4 @@
-  name: identifier
+  name: id
   in: path
   description: The ID or email of the user.
   required: true

@@ -92,15 +92,15 @@ export = {
 	getCredentialType: [
 		authorize(['owner', 'member']),
 		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { credentialTypeId } = req.params;
+			const { id } = req.params;
 
 			try {
-				CredentialTypes().getByName(credentialTypeId);
+				CredentialTypes().getByName(id);
 			} catch (error) {
 				return res.status(404).json();
 			}
 
-			let schema = new CredentialsHelper('').getCredentialsProperties(credentialTypeId);
+			let schema = new CredentialsHelper('').getCredentialsProperties(id);
 
 			schema = schema.filter((nodeProperty) => nodeProperty.type !== 'hidden');
 

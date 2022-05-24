@@ -56,12 +56,12 @@ export declare namespace ExecutionRequest {
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ executionId: number }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: number }, {}, {}, {}>;
 	type Delete = Get;
 }
 
 export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ credentialTypeId: string }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }
 
 export declare namespace WorkflowRequest {
@@ -80,9 +80,9 @@ export declare namespace WorkflowRequest {
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ workflowId: number }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: number }, {}, {}, {}>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ workflowId: number }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<{ id: number }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 }
 
@@ -102,14 +102,14 @@ export declare namespace UserRequest {
 	>;
 
 	export type Delete = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
+		{ id: string; email: string },
 		{},
 		{},
 		{ transferId?: string; includeRole: boolean }
 	>;
 
 	export type Get = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
+		{ id: string; email: string },
 		{},
 		{},
 		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }

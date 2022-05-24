@@ -52,9 +52,9 @@ export = {
 	deleteWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { workflowId } = req.params;
+			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -66,17 +66,13 @@ export = {
 
 			if (sharedWorkflow.workflow.active) {
 				// deactivate before deleting
-				await workflowRunner.remove(workflowId.toString());
+				await workflowRunner.remove(id.toString());
 			}
 
-			await Db.collections.Workflow.delete(workflowId);
+			await Db.collections.Workflow.delete(id);
 
-			void InternalHooksManager.getInstance().onWorkflowDeleted(
-				req.user.id,
-				workflowId.toString(),
-				true,
-			);
-			await externalHooks.run('workflow.afterDelete', [workflowId.toString()]);
+			void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, id.toString(), true);
+			await externalHooks.run('workflow.afterDelete', [id.toString()]);
 
 			return res.json(sharedWorkflow.workflow);
 		},
@@ -84,9 +80,9 @@ export = {
 	getWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { workflowId } = req.params;
+			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -162,11 +158,11 @@ export = {
 	updateWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
-			const { workflowId } = req.params;
+			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -188,7 +184,7 @@ export = {
 			if (sharedWorkflow.workflow.active) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
-				await workflowRunner.remove(workflowId.toString());
+				await workflowRunner.remove(id.toString());
 			}
 
 			await updateWorkflow(sharedWorkflow.workflowId, updateData);
@@ -215,9 +211,9 @@ export = {
 	activateWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
-			const { workflowId } = req.params;
+			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -251,9 +247,9 @@ export = {
 	deactivateWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
-			const { workflowId } = req.params;
+			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, workflowId.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own

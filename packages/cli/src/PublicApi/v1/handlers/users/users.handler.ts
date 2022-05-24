@@ -70,7 +70,7 @@ export = {
 		transferingToDeletedUser,
 		authorize(['owner']),
 		async (req: UserRequest.Delete, res: express.Response) => {
-			const { identifier: idToDelete } = req.params;
+			const { id: idToDelete } = req.params;
 			const { transferId = '', includeRole = false } = req.query;
 			const apiKeyUserOwner = req.user;
 			const users = await getUsers({
@@ -86,7 +86,7 @@ export = {
 			}
 
 			const userToDelete = users?.find(
-				(user) => user.id === req.params.identifier || user.email === req.params.identifier,
+				(user) => user.id === req.params.id || user.email === req.params.id,
 			) as User;
 
 			if (transferId) {
@@ -116,13 +116,13 @@ export = {
 		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
-			const { identifier } = req.params;
+			const { id } = req.params;
 
-			const user = await getUser({ withIdentifier: identifier, includeRole });
+			const user = await getUser({ withIdentifier: id, includeRole });
 
 			if (!user) {
 				return res.status(404).json({
-					message: `Could not find user with identifier: ${identifier}`,
+					message: `Could not find user with id: ${id}`,
 				});
 			}
 

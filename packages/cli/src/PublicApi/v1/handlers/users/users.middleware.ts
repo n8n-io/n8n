@@ -1,7 +1,6 @@
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { RequestHandler } from 'express';
-import config = require('../../../../../config');
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
 import {
 	isEmailSetUp,
@@ -12,7 +11,7 @@ import { getGlobalMemberRole } from './users.service';
 
 // @ts-ignore
 export const deletingOwnUser: RequestHandler = (req: UserRequest.Delete, res, next): any => {
-	if (req.user.id === req.params.identifier || req.user.email === req.params.identifier) {
+	if (req.user.id === req.params.id || req.user.email === req.params.id) {
 		return res.status(400).json({
 			message: `Cannot delete your own user`,
 		});
@@ -26,7 +25,7 @@ export const transferingToDeletedUser: RequestHandler = (
 	res,
 	next,
 ): any => {
-	if (req.query.transferId === req.params.identifier) {
+	if (req.query.transferId === req.params.id) {
 		return res.status(400).json({
 			message: `Request to delete a user failed because the user to delete and the transferee are the same user`,
 		});

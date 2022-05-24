@@ -20,7 +20,7 @@ export = {
 	deleteExecution: [
 		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
-			const { executionId } = req.params;
+			const { id } = req.params;
 
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -31,7 +31,7 @@ export = {
 			}
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(executionId, sharedWorkflowsIds);
+			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds);
 
 			// execution was not found
 			if (!execution) {
@@ -44,7 +44,7 @@ export = {
 
 			await deleteExecution(execution);
 
-			execution.id = executionId;
+			execution.id = id;
 
 			return res.json(execution);
 		},
@@ -52,7 +52,7 @@ export = {
 	getExecution: [
 		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { executionId } = req.params;
+			const { id } = req.params;
 
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -63,7 +63,7 @@ export = {
 			}
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(executionId, sharedWorkflowsIds);
+			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds);
 
 			// execution was not found
 			if (!execution) {
