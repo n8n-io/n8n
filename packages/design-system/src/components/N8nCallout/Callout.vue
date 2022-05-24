@@ -66,6 +66,7 @@ export default Vue.extend({
 <style lang="scss" module>
 	.callout {
 		display: flex;
+		font-size: var(--font-size-2xs);
 		padding: var(--spacing-xs);
 		border: var(--border-width-base) var(--border-style-base);
 		border-radius: var(--border-radius-base);
@@ -73,31 +74,31 @@ export default Vue.extend({
 	}
 
 	.info, .custom {
-		border-color: var(--color-info);
-		background-color: var(--color-info-tint-1);
+		border-color: var(--color-foreground-base);
+		background-color: var(--color-background-light);
 		color: var(--color-info);
 	}
 
 	.warning {
-		border-color: var(--color-warning);
-		background-color: var(--color-warning-tint-1);
+		border-color: var(--color-warning-tint-1);
+		background-color: var(--color-warning-tint-2);
 		color: var(--color-warning);
 	}
 
 	.success {
-		border-color: var(--color-success);
-		background-color: var(--color-success-tint-1);
+		border-color: var(--color-success-tint-1);
+		background-color: var(--color-success-tint-2);
 		color: var(--color-success);
 	}
 
 	.danger {
-		border-color: var(--color-danger);
-		background-color: var(--color-danger-tint-1);
+		border-color: var(--color-danger-tint-1);
+		background-color: var(--color-danger-tint-2);
 		color: var(--color-danger);
 	}
 
 	.icon {
-		padding: 0 var(--spacing-xs);
+		margin-right: var(--spacing-xs);
 	}
 
 </style>
