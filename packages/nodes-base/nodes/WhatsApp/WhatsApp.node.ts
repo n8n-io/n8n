@@ -67,7 +67,7 @@ export class WhatsApp implements INodeType {
 		const operation = this.getNodeParameter('type', 0) as string;
 
 
-        let body: IDataObject = { messaging_product: "whatsapp" };
+        let body: IDataObject;
 		// For Query string
 		let qs: IDataObject;
 
@@ -87,8 +87,7 @@ export class WhatsApp implements INodeType {
 
                 if (resource === "messages") {
                     endpoint = `${phoneNumberId}/messages`;
-                    body = Object.assign(body, { type: operation } );
-
+                    body = { type: operation };
 
                     if (operation === "template") {
                         requestMethod = "POST"
@@ -96,7 +95,7 @@ export class WhatsApp implements INodeType {
                         const name = this.getNodeParameter('name', i) as string;
                         const language = this.getNodeParameter('language', i) as string;
 
-                        body = Object.assign(body, to, name, language)
+                        body = {...body, to, template: { name, language }}
                     }
                 }
 
