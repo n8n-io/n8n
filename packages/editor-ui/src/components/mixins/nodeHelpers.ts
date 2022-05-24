@@ -356,6 +356,10 @@ export const nodeHelpers = mixins(
 			},
 			// @ts-ignore
 			getNodeSubtitle (data, nodeType, workflow): string | undefined {
+				if (!data) {
+					return undefined;
+				}
+
 				if (data.notesInFlow) {
 					return data.notes;
 				}
