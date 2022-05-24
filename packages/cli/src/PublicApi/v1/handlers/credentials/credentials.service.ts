@@ -1,6 +1,10 @@
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { FindOneOptions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { IDataObject, INodeProperties } from 'n8n-workflow';
+import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import { Db, ICredentialsDb } from '../../../..';
 import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
@@ -130,21 +134,114 @@ export function sanitizeCredentials(
 	return argIsArray ? sanitizedCredentials : sanitizedCredentials[0];
 }
 
-export function validateCredentialsProperties(type: string, data: IDataObject): string[] {
-	const missingProperties: string[] = [];
-	const helper = new CredentialsHelper('');
-	const credentialsProperties: INodeProperties[] = helper.getCredentialsProperties(type);
-	const dataProperties = Object.keys(data);
-	const credentialsKeys = credentialsProperties
-		// remove hidden types as they do not necessarily have to be defined
-		// since they have a default value
-		.filter((property) => property.type !== 'hidden')
-		.map((property) => property.name);
+export function toJsonSchema(properties: INodeProperties[]): IDataObject {
+	interface IRequired {
+		required?: string[];
+		not?: { required?: string[] };
+	}
+	interface IDependency {
+		if?: { properties: {} };
+		then?: { oneOf: IRequired[] };
+		else?: { allOf: IRequired[] };
+	}
 
-	credentialsKeys.forEach((key) => {
-		if (!dataProperties.includes(key)) {
-			missingProperties.push(key);
+	interface IJsonSchema {
+		additionalProperties: boolean;
+		type: 'object';
+		properties: { [key: string]: { type: string } };
+		allOf?: IDependency[];
+		required: string[];
+	}
+
+	const jsonSchema: IJsonSchema = {
+		additionalProperties: false,
+		type: 'object',
+		properties: {},
+		allOf: [],
+		required: [],
+	};
+	const optionsValues: { [key: string]: string[] } = {};
+	const resolveProperties: string[] = [];
+
+	properties
+		.filter((property) => property.type === 'options')
+		.forEach((property) => {
+			Object.assign(optionsValues, {
+				[property.name]: property.options?.map((option: INodePropertyOptions) => option.value),
+			});
+		});
+
+	let requiredFields: string[] = [];
+
+	const propertyRequiredDependencies: { [key: string]: IDependency } = {};
+
+	properties.forEach((property) => {
+		requiredFields.push(property.name);
+		if (property.type === 'options') {
+			Object.assign(jsonSchema.properties, {
+				[property.name]: {
+					type: 'string',
+					enum: property.options?.map((data: INodePropertyOptions) => data.value),
+				},
+			});
+		} else {
+			Object.assign(jsonSchema.properties, {
+				[property.name]: {
+					type: property.type,
+				},
+			});
+		}
+
+		// has dependency
+		if (property.displayOptions?.show) {
+			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
+			const displayOptionsValues = property.displayOptions.show[dependantName];
+			let dependantValue: string | number | boolean = '';
+
+			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
+				// eslint-disable-next-line prefer-destructuring
+				dependantValue = displayOptionsValues[0];
+			}
+
+			if (propertyRequiredDependencies[dependantName] === undefined) {
+				propertyRequiredDependencies[dependantName] = {};
+			}
+
+			if (!resolveProperties.includes(dependantName)) {
+				propertyRequiredDependencies[dependantName] = {
+					if: {
+						properties: {
+							[dependantName]: {
+								enum: [dependantValue],
+							},
+						},
+					},
+					then: {
+						oneOf: [],
+					},
+					else: {
+						allOf: [],
+					},
+				};
+			}
+
+			propertyRequiredDependencies[dependantName].then?.oneOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependantName].else?.allOf.push({
+				not: { required: [property.name] },
+			});
+
+			resolveProperties.push(dependantName);
+			// remove global required
+			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}
 	});
-	return missingProperties;
+	Object.assign(jsonSchema, { required: requiredFields });
+
+	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+
+	if (!jsonSchema.allOf.length) {
+		delete jsonSchema.allOf;
+	}
+
+	return jsonSchema as unknown as IDataObject;
 }

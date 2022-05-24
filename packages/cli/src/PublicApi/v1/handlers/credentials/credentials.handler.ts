@@ -16,6 +16,7 @@ import {
 	removeCredential,
 	sanitizeCredentials,
 	saveCredential,
+	toJsonSchema,
 } from './credentials.service';
 
 export = {
@@ -103,7 +104,7 @@ export = {
 
 			schema = schema.filter((nodeProperty) => nodeProperty.type !== 'hidden');
 
-			return res.json(schema);
+			return res.json(toJsonSchema(schema));
 		},
 	],
 };

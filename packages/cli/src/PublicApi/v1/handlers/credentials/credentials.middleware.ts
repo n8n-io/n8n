@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable consistent-return */
 import { RequestHandler } from 'express';
-import { CredentialTypes } from '../../../..';
+import { validate } from 'jsonschema';
+import { CredentialsHelper, CredentialTypes } from '../../../..';
 import { CredentialRequest } from '../../../types';
-import { validateCredentialsProperties } from './credentials.service';
+import { toJsonSchema } from './credentials.service';
 
 export const validCredentialType: RequestHandler = async (
 	req: CredentialRequest.Create,
@@ -27,14 +28,20 @@ export const validCredentialsProperties: RequestHandler = async (
 	next,
 ): Promise<any> => {
 	const { type, data } = req.body;
-	const formatError = (propertyName: string) => {
-		return `request.body.data should have required property '${propertyName}'`;
-	};
-	const missingProperties = validateCredentialsProperties(type, data);
-	if (missingProperties.length) {
+
+	let properties = new CredentialsHelper('').getCredentialsProperties(type);
+
+	properties = properties.filter((nodeProperty) => nodeProperty.type !== 'hidden');
+
+	const schema = toJsonSchema(properties);
+
+	const { valid, errors } = validate(data, schema, { nestedErrors: true });
+
+	if (!valid) {
 		return res.status(400).json({
-			message: missingProperties.map(formatError).join(','),
+			message: errors.map((error) => `request.body.data ${error.message}`).join(','),
 		});
 	}
+
 	next();
 };
