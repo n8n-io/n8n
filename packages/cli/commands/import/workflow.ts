@@ -27,7 +27,7 @@ import { setTagsForImport } from '../../src/TagHelpers';
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
-function assertWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
+function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
 		throw new Error(
 			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
@@ -135,7 +135,7 @@ export class ImportWorkflowsCommand extends Command {
 
 			const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
-			assertWorkflowsToImport(workflows);
+			assertHasWorkflowsToImport(workflows);
 
 			totalImported = workflows.length;
 

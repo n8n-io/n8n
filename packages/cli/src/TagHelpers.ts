@@ -106,7 +106,7 @@ const findOrCreateTag = async (
 			existingTag.id.toString() === importTag.id.toString() &&
 			existingTag.createdAt &&
 			importTag.createdAt &&
-			new Date(existingTag.createdAt) === new Date(importTag.createdAt),
+			existingTag.createdAt.getTime() === new Date(importTag.createdAt).getTime(),
 	);
 	if (identicalMatch) {
 		return identicalMatch;
