@@ -5,7 +5,7 @@ import { EntityManager, getConnection } from 'typeorm';
 
 import { TagEntity } from './databases/entities/TagEntity';
 
-import { ITagToImport, ITagWithCountDb } from './Interfaces';
+import { ITagToImport, ITagWithCountDb, IWorkflowToImport } from './Interfaces';
 
 // ----------------------------------
 //              utils
@@ -120,19 +120,22 @@ const findOrCreateTag = async (
 	return createTag(transactionManager, importTag.name);
 };
 
+const hasTags = (workflow: IWorkflowToImport) =>
+	'tags' in workflow && Array.isArray(workflow.tags) && workflow.tags.length > 0;
+
 /**
  * Set tag IDs to use existing tags, creates a new tag if no matching tag could be found
  */
 export async function setTagsForImport(
 	transactionManager: EntityManager,
-	workflow: { tags: ITagToImport[] },
+	workflow: IWorkflowToImport,
 	tags: TagEntity[],
 ): Promise<void> {
-	const workflowTags = workflow.tags;
-	if (!workflowTags || !Array.isArray(workflowTags) || workflowTags.length === 0) {
+	if (!hasTags(workflow)) {
 		return;
 	}
 
+	const workflowTags = workflow.tags;
 	const tagLookupPromises = [];
 	for (let i = 0; i < workflowTags.length; i++) {
 		if (workflowTags[i]?.name) {
