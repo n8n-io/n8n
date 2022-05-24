@@ -28,6 +28,7 @@ import {
 	faCloud,
 	faCloudDownloadAlt,
 	faCopy,
+	faCube,
 	faCut,
 	faDotCircle,
 	faEdit,
@@ -134,6 +135,7 @@ addIcon(faClone);
 addIcon(faCloud);
 addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
+addIcon(faCube);
 addIcon(faCut);
 addIcon(faDotCircle);
 addIcon(faEdit);
