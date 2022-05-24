@@ -1,7 +1,7 @@
 <template>
 	<div :class="classes" role="alert">
 		<div :class="$style.icon">
-			<n8n-icon v-bind="$attrs" :icon="getIcon" size="xlarge"/>
+			<n8n-icon v-bind="$attrs" :icon="getIcon" size="large"/>
 		</div>
 		<div :class="$style.message" >
 			<n8n-text v-bind="$attrs"><span v-html="message"></span></n8n-text>
@@ -66,7 +66,7 @@ export default Vue.extend({
 <style lang="scss" module>
 	.callout {
 		display: flex;
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-2xs) !important;
 		padding: var(--spacing-xs);
 		border: var(--border-width-base) var(--border-style-base);
 		border-radius: var(--border-radius-base);
