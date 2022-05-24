@@ -44,14 +44,14 @@ export class WhatsApp implements INodeType {
 			    displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Messages',
+						name: 'Message',
 						value: 'messages',
 					}
 				],
 				default: 'messages',
-				description: 'The resource to operate on.',
 			},
             ...messageFields,
             ...messageTypeFields
@@ -95,7 +95,7 @@ export class WhatsApp implements INodeType {
                         const name = this.getNodeParameter('name', i) as string;
                         const language = this.getNodeParameter('language', i) as string;
 
-                        body = {...body, to, template: { name, language }}
+                        body = {...body, to, template: { name, language: {code: language} }}
                     }
                 }
 
