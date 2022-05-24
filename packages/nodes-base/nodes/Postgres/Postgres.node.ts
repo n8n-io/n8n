@@ -228,11 +228,22 @@ export class Postgres implements INodeType {
 						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 					},
 					{
-						displayName: 'Parse INT8(bigInt) And NUMERIC',
-						name: 'parseNumeric',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to parse INT8(bigInt) and NUMERIC values or return them as strings',
+						displayName: 'Output Large-Format Numbers As',
+						name: 'largeNumbersOutput',
+						type: 'options',
+						options: [
+							{
+								name: 'Numbers',
+								value: 'numbers',
+							},
+							{
+								name: 'Text',
+								value: 'text',
+								description: 'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
+							},
+						],
+						hint: 'Applies to NUMERIC and BIGINT columns only',
+						default: 'text',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -256,11 +267,11 @@ export class Postgres implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('postgres');
-		const parseNumeric = this.getNodeParameter('additionalFields.parseNumeric', 0, false) as boolean;
+		const largeNumbersOutput = this.getNodeParameter('additionalFields.largeNumbersOutput', 0, '') as string;
 
 		const pgp = pgPromise();
 
-		if (parseNumeric) {
+		if (largeNumbersOutput === 'numbers') {
 			pgp.pg.types.setTypeParser(20, (value: string) => {
 				return parseInt(value, 10);
 			});
