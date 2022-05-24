@@ -3,6 +3,7 @@ version: '3.8'
 volumes:
   db_storage:
   n8n_storage:
+  redis_storage:
 
 services:
 
@@ -24,7 +25,18 @@ services:
       timeout: 5s
       retries: 10
 
-  n8n:
+  redis:
+    image: redis:6-alpine
+    restart: always
+    volumes:
+      - redis_storage:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n-shared: &n8n-shared
     image: n8nio/n8n
     restart: always
     environment:
@@ -34,16 +46,29 @@ services:
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
       - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER
       - N8N_BASIC_AUTH_PASSWORD
-    ports:
-      - 5678:5678
     links:
       - postgres
+      - redis
     volumes:
       - n8n_storage:/home/node/
-    command: /bin/sh -c "n8n start --tunnel"
     depends_on:
+      redis:
+        condition: service_healthy
       postgres:
         condition: service_healthy
+
+  n8n:
+    <<: *n8n-shared
+    ports:
+      - 5678:5678
+    command: /bin/sh -c "n8n start --tunnel"
+
+  n8n-worker:
+    <<: *n8n-shared
+    command: /bin/sh -c "n8n worker"
