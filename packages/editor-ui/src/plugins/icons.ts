@@ -89,6 +89,7 @@ import {
 	faTerminal,
 	faThLarge,
 	faTimes,
+	faTimesCircle,
 	faTrash,
 	faUndo,
 	faUserCircle,
@@ -195,6 +196,7 @@ addIcon(faTasks);
 addIcon(faTerminal);
 addIcon(faThLarge);
 addIcon(faTimes);
+addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
 addIcon(faUserCircle);
