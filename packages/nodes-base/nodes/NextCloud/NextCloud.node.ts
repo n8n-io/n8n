@@ -1366,7 +1366,6 @@ export class NextCloud implements INodeType {
 						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
 						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
 						let skippedFirst = false;
-
 						// @ts-ignore
 						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
 							// @ts-ignore
@@ -1379,7 +1378,12 @@ export class NextCloud implements INodeType {
 
 								newItem.path = item['d:href'].slice(19);
 
-								const props = item['d:propstat'][0]['d:prop'];
+								let props: IDataObject = {};
+								if (Array.isArray(item['d:propstat'])) {
+									props = item['d:propstat'][0]['d:prop'] as IDataObject;
+								} else {
+									props = item['d:propstat']['d:prop'] as IDataObject;
+								}
 
 								// Get the props and save them under a proper name
 								for (const propName of Object.keys(propNames)) {
@@ -1393,6 +1397,7 @@ export class NextCloud implements INodeType {
 								} else {
 									newItem.type = 'folder';
 								}
+								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
 								returnData.push(newItem as IDataObject);
