@@ -32,11 +32,11 @@ pinDataController.post(
 			const { nodeName, pinData } = req.body;
 
 			if (!nodeName) {
-				throw new ResponseHelper.ResponseError(NO_NODE_NAME);
+				throw new ResponseHelper.ResponseError(NO_NODE_NAME, undefined, 400);
 			}
 
 			if (!pinData) {
-				throw new ResponseHelper.ResponseError(NO_PIN_DATA);
+				throw new ResponseHelper.ResponseError(NO_PIN_DATA, undefined, 400);
 			}
 
 			const { id: workflowId } = req.params;
@@ -44,7 +44,8 @@ pinDataController.post(
 			const workflow = await Db.collections.Workflow.findOne(workflowId);
 
 			if (!workflow) {
-				throw new ResponseHelper.ResponseError([NO_WORKFLOW, workflowId].join(' '));
+				const message = [NO_WORKFLOW, workflowId].join(' ');
+				throw new ResponseHelper.ResponseError(message, undefined, 404);
 			}
 
 			const nodeIndex = findNodeIndex(workflow, nodeName);
@@ -68,7 +69,7 @@ pinDataController.delete(
 			const { nodeName } = req.query;
 
 			if (!nodeName) {
-				throw new ResponseHelper.ResponseError(NO_NODE_NAME);
+				throw new ResponseHelper.ResponseError(NO_NODE_NAME, undefined, 400);
 			}
 
 			const { id: workflowId } = req.params;
@@ -76,7 +77,8 @@ pinDataController.delete(
 			const workflow = await Db.collections.Workflow.findOne(workflowId);
 
 			if (!workflow) {
-				throw new ResponseHelper.ResponseError([NO_WORKFLOW, workflowId].join(' '));
+				const message = [NO_WORKFLOW, workflowId].join(' ');
+				throw new ResponseHelper.ResponseError(message, undefined, 404);
 			}
 
 			const nodeIndex = findNodeIndex(workflow, nodeName);
