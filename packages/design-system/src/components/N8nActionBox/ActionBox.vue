@@ -42,8 +42,6 @@ export default {
 		},
 		calloutTheme: {
 			type: String,
-			validator: (value: string): boolean =>
-				['info', 'success', 'warning', 'danger', 'custom'].includes(value),
 			default: 'info',
 		},
 		calloutIcon: {
