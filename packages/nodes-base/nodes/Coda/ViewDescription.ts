@@ -5,6 +5,7 @@ export const viewOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,7 +42,6 @@ export const viewOperations: INodeProperties[] = [
 			{
 				name: 'Update Row',
 				value: 'updateViewRow',
-				description: 'Update row',
 			},
 			{
 				name: 'Push Button',
@@ -50,7 +50,6 @@ export const viewOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -78,7 +77,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'View ID',
@@ -96,7 +95,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   view:getAll                              */
@@ -120,7 +119,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Return All',
@@ -137,7 +136,7 @@ export const viewFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -161,7 +160,7 @@ export const viewFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   view:getAllViewRows                      */
@@ -185,7 +184,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'View',
@@ -209,7 +208,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from.',
+		description: 'The table to get the rows from',
 	},
 	{
 		displayName: 'Return All',
@@ -226,7 +225,7 @@ export const viewFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -250,7 +249,7 @@ export const viewFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -277,14 +276,14 @@ export const viewFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
+				description: 'Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you\'d like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you\'d like to use a string, you must surround it in quotes (e.g., "groceries").',
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
+				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -305,14 +304,14 @@ export const viewFields: INodeProperties[] = [
 						value: 'rich',
 					},
 				],
-				description: `The format that cell values are returned as.`,
+				description: 'The format that cell values are returned as',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Sort By',
@@ -329,7 +328,7 @@ export const viewFields: INodeProperties[] = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.`,
+				description: 'Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.',
 			},
 		],
 	},
@@ -355,7 +354,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'View',
@@ -379,7 +378,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from.',
+		description: 'The table to get the rows from',
 	},
 	{
 		displayName: 'Return All',
@@ -396,7 +395,7 @@ export const viewFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -420,7 +419,7 @@ export const viewFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   view:deleteViewRow                       */
@@ -444,7 +443,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'View',
@@ -468,7 +467,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 	{
 		displayName: 'Row',
@@ -492,7 +491,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   view:pushViewButton                      */
@@ -516,7 +515,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'View',
@@ -540,7 +539,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 	{
 		displayName: 'Row',
@@ -564,7 +563,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 	{
 		displayName: 'Column',
@@ -612,7 +611,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'View',
@@ -636,7 +635,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 	{
 		displayName: 'Row',
@@ -660,7 +659,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 	{
 		displayName: 'Key Name',
@@ -678,7 +677,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'The view to get the row from',
 	},
 	{
 		displayName: 'Options',
@@ -702,7 +701,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
-				description: `If true, the API will not attempt to parse the data in any way.`,
+				description: 'If true, the API will not attempt to parse the data in any way',
 			},
 		],
 	},

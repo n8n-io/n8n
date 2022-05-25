@@ -1,20 +1,23 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import * as winston from 'winston';
+import winston from 'winston';
 
 import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
 
-import * as callsites from 'callsites';
+import callsites from 'callsites';
 import { basename } from 'path';
-import config = require('../config');
+import config from '../config';
 
 class Logger implements ILogger {
 	private logger: winston.Logger;
 
 	constructor() {
-		const level = config.get('logs.level') as string;
+		const level = config.getEnv('logs.level');
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const output = (config.get('logs.output') as string).split(',').map((output) => output.trim());
+		const output = config
+			.getEnv('logs.output')
+			.split(',')
+			.map((output) => output.trim());
 
 		this.logger = winston.createLogger({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -56,10 +59,10 @@ class Logger implements ILogger {
 			);
 			this.logger.add(
 				new winston.transports.File({
-					filename: config.get('logs.file.location'),
+					filename: config.getEnv('logs.file.location'),
 					format: fileLogFormat,
-					maxsize: (config.get('logs.file.fileSizeMax') as number) * 1048576, // config * 1mb
-					maxFiles: config.get('logs.file.fileCountMax'),
+					maxsize: config.getEnv('logs.file.fileSizeMax') * 1048576, // config * 1mb
+					maxFiles: config.getEnv('logs.file.fileCountMax'),
 				}),
 			);
 		}

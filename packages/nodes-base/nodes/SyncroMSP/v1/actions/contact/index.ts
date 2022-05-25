@@ -21,6 +21,7 @@ export const descriptions = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,7 +57,6 @@ export const descriptions = [
 			},
 		],
 		default: 'getAll',
-		description: '',
 	},
 	...getAll.description,
 	...create.description,

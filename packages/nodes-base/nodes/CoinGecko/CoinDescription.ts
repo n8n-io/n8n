@@ -7,6 +7,7 @@ export const coinOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -89,7 +90,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: 'coinId',
-		description: 'Search by coin ID or contract address.',
+		description: 'Search by coin ID or contract address',
 	},
 	{
 		displayName: 'Coin ID',
@@ -111,7 +112,6 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currency',
@@ -178,7 +178,6 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'bitcoin',
-		description: 'Coin ID',
 	},
 	{
 		displayName: 'Base Currencies',
@@ -232,7 +231,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		],
 		default: 'ethereum',
-		description: 'The id of the platform issuing tokens.',
+		description: 'The ID of the platform issuing tokens',
 	},
 	{
 		displayName: 'Contract address',
@@ -254,7 +253,7 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Token\'s contract address.',
+		description: 'Token\'s contract address',
 	},
 	{
 		displayName: 'Contract addresses',
@@ -275,7 +274,7 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The contract address of tokens, comma separated.',
+		description: 'The contract address of tokens, comma-separated',
 	},
 	{
 		displayName: 'Base Currency',
@@ -400,7 +399,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Return data for this many days in the past from now.',
+		description: 'Return data for this many days in the past from now',
 	},
 	{
 		displayName: 'Date',
@@ -418,7 +417,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The date of data snapshot.',
+		description: 'The date of data snapshot',
 	},
 	{
 		displayName: 'Return All',
@@ -437,7 +436,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -463,7 +462,7 @@ export const coinFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -488,7 +487,7 @@ export const coinFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'bitcoin',
 				default: '',
-				description: 'Filter results by comma separated list of coin ID.',
+				description: 'Filter results by comma-separated list of coin ID',
 			},
 			{
 				displayName: 'Category',
@@ -501,7 +500,7 @@ export const coinFields: INodeProperties[] = [
 					},
 				],
 				default: 'decentralized_finance_defi',
-				description: 'Filter by coin category.',
+				description: 'Filter by coin category',
 			},
 			{
 				displayName: 'Order',
@@ -525,10 +524,6 @@ export const coinFields: INodeProperties[] = [
 						value: 'market_cap_asc',
 					},
 					{
-						name: 'Market Cap Desc',
-						value: 'market_cap_desc',
-					},
-					{
 						name: 'Volume Asc',
 						value: 'volume_asc',
 					},
@@ -537,23 +532,23 @@ export const coinFields: INodeProperties[] = [
 						value: 'volume_desc',
 					},
 					{
-						name: 'Id Asc',
+						name: 'ID Asc',
 						value: 'id_asc',
 					},
 					{
-						name: 'Id Desc',
+						name: 'ID Desc',
 						value: 'id_desc',
 					},
 				],
 				default: '',
-				description: 'Sort results by field.',
+				description: 'Sort results by field',
 			},
 			{
 				displayName: 'Sparkline',
 				name: 'sparkline',
 				type: 'boolean',
 				default: false,
-				description: 'Include sparkline 7 days data.',
+				description: 'Include sparkline 7 days data',
 			},
 			{
 				displayName: 'Price Change Percentage',
@@ -590,7 +585,7 @@ export const coinFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Include price change percentage for specified times.',
+				description: 'Include price change percentage for specified times',
 			},
 		],
 	},
@@ -662,14 +657,13 @@ export const coinFields: INodeProperties[] = [
 					loadOptionsMethod: 'getExchanges',
 				},
 				default: [],
-				description: 'Filter results by exchange IDs.',
+				description: 'Filter results by exchange IDs',
 			},
 			{
 				displayName: 'Include Exchange Logo',
 				name: 'include_exchange_logo',
 				type: 'boolean',
 				default: false,
-				description: 'Include exchange logo.',
 			},
 			{
 				displayName: 'Order',
@@ -690,7 +684,7 @@ export const coinFields: INodeProperties[] = [
 					},
 				],
 				default: 'trust_score_desc',
-				description: 'Sorts results by the selected rule.',
+				description: 'Sorts results by the selected rule',
 			},
 		],
 	},
@@ -716,7 +710,7 @@ export const coinFields: INodeProperties[] = [
 				name: 'localization',
 				type: 'boolean',
 				default: true,
-				description: 'Set to false to exclude localized languages in response.',
+				description: 'Set to false to exclude localized languages in response',
 			},
 		],
 	},
@@ -742,28 +736,28 @@ export const coinFields: INodeProperties[] = [
 				name: 'community_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include community data.',
+				description: 'Include community data',
 			},
 			{
 				displayName: 'Developer data',
 				name: 'developer_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include developer data.',
+				description: 'Include developer data',
 			},
 			{
 				displayName: 'Localization',
 				name: 'localization',
 				type: 'boolean',
 				default: false,
-				description: 'Include all localized languages in response.',
+				description: 'Include all localized languages in response',
 			},
 			{
 				displayName: 'Market data',
 				name: 'market_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include market data.',
+				description: 'Include market data',
 			},
 			{
 				displayName: 'Sparkline',
@@ -777,7 +771,7 @@ export const coinFields: INodeProperties[] = [
 				name: 'tickers',
 				type: 'boolean',
 				default: false,
-				description: 'Include tickers data.',
+				description: 'Include tickers data',
 			},
 		],
 	},

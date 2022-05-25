@@ -9,9 +9,9 @@ export class WebhookModel1589476000887 implements MigrationInterface {
 	name = 'WebhookModel1589476000887';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixIndex = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
@@ -20,8 +20,8 @@ export class WebhookModel1589476000887 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
-		const schema = config.get('database.postgresdb.schema');
+		let tablePrefix = config.getEnv('database.tablePrefix');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}

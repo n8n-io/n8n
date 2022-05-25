@@ -19,9 +19,9 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	let credentials;
 
 	if (resource === 'receipt') {
-		credentials = await this.getCredentials('mindeeReceiptApi') as IDataObject;
+		credentials = await this.getCredentials('mindeeReceiptApi');
 	} else {
-		credentials = await this.getCredentials('mindeeInvoiceApi') as IDataObject;
+		credentials = await this.getCredentials('mindeeInvoiceApi');
 	}
 
 	const options: OptionsWithUri = {

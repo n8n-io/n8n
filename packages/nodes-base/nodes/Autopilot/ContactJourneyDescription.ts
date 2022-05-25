@@ -7,6 +7,7 @@ export const contactJourneyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const contactJourneyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -50,7 +50,7 @@ export const contactJourneyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'List ID.',
+		description: 'List ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -68,6 +68,6 @@ export const contactJourneyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.',
+		description: 'Can be ID or email',
 	},
 ];

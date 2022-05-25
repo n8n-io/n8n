@@ -40,6 +40,7 @@ export class LingvaNex implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Translate',
@@ -48,7 +49,6 @@ export class LingvaNex implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All
@@ -115,7 +115,6 @@ export class LingvaNex implements INodeType {
 						name: 'platform',
 						type: 'string',
 						default: 'api',
-						description: '',
 					},
 					{
 						displayName: 'Translate Mode',
@@ -155,7 +154,7 @@ export class LingvaNex implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];

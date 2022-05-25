@@ -53,15 +53,18 @@ export class Plivo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Call',
 						value: 'call',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'MMS',
 						value: 'mms',
 					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 					{
 						name: 'SMS',
 						value: 'sms',
@@ -69,7 +72,6 @@ export class Plivo implements INodeType {
 				],
 				default: 'sms',
 				required: true,
-				description: 'The resource to operate on.',
 			},
 			...smsOperations,
 			...smsFields,

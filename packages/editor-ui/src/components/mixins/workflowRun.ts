@@ -176,6 +176,7 @@ export const workflowRun = mixins(
 					startedAt: new Date(),
 					stoppedAt: undefined,
 					workflowId: workflow.id,
+					executedNode: nodeName,
 					data: {
 						resultData: {
 							runData: newRunData || {},
