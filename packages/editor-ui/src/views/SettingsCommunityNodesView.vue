@@ -9,6 +9,9 @@
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
 					:buttonText="$locale.baseText('settings.communityNodes.empty.installPackageLabel')"
+					:calloutText="actionBoxConfig.calloutText"
+					:calloutTheme="actionBoxConfig.calloutTheme"
+					:hideButton="actionBoxConfig.hideButton"
 					@click="openNPMPage"
 				/>
 			</div>
@@ -37,6 +40,17 @@ export default Vue.extend({
 			return  packageCount < 31 ?
 				this.$locale.baseText('settings.communityNodes.empty.description.no-packages') :
 				this.$locale.baseText('settings.communityNodes.empty.description', { interpolate: { count: (Math.floor(packageCount / 10) * 10).toString() } });
+		},
+		actionBoxConfig() {
+			return this.executionMode === 'queue' ? {
+				calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning'),
+				calloutTheme: 'warning',
+				hideButton: true,
+			} : {
+				calloutText: '',
+				calloutTheme: '',
+				hideButton: false,
+			};
 		},
 	},
 	methods: {
