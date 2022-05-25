@@ -781,7 +781,7 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
-	pinData?: object;
+	pinData?: { [key: string]: any };
 	hasPinData?: true;
 }
 
