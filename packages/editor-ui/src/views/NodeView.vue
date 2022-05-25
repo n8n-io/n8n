@@ -60,18 +60,18 @@
 		</div>
 		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
-			:class="['node-buttons-wrapper', showCreateMenu ? 'no-events' : '']"
+			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
 			@mouseenter="onCreateMenuHoverIn"
 		>
-			<div class="node-creator-button visible-button">
+			<div class="node-creator-button">
 				<n8n-icon-button
 					size="xlarge"
 					icon="plus"
 					@click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"
 				/>
 				<div
-					:class="['add-sticky-button', showCreateMenu ? 'visible-button' : '']"
+					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
 					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
 				>
 					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
@@ -393,7 +393,7 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
-				showCreateMenu: false,
+				showStickyButton: false,
 			};
 		},
 		beforeDestroy () {
@@ -404,26 +404,24 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
-			onCreateMenuHoverIn() {
-				const vm = this;
-				// When `Create` menu hover area is hovered, show the menu
-				// and start listening for mousemove to know when mouse leaves it.
-				// This listener is necessary since pointer events are disabled on the
-				// hover area while menu is shown so it's not interrupting mouse events in the node view.
-				vm.showCreateMenu = true;
-				const moveCallback = (event: MouseEvent) => {
-					const buttonsWrapper = document.querySelector('.node-buttons-wrapper');
+			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
+				const buttonsWrapper = mouseinEvent.target as Element;
+
+				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
+				// This listener is then used to detect when the cursor leaves so it can be hidden and mouse events re-enabled.
+				this.showStickyButton = true;
+				const moveCallback = (mousemoveEvent: MouseEvent) => {
 					if(buttonsWrapper) {
-						const elementH = buttonsWrapper.getBoundingClientRect().height;
-						const elementW = buttonsWrapper.getBoundingClientRect().width;
-						const elementLeftNear = buttonsWrapper.getBoundingClientRect().left;
-						const elementLeftFar = elementLeftNear + elementW;
-						const elementTopNear = buttonsWrapper.getBoundingClientRect().top;
-						const elementTopFar = elementTopNear + elementH;
-						const inside = ((event.pageX > elementLeftNear && event.pageX < elementLeftFar) && (event.pageY > elementTopNear && event.pageY < elementTopFar));
+						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
+						const wrapperH = wrapperBounds.height;
+						const wrapperW = wrapperBounds.width;
+						const wrapperLeftNear = wrapperBounds.left;
+						const wrapperLeftFar = wrapperLeftNear + wrapperW;
+						const wrapperTopNear = wrapperBounds.top;
+						const wrapperTopFar = wrapperTopNear + wrapperH;
+						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
 						if(!inside) {
-							// Once the mouse leaves hover area, hide menu and remove listener
-							vm.showCreateMenu = false;
+							this.showStickyButton = false;
 							document.removeEventListener('mousemove', moveCallback, false);
 						}
 					}
@@ -3002,6 +3000,7 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
+	pointer-events: all !important;
 }
 
 .node-creator-button button {
