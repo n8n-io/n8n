@@ -335,16 +335,10 @@ export const workflowHelpers = mixins(
 								continue;
 							}
 
-							const credentialsByVersion = nodeType.credentials.filter(c => {
-								if (c.displayOptions && c.displayOptions.show && c.displayOptions.show['@version']) {
-									return c.displayOptions.show['@version'].includes(node.typeVersion);
-								}
-
-								return c;
-							});
-
-							const credentialTypeDescription = credentialsByVersion
-								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
+							const credentialTypeDescription = nodeType.credentials
+								// filter out credentials with same name in different node versions
+								.filter((c) => this.displayParameter(node.parameters, c, '', node))
+								.find((c) => c.name === nodeCredentialTypeName);
 
 							if (credentialTypeDescription === undefined) {
 								// Credential type is not know so do not save
