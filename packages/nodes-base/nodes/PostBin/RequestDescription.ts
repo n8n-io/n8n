@@ -24,7 +24,7 @@ export const requestOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Return data based on request ID and bin ID',
+				description: 'Get a request',
 				routing: {
 					request: {
 						method: 'GET',
@@ -41,7 +41,7 @@ export const requestOperations: INodeProperties[] = [
 			{
 				name: 'Remove First',
 				value: 'removeFirst',
-				description: 'Remove the first request from the bin',
+				description: 'Remove the first request from bin',
 				routing: {
 					request: {
 						method: 'GET',
@@ -58,7 +58,7 @@ export const requestOperations: INodeProperties[] = [
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Test your API by sending the bin a request',
+				description: 'Send a test request to the bin',
 				routing: {
 					request: {
 						method: 'POST',
@@ -74,7 +74,7 @@ export const requestOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "status": "Sent" } }}',
+									value: '={{ { "requestId": $response.body } }}',
 								},
 							},
 						],

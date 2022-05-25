@@ -1,5 +1,4 @@
 import {
-	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
@@ -28,7 +27,7 @@ export const binOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create new bin',
+				description: 'Create bin',
 				routing: {
 					request: {
 						method: 'POST',
@@ -44,7 +43,6 @@ export const binOperations: INodeProperties[] = [
 									'expires_timestamp': item.json.expires,
 									'expires_iso': new Date(item.json.expires as string).toISOString(),
 								});
-
 								return items;
 							},
 						],
@@ -54,7 +52,7 @@ export const binOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Return information based on bin ID',
+				description: 'Get a bin',
 				routing: {
 					request: {
 						method: 'GET',
@@ -70,7 +68,7 @@ export const binOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a bin and all of its posts',
+				description: 'Delete a bin',
 				routing: {
 					request: {
 						method: 'DELETE',
