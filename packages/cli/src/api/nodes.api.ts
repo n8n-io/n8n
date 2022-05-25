@@ -11,6 +11,8 @@ import {
 	matchPackagesWithUpdates,
 	executeCommand,
 	checkPackageStatus,
+	hasPackageLoadedSuccessfully,
+	removePackageFromMissingList,
 } from '../CommunityNodes/helpers';
 import {
 	getAllInstalledPackages,
@@ -66,8 +68,11 @@ nodesController.post(
 			);
 		}
 
+		// Only install packages that haven't been installed
+		// or that have failed loading
 		const installedPackage = await searchInstalledPackage(name);
-		if (installedPackage) {
+		const loadedPackage = hasPackageLoadedSuccessfully(name);
+		if (installedPackage && loadedPackage) {
 			throw new ResponseHelper.ResponseError(
 				`Package "${name}" is already installed. For updating, click the corresponding button.`,
 				undefined,
@@ -86,6 +91,10 @@ nodesController.post(
 
 		try {
 			const nodes = await LoadNodesAndCredentials().loadNpmModule(name);
+
+			if (!loadedPackage) {
+				removePackageFromMissingList(name);
+			}
 
 			// Inform the connected frontends that new nodes are available
 			nodes.forEach((nodeData) => {

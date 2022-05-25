@@ -152,3 +152,38 @@ export async function checkPackageStatus(packageName: string): Promise<NpmPackag
 	}
 	return { status: NPM_PACKAGE_STATUS_GOOD };
 }
+
+export function hasPackageLoadedSuccessfully(packageName: string): boolean {
+	try {
+		const failedPackages = (config.get('nodes.packagesMissing') as string).split(' ');
+
+		const packageFailedToLoad = failedPackages.find(
+			(packageNameAndVersion) =>
+				packageNameAndVersion.startsWith(packageName) &&
+				packageNameAndVersion.replace(packageName, '').startsWith('@'),
+		);
+		if (packageFailedToLoad) {
+			return false;
+		}
+		return true;
+	} catch (_error) {
+		// If key doesn't exist it means all packages loaded fine
+		return true;
+	}
+}
+
+export function removePackageFromMissingList(packageName: string): void {
+	try {
+		const failedPackages = (config.get('nodes.packagesMissing') as string).split(' ');
+
+		const packageFailedToLoad = failedPackages.filter(
+			(packageNameAndVersion) =>
+				!packageNameAndVersion.startsWith(packageName) ||
+				!packageNameAndVersion.replace(packageName, '').startsWith('@'),
+		);
+
+		config.set('nodes.packagesMissing', packageFailedToLoad.join(' '));
+	} catch (_error) {
+		// Do nothing
+	}
+}
