@@ -99,13 +99,6 @@ export class Discord implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Return Response Headers',
-						name: 'returnResponseHeaders',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to return response headers or just confirmation of success',
-					},
-					{
 						displayName: 'Username',
 						name: 'username',
 						type: 'string',
@@ -123,8 +116,6 @@ export class Discord implements INodeType {
 			},
 		],
 	};
-
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
@@ -273,11 +264,7 @@ export class Discord implements INodeType {
 				);
 			}
 
-			if (options.returnResponseHeaders && response.headers) {
-				returnData.push(response.headers);
-			} else {
-				returnData.push({ success: true });
-			}
+			returnData.push({ success: true });
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
