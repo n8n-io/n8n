@@ -1,4 +1,4 @@
-import { checkPackageStatus, matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages } from '../../src/CommunityNodes/helpers';
+import { checkPackageStatus, matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages, hasPackageLoadedSuccessfully, removePackageFromMissingList } from '../../src/CommunityNodes/helpers';
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_NOT_FOUND_ERROR, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 jest.mock('fs/promises');
@@ -11,6 +11,8 @@ import { installedNodePayload, installedPackagePayload } from '../integration/sh
 import { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
 import { NpmUpdatesAvailable } from '../../src/Interfaces';
 import { randomName } from '../integration/shared/random';
+
+import config from '../../config';
 
 jest.mock('axios');
 import axios from 'axios';
@@ -250,6 +252,58 @@ describe('CommunityNodesHelper', () => {
 			expect(result.status).toBe('Banned');
 			expect(result.reason).toBe('Not good');
 		});
+	});
+
+	describe('hasPackageLoadedSuccessfully', () => {
+		it('Should return true when failed package list does not exist', () => {
+			config.set('nodes.packagesMissing', undefined);
+			const result = hasPackageLoadedSuccessfully('package');
+			expect(result).toBe(true);
+		});
+
+		it('Should return true when package is not in the list of missing packages', () => {
+			config.set('nodes.packagesMissing', 'packageA@0.1.0 packgeB@0.1.0');
+			const result = hasPackageLoadedSuccessfully('packageC');
+			expect(result).toBe(true);
+		});
+
+		it('Should return false when package is in the list of missing packages', () => {
+			config.set('nodes.packagesMissing', 'packageA@0.1.0 packgeB@0.1.0');
+			const result = hasPackageLoadedSuccessfully('packageA');
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('removePackageFromMissingList', () => {
+		it('Should do nothing if key does not exist', () => {
+			config.set('nodes.packagesMissing', undefined);
+
+			removePackageFromMissingList('packageA');
+
+			const packageList = config.get('nodes.packagesMissing');
+			expect(packageList).toBeUndefined();
+		});
+
+		it('Should remove only correct package from list', () => {
+			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.2.0 packageBB@0.2.0');
+
+			removePackageFromMissingList('packageB');
+
+			const packageList = config.get('nodes.packagesMissing');
+			expect(packageList).toBe('packageA@0.1.0 packageBB@0.2.0');
+		});
+
+
+		it('Should not remove if package is not in the list', () => {
+			const failedToLoadList = 'packageA@0.1.0 packageB@0.2.0 packageBB@0.2.0';
+			config.set('nodes.packagesMissing', failedToLoadList);
+
+			removePackageFromMissingList('packageC');
+
+			const packageList = config.get('nodes.packagesMissing');
+			expect(packageList).toBe(failedToLoadList);
+		});
+
 	});
 });
 

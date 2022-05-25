@@ -221,23 +221,6 @@ export class Start extends Command {
 						}
 					});
 				});
-				config.set('nodes.packagesMissing', '');
-				if (missingPackages.size) {
-					// TODO: improve this message
-					LoggerProxy.error(
-						'n8n has detected that some of the pacakges with nodes are missing from the hard disk. Check the setup instructions for community packages in the docs on how to prevent this error in the future.',
-					);
-					config.set('nodes.packagesMissing', Array.from(missingPackages).join(' '));
-					if (
-						config.getEnv('userManagement.emails.mode') === 'smtp' &&
-						config.getEnv('userManagement.isInstanceOwnerSetUp')
-					) {
-						// Send an email async to instance owner whenever possible
-						void getInstanceOwner().then(async (user) => {
-							void (await getInstance()).warnAbouMissingPackages(user);
-						});
-					}
-				}
 
 				await UserSettings.getEncryptionKey();
 
@@ -246,6 +229,29 @@ export class Start extends Command {
 				databaseSettings.forEach((setting) => {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
+
+				config.set('nodes.packagesMissing', '');
+				if (missingPackages.size) {
+					// TODO: improve this message
+					LoggerProxy.error(
+						'n8n has detected that some of the pacakges with nodes are missing from the hard disk. Check the setup instructions for community packages in the docs on how to prevent this error in the future.',
+					);
+					config.set('nodes.packagesMissing', Array.from(missingPackages).join(' '));
+					try {
+						if (
+							config.getEnv('userManagement.emails.mode') === 'smtp' &&
+							config.getEnv('userManagement.emails.smtp.host') !== '' &&
+							config.getEnv('userManagement.isInstanceOwnerSetUp')
+						) {
+							// Send an email async to instance owner whenever possible
+							void getInstanceOwner().then(async (user) => {
+								void (await getInstance()).warnAbouMissingPackages(user);
+							});
+						}
+					} catch (_error) {
+						// Do nothing
+					}
+				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
