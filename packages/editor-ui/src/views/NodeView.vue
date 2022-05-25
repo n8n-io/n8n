@@ -408,7 +408,6 @@ export default mixins(
 				const buttonsWrapper = mouseinEvent.target as Element;
 
 				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
-				// This listener is then used to detect when the cursor leaves so it can be hidden and mouse events re-enabled.
 				this.showStickyButton = true;
 				const moveCallback = (mousemoveEvent: MouseEvent) => {
 					if(buttonsWrapper) {
