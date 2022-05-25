@@ -157,6 +157,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { pinDataController } from './api/pinData.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -956,11 +957,21 @@ class App {
 				}
 
 				const {
-					workflow: { id, ...rest },
+					workflow: { id, name, nodes, ...rest },
 				} = shared;
 
 				return {
 					id: id.toString(),
+					name,
+					nodes: nodes.map((node) => {
+						if (node.pinData) {
+							const { pinData, ...remainder } = node;
+							remainder.hasPinData = true;
+							return remainder;
+						}
+
+						return node;
+					}),
 					...rest,
 				};
 			}),
@@ -1150,6 +1161,8 @@ class App {
 				return true;
 			}),
 		);
+
+		this.app.use(`/${this.restEndpoint}/workflows/:id/pin-data`, pinDataController);
 
 		this.app.post(
 			`/${this.restEndpoint}/workflows/run`,
