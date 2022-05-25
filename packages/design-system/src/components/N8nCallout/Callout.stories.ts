@@ -24,7 +24,7 @@ export default {
 	},
 };
 
-const Template : StoryFn = (args, { argTypes }) => ({
+const template : StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nCallout,
@@ -32,8 +32,8 @@ const Template : StoryFn = (args, { argTypes }) => ({
 	template: `<n8n-callout v-bind="$props"></n8n-callout>`,
 });
 
-export const Callout = Template.bind({});
-Callout.args = {
+export const callout = template.bind({});
+callout.args = {
 	theme: 'custom',
 	icon: 'code-branch',
 	message: 'This is a callout. <a href="https://n8n.io" target="_blank">Read more.</a>',

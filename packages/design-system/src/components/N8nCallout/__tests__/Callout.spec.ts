@@ -13,7 +13,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
@@ -26,7 +26,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
@@ -39,7 +39,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
@@ -52,7 +52,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
@@ -66,7 +66,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
@@ -82,7 +82,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
@@ -98,7 +98,7 @@ describe('components', () => {
 					stubs: [
 						'n8n-icon',
 						'n8n-text',
-					]
+					],
 				});
 				expect(wrapper.html()).toMatchSnapshot();
 			});
