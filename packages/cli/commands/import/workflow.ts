@@ -92,7 +92,6 @@ export class ImportWorkflowsCommand extends Command {
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
 			const credentials = await Db.collections.Credentials.find();
-			const tags = await Db.collections.Tag.find();
 
 			let totalImported = 0;
 
@@ -122,6 +121,7 @@ export class ImportWorkflowsCommand extends Command {
 						}
 
 						if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
+							const tags = await Db.collections.Tag.find();
 							await setTagsForImport(transactionManager, workflow, tags);
 						}
 
@@ -150,6 +150,7 @@ export class ImportWorkflowsCommand extends Command {
 					}
 
 					if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
+						const tags = await Db.collections.Tag.find();
 						await setTagsForImport(transactionManager, workflow, tags);
 					}
 
