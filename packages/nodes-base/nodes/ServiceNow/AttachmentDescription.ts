@@ -19,19 +19,22 @@ export const attachmentOperations: INodeProperties[] = [
 			{
 				name: 'Upload',
 				value: 'upload',
-				description: 'Upload a specified binary file as an attachment to a specified record',
+				description: 'Upload an attachment to a specific table record',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete an attachment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get an attachment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all attachments on a table',
 			},
 		],
 		default: 'upload',
@@ -217,25 +220,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
-	// {
-	// 	displayName: 'Filter',
-	// 	name: 'sysparm_query',
-	// 	type: 'string',
-	// 	default: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'attachment',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// 	description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
-	// },
 	{
-		displayName: 'Download',
+		displayName: 'Download Attachments',
 		name: 'download',
 		type: 'boolean',
 		default: false,
@@ -246,7 +232,8 @@ export const attachmentFields: INodeProperties[] = [
 					'attachment',
 				],
 				operation: [
-					'get', 'getAll',
+					'get',
+					'getAll',
 				],
 			},
 		},
@@ -263,7 +250,8 @@ export const attachmentFields: INodeProperties[] = [
 					'attachment',
 				],
 				operation: [
-					'get', 'getAll',
+					'get',
+					'getAll',
 				],
 				download: [
 					true,
@@ -295,7 +283,7 @@ export const attachmentFields: INodeProperties[] = [
 				placeholder: '<col_name><operator><value>',
 				default: '',
 				description: 'An encoded query string used to filter the results',
-				hint: 'All parameters are case-sensitive. Queries can contain more than one entry, <a href="https://developer.servicenow.com/dev.do#!/reference/api/sandiego/rest/c_TableAPI#table-GET">more information</a>.',
+				hint: 'All parameters are case-sensitive. Queries can contain more than one entry. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">more information</a>.',
 			},
 		],
 	},
