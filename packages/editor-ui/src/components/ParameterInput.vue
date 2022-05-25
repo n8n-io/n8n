@@ -549,7 +549,6 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
-						if (checkValue !== undefined && checkValue.includes(CUSTOM_API_CALL_KEY)) continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
