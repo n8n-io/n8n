@@ -32,7 +32,7 @@ export async function customerIoApiRequest(this: IHookFunctions | IExecuteFuncti
 	};
 
 	if (baseApi === 'tracking') {
-		options.uri = `https://${credentials.trackingEndpoint}/api/v1${endpoint}`;
+		options.uri = `https://${credentials.region}/api/v1${endpoint}`;
 		const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
 		Object.assign(options.headers, { 'Authorization': `Basic ${basicAuthKey}` });
 	} else if (baseApi === 'api') {

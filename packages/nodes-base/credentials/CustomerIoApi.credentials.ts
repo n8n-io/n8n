@@ -18,8 +18,8 @@ export class CustomerIoApi implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: 'Tracking API endpoint',
-			name: 'trackingEndpoint',
+			displayName: 'Region',
+			name: 'region',
 			type: 'options',
 			options: [
 				{
