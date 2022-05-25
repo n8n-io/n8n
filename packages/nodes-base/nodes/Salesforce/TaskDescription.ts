@@ -189,7 +189,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'isReminderSet',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false)',
+				description: 'Whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
 				displayName: 'Owner',
@@ -323,11 +323,11 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						name: 'After due date',
+						name: 'After Due Date',
 						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
-						name: 'After date completed',
+						name: 'After Date Completed',
 						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
@@ -528,7 +528,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'isReminderSet',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false)',
+				description: 'Whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
 				displayName: 'Owner',
@@ -679,11 +679,11 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						name: 'After due date',
+						name: 'After Due Date',
 						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
-						name: 'After date completed',
+						name: 'After Date Completed',
 						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
