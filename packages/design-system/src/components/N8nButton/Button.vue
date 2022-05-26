@@ -10,6 +10,7 @@
 		:round="!props.circle && props.round"
 		:circle="props.circle"
 		:style="$options.styles(props)"
+		tabindex="0"
 		@click="(e) => listeners.click && listeners.click(e)"
 	>
 		<span :class="$style.icon" v-if="props.loading || props.icon">
@@ -47,12 +48,7 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'outline', 'light', 'text', 'tertiary'].includes(value),
-		},
-		theme: {
-			type: String,
-			validator: (value: string): boolean =>
-				['success', 'warning', 'danger'].includes(value),
+				['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'].includes(value),
 		},
 		size: {
 			type: String,
@@ -68,11 +64,19 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		outline: {
+			type: Boolean,
+			default: false,
+		},
+		text: {
+			type: Boolean,
+			default: false,
+		},
 		icon: {
 		},
 		round: {
 			type: Boolean,
-			default: true,
+			default: false,
 		},
 		circle: {
 			type: Boolean,
@@ -106,38 +110,17 @@ export default {
 			...(props.fullWidth ? { width: '100%' } : {}),
 		};
 	},
-	getClass(props: { type: string; theme?: string, transparentBackground: boolean }, $style: any): string {
-		const theme = props.type === 'text' || props.type === 'tertiary'
-			? props.type
-			: `${props.type}-${props.theme || 'primary'}`;
-
-		if (props.transparentBackground) {
-			return `${$style[theme]} ${$style['transparent']}`;
-		}
-
-		return $style[theme];
+	getClass(props: { type: string; outline: boolean; text: boolean; transparentBackground: boolean }, $style: any): string {
+		return `${$style['button']} ${$style[props.type]}` +
+			`${props.transparentBackground ? ` ${$style['transparent']}` : ''}` +
+			`${props.outline ? ` ${$style['outline']}` : ''}` +
+			`${props.text ? ` ${$style['text']}` : ''}`;
 	},
 };
 </script>
 
 <style lang="scss" module>
 @import "../../utils";
-
-.button {
-	> i {
-		display: none;
-	}
-
-	> span {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	span + span {
-		margin-left: var(--spacing-3xs);
-	}
-}
 
 $active-shade-percent: 10%;
 $color-primary-shade: lightness(
@@ -168,143 +151,171 @@ $color-danger-shade: lightness(
 	-($active-shade-percent)
 );
 
-.primary-primary {
-	composes: button;
+.button {
+  > i {
+	display: none;
+  }
+
+  > span {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+  }
+
+  span + span {
+	margin-left: var(--spacing-3xs);
+  }
 }
 
-.primary-success {
-	composes: button;
+.secondary {
+  --button-color: var(--color-primary);
+  --button-border-color: var(--color-primary);
+  --button-background-color: var(--color-white);
+
+  --button-active-background-color: var(--color-primary-900);
+  --button-active-color: #{$color-primary-shade};
+  --button-active-border-color: #{$color-primary-shade};
+
+  --button-hover-background-color: var(--color-primary-950);
+  --button-hover-color: var(--color-primary);
+  --button-hover-border-color: var(--color-primary);
+
+  --button-focus-outline-color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-600-l), 0.33)
+}
+
+.tertiary {
+  font-weight: var(--font-weight-regular) !important;
+
+  --button-background-color: var(--color-white);
+  --button-color: var(--color-text-dark);
+  --button-border-color: var(--color-neutral-850);
+
+  --button-active-background-color: var(--color-primary-tint-2);
+  --button-active-color: var(--color-primary);
+  --button-active-border-color: var(--color-primary);
+
+  --button-hover-background-color: var(--color-neutral-950);
+  --button-hover-color: var(--color-text-dark);
+  --button-hover-border-color: var(--color-neutral-800);
+
+  --button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.1)
+}
+
+.success {
 	--button-background-color: var(--color-success);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-success);
-	--button-active-color: var(--color-text-xlight);
-	--button-active-border-color: #{$color-success-shade};
-	--button-active-background-color: #{$color-success-shade};
+
+	--button-active-background-color: var(--color-success-350);
+	--button-active-border-color: var(--color-success-350);
+
+	--button-hover-background-color: var(--color-success-450);
+	--button-hover-border-color: var(--color-success-450);
+
+	--button-focus-outline-color: hsla(var(--color-success-h), var(--color-success-s), var(--color-success-l), 0.33);
 }
 
-.primary-warning {
-	composes: button;
+.warning {
 	--button-background-color: var(--color-warning);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-warning);
-	--button-active-color: var(--color-text-xlight);
-	--button-active-border-color: #{$color-warning-shade};
-	--button-active-background-color: #{$color-warning-shade};
+
+	--button-active-background-color: var(--color-warning-500);
+	--button-active-border-color: var(--color-warning-500);
+
+	--button-hover-background-color: var(--color-warning-650);
+	--button-hover-border-color: var(--color-warning-650);
+
+  	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
 }
 
-.primary-danger {
-	composes: button;
+.danger {
 	--button-background-color: var(--color-danger);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-danger);
 	--button-active-color: var(--color-text-xlight);
-	--button-active-border-color: #{$color-danger-shade};
-	--button-active-background-color: #{$color-danger-shade};
+
+	--button-active-background-color: var(--color-danger-600);
+	--button-active-border-color: var(--color-danger-600);
+
+	--button-hover-background-color: var(--color-danger-700);
+	--button-hover-border-color: var(--color-danger-700);
+
+	--button-focus-outline-color: hsla(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l), 0.33);
 }
 
 .outline {
 	--button-background-color: var(--color-foreground-xlight);
 	--button-disabled-background-color: var(--color-foreground-xlight);
 	--button-active-background-color: var(--color-foreground-xlight);
-}
 
-.outline-primary {
-	composes: button;
-	composes: outline;
-	--button-color: var(--color-primary);
-	--button-active-border-color: #{$color-primary-shade};
-	--button-active-color: #{$color-primary-shade};
-}
+  	&.primary {
+		--button-color: var(--color-primary);
+	  	--button-border-color: var(--color-primary);
+	  	--button-active-background-color: var(--color-primary);
+ 	}
 
-.outline-success {
-	composes: button;
-	composes: outline;
-	--button-color: var(--color-success);
-	--button-border-color: var(--color-success);
-	--button-active-color: #{$color-success-shade};
-	--button-active-border-color: #{$color-success-shade};
-}
+	&.success {
+		--button-color: var(--color-success);
+		--button-border-color: var(--color-success);
+	  	--button-active-background-color: var(--color-success);
+	}
 
-.outline-warning {
-	composes: button;
-	composes: outline;
-	--button-color: var(--color-warning);
-	--button-border-color: var(--color-warning);
-	--button-active-color: #{$color-warning-shade};
-	--button-active-border-color: #{$color-warning-shade};
-}
+	&.warning {
+		--button-color: var(--color-warning);
+		--button-border-color: var(--color-warning);
+	  	--button-active-background-color: var(--color-warning);
+	}
 
-.outline-danger {
-	composes: button;
-	composes: outline;
-	--button-color: var(--color-danger);
-	--button-border-color: var(--color-danger);
-	--button-active-color: #{$color-danger-shade};
-	--button-active-border-color: #{$color-danger-shade};
-}
-
-.light-primary {
-	composes: button;
-	--button-color: var(--color-primary);
-	--button-border-color: var(--color-primary-tint-2);
-	--button-background-color: var(--color-primary-tint-2);
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: #{$color-primary-shade};
-	--button-active-border-color: #{$color-primary-shade};
-}
-
-.light-success {
-	composes: button;
-	--button-color: var(--color-success);
-	--button-border-color: var(--color-success-tint-1);
-	--button-background-color: var(--color-success-tint-1);
-	--button-active-background-color: var(--color-success-tint-1);
-	--button-active-color: #{$color-success-shade};
-	--button-active-border-color: #{$color-success-shade};
-}
-
-.light-warning {
-	composes: button;
-	--button-color: var(--color-warning);
-	--button-border-color: var(--color-warning-tint-2);
-	--button-background-color: var(--color-warning-tint-2);
-	--button-active-background-color: var(--color-warning-tint-2);
-	--button-active-color: #{$color-warning-shade};
-	--button-active-border-color: #{$color-warning-shade};
-}
-
-.light-danger {
-	composes: button;
-	--button-color: var(--color-danger);
-	--button-border-color: var(--color-danger-tint-1);
-	--button-background-color: var(--color-danger-tint-1);
-	--button-active-background-color: var(--color-danger-tint-1);
-	--button-active-color: #{$color-danger-shade};
-	--button-active-border-color: #{$color-danger-shade};
+	&.danger {
+		--button-color: var(--color-danger);
+		--button-border-color: var(--color-danger);
+	  	--button-active-background-color: var(--color-danger);
+	}
 }
 
 .text {
-	composes: button;
 	--button-color: var(--color-text-light);
 	--button-border-color: transparent;
 	--button-background-color: transparent;
 	--button-active-background-color: transparent;
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: transparent;
-}
+  	--button-active-border-color: transparent;
+  	--button-hover-background-color: transparent;
+	--button-hover-border-color: transparent;
 
-.tertiary {
-	composes: button;
-	font-weight: var(--font-weight-regular) !important;
-	--button-color: var(--color-text-dark);
-	--button-border-color: var(--color-foreground-base);
-	--button-background-color: var(--color-background-base);
+	&.primary {
+		--button-color: var(--color-primary);
+		--button-active-color: var(--color-primary);
+		--button-hover-color: var(--color-primary);
+	}
 
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
+	&.secondary {
+		--button-color: var(--color-primary-tint-1);
+		--button-active-color: var(--color-primary-tint-1);
+		--button-hover-color: var(--color-primary-tint-1);
+	}
 
-	--button-disabled-border-color: var(--color-foreground-xdark);
+	&.success {
+		--button-color: var(--color-success);
+		--button-active-color: var(--color-success);
+		--button-hover-color: var(--color-success);
+	}
+
+	&.warning {
+		--button-color: var(--color-warning);
+	  	--button-active-color: var(--color-warning);
+	  	--button-hover-color: var(--color-warning);
+	}
+
+	&.danger {
+		--button-color: var(--color-danger);
+	  	--button-active-color: var(--color-danger);
+	  	--button-hover-color: var(--color-danger);
+	}
+
+    &:hover {
+	  text-decoration: underline;
+	}
 }
 
 .transparent {

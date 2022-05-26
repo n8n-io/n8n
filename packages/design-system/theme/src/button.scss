@@ -14,8 +14,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	white-space: nowrap;
 	cursor: pointer;
 
-	border: var(--border-width-base) var.$button-border-color
-		var(--border-style-base);
+	border: var(--border-width-base) var.$button-border-color var(--border-style-base);
 	color: var.$button-font-color;
 	background-color: var.$button-background-color;
 	font-weight: var(--font-weight-bold);
@@ -28,15 +27,26 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	box-sizing: border-box;
 	outline: none;
 	margin: 0;
-	transition: 0.1s;
+	transition: 0.3s;
 
 	@include utils.utils-user-select(none);
+
+
+  	&:hover {
+		color: var.$button-hover-color;
+		border-color: var.$button-hover-border-color;
+		background-color: var.$button-hover-background-color;
+  	}
 
 	&:active {
 		color: var.$button-active-color;
 		border-color: var.$button-active-border-color;
 		background-color: var.$button-active-background-color;
 		outline: none;
+	}
+
+  	&:focus {
+	    outline: 3px solid var.$button-focus-outline-color;
 	}
 
 	&::-moz-focus-inner {
