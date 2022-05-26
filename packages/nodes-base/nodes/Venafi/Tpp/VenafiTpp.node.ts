@@ -28,7 +28,7 @@ export class VenafiTpp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TPP',
 		name: 'venafiTpp',
-		icon: 'file:venafi.png',
+		icon: 'file:venafi.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

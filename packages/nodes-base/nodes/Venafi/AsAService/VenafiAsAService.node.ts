@@ -37,7 +37,7 @@ export class VenafiAsAService implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi As a Service',
 		name: 'venafiAsAService',
-		icon: 'file:../Tpp/venafi.png',
+		icon: 'file:../Tpp/venafi.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
