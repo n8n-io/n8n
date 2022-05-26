@@ -1,17 +1,17 @@
 {
-	"node": "n8n-nodes-base.citrix",
+	"node": "n8n-nodes-base.citrixADC",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/citrix"
+				"url": "https://docs.n8n.io/credentials/citrixADC"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.citrix/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.citrixADC/"
 			}
 		]
 	}
