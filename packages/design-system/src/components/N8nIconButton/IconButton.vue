@@ -52,6 +52,10 @@ export default {
 			validator: (value: string): boolean =>
 				['left', 'right'].includes(value),
 		},
+		circle: {
+			type: Boolean,
+			default: true,
+		},
 	},
 };
 </script>
