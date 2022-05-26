@@ -1,21 +1,30 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { citrixADCApiRequest } from './GenericFunctions';
-import { certificateDescription } from './CertificateDescription';
-import { OptionsWithUri } from 'request';
+
+import {
+	citrixADCApiRequest,
+} from './GenericFunctions';
+
+import {
+	fileDescription,
+} from './FileDescription';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class CitrixADC implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,13 +55,13 @@ export class CitrixADC implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Certificate',
-						value: 'certificate',
+						name: 'File',
+						value: 'file',
 					},
 				],
-				default: 'certificate',
+				default: 'file',
 			},
-			...certificateDescription,
+			...fileDescription,
 		],
 	};
 
@@ -89,32 +98,6 @@ export class CitrixADC implements INodeType {
 				}
 			},
 		},
-		loadOptions: {
-			async getPartitions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [
-					{
-						name: 'Default',
-						value: '/nsconfig/ssl/',
-					},
-				];
-
-				const { nspartition } = await citrixADCApiRequest.call(
-					this,
-					'GET',
-					`/config/nspartition?view=summary`,
-				);
-
-				if (nspartition) {
-					(nspartition as IDataObject[]).forEach((partition) => {
-						returnData.push({
-							name: partition.partitionname as string,
-							value: `/nsconfig/partitions/${partition.partitionname}/ssl/`,
-						});
-					});
-				}
-				return returnData;
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -125,9 +108,9 @@ export class CitrixADC implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				// Certificate --------------------------------------------------------------------------
-				if (resource === 'certificate') {
+				if (resource === 'file') {
 					if (operation === 'upload') {
+						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const endpoint = `/config/systemfile`;
@@ -145,11 +128,13 @@ export class CitrixADC implements INodeType {
 							);
 						}
 
+						const buffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+
 						const body = {
 							systemfile: {
 								filename: item.binary[binaryProperty].fileName,
-								filecontent: item.binary[binaryProperty].data,
-								filelocation: '/nsconfig/ssl/',
+								filecontent: Buffer.from(buffer).toString('base64'),
+								filelocation: fileLocation,
 								fileencoding: 'BASE64',
 							},
 						};
@@ -158,20 +143,12 @@ export class CitrixADC implements INodeType {
 							body.systemfile.filename = options.fileName as string;
 						}
 
-						if (options.fileEncoding) {
-							body.systemfile.fileencoding = options.fileEncoding as string;
-						}
-
-						if (options.partition) {
-							body.systemfile.filelocation = options.partition as string;
-						}
-
 						await citrixADCApiRequest.call(this, 'POST', endpoint, body);
 						returnData.push({ success: true });
 					}
 					if (operation === 'delete') {
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const fileLocation = this.getNodeParameter('partition', i) as string;
+						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 
 						const endpoint = `/config/systemfile?args=filename:${fileName},filelocation:${encodeURIComponent(
 							fileLocation,
@@ -182,7 +159,8 @@ export class CitrixADC implements INodeType {
 					}
 					if (operation === 'download') {
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const fileLocation = this.getNodeParameter('partition', i) as string;
+						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
 						const endpoint = `/config/systemfile?args=filename:${fileName},filelocation:${encodeURIComponent(
 							fileLocation,
@@ -190,20 +168,19 @@ export class CitrixADC implements INodeType {
 
 						const { systemfile } = await citrixADCApiRequest.call(this, 'GET', endpoint);
 
-						for (const file of systemfile) {
-							const binaryData = await this.helpers.prepareBinaryData(
-								file.filecontent,
-								file.filename,
-								'text/plain',
-							);
-							delete file.filecontent;
-							returnData.push({
-								json: file,
-								binary: {
-									data: binaryData,
-								},
-							});
-						}
+						const file = systemfile[0];
+
+						const binaryData = await this.helpers.prepareBinaryData(
+							Buffer.from(file.filecontent, 'base64'),
+							file.filename,
+						);
+
+						returnData.push({
+							json: file,
+							binary: {
+								[binaryProperty]: binaryData,
+							},
+						});
 					}
 				}
 			} catch (error) {

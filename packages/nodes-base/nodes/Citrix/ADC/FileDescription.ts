@@ -1,16 +1,12 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const certificateDescription: INodeProperties[] = [
+export const fileDescription: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
 		options: [
-			{
-				name: 'Upload',
-				value: 'upload',
-			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -19,15 +15,34 @@ export const certificateDescription: INodeProperties[] = [
 				name: 'Download',
 				value: 'download',
 			},
+			{
+				name: 'Upload',
+				value: 'upload',
+			},
 		],
 		default: 'upload',
 		displayOptions: {
 			show: {
-				resource: ['certificate'],
+				resource: [
+					'file',
+				],
 			},
 		},
 	},
 	// Upload --------------------------------------------------------------------------
+	{
+		displayName: 'File Location',
+		name: 'fileLocation',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['upload'],
+				resource: ['file'],
+			},
+		},
+		default: '/nsconfig/ssl/',
+	},
 	{
 		displayName: 'Binary Property',
 		name: 'binaryProperty',
@@ -36,7 +51,7 @@ export const certificateDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['upload'],
-				resource: ['certificate'],
+				resource: ['file'],
 			},
 		},
 		default: 'data',
@@ -50,7 +65,7 @@ export const certificateDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['upload'],
-				resource: ['certificate'],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -61,26 +76,22 @@ export const certificateDescription: INodeProperties[] = [
 				default: '',
 				description: 'Name of the file. It should not include filepath.',
 			},
-			{
-				displayName: 'File Encoding',
-				name: 'fileEncoding',
-				type: 'string',
-				default: 'BASE64',
-				description: 'Encoding type of the file content',
-			},
-			{
-				displayName: 'Partition',
-				name: 'partition',
-				type: 'options',
-				default: 'default',
-				typeOptions: {
-					loadOptionsMethod: 'getPartitions',
-				},
-				description: 'Name of the partition',
-			},
 		],
 	},
 	// Delete, Download ---------------------------------------------------------------
+	{
+		displayName: 'File Location',
+		name: 'fileLocation',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['delete', 'download' ],
+				resource: ['file'],
+			},
+		},
+		default: '/nsconfig/ssl/',
+	},
 	{
 		displayName: 'File Name',
 		name: 'fileName',
@@ -91,24 +102,21 @@ export const certificateDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['delete', 'download' ],
-				resource: ['certificate'],
+				resource: ['file'],
 			},
 		},
 	},
 	{
-		displayName: 'Partition',
-		name: 'partition',
-		type: 'options',
-		default: '/nsconfig/ssl/',
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
 		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getPartitions',
-		},
-		description: 'Name of the partition',
+		default: 'data',
+		description: 'Name of the binary property to which to write to.',
 		displayOptions: {
 			show: {
-				operation: ['delete', 'download'],
-				resource: ['certificate'],
+				operation: ['download' ],
+				resource: ['file'],
 			},
 		},
 	},
