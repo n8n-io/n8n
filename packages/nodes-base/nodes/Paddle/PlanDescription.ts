@@ -7,6 +7,7 @@ export const planOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,16 +19,15 @@ export const planOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a plan.',
+				description: 'Get a plan',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all plans.',
+				description: 'Get all plans',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const planFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Filter: The subscription plan ID.',
+		description: 'Filter: The subscription plan ID',
 	},
 	{
 		displayName: 'Return All',
@@ -69,7 +69,7 @@ export const planFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -93,6 +93,6 @@ export const planFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

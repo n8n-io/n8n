@@ -1,11 +1,6 @@
 import { Workflow, WorkflowDataProxy } from '../src';
 import * as Helpers from './Helpers';
-import {
-	IConnections,
-	INode,
-	INodeExecutionData,
-	IRunExecutionData,
-} from '../src/Interfaces';
+import { IConnections, INode, INodeExecutionData, IRunExecutionData } from '../src/Interfaces';
 
 describe('WorkflowDataProxy', () => {
 	describe('test data proxy', () => {
@@ -133,13 +128,13 @@ describe('WorkflowDataProxy', () => {
 			},
 		};
 
-		const renameNodeConnectionInputData: INodeExecutionData[]  =  [
-			   { json: { length: 105 } },
-			   { json: { length: 160 } },
-			   { json: { length: 121 } },
-			   { json: { length: 275 } },
-			   { json: { length: 950 } }
-			 ]
+		const renameNodeConnectionInputData: INodeExecutionData[] = [
+			{ json: { length: 105 } },
+			{ json: { length: 160 } },
+			{ json: { length: 121 } },
+			{ json: { length: 275 } },
+			{ json: { length: 950 } },
+		];
 
 		const nodeTypes = Helpers.NodeTypes();
 		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
@@ -153,6 +148,7 @@ describe('WorkflowDataProxy', () => {
 			renameNodeConnectionInputData || [],
 			{},
 			'manual',
+			'America/New_York',
 			{},
 		);
 		const proxy = dataProxy.getDataProxy();

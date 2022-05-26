@@ -9,7 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 import {
 	venafiApiRequest,
@@ -19,7 +19,7 @@ export class VenafiTppTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TTP Trigger',
 		name: 'venafiTppTrigger',
-		icon: 'file:venafi.png',
+		icon: 'file:venafi.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',

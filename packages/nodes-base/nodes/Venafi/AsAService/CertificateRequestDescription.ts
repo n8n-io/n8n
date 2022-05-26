@@ -2,10 +2,11 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const certificateRequestOperations = [
+export const certificateRequestOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -32,11 +33,10 @@ export const certificateRequestOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const certificateRequestFields = [
+export const certificateRequestFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 certificateRequest:create                  */
 	/* -------------------------------------------------------------------------- */
@@ -79,7 +79,237 @@ export const certificateRequestFields = [
 		default: '',
 	},
 	{
-		displayName: 'Certificatet Signing Request',
+		displayName: 'Generate CSR',
+		name: 'generateCsr',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+			},
+		},
+		default: false,
+	},
+	{
+		displayName: 'Application Server Type',
+		name: 'applicationServerTypeId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getApplicationServerTypes',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Common Name',
+		name: 'commonName',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		type: 'string',
+		default: 'n8n.io',
+		description: 'The Common Name field for the certificate Subject (CN)',
+	},
+	// Optional...
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'certificateRequest',
+				],
+				generateCsr: [
+					true,
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				description: 'A 2 letter country code',
+			},
+			{
+				displayName: 'Key Curve',
+				name: 'keyCurve',
+				type: 'options',
+				options: [
+					{
+						name: 'ED25519',
+						value: 'ED25519',
+						description: 'Use Edwards-curve Digital Signature Algorithm (EdDSA)',
+					},
+					{
+						name: 'P256',
+						value: 'P256',
+						description: 'Use Elliptic Prime Curve 256 bit encryption',
+					},
+					{
+						name: 'P384',
+						value: 'P384',
+						description: 'Use Elliptic Prime Curve 384 bit encryption',
+					},
+					{
+						name: 'P521',
+						value: 'P521',
+						description: 'Use Elliptic Prime Curve 521 bit encryption',
+					},
+					{
+						name: 'UNKNOWN',
+						value: 'UNKNOWN',
+					},
+				],
+				default: 'ED25519',
+			},
+			{
+				displayName: 'Key Length',
+				name: 'keyLength',
+				type: 'number',
+				default: 2048,
+				description: 'The number of bits to allow for key generation',
+			},
+			{
+				displayName: 'Key Type',
+				name: 'keyType',
+				type: 'options',
+				options: [
+					{
+						name: 'EC',
+						value: 'EC',
+						description: 'Elliptic Curve (EC)',
+					},
+					{
+						name: 'RSA',
+						value: 'RSA',
+						description: 'Rivest, Shamir, Adleman key (RSA)',
+					},
+				],
+				default: 'RSA',
+				description: 'The encryption algorithm for the public key',
+			},
+			{
+				displayName: 'Locality',
+				name: 'locality',
+				type: 'string',
+				default: '',
+				description: 'The name of a city or town',
+			},
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'string',
+				default: '',
+				description: 'The name of a company or organization',
+			},
+			{
+				displayName: 'Organizational Units',
+				name: 'organizationalUnits',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: '',
+				description: 'The name of a department or section',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+				description: 'The name of a state or province',
+			},
+			{
+				displayName: 'Subject Alt Names',
+				name: 'SubjectAltNamesUi',
+				placeholder: 'Add Subject',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'SubjectAltNamesValues',
+						displayName: 'Subject Alt Name',
+						values: [
+							{
+								displayName: 'Typename',
+								name: 'Typename',
+								type: 'options',
+								options: [
+									{
+										name: 'DNS',
+										value: 'dnsNames',
+									},
+									/*{
+										name: 'IP Address',
+										value: 'ipAddresses',
+									},
+									{
+										name: 'RFC822 Names',
+										value: 'rfc822Names',
+									},
+
+									{
+										name: 'URI',
+										value: 'uniformResourceIdentifiers',
+									},*/
+								],
+								description: 'What type of SAN is being used',
+								default: 'dnsNames',
+							},
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: 'community.n8n.io',
+								description: 'The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address.',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	// End CSR Builder
+	{
+		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
 		type: 'string',
 		typeOptions: {
@@ -92,6 +322,9 @@ export const certificateRequestFields = [
 				],
 				resource: [
 					'certificateRequest',
+				],
+				generateCsr: [
+					false,
 				],
 			},
 		},
@@ -128,7 +361,7 @@ export const certificateRequestFields = [
 						value: 'P10D',
 					},
 					{
-						name: '12 hours',
+						name: '12 Hours',
 						value: 'PT12H',
 					},
 				],
@@ -197,8 +430,7 @@ export const certificateRequestFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return',
+		default: 50,
+		description: 'Max number of results to return',
 	},
-	
-] as INodeProperties[];
+];

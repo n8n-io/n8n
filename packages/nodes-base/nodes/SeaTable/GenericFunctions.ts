@@ -34,7 +34,7 @@ import {
 	IRowObject,
 } from './Interfaces';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 
 export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, url: string | undefined = undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 

@@ -7,8 +7,8 @@ export const groupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -58,7 +58,7 @@ export const groupFields: INodeProperties[] = [
 		name: 'groupId',
 		type: 'string',
 		required: true,
-		description: 'The identifier of the group.',
+		description: 'The identifier of the group',
 		default: '',
 		placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 		displayOptions: {
@@ -85,7 +85,7 @@ export const groupFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all available results for the query.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -101,8 +101,11 @@ export const groupFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
-		description: 'Number of results to return for the query.',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				resource: [
@@ -127,7 +130,7 @@ export const groupFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The name of the group to create.',
+		description: 'The name of the group to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -167,7 +170,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collections',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group.',
+				description: 'The collections to assign to this group',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -177,7 +180,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
-				description: 'The external identifier to set to this group.',
+				description: 'The external identifier to set to this group',
 				default: '',
 			},
 		],
@@ -214,7 +217,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collections',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group.',
+				description: 'The collections to assign to this group',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -224,7 +227,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
-				description: 'The external identifier to set to this group.',
+				description: 'The external identifier to set to this group',
 				default: '',
 			},
 			{
@@ -232,7 +235,7 @@ export const groupFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the group to update.',
+				description: 'The name of the group to update',
 			},
 		],
 		displayOptions: {
@@ -255,7 +258,7 @@ export const groupFields: INodeProperties[] = [
 		name: 'memberIds',
 		type: 'string',
 		default: '',
-		description: 'Comma-separated list of IDs of members to set in a group.',
+		description: 'Comma-separated list of IDs of members to set in a group',
 		displayOptions: {
 			show: {
 				resource: [

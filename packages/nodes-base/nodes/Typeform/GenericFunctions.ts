@@ -67,10 +67,6 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 			const credentials = await this.getCredentials('typeformApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
 			options.headers!['Authorization'] = `bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);

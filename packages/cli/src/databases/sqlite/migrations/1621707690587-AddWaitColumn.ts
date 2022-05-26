@@ -8,7 +8,7 @@ export class AddWaitColumn1621707690587 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`DROP TABLE IF EXISTS "${tablePrefix}temporary_execution_entity"`);
 		await queryRunner.query(
@@ -34,7 +34,7 @@ export class AddWaitColumn1621707690587 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "${tablePrefix}temporary_execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "data" text NOT NULL, "finished" boolean NOT NULL, "mode" varchar NOT NULL, "retryOf" varchar, "retrySuccessId" varchar, "startedAt" datetime NOT NULL, "stoppedAt" datetime, "workflowData" text NOT NULL, "workflowId" varchar)`,

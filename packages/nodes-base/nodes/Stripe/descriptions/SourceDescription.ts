@@ -7,8 +7,8 @@ export const sourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -111,7 +111,7 @@ export const sourceFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCurrencies',
 		},
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
 		displayOptions: {
 			show: {
 				resource: [

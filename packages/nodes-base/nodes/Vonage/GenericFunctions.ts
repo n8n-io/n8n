@@ -14,7 +14,7 @@ import {
 
 export async function vonageApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('vonageApi') as IDataObject;
+	const credentials = await this.getCredentials('vonageApi');
 
 	body.api_key = credentials.apiKey as string;
 

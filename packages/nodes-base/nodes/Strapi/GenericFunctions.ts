@@ -15,7 +15,7 @@ import {
 
 export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('strapiApi') as IDataObject;
+	const credentials = await this.getCredentials('strapiApi');
 
 	try {
 		const options: OptionsWithUri = {
@@ -44,7 +44,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 }
 
 export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('strapiApi') as IDataObject;
+	const credentials = await this.getCredentials('strapiApi');
 	let options = {} as OptionsWithUri;
 		options = {
 			headers: {
@@ -64,7 +64,7 @@ export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions |
 export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
-	const {apiVersion} = await this.getCredentials('strapiApi') as IDataObject;
+	const {apiVersion} = await this.getCredentials('strapiApi');
 
 	let responseData;
 	if (apiVersion === 'v4') {

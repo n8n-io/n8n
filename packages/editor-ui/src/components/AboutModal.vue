@@ -30,7 +30,7 @@
 					</el-col>
 					<el-col :span="16">
 						<n8n-link to="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md">
-							{{ $locale.baseText('about.apacheWithCommons20Clause') }}
+							{{ $locale.baseText('about.n8nLicense') }}
 						</n8n-link>
 					</el-col>
 				</el-row>

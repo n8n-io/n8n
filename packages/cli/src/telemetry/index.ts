@@ -1,9 +1,9 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import TelemetryClient = require('@rudderstack/rudder-sdk-node');
+import TelemetryClient from '@rudderstack/rudder-sdk-node';
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
-import config = require('../../config');
+import * as config from '../../config';
 import { getLogger } from '../Logger';
 
 type CountBufferItemKey =
@@ -58,10 +58,10 @@ export class Telemetry {
 		this.instanceId = instanceId;
 		this.versionCli = versionCli;
 
-		const enabled = config.get('diagnostics.enabled') as boolean;
-		const logLevel = config.get('logs.level') as boolean;
+		const enabled = config.getEnv('diagnostics.enabled');
+		const logLevel = config.getEnv('logs.level');
 		if (enabled) {
-			const conf = config.get('diagnostics.config.backend') as string;
+			const conf = config.getEnv('diagnostics.config.backend');
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {

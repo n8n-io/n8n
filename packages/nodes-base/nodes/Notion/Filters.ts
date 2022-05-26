@@ -77,7 +77,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: `Phone number. No structure is enforced`,
+	description: 'Phone number. No structure is enforced.',
 },
 {
 	displayName: 'Option',
@@ -182,7 +182,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma',
+	description: 'List of users. Multiples can be defined separated by comma.',
 },
 {
 	displayName: 'User ID',
@@ -205,7 +205,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma',
+	description: 'List of users. Multiples can be defined separated by comma.',
 },
 {
 	displayName: 'User ID',
@@ -228,7 +228,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma',
+	description: 'List of users. Multiples can be defined separated by comma.',
 },
 {
 	displayName: 'Relation ID',
