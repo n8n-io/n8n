@@ -40,10 +40,10 @@
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer">
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" :class="$style.copyButton">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" :class="$style['actions-group']">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
+						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" :circle="false" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
 						<el-dropdown-item :command="{command: 'itemPath'}">
@@ -57,6 +57,7 @@
 						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
+				<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="edit" type="tertiary" :circle="false" />
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
@@ -892,6 +893,12 @@ export default mixins(
 .dataContainer {
 	position: relative;
 	height: 100%;
+
+	&:hover {
+		.actions-group {
+			opacity: 1;
+		}
+	}
 }
 
 .dataDisplay {
@@ -973,12 +980,13 @@ export default mixins(
 	}
 }
 
-.copyButton {
-	height: 30px;
-	top: 12px;
-	right: 24px;
+.actions-group {
 	position: absolute;
 	z-index: 10;
+	top: 12px;
+	right: var(--spacing-l);
+	opacity: 0;
+	transition: opacity 0.3s ease;
 }
 
 .pagination {
