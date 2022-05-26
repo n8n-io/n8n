@@ -7,6 +7,7 @@ export const issueOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const issueOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -63,7 +63,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'ID of issue to get.',
+		description: 'ID of issue to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -88,7 +88,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the issues belong to.',
+		description: 'The slug of the organization the issues belong to',
 	},
 	{
 		displayName: 'Project Slug',
@@ -112,7 +112,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the issues belong to.',
+		description: 'The slug of the project the issues belong to',
 	},
 	{
 		displayName: 'Return All',
@@ -129,7 +129,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -153,7 +153,7 @@ export const issueFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -184,7 +184,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'statsPeriod',
 				type: 'options',
 				default: '',
-				description: 'Time period of stats.',
+				description: 'Time period of stats',
 				options: [
 					{
 						name: '14 Days',
@@ -226,7 +226,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'ID of issue to get.',
+		description: 'ID of issue to get',
 	},
 	{
 		displayName: 'Update Fields',
@@ -250,28 +250,28 @@ export const issueFields: INodeProperties[] = [
 				name: 'assignedTo',
 				type: 'string',
 				default: '',
-				description: 'The actor ID (or username) of the user or team that should be assigned to this issue.',
+				description: 'The actor ID (or username) of the user or team that should be assigned to this issue',
 			},
 			{
 				displayName: 'Has Seen',
 				name: 'hasSeen',
 				type: 'boolean',
 				default: true,
-				description: 'In case this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event.',
+				description: 'In case this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event',
 			},
 			{
 				displayName: 'Is Bookmarked',
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: true,
-				description: 'In case this API call is invoked with a user context this allows changing of the bookmark flag.',
+				description: 'In case this API call is invoked with a user context this allows changing of the bookmark flag',
 			},
 			{
 				displayName: 'Is Public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: true,
-				description: 'Sets the issue to public or private.',
+				description: 'Sets the issue to public or private',
 			},
 			{
 				displayName: 'Is Subscribed',
@@ -284,7 +284,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				default: '',
-				description: 'The new status for the issue.',
+				description: 'The new status for the issue',
 				options: [
 					{
 						name: 'Ignored',

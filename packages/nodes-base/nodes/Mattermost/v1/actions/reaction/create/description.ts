@@ -23,7 +23,7 @@ export const reactionCreateDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'ID of the user sending the reaction.',
+		description: 'ID of the user sending the reaction',
 	},
 	{
 		displayName: 'Post ID',
@@ -60,6 +60,6 @@ export const reactionCreateDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'Emoji to use for this reaction.',
+		description: 'Emoji to use for this reaction',
 	},
 ];

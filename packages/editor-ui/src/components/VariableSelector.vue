@@ -13,7 +13,7 @@
 <script lang="ts">
 
 import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -38,6 +38,11 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+
+// Node types that should not be displayed in variable selector
+const SKIPPED_NODE_TYPES = [
+	STICKY_NODE_TYPE,
+];
 
 export default mixins(
 	workflowHelpers,
@@ -386,7 +391,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.$store.getters.timezone, additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore
@@ -559,6 +564,10 @@ export default mixins(
 
 					if (nodeName === activeNode.name) {
 						// Skip the current node as this one get added separately
+						continue;
+					}
+					// If node type should be skipped, continue
+					if (SKIPPED_NODE_TYPES.includes(node.type)) {
 						continue;
 					}
 

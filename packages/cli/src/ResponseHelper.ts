@@ -96,15 +96,13 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError, shouldLog = true) {
+export function sendErrorResponse(res: Response, error: ResponseError) {
 	let httpStatusCode = 500;
 	if (error.httpStatusCode) {
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	shouldLog = !process.argv[1].split('/').includes('jest');
-
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
+	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}

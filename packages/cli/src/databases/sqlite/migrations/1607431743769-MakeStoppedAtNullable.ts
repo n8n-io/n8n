@@ -8,7 +8,7 @@ export class MakeStoppedAtNullable1607431743769 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 		// SQLite does not allow us to simply "alter column"
 		// We're hacking the way sqlite identifies tables
 		// Allowing a column to become nullable

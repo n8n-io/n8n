@@ -4,6 +4,7 @@ import * as members from './members';
 import * as restore from './restore';
 import * as addUser from './addUser';
 import * as statistics from './statistics';
+import * as search from './search';
 import { INodeProperties } from 'n8n-workflow';
 
 export {
@@ -13,6 +14,7 @@ export {
 	restore,
 	addUser,
 	statistics,
+	search,
 };
 
 
@@ -21,6 +23,7 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -55,13 +58,17 @@ export const descriptions: INodeProperties[] = [
 				description: 'Restores a soft deleted channel',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search for a channel',
+			},
+			{
 				name: 'Statistics',
 				value: 'statistics',
 				description: 'Get statistics for a channel',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 	...create.description,
 	...del.description,
@@ -69,4 +76,5 @@ export const descriptions: INodeProperties[] = [
 	...restore.description,
 	...addUser.description,
 	...statistics.description,
+	...search.description,
 ];

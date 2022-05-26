@@ -157,14 +157,14 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Label for button or link that represents this action.',
+			description: 'Label for button or link that represents this action',
 		},
 		{
 			displayName: 'Icon URL',
 			name: 'iconUrl',
 			type: 'string',
 			default: '',
-			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+',
+			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+.',
 		},
 		{
 			displayName: 'Style',
@@ -185,7 +185,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 				},
 			],
 			default: 'default',
-			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc.',
+			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
 		},
 	];
 }
@@ -205,7 +205,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			required: true,
-			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)',
+			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures).',
 		},
 		{
 			displayName: 'Color',
@@ -407,7 +407,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'If true, allow text to wrap. Otherwise, text is clipped',
+			description: 'If true, allow text to wrap. Otherwise, text is clipped.',
 		},
 		{
 			displayName: 'Height',
@@ -445,7 +445,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					],
 				},
 			},
-			description: 'When true, draw a separating line at the top of the element.',
+			description: 'When true, draw a separating line at the top of the element',
 		},
 		{
 			displayName: 'Spacing',
@@ -537,7 +537,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: '',
-			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed',
+			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed.',
 		},
 		{
 			displayName: 'Is Multiline',
@@ -579,7 +579,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: '',
-			description: 'Description of the input desired. Displayed when no text has been input',
+			description: 'Description of the input desired. Displayed when no text has been input.',
 		},
 		{
 			displayName: 'Regex',

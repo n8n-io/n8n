@@ -144,6 +144,7 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
+	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
@@ -168,6 +169,7 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 		);
 	} catch (e) {
@@ -209,7 +211,7 @@ export function getExecuteFunctions(
 			async getCredentials(
 				type: string,
 				itemIndex?: number,
-			): Promise<ICredentialDataDecryptedObject | undefined> {
+			): Promise<ICredentialDataDecryptedObject> {
 				return {
 					apiKey: '12345',
 				};
@@ -253,6 +255,7 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -286,6 +289,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					{},
 				);
 				return dataProxy.getDataProxy();
@@ -384,7 +388,7 @@ export function getExecuteSingleFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return {
 					apiKey: '12345',
 				};
@@ -445,6 +449,7 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
+					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -466,6 +471,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
+					additionalData.timezone,
 					{},
 				);
 				return dataProxy.getDataProxy();
@@ -602,6 +608,39 @@ class NodeTypesClass implements INodeTypes {
 									],
 								},
 							],
+						},
+					],
+				},
+			},
+		},
+		'test.switch': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Set',
+					name: 'set',
+					group: ['input'],
+					version: 1,
+					description: 'Switches',
+					defaults: {
+						name: 'Switch',
+						color: '#0000FF',
+					},
+					inputs: ['main'],
+					outputs: ['main', 'main', 'main', 'main'],
+					outputNames: ['0', '1', '2', '3'],
+					properties: [
+						{
+							displayName: 'Value1',
+							name: 'value1',
+							type: 'string',
+							default: 'default-value1',
+						},
+						{
+							displayName: 'Value2',
+							name: 'value2',
+							type: 'string',
+							default: 'default-value2',
 						},
 					],
 				},

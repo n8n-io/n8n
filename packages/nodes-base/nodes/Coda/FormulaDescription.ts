@@ -5,6 +5,7 @@ export const formulaOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const formulaOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -53,7 +53,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Formula ID',
@@ -71,7 +71,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The formula to get the row from.',
+		description: 'The formula to get the row from',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   formula:getAll                           */
@@ -95,7 +95,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc.',
+		description: 'ID of the doc',
 	},
 	{
 		displayName: 'Return All',
@@ -112,7 +112,7 @@ export const formulaFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -136,6 +136,6 @@ export const formulaFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

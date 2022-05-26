@@ -7,6 +7,7 @@ export const containerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -54,7 +55,6 @@ const containerTypeField = {
 		},
 	],
 	default: '',
-	description: 'Container type',
 } as INodeProperties;
 
 const containerIdField = {

@@ -38,9 +38,6 @@ import {
 
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('wooCommerceApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	let options: OptionsWithUri = {
 		auth: {
@@ -53,7 +50,6 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
-
 	if (credentials.includeCredentialsInQuery === true) {
 		delete options.auth;
 		Object.assign(qs, { consumer_key: credentials.consumerKey, consumer_secret: credentials.consumerSecret });
@@ -79,7 +75,11 @@ export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | IL
 	query.per_page = 100;
 	do {
 		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
-		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
+		const links = responseData.headers.link.split(',');
+		const nextLink = links.find((link: string) => link.indexOf('rel="next"') !== -1);
+		if (nextLink) {
+			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
+		}
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['link'] !== undefined &&
@@ -156,7 +156,7 @@ export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
 		} else {
 			body[snakeCase(fields.toString())] = fieldsToSet[fields];
 		}
-		
+
 	}
 }
 

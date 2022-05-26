@@ -16,7 +16,7 @@ import {
 	simplifyObjects,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,7 +51,7 @@ export class NotionTrigger implements INodeType {
 						value: 'pageAddedToDatabase',
 					},
 					{
-						name: 'Paged Updated in Database',
+						name: 'Page Updated in Database',
 						value: 'pagedUpdatedInDatabase',
 					},
 				],
@@ -78,7 +78,7 @@ export class NotionTrigger implements INodeType {
 				description: 'The ID of this database',
 			},
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

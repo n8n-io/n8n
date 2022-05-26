@@ -22,7 +22,7 @@ import {
 	summaryOperations,
 } from './SummaryDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Oura implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,6 +49,7 @@ export class Oura implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Profile',
@@ -60,7 +61,6 @@ export class Oura implements INodeType {
 					},
 				],
 				default: 'summary',
-				description: 'Resource to consume.',
 			},
 			...profileOperations,
 			...summaryOperations,

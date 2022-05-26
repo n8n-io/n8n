@@ -249,9 +249,9 @@ export const workflowHelpers = mixins(
 				const workflowName = this.$store.getters.workflowName;
 
 				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes});
+					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
 				}
 			},
 
@@ -323,25 +323,31 @@ export const workflowHelpers = mixins(
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
 
-					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
 					// Add the node credentials if there are some set and if they should be displayed
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-							const credentialTypeDescription = nodeType.credentials
-								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
+							// todo revert to only set actually used credentials on workflow
+							// if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+							// 	saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+							// 	continue;
+							// }
 
-							if (credentialTypeDescription === undefined) {
-								// Credential type is not know so do not save
-								continue;
-							}
+							// const credentialTypeDescription = nodeType.credentials
+							// 	.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
 
-							if (this.displayParameter(node.parameters, credentialTypeDescription, '') === false) {
-								// Credential should not be displayed so do also not save
-								continue;
-							}
+							// if (credentialTypeDescription === undefined) {
+							// 	// Credential type is not know so do not save
+							// 	continue;
+							// }
+
+							// if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) === false) {
+							// 	// Credential should not be displayed so do also not save
+							// 	continue;
+							// }
 
 							saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 						}
@@ -408,7 +414,7 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {

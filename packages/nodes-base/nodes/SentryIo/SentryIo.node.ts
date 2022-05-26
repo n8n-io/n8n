@@ -149,7 +149,6 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Authentication',
@@ -169,12 +168,12 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -202,7 +201,6 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'Resource to consume.',
 			},
 
 			// EVENT
@@ -309,7 +307,7 @@ export class SentryIo implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

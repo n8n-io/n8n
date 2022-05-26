@@ -7,8 +7,8 @@ export const transferOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -57,7 +57,7 @@ export const transferFields: INodeProperties[] = [
 				'profileId',
 			],
 		},
-		description: 'ID of the user profile to retrieve the balance of.',
+		description: 'ID of the user profile to retrieve the balance of',
 		displayOptions: {
 			show: {
 				resource: [
@@ -75,7 +75,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the quote based on which to create the transfer.',
+		description: 'ID of the quote based on which to create the transfer',
 		displayOptions: {
 			show: {
 				resource: [
@@ -96,7 +96,7 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
-		description: 'ID of the account that will receive the funds.',
+		description: 'ID of the account that will receive the funds',
 		displayOptions: {
 			show: {
 				resource: [
@@ -144,7 +144,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the transfer to delete.',
+		description: 'ID of the transfer to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -169,7 +169,7 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to execute the transfer under.',
+		description: 'ID of the user profile to execute the transfer under',
 		displayOptions: {
 			show: {
 				resource: [
@@ -187,7 +187,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the transfer to execute.',
+		description: 'ID of the transfer to execute',
 		displayOptions: {
 			show: {
 				resource: [
@@ -209,7 +209,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the transfer to retrieve.',
+		description: 'ID of the transfer to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -227,7 +227,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: `Download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'.`,
+		description: 'Download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -245,7 +245,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to.',
+		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -267,7 +267,7 @@ export const transferFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		placeholder: 'data.pdf',
-		description: 'Name of the file that will be downloaded.',
+		description: 'Name of the file that will be downloaded',
 		displayOptions: {
 			show: {
 				resource: [
@@ -295,7 +295,7 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve.',
+		description: 'ID of the user profile to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -312,7 +312,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -329,7 +329,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -370,7 +370,7 @@ export const transferFields: INodeProperties[] = [
 				name: 'range',
 				type: 'fixedCollection',
 				placeholder: 'Add Range',
-				description: 'Range of time for filtering the transfers.',
+				description: 'Range of time for filtering the transfers',
 				default: {},
 				options: [
 					{
@@ -398,7 +398,7 @@ export const transferFields: INodeProperties[] = [
 				name: 'sourceCurrency',
 				type: 'string',
 				default: '',
-				description: 'Code of the source currency for filtering the transfers.',
+				description: 'Code of the source currency for filtering the transfers',
 			},
 			{
 				displayName: 'Status',
@@ -453,7 +453,7 @@ export const transferFields: INodeProperties[] = [
 				name: 'targetCurrency',
 				type: 'string',
 				default: '',
-				description: 'Code of the target currency for filtering the transfers.',
+				description: 'Code of the target currency for filtering the transfers',
 			},
 		],
 	},
