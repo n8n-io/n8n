@@ -56,6 +56,10 @@ export default {
 			type: Boolean,
 			default: true,
 		},
+		circle: {
+			type: Boolean,
+			default: true,
+		},
 	},
 };
 </script>
