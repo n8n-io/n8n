@@ -19,7 +19,7 @@ export class VenafiTppTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TTP Trigger',
 		name: 'venafiTppTrigger',
-		icon: 'file:venafi.png',
+		icon: 'file:venafi.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
