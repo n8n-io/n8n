@@ -5,6 +5,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const companyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -275,7 +275,7 @@ export const companyFields: INodeProperties[] = [
 	/*                            company:create/update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company Id',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		default: '',

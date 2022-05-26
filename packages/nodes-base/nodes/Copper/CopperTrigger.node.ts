@@ -47,6 +47,7 @@ export class CopperTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				default: '',
 				options: [

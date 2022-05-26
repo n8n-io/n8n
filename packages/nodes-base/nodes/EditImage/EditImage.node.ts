@@ -22,7 +22,7 @@ import {
 } from 'fs';
 import { promisify } from 'util';
 const fsWriteFileAsync = promisify(fsWriteFile);
-import * as getSystemFonts from 'get-system-fonts';
+import getSystemFonts from 'get-system-fonts';
 
 
 const nodeOperations: INodePropertyOptions[] = [
@@ -868,6 +868,7 @@ export class EditImage implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get Information',
@@ -886,7 +887,6 @@ export class EditImage implements INodeType {
 					return 0;
 				}) as INodePropertyOptions[],
 				default: 'border',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Property Name',
@@ -927,9 +927,9 @@ export class EditImage implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: nodeOperations,
 								default: '',
-								description: 'The operation to perform.',
 							},
 							...nodeOperationOptions,
 							{

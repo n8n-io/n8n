@@ -330,18 +330,24 @@ export const workflowHelpers = mixins(
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-							const credentialTypeDescription = nodeType.credentials
-								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
+							// todo revert to only set actually used credentials on workflow
+							// if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+							// 	saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+							// 	continue;
+							// }
 
-							if (credentialTypeDescription === undefined) {
-								// Credential type is not know so do not save
-								continue;
-							}
+							// const credentialTypeDescription = nodeType.credentials
+							// 	.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
 
-							if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) === false) {
-								// Credential should not be displayed so do also not save
-								continue;
-							}
+							// if (credentialTypeDescription === undefined) {
+							// 	// Credential type is not know so do not save
+							// 	continue;
+							// }
+
+							// if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) === false) {
+							// 	// Credential should not be displayed so do also not save
+							// 	continue;
+							// }
 
 							saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 						}

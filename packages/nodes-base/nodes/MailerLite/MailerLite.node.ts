@@ -46,6 +46,7 @@ export class MailerLite implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Subscriber',
@@ -53,7 +54,6 @@ export class MailerLite implements INodeType {
 					},
 				],
 				default: 'subscriber',
-				description: 'The resource to operate on.',
 			},
 			...subscriberOperations,
 			...subscriberFields,

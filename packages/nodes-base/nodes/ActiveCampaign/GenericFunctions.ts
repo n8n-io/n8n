@@ -160,7 +160,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 			description: 'Max number of results to return',
 		},
 		{
-			displayName: 'Simplify Response',
+			displayName: 'Simplify',
 			name: 'simple',
 			type: 'boolean',
 			displayOptions: {
@@ -174,7 +174,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 				},
 			},
 			default: true,
-			description: 'Return a simplified version of the response instead of the raw data',
+			description: 'Whether to return a simplified version of the response instead of the raw data',
 		},
 	];
 }

@@ -38,6 +38,7 @@ export class Brandfetch implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 
 					{
@@ -67,7 +68,6 @@ export class Brandfetch implements INodeType {
 					},
 				],
 				default: 'logo',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------

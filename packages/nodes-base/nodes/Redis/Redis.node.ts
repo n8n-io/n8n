@@ -37,6 +37,7 @@ export class Redis implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Delete',
@@ -75,7 +76,6 @@ export class Redis implements INodeType {
 					},
 				],
 				default: 'info',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

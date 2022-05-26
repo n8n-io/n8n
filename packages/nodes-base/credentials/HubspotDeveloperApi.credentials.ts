@@ -14,7 +14,7 @@ const scopes = [
 
 export class HubspotDeveloperApi implements ICredentialType {
 	name = 'hubspotDeveloperApi';
-	displayName = 'Hubspot Developer API';
+	displayName = 'HubSpot Developer API';
 	documentationUrl = 'hubspot';
 	extends = [
 		'oAuth2Api',

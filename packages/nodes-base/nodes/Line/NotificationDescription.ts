@@ -7,6 +7,7 @@ export const notificationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const notificationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 
