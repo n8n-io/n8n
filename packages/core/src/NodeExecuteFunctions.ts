@@ -472,10 +472,6 @@ async function parseRequestObject(requestObject: IDataObject) {
 		});
 	}
 
-	if (requestObject.maxBodyLength !== undefined) {
-		axiosConfig.maxBodyLength = requestObject.maxBodyLength as number;
-	}
-
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
@@ -545,13 +541,15 @@ async function proxyRequestToAxios(
 		return requestPromiseWithDefaults.call(null, uriOrObject, options);
 	}
 
-	let axiosConfig: AxiosRequestConfig = {};
+	let axiosConfig: AxiosRequestConfig = {
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
+	};
 	let axiosPromise: AxiosPromise;
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
 		resolveWithFullResponse?: boolean;
 		simple?: boolean;
-		maxBodyLength?: number;
 	};
 	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {

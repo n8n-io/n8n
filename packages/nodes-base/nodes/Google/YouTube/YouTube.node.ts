@@ -917,7 +917,6 @@ export class YouTube implements INodeType {
 								'Content-Type': mimeType,
 							},
 							json: false,
-							maxBodyLength: Infinity,
 						};
 
 						const response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/videos', body, qs, undefined, requestOptions);
