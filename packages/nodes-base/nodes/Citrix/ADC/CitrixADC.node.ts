@@ -46,49 +46,11 @@ export class CitrixADC implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Config',
-						value: 'config',
-					},
-					{
 						name: 'Certificate',
 						value: 'certificate',
 					},
 				],
 				default: 'certificate',
-			},
-			// Config -------------------------------------------------------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Get',
-						value: 'get',
-					},
-				],
-				default: 'get',
-				displayOptions: {
-					show: {
-						resource: ['config'],
-					},
-				},
-			},
-			{
-				displayName: 'Config Object',
-				name: 'configObject',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getConfigObjects',
-				},
-				displayOptions: {
-					show: {
-						resource: ['config'],
-						operation: ['get'],
-					},
-				},
 			},
 			...certificateDescription,
 		],
@@ -128,17 +90,6 @@ export class CitrixADC implements INodeType {
 			},
 		},
 		loadOptions: {
-			async getConfigObjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { configobjects } = await citrixADCApiRequest.call(this, 'GET', '/config');
-				for (const config of configobjects.objects) {
-					returnData.push({
-						name: config,
-						value: config,
-					});
-				}
-				return returnData;
-			},
 			async getPartitions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [
 					{
@@ -174,21 +125,6 @@ export class CitrixADC implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				// Config -------------------------------------------------------------------------------
-				if (resource === 'config') {
-					if (operation === 'get') {
-						const config = this.getNodeParameter('configObject', i) as string;
-						const response = await citrixADCApiRequest.call(this, 'GET', `/config/${config}`);
-						const configObject = response[config];
-						if (!configObject) {
-							returnData.push(response);
-						} else if (Array.isArray(configObject)) {
-							returnData.push(...configObject);
-						} else {
-							returnData.push(configObject);
-						}
-					}
-				}
 				// Certificate --------------------------------------------------------------------------
 				if (resource === 'certificate') {
 					if (operation === 'upload') {
