@@ -4,9 +4,15 @@ import {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 
-const amqplib = require('amqplib');
+import * as amqplib from 'amqplib';
 
-export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+declare module 'amqplib' {
+	interface Channel{
+		connection: amqplib.Connection;
+	}
+}
+
+export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<amqplib.Channel> {
 	const credentials = await this.getCredentials('rabbitmq');
 
 	const credentialKeys = [
@@ -44,7 +50,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 				reject(error);
 			});
 
-			const channel = await connection.createChannel().catch(console.warn);
+			const channel = await connection.createChannel().catch(console.warn) as amqplib.Channel;
 
 			if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
 				const additionalArguments: IDataObject = {};
@@ -62,7 +68,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 	});
 }
 
-export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
 	return new Promise(async (resolve, reject) => {
@@ -75,7 +81,7 @@ export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFun
 	});
 }
 
-export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
 	return new Promise(async (resolve, reject) => {

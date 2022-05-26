@@ -690,6 +690,7 @@ export interface ITriggerFunctions {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;

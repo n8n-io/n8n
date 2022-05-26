@@ -1,11 +1,14 @@
 import {
+	createDeferredPromise,
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
+	IRun,
 	ITriggerFunctions,
 	ITriggerResponse,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import {
@@ -15,6 +18,8 @@ import {
 import {
 	rabbitmqConnectQueue,
 } from './GenericFunctions';
+
+import * as amqplib from 'amqplib';
 
 export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,6 +57,45 @@ export class RabbitMQTrigger implements INodeType {
 				default: {},
 				placeholder: 'Add Option',
 				options: [
+					{
+						displayName: 'Acknowledge',
+						name: 'acknowledge',
+						type: 'options',
+						options: [
+							{
+								name: 'Execution finished',
+								value: 'executionFinished',
+								description: 'After the workflow execution finished. No matter if the execution was successful or not.',
+							},
+							{
+								name: 'Execution finished successfully',
+								value: 'executionFinishedSuccessfully',
+								description: 'After the workflow execution finished successfully',
+							},
+							{
+								name: 'Immediately',
+								value: 'immediately',
+								description: 'As soon as the message got received',
+							},
+						],
+						default: 'immediately',
+						description: 'When to acknowledge the message',
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'Concurrent Messages',
+						name: 'concurrentMessages',
+						type: 'number',
+						default: -1,
+						displayOptions: {
+							hide: {
+								acknowledge: [
+									'immediately',
+								],
+							},
+						},
+						description: 'Maximum number of messages which get processed in parallel (-1 => unlimited). Messages will be acknowledged after the last node executed.',
+					},
 					{
 						displayName: 'Content is Binary',
 						name: 'contentIsBinary',
@@ -106,40 +150,84 @@ export class RabbitMQTrigger implements INodeType {
 
 		const self = this;
 
+		const concurrentMessages = (options.concurrentMessages && options.concurrentMessages !== -1) ? parseInt(options.concurrentMessages as string, 10) : -1;
+		const acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
+
 		const startConsumer = async () => {
-			await channel.consume(queue, async (message: IDataObject) => {
+			if (concurrentMessages !== -1) {
+				channel.prefetch(concurrentMessages);
+			}
+
+			await channel.consume(queue, async (message) => {
 				if (message !== null) {
-					let content: IDataObject | string = message!.content!.toString();
+					try {
+						let content: IDataObject | string = message!.content!.toString();
 
-					const item: INodeExecutionData = {
-						json: {},
-					};
-
-					if (options.contentIsBinary === true) {
-						item.binary = {
-							data: await this.helpers.prepareBinaryData(message.content),
+						const item: INodeExecutionData = {
+							json: {},
 						};
 
-						item.json = message;
-						message.content = undefined;
-					} else {
-						if (options.jsonParseBody === true) {
-							content = JSON.parse(content as string);
-						}
-						if (options.onlyContent === true) {
-							item.json = content as IDataObject;
-						} else {
-							message.content = content;
-							item.json = message;
-						}
-					}
+						if (options.contentIsBinary === true) {
+							item.binary = {
+								data: await this.helpers.prepareBinaryData(message.content),
+							};
 
-					self.emit([
-						[
-							item,
-						],
-					]);
-					channel.ack(message);
+							item.json = message as unknown as IDataObject;
+							message.content = undefined as unknown as Buffer;
+						} else {
+							if (options.jsonParseBody === true) {
+								content = JSON.parse(content as string);
+							}
+							if (options.onlyContent === true) {
+								item.json = content as IDataObject;
+							} else {
+								message.content = content as unknown as Buffer;
+								item.json = message as unknown as IDataObject;
+							}
+						}
+
+						let responsePromise = undefined;
+						if (acknowledgeMode !== 'immediately') {
+							responsePromise = await createDeferredPromise<IRun>();
+						}
+
+						self.emit([
+							[
+								item,
+							],
+						], undefined, responsePromise);
+
+						if (responsePromise) {
+							// Acknowledge message after the execution finished
+							await responsePromise
+							.promise()
+							.then((data: IRun) => {
+								if (data.data.resultData.error) {
+									// The execution did fail
+									if (acknowledgeMode === 'executionFinishedSuccessfully') {
+										channel.nack(message);
+										return;
+									}
+								}
+
+								channel.ack(message);
+						});
+						} else {
+							// Acknowledge message directly
+							channel.ack(message);
+						}
+
+					} catch (error) {
+						const workflow = this.getWorkflow();
+						const node = this.getNode();
+
+						Logger.error(`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+							{
+								node: node.name,
+								workflowId: workflow.id,
+							},
+						);
+					}
 				}
 			});
 		};
