@@ -57,9 +57,59 @@ export class Shopify implements INodeType {
 			{
 				name: 'shopifyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'shopifyTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'shopifyOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						name: 'API Key',
+						value: 'apiKey',
+						description: 'Private apps are deprecated and can\'t be created as of January 2022',
+					},
+				],
+				default: 'apiKey',
+		},
 			{
 				displayName: 'Resource',
 				name: 'resource',

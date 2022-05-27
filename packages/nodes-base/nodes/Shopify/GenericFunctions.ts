@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -19,18 +19,35 @@ import {
 } from 'change-case';
 
 export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('shopifyApi');
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+
+	let credentials;
+	let credentialType = 'shopifyOAuth2Api';
+
+	if (authenticationMethod === 'shopifyApi') {
+		credentials = await this.getCredentials('shopifyApi');
+		credentialType = 'shopifyApi';
+	} else if (authenticationMethod === 'accessToken') {
+		credentials = await this.getCredentials('shopifyTokenApi');
+		credentialType = 'shopifyTokenApi';
+	} else {
+		credentials = await this.getCredentials('shopifyOAuth2Api');
+	}
 
 	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
 		method,
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
 		json: true,
 	};
+
+	if (authenticationMethod === 'apiKey') {
+		const headerWithAuthentication = Object.assign({},
+			{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		options.headers = headerWithAuthentication;
+	}
 
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
@@ -42,12 +59,11 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
 
 export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 

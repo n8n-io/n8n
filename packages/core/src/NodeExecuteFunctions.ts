@@ -887,6 +887,8 @@ export async function requestOAuth2(
 	});
 
 	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	// eslint-disable-next-line no-console
+	console.log(oauthTokenData);
 
 	const token = oAuthClient.createToken(
 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
