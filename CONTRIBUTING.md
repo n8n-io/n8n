@@ -87,6 +87,10 @@ npm install -g lerna
 
 ### Actual n8n setup
 
+<a href="https://gitpod.io/#https://github.com/n8n-io/n8n">
+  <img src="https://img.shields.io/badge/Contribute%20with-Gitpod-908a85?logo=gitpod" alt="Contribute with Gitpod" />
+</a>
+
 > **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
 
 Now that everything n8n requires to run is installed the actual n8n code can be
