@@ -22,8 +22,8 @@
 
 
 			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
-				<n8n-icon-button v-if="linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
-				<n8n-icon-button v-else icon="link" type="text" size="small" @click="linkRun" />
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" text size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" text size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
@@ -87,7 +87,7 @@
 				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('ndv.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
 
 				<n8n-button
-					type="outline"
+					outline
 					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showTooMuchData"
 				/>
@@ -179,7 +179,7 @@
 
 								<div :class="$style.binaryButtonContainer">
 									<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
-									<n8n-button v-if="isDownloadable(index, key)" size="small" type="outline" :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
+									<n8n-button v-if="isDownloadable(index, key)" size="small" outline :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 								</div>
 							</div>
 						</div>

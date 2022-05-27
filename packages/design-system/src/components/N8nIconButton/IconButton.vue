@@ -7,6 +7,8 @@
 		:title="props.title"
 		:icon="props.icon"
 		:theme="props.theme"
+	    :outline="props.outline"
+	    :text="props.text"
 		@click="(e) => listeners.click && listeners.click(e)"
 		circle
 	/>
@@ -32,6 +34,14 @@ export default {
 			default: 'medium',
 		},
 		loading: {
+			type: Boolean,
+			default: false,
+		},
+		outline: {
+			type: Boolean,
+			default: false,
+		},
+		text: {
 			type: Boolean,
 			default: false,
 		},

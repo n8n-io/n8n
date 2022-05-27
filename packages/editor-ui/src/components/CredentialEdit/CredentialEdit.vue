@@ -27,7 +27,7 @@
 						size="small"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						type="text"
+						text
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"

@@ -103,8 +103,7 @@
 							<span class="retry-button">
 								<n8n-icon-button
 									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
-									 type="light"
-									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									 :type="scope.row.stoppedAt === null ? 'warning': 'danger'"
 									 size="mini"
 									 :title="$locale.baseText('executionsList.retryExecution')"
 									 icon="redo"

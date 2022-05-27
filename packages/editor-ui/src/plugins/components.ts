@@ -156,7 +156,6 @@ Vue.prototype.$alert = async (message: string, configOrTitle: string | ElMessage
 	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
 	temp = {
 		...temp,
-		roundButton: true,
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
 	};
@@ -171,7 +170,6 @@ Vue.prototype.$confirm = async (message: string, configOrTitle: string | ElMessa
 	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
 	temp = {
 		...temp,
-		roundButton: true,
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
 		distinguishCancelAndClose: true,
@@ -189,7 +187,6 @@ Vue.prototype.$prompt = async (message: string, configOrTitle: string | ElMessag
 	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
 	temp = {
 		...temp,
-		roundButton: true,
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
 	};

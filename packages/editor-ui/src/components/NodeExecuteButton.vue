@@ -4,6 +4,7 @@
 		:disabled="workflowRunning && !nodeRunning"
 		:label="buttonLabel"
 		:type="type"
+		:outline="outline"
 		:size="size"
 		:transparentBackground="transparent"
 		@click="onClick"
@@ -28,6 +29,9 @@ export default mixins(
 		},
 		type: {
 			type: String,
+		},
+		outline: {
+			type: Boolean,
 		},
 		size: {
 			type: String,

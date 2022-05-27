@@ -74,7 +74,12 @@
 					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
 					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
 				>
-					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+					<n8n-icon-button
+						size="large"
+						outline
+						:icon="['far', 'note-sticky']"
+						:title="$locale.baseText('nodeView.addSticky')"
+					/>
 				</div>
 			</div>
 		</div>
@@ -110,7 +115,7 @@
 				size="large"
 				icon="play-circle"
 				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
-				:type="workflowRunning ? 'light' : 'primary'"
+				:type="workflowRunning ? 'secondary' : 'primary'"
 			/>
 
 			<n8n-icon-button
@@ -118,7 +123,7 @@
 				icon="stop"
 				size="large"
 				class="stop-execution"
-				type="light"
+				type="secondary"
 				:title="stopExecutionInProgress
 					? $locale.baseText('nodeView.stoppingCurrentExecution')
 					: $locale.baseText('nodeView.stopCurrentExecution')
@@ -133,7 +138,7 @@
 				icon="stop"
 				size="large"
 				:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
-				type="light"
+				type="secondary"
 				@click.stop="stopWaitingForWebhook()"
 			/>
 

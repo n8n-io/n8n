@@ -27,10 +27,10 @@
 				v-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
-				:theme="theme"
+				:type="theme"
 				:loading="buttonLoading"
 				size="small"
-				type="outline"
+				outline
 				:transparentBackground="true"
 				@click.stop="onClick"
 			/>
