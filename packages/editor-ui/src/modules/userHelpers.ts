@@ -42,15 +42,11 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
-export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
+export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
 	if (permissions.deny) {
 		if(permissions.deny.custom) {
 			return !permissions.deny.custom();
-		}
-
-		if (permissions.deny.um === isUMEnabled) {
-			return false;
 		}
 
 		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
@@ -71,10 +67,6 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 	if (permissions.allow) {
 		if(permissions.allow.custom) {
 			return permissions.allow.custom();
-		}
-
-		if (permissions.allow.um === isUMEnabled) {
-			return true;
 		}
 
 		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {

@@ -578,7 +578,6 @@ export interface IUserManagementConfig {
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
-	um?: boolean;
 	custom?: () => boolean;
 }
 

@@ -273,7 +273,9 @@ const router = new Router({
 						role: [ROLE.Default],
 					},
 					deny: {
-						um: false,
+						custom: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
@@ -331,7 +333,9 @@ const router = new Router({
 						role: [ROLE.Default, ROLE.Owner],
 					},
 					deny: {
-						um: false,
+						custom: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
