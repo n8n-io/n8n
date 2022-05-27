@@ -118,6 +118,26 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+		data.global = {};
+		data.window = {};
+		data.Window = {};
+		data.this = {};
+		data.self = {};
+
+		// Alerts
+		data.alert = {};
+		data.prompt = {};
+		data.confirm = {};
+
+		// Prevent Remote Code Execution
+		data.eval = {};
+		data.setTimeout = {};
+		data.setInterval = {};
+		data.Function = {};
+
+		// Prevent requests
+		data.fetch = {};
+		data.XMLHttpRequest = {};
 
 		// @ts-ignore
 		data.DateTime = DateTime;
@@ -129,8 +149,13 @@ export class Expression {
 
 		// Execute the expression
 		try {
+			if (/([^a-zA-Z0-9"']window[^a-zA-Z0-9"'])/g.test(parameterValue)) {
+				throw new Error(`window is not allowed`);
+			}
+
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
+
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -368,6 +393,7 @@ export class Expression {
 		if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		}
+
 		// Data is an object
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
@@ -381,6 +407,7 @@ export class Expression {
 		if (returnObjectAsString && typeof returnData === 'object') {
 			return this.convertObjectValueToString(returnData);
 		}
+
 		return returnData;
 	}
 }
