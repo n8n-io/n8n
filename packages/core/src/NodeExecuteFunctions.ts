@@ -541,7 +541,10 @@ async function proxyRequestToAxios(
 		return requestPromiseWithDefaults.call(null, uriOrObject, options);
 	}
 
-	let axiosConfig: AxiosRequestConfig = {};
+	let axiosConfig: AxiosRequestConfig = {
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
+	};
 	let axiosPromise: AxiosPromise;
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
