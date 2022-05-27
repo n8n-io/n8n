@@ -16,6 +16,7 @@ import {
 } from './DefaultOptions';
 
 import {
+	MessageTracker,
 	rabbitmqConnectQueue,
 } from './GenericFunctions';
 
@@ -94,7 +95,7 @@ export class RabbitMQTrigger implements INodeType {
 								],
 							},
 						},
-						description: 'Maximum number of messages which get processed in parallel (-1 => unlimited). Messages will be acknowledged after the last node executed.',
+						description: 'Maximum number of messages which get processed in parallel (-1 => unlimited). Messages will be acknowledged after the execution finished, no matter if successful or not unless overwritten with "Acknowledge".',
 					},
 					{
 						displayName: 'Content is Binary',
@@ -151,16 +152,30 @@ export class RabbitMQTrigger implements INodeType {
 		const self = this;
 
 		const concurrentMessages = (options.concurrentMessages && options.concurrentMessages !== -1) ? parseInt(options.concurrentMessages as string, 10) : -1;
-		const acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
+		let acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
+
+		if (concurrentMessages !== -1 && acknowledgeMode === 'immediately') {
+			// If concurrent message limit is set, then the default mode is "executionFinished"
+			// unless acknowledgeMode got set specifically as "immediately" can not be supported
+			acknowledgeMode = 'executionFinished';
+		}
+
+		const messageTracker = new MessageTracker();
+		let consumerTag: string;
 
 		const startConsumer = async () => {
 			if (concurrentMessages !== -1) {
 				channel.prefetch(concurrentMessages);
 			}
 
-			await channel.consume(queue, async (message) => {
+			let consumerInfo = await channel.consume(queue, async (message) => {
 				if (message !== null) {
+
 					try {
+						if (acknowledgeMode !== 'immediately') {
+							messageTracker.received(message);
+						}
+
 						let content: IDataObject | string = message!.content!.toString();
 
 						const item: INodeExecutionData = {
@@ -206,12 +221,14 @@ export class RabbitMQTrigger implements INodeType {
 									// The execution did fail
 									if (acknowledgeMode === 'executionFinishedSuccessfully') {
 										channel.nack(message);
+										messageTracker.answered(message);
 										return;
 									}
 								}
 
 								channel.ack(message);
-						});
+								messageTracker.answered(message);
+							});
 						} else {
 							// Acknowledge message directly
 							channel.ack(message);
@@ -220,6 +237,9 @@ export class RabbitMQTrigger implements INodeType {
 					} catch (error) {
 						const workflow = this.getWorkflow();
 						const node = this.getNode();
+						if (acknowledgeMode !== 'immediately') {
+							messageTracker.answered(message);
+						}
 
 						Logger.error(`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
 							{
@@ -230,6 +250,7 @@ export class RabbitMQTrigger implements INodeType {
 					}
 				}
 			});
+			consumerTag = consumerInfo.consumerTag;
 		};
 
 		startConsumer();
@@ -237,23 +258,11 @@ export class RabbitMQTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
-			await channel.close();
-			await channel.connection.close();
-		}
-
-		// The "manualTriggerFunction" function gets called by n8n
-		// when a user is in the workflow editor and starts the
-		// workflow manually. So the function has to make sure that
-		// the emit() gets called with similar data like when it
-		// would trigger by itself so that the user knows what data
-		// to expect.
-		async function manualTriggerFunction() {
-			startConsumer();
+			return messageTracker.closeChannel(channel, consumerTag);
 		}
 
 		return {
 			closeFunction,
-			manualTriggerFunction,
 		};
 	}
 

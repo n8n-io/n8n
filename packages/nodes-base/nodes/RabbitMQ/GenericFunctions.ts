@@ -7,7 +7,7 @@ import {
 import * as amqplib from 'amqplib';
 
 declare module 'amqplib' {
-	interface Channel{
+	interface Channel {
 		connection: amqplib.Connection;
 	}
 }
@@ -60,7 +60,6 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 				options.arguments = additionalArguments;
 			}
 
-
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -92,4 +91,51 @@ export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITrigger
 			reject(error);
 		}
 	});
+}
+
+export class MessageTracker {
+	messages: number[] = [];
+
+	received(message: amqplib.ConsumeMessage) {
+		this.messages.push(message.fields.deliveryTag);
+	}
+
+	answered(message: amqplib.ConsumeMessage) {
+		if (this.messages.length === 0) {
+			return;
+		}
+
+		const index = this.messages.findIndex(value => value !== message.fields.deliveryTag);
+		this.messages.splice(index);
+	}
+
+	unansweredMessages() {
+		return this.messages.length;
+	}
+
+	async closeChannel(channel: amqplib.Channel, consumerTag: string) {
+		// Do not accept any new messages
+		await channel.cancel(consumerTag);
+
+		let count = 0;
+		let unansweredMessages = this.unansweredMessages();
+
+		// Give currently executing messages max. 5 minutes to finish before
+		// the channel gets closed. If we would not do that, it would not be possible
+		// to acknowledge messages anymore for which the executions were already running
+		// when for example a new version of the workflow got saved. That would lead to
+		// them getting delivered and processed again.
+		while (unansweredMessages !== 0 && count <= 300) {
+			if (count++ % 4 === 0) {
+				console.log(`Waiting for ${unansweredMessages} unanswered messages to finish ...`);
+			}
+			await new Promise((resolve) => {
+				setTimeout(resolve, 1000);
+			});
+			unansweredMessages = this.unansweredMessages();
+		}
+
+		await channel.close();
+		await channel.connection.close();
+	}
 }
