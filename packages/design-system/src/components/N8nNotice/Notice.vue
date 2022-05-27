@@ -38,8 +38,8 @@ export default Vue.extend({
 			default: 'warning',
 		},
 		content: {
-			required: true,
 			type: String,
+			default: '',
 		},
 		fullContent: {
 			type: String,

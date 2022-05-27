@@ -1,0 +1,18 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nButton > props > icon > should render icon button 1`] = `
+"<button type=\\"button\\" class=\\"el-button el-button--default el-button--medium _button_1c5ep_1 _primary_1c5ep_79\\" tabindex=\\"0\\">
+  <!---->
+  <!----><span><span class=\\"_icon_1c5ep_143\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></span></button>"
+`;
+
+exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `
+"<button disabled=\\"disabled\\" type=\\"button\\" class=\\"el-button el-button--default el-button--medium is-loading _button_1c5ep_1 _primary_1c5ep_79\\" tabindex=\\"0\\"><i class=\\"el-icon-loading\\"></i>
+  <!----><span><span class=\\"_icon_1c5ep_143\\"><n8n-spinner-stub size=\\"medium\\" type=\\"dots\\"></n8n-spinner-stub></span><span>Button</span></span></button>"
+`;
+
+exports[`components > N8nButton > should render correctly 1`] = `
+"<button type=\\"button\\" class=\\"el-button el-button--default el-button--medium _button_1c5ep_1 _primary_1c5ep_79\\" tabindex=\\"0\\">
+  <!---->
+  <!----><span><!----><span>Button</span></span></button>"
+`;

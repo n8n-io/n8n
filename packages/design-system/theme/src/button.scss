@@ -46,7 +46,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	}
 
   	&:focus {
-	    outline: 3px solid var.$button-focus-outline-color;
+	  	border-color: var.$button-focus-outline-color;
+	    outline: 2px solid var.$button-focus-outline-color;
 	}
 
 	&::-moz-focus-inner {

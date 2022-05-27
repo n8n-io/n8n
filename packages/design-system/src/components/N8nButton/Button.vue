@@ -1,7 +1,7 @@
 <template functional>
 	<component
 		:is="$options.components.ElButton"
-		:plain="props.type === 'outline'"
+		:plain="props.outline"
 		:disabled="props.disabled"
 		:size="props.size"
 		:loading="props.loading"
@@ -26,7 +26,9 @@
 				:size="props.size"
 			/>
 		</span>
-		<span v-if="props.label">{{ props.label }}</span>
+		<span v-if="props.label">
+			<slot>{{ props.label }}</slot>
+		</span>
 	</component>
 </template>
 
@@ -122,35 +124,6 @@ export default {
 <style lang="scss" module>
 @import "../../utils";
 
-$active-shade-percent: 10%;
-$color-primary-shade: lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	-($active-shade-percent)
-);
-
-$color-success-shade: lightness(
-	--color-success-h,
-	--color-success-s,
-	--color-success-l,
-	-($active-shade-percent)
-);
-
-$color-warning-shade: lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-l,
-	-($active-shade-percent)
-);
-
-$color-danger-shade: lightness(
-	--color-danger-h,
-	--color-danger-s,
-	--color-danger-l,
-	-($active-shade-percent)
-);
-
 .button {
   > i {
 	display: none;
@@ -173,14 +146,14 @@ $color-danger-shade: lightness(
   --button-background-color: var(--color-white);
 
   --button-active-background-color: var(--color-primary-900);
-  --button-active-color: #{$color-primary-shade};
-  --button-active-border-color: #{$color-primary-shade};
+  --button-active-color: var(--color-primary);
+  --button-active-border-color: var(--color-primary);
 
   --button-hover-background-color: var(--color-primary-950);
   --button-hover-color: var(--color-primary);
   --button-hover-border-color: var(--color-primary);
 
-  --button-focus-outline-color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-600-l), 0.33)
+  --button-focus-outline-color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-600-l), 0.33);
 }
 
 .tertiary {
@@ -198,7 +171,7 @@ $color-danger-shade: lightness(
   --button-hover-color: var(--color-text-dark);
   --button-hover-border-color: var(--color-neutral-800);
 
-  --button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.1)
+  --button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
 }
 
 .success {
