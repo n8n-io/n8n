@@ -570,6 +570,7 @@
       "dist/nodes/Pipedrive/Pipedrive.node.js",
       "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
       "dist/nodes/Plivo/Plivo.node.js",
+      "dist/nodes/PostBin/PostBin.node.js",
       "dist/nodes/Postgres/Postgres.node.js",
       "dist/nodes/PostHog/PostHog.node.js",
       "dist/nodes/Postmark/PostmarkTrigger.node.js",
