@@ -34,7 +34,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 		credentials = await this.getCredentials('nextCloudOAuth2Api') as { webDavUrl: string };
 	}
 
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		headers,
 		method,
 		body,
