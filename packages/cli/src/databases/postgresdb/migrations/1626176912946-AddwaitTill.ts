@@ -24,7 +24,7 @@ export class AddwaitTill1626176912946 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2`);
+		await queryRunner.query(`DROP INDEX "${schema}".IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "waitTill"`);
 	}
 

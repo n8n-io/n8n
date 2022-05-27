@@ -56,12 +56,12 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 				CONSTRAINT "FK_${tablePrefixPure}3540da03964527aa24ae014b780" FOREIGN KEY ("roleId") REFERENCES ${tablePrefix}role ("id") ON DELETE NO ACTION ON UPDATE NO ACTION,
 				CONSTRAINT "FK_${tablePrefixPure}82b2fd9ec4e3e24209af8160282" FOREIGN KEY ("userId") REFERENCES ${tablePrefix}user ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
 				CONSTRAINT "FK_${tablePrefixPure}b83f8d2530884b66a9c848c8b88" FOREIGN KEY ("workflowId") REFERENCES
-				${tablePrefixPure}workflow_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION
+				${tablePrefix}workflow_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			);`,
 		);
 
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}65a0933c0f19d278881653bf81d35064" ON "shared_workflow" ("workflowId");`,
+			`CREATE INDEX "IDX_${tablePrefixPure}65a0933c0f19d278881653bf81d35064" ON ${tablePrefix}"shared_workflow" ("workflowId");`,
 		);
 
 		await queryRunner.query(
@@ -91,7 +91,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 			);`,
 		);
 
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
+		await queryRunner.query(`DROP INDEX "${schema}"."IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
 
 		// Insert initial roles
 		await queryRunner.query(

@@ -66,10 +66,10 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 
 			await queryRunner.query(`ALTER TABLE ${tablePrefix}workflows_tags DROP CONSTRAINT "FK_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a46"`);
 			await queryRunner.query(`ALTER TABLE ${tablePrefix}workflows_tags DROP CONSTRAINT "FK_${tablePrefixPure}31140eb41f019805b40d0087449"`);
-			await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a4`);
-			await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}31140eb41f019805b40d008744`);
+			await queryRunner.query(`DROP INDEX "${schema}".IDX_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a4`);
+			await queryRunner.query(`DROP INDEX "${schema}".IDX_${tablePrefixPure}31140eb41f019805b40d008744`);
 			await queryRunner.query(`DROP TABLE ${tablePrefix}workflows_tags`);
-			await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}812eb05f7451ca757fb98444ce`);
+			await queryRunner.query(`DROP INDEX "${schema}".IDX_${tablePrefixPure}812eb05f7451ca757fb98444ce`);
 			await queryRunner.query(`DROP TABLE ${tablePrefix}tag_entity`);
 		}
 

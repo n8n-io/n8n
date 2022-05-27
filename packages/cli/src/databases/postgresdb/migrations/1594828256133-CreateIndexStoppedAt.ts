@@ -17,9 +17,10 @@ export class CreateIndexStoppedAt1594828256133 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefixPure = config.getEnv('database.tablePrefix');
+		const schema = config.getEnv('database.postgresdb.schema');
 
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefix}33228da131bb1112247cf52a42`);
+		await queryRunner.query(`DROP INDEX "${schema}".IDX_${tablePrefixPure}33228da131bb1112247cf52a42`);
 	}
 
 }

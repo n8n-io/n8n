@@ -65,6 +65,6 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
+		await queryRunner.query(`DROP INDEX "${schema}"."IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
 	}
 }
