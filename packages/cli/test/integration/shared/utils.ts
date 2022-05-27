@@ -65,7 +65,7 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, { controller: express.Router; path: string }> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
-			pinData: { controller: pinDataController, path: 'workflows/:id/pin-data' },
+			pinData: { controller: pinDataController, path: 'workflows/:id' },
 		};
 
 		for (const group of routerEndpoints) {

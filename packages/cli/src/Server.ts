@@ -1162,7 +1162,7 @@ class App {
 			}),
 		);
 
-		this.app.use(`/${this.restEndpoint}/workflows/:id/pin-data`, pinDataController);
+		this.app.use(`/${this.restEndpoint}/workflows/:id`, pinDataController);
 
 		this.app.post(
 			`/${this.restEndpoint}/workflows/run`,

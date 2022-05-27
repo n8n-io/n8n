@@ -92,7 +92,7 @@ test('POST /workflows/:id/pin-data should fail with missing node name', async ()
 	expect(node?.pinData).toBeUndefined(); // unaffected
 });
 
-test('DELETE /workflows/:id/pin-data should unpin data from node', async () => {
+test('POST /workflows/:id/unpin-data should unpin data from node', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
@@ -104,8 +104,8 @@ test('DELETE /workflows/:id/pin-data should unpin data from node', async () => {
 	});
 
 	const unpinDataResponse = await authOwnerAgent
-		.delete('/workflows/1/pin-data')
-		.query({ nodeName: 'Spotify' });
+		.post('/workflows/1/unpin-data')
+		.send({ nodeName: 'Spotify' });
 
 	expect(unpinDataResponse.statusCode).toBe(200);
 	expect(unpinDataResponse.body.data.success).toBe(true);
@@ -117,7 +117,7 @@ test('DELETE /workflows/:id/pin-data should unpin data from node', async () => {
 	expect(node?.pinData).toBeUndefined(); // unpinned
 });
 
-test('DELETE /workflows/:id/pin-data should fail with missing node name', async () => {
+test('POST /workflows/:id/unpin-data should fail with missing node name', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
@@ -128,7 +128,7 @@ test('DELETE /workflows/:id/pin-data should fail with missing node name', async 
 		pinData: { myKey: 'myValue' },
 	});
 
-	const unpinDataResponse = await authOwnerAgent.delete('/workflows/1/pin-data');
+	const unpinDataResponse = await authOwnerAgent.post('/workflows/1/pin-data');
 
 	expect(unpinDataResponse.statusCode).toBe(400);
 
