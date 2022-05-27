@@ -22,6 +22,7 @@ import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
+import { store } from './store';
 
 Vue.use(Router);
 
@@ -368,6 +369,11 @@ const router = new Router({
 				permissions: {
 					allow: {
 						role: [ROLE.Default, ROLE.Owner],
+					},
+					deny: {
+						custom: () => {
+							return store.getters['communityNodes/isFeatureAvailable'] === false;
+						},
 					},
 				},
 			},

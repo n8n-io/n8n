@@ -575,6 +575,7 @@ export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
 	um?: boolean;
+	custom?: () => boolean;
 }
 
 export interface IPermissions {
@@ -916,6 +917,7 @@ export interface IWorkflowsState {
 }
 
 export interface ICommunityNodesState {
+	featureAvailable: boolean;
 	availablePackageCount: number;
 }
 
