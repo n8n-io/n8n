@@ -1,6 +1,8 @@
 import {
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -87,4 +89,25 @@ function parseBinId(context: IExecuteSingleFunctions) {
 	 description: 'Please check the provided Bin ID and try again.',
 	 parseXml: false,
  });
+}
+
+/**
+ * Converts the bin response data and adds additional properties
+ *
+ * @param {IExecuteSingleFunctions} this
+ * @param {INodeExecutionData} items[]
+ * @param {IN8nHttpFullResponse} response
+ * @returns {Promise<INodeExecutionData[]>}
+ */
+ export async function transformBinReponse(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse): Promise<INodeExecutionData[]> {
+	items.forEach(item => item.json = {
+		'binId': item.json.binId,
+		'nowTimestamp': item.json.now,
+		'nowIso': new Date(item.json.now as string).toISOString(),
+		'expiresTimestamp': item.json.expires,
+		'expiresIso': new Date(item.json.expires as string).toISOString(),
+		'requestUrl': 'https://www.toptal.com/developers/postbin/' + item.json.binId,
+		'viewUrl': 'https://www.toptal.com/developers/postbin/b/' + item.json.binId,
+	});
+	return items;
 }

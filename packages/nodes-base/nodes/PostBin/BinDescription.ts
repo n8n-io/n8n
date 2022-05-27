@@ -1,12 +1,10 @@
 import {
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
 	INodeProperties
 } from 'n8n-workflow';
 
 import {
 	buildBinAPIURL,
+	transformBinReponse,
 } from './GenericFunctions';
 
 
@@ -35,16 +33,7 @@ export const binOperations: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
-								items.forEach(item => item.json = {
-									'binId': item.json.binId,
-									'now_timestamp': item.json.now,
-									'now_iso': new Date(item.json.now as string).toISOString(),
-									'expires_timestamp': item.json.expires,
-									'expires_iso': new Date(item.json.expires as string).toISOString(),
-								});
-								return items;
-							},
+							transformBinReponse,
 						],
 					},
 				},
@@ -56,6 +45,11 @@ export const binOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
+					},
+					output: {
+						postReceive: [
+							transformBinReponse,
+						],
 					},
 					send: {
 						preSend: [
