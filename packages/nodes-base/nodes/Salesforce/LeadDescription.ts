@@ -187,6 +187,13 @@ export const leadFields: INodeProperties[] = [
 				description: 'City for the address of the lead',
 			},
 			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				description: 'Country of the lead',
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Field',
@@ -258,14 +265,14 @@ export const leadFields: INodeProperties[] = [
 				name: 'IsUnreadByOwner',
 				type: 'boolean',
 				default: false,
-				description: 'If true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
+				description: 'Whether true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
 			},
 			{
 				displayName: 'Jigsaw',
 				name: 'jigsaw',
 				type: 'string',
 				default: '',
-				description: 'references the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
+				description: 'References the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
 			},
 			{
 				displayName: 'Lead Source',
@@ -442,6 +449,13 @@ export const leadFields: INodeProperties[] = [
 				description: 'Company of the lead. If person account record types have been enabled, and if the value of Company is null, the lead converts to a person account.',
 			},
 			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				description: 'Country of the lead',
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Field',
@@ -513,14 +527,14 @@ export const leadFields: INodeProperties[] = [
 				name: 'IsUnreadByOwner',
 				type: 'boolean',
 				default: false,
-				description: 'If true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
+				description: 'Whether true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
 			},
 			{
 				displayName: 'Jigsaw',
 				name: 'jigsaw',
 				type: 'string',
 				default: '',
-				description: 'references the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
+				description: 'References the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
 			},
 			{
 				displayName: 'Last Name',
@@ -960,7 +974,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner',

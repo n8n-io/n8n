@@ -330,8 +330,15 @@ export const workflowHelpers = mixins(
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+							if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								continue;
+							}
+
 							const credentialTypeDescription = nodeType.credentials
-								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
+								// filter out credentials with same name in different node versions
+								.filter((c) => this.displayParameter(node.parameters, c, '', node))
+								.find((c) => c.name === nodeCredentialTypeName);
 
 							if (credentialTypeDescription === undefined) {
 								// Credential type is not know so do not save
