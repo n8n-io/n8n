@@ -168,7 +168,7 @@ export class RabbitMQTrigger implements INodeType {
 				channel.prefetch(concurrentMessages);
 			}
 
-			let consumerInfo = await channel.consume(queue, async (message) => {
+			const consumerInfo = await channel.consume(queue, async (message) => {
 				if (message !== null) {
 
 					try {
