@@ -134,22 +134,24 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeAll(): Promise<void> {
-		const activeWorkflowId: string[] = [];
+		let activeWorkflowIds: string[] = [];
 		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
 		if (this.activeWorkflows !== null) {
-			// TODO: This should be renamed!
-			activeWorkflowId.push.apply(activeWorkflowId, this.activeWorkflows.allActiveWorkflows());
+			activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
 		}
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowId.push.apply(
-			activeWorkflowId,
-			activeWorkflows.map((workflow) => workflow.id),
-		);
+		activeWorkflowIds = [
+			...activeWorkflowIds,
+			...activeWorkflows.map((workflow) => workflow.id.toString()),
+		];
+
+		// Make sure IDs are unique
+		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
 
 		const removePromises = [];
-		for (const workflowId of activeWorkflowId) {
+		for (const workflowId of activeWorkflowIds) {
 			removePromises.push(this.remove(workflowId));
 		}
 
