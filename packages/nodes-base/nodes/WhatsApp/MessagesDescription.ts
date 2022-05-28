@@ -11,9 +11,6 @@ export const mediaTypes = [
 	"document",
 ]
 
-
-
-
 export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Phone number ID',
@@ -142,21 +139,6 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: "Provider Name",
-		name: "mediaLinkProvider",
-		type: "string",
-		default: "",
-		description: 'Provider name of the media to be sent',
-		displayOptions: {
-			show: {
-				type: mediaTypes,
-				mediaPath: [
-					"useMediaLink"
-				]
-			},
-		},
-	},
-	{
 		displayName: "ID",
 		name: "mediaId",
 		type: "string",
@@ -228,7 +210,7 @@ export const messageTypeFields: INodeProperties[] = [
 		displayName: "Language code",
 		name: "templateLanguageCode",
 		type: "string",
-		default: "en",
+		default: "en_US",
 		displayOptions: {
 			show: {
 				type: [
