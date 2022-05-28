@@ -26,11 +26,11 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	const options: OptionsWithUri = {
 		headers: {
-			"Authorization": `Bearer ${credentials.accessToken}`
+			'Authorization': `Bearer ${credentials.accessToken}`,
 		},
 		qs,
 		method,
-		body: {...body, messaging_product: "whatsapp"},
+		body: {...body, messaging_product: 'whatsapp'},
 		uri: `https://graph.facebook.com/v13.0/${endpoint}`,
 		json: true,
 	};

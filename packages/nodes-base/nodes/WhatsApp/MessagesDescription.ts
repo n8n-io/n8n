@@ -4,12 +4,12 @@ import {
 
 
 export const mediaTypes = [
-	"image",
-	"video",
-	"audio",
-	"sticker",
-	"document",
-]
+	'image',
+	'video',
+	'audio',
+	'sticker',
+	'document',
+];
 
 export const messageFields: INodeProperties[] = [
 	{
@@ -43,23 +43,23 @@ export const messageFields: INodeProperties[] = [
 				value: 'template',
 			},
 			{
-				name: "Image",
-				value: "image",
+				name: 'Image',
+				value: 'image',
 			},
 			{
-				name: "Document",
-				value: "document",
+				name: 'Document',
+				value: 'document',
 			},
 			{
-				name: "Audio",
-				value: "audio",
+				name: 'Audio',
+				value: 'audio',
 			},
 			{
-				name: "Video",
-				value: "video",
+				name: 'Video',
+				value: 'video',
 			},
 		],
-		default: "text",
+		default: 'text',
 		description: 'The type of the message',
 	},
 ];
@@ -69,11 +69,11 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: text
 	// ----------------------------------
 	{
-		displayName: "Text Body",
-		name: "textBody",
-		type: "string",
-		default: "",
-		description: "The body of the message (max 4096 characters)",
+		displayName: 'Text Body',
+		name: 'textBody',
+		type: 'string',
+		default: '',
+		description: 'The body of the message (max 4096 characters)',
 		displayOptions: {
 			show: {
 				type: [
@@ -83,9 +83,9 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: "Preview URL",
-		name: "previewUrl",
-		type: "boolean",
+		displayName: 'Preview URL',
+		name: 'previewUrl',
+		type: 'boolean',
 		default: false,
 		description: 'Allows for URL previews in text messages',
 		displayOptions: {
@@ -100,88 +100,88 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: media
 	// ----------------------------------
 	{
-		displayName: "Link or ID",
-		name: "mediaPath",
-		type: "options",
-		default: "useMediaLink",
-		description: "Use a link or an ID to upload a media file",
+		displayName: 'Link or ID',
+		name: 'mediaPath',
+		type: 'options',
+		default: 'useMediaLink',
+		description: 'Use a link or an ID to upload a media file',
 		options: [
 			{
-				name: "Link",
-				value: "useMediaLink",
-				description: "When using a ink, WhatsApp will download the media, saving you the step of uploading media yourself"
+				name: 'Link',
+				value: 'useMediaLink',
+				description: 'When using a ink, WhatsApp will download the media, saving you the step of uploading media yourself',
 			},
 			{
-				name: "ID",
-				value: "useMediaId",
-				description: "You can use an ID if you have already uploaded the media to WhatsApp"
-			}
+				name: 'ID',
+				value: 'useMediaId',
+				description: 'You can use an ID if you have already uploaded the media to WhatsApp',
+			},
 		],
 		displayOptions: {
 			show: {
-				type: mediaTypes
+				type: mediaTypes,
 			},
 		},
 	},
 	{
-		displayName: "Link",
-		name: "mediaLink",
-		type: "string",
-		default: "",
+		displayName: 'Link',
+		name: 'mediaLink',
+		type: 'string',
+		default: '',
 		description: 'Link of the media to be sent',
 		displayOptions: {
 			show: {
 				type: mediaTypes,
 				mediaPath: [
-					"useMediaLink"
-				]
+					'useMediaLink',
+				],
 			},
 		},
 	},
 	{
-		displayName: "ID",
-		name: "mediaId",
-		type: "string",
-		default: "",
+		displayName: 'ID',
+		name: 'mediaId',
+		type: 'string',
+		default: '',
 		description: 'ID of the media to be sent',
 		displayOptions: {
 			show: {
 				type: mediaTypes,
 				mediaPath: [
-					"useMediaId"
-				]
+					'useMediaId',
+				],
 			},
 		},
 	},
 	{
-		displayName: "Filename",
-		name: "mediaFilename",
-		type: "string",
-		default: "",
-		description: "The name of the file (required when using a file ID)",
+		displayName: 'Filename',
+		name: 'mediaFilename',
+		type: 'string',
+		default: '',
+		description: 'The name of the file (required when using a file ID)',
 		displayOptions:{
 			show: {
 				type: [
-					"document"
+					'document',
 				],
 				mediaPath: [
-					"useMediaId"
-				]
+					'useMediaId',
+				],
 			},
 		},
 	},
 	{
-		displayName: "Media Caption",
-		name: "mediaCaption",
-		type: "string",
-		default: "",
-		description: "The caption of the media",
+		displayName: 'Media Caption',
+		name: 'mediaCaption',
+		type: 'string',
+		default: '',
+		description: 'The caption of the media',
 		displayOptions:{
 			show: {
 				type: [
-					"image",
-					"video",
-					"document"
+					'image',
+					'video',
+					'document',
 				],
 			},
 		},
@@ -191,10 +191,10 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: template
 	// ----------------------------------
 	{
-		displayName: "Name",
-		name: "templateName",
-		default: "",
-		type: "string",
+		displayName: 'Name',
+		name: 'templateName',
+		default: '',
+		type: 'string',
 		displayOptions: {
 			show: {
 				type: [
@@ -207,10 +207,10 @@ export const messageTypeFields: INodeProperties[] = [
 	},
 	{
 		//TODO: would be nice to change this to a searchable dropdown with all the possible language codes
-		displayName: "Language code",
-		name: "templateLanguageCode",
-		type: "string",
-		default: "en_US",
+		displayName: 'Language code',
+		name: 'templateLanguageCode',
+		type: 'string',
+		default: 'en_US',
 		displayOptions: {
 			show: {
 				type: [
@@ -218,7 +218,7 @@ export const messageTypeFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The code of the language or locale to use. Accepts both language and language_locale formats (e.g., en and en_US).'
+		description: 'The code of the language or locale to use. Accepts both language and language_locale formats (e.g., en and en_US).',
 
 	},
 	//TODO: dynamic template components
@@ -322,4 +322,4 @@ export const messageTypeFields: INodeProperties[] = [
 	// 		},
 	// 	],
 	// },
-]
+];
