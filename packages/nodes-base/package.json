@@ -664,6 +664,7 @@
       "dist/nodes/Webflow/WebflowTrigger.node.js",
       "dist/nodes/Webhook/Webhook.node.js",
       "dist/nodes/Wekan/Wekan.node.js",
+      "dist/nodes/WebSocket/WebSocketTrigger.node.js",
       "dist/nodes/Wise/Wise.node.js",
       "dist/nodes/Wise/WiseTrigger.node.js",
       "dist/nodes/WooCommerce/WooCommerce.node.js",
@@ -711,6 +712,7 @@
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^8.3.2",
+    "@types/ws": "^8.5.3",
     "@types/xml2js": "^0.4.3",
     "eslint-plugin-n8n-nodes-base": "^1.0.29",
     "gulp": "^4.0.0",
@@ -776,6 +778,7 @@
     "tmp-promise": "^3.0.2",
     "uuid": "^8.3.2",
     "vm2": "~3.9.5",
+    "ws": "^8.7.0",
     "xlsx": "^0.17.0",
     "xml2js": "^0.4.23"
   },
