@@ -135,12 +135,10 @@ export class WhatsApp implements INodeType {
 
                         if (mediaPath === "useMediaLink") {
                             const link = this.getNodeParameter('mediaLink', i) as string;
-                            const name = this.getNodeParameter('mediaLinkProvider', i) as string;
                             const caption = this.getNodeParameter('mediaCaption', i) as string;
 
 
-                            body = {...body, [messageType]: { link, caption, ...(name && { provider: { name }}) } }
-
+                            body = {...body, [messageType]: { link, caption } }
                         } else {
                             const mediaId = this.getNodeParameter('mediaId', i) as string;
                             const caption = this.getNodeParameter('mediaCaption', i) as string;
