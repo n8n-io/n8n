@@ -7,6 +7,7 @@ export const ticketOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const ticketOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -82,7 +82,6 @@ export const ticketFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -143,7 +142,7 @@ export const ticketFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Custom field Value.',
+								description: 'Custom field Value',
 							},
 						],
 					},
@@ -154,7 +153,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'An id you can use to link Zendesk Support tickets to local records',
+				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
 				displayName: 'Group',
@@ -251,7 +250,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -271,7 +270,7 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
+		description: 'Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -293,14 +292,12 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -368,7 +365,7 @@ export const ticketFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Custom field Value.',
+								description: 'Custom field Value',
 							},
 						],
 					},
@@ -379,7 +376,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'An id you can use to link Zendesk Support tickets to local records',
+				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
 				displayName: 'Group',
@@ -490,7 +487,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: ' Update Fields',
+		displayName: 'Update Fields',
 		name: 'updateFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -510,7 +507,7 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
+		description: 'Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 	{
 		displayName: 'Ticket Type',
@@ -563,7 +560,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'Suspended Ticket ID',
@@ -604,7 +600,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -628,7 +624,7 @@ export const ticketFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -722,7 +718,6 @@ export const ticketFields: INodeProperties[] = [
 					},
 				],
 				default: 'asc',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Status',
@@ -789,7 +784,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'Suspended Ticket ID',

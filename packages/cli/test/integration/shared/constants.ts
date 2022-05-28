@@ -1,13 +1,13 @@
-import config = require('../../../config');
+import config from '../../../config';
 
-export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
+export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 
 export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	'healthz',
 	'metrics',
-	config.get('endpoints.webhook') as string,
-	config.get('endpoints.webhookWaiting') as string,
-	config.get('endpoints.webhookTest') as string,
+	config.getEnv('endpoints.webhook'),
+	config.getEnv('endpoints.webhookWaiting'),
+	config.getEnv('endpoints.webhookTest'),
 ];
 
 export const SUCCESS_RESPONSE_BODY = {
@@ -57,3 +57,8 @@ export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_post
  * for each suite test run.
  */
 export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
+
+/**
+ * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
+ */
+export const SMTP_TEST_TIMEOUT = 30_000;

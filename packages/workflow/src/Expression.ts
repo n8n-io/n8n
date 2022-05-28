@@ -69,6 +69,7 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 		selfData = {},
@@ -95,6 +96,7 @@ export class Expression {
 			connectionInputData,
 			siblingParameters,
 			mode,
+			timezone,
 			additionalKeys,
 			-1,
 			selfData,
@@ -116,6 +118,26 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+		data.global = {};
+		data.window = {};
+		data.Window = {};
+		data.this = {};
+		data.self = {};
+
+		// Alerts
+		data.alert = {};
+		data.prompt = {};
+		data.confirm = {};
+
+		// Prevent Remote Code Execution
+		data.eval = {};
+		data.setTimeout = {};
+		data.setInterval = {};
+		data.Function = {};
+
+		// Prevent requests
+		data.fetch = {};
+		data.XMLHttpRequest = {};
 
 		// @ts-ignore
 		data.DateTime = DateTime;
@@ -127,8 +149,13 @@ export class Expression {
 
 		// Execute the expression
 		try {
+			if (/([^a-zA-Z0-9"']window[^a-zA-Z0-9"'])/g.test(parameterValue)) {
+				throw new Error(`window is not allowed`);
+			}
+
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
+
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -157,6 +184,7 @@ export class Expression {
 		node: INode,
 		parameterValue: string | boolean | undefined,
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		defaultValue?: boolean | number | string,
 	): boolean | number | string | undefined {
@@ -183,6 +211,7 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 		) as boolean | number | string | undefined;
 	}
@@ -200,6 +229,7 @@ export class Expression {
 		node: INode,
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		defaultValue:
 			| NodeParameterValue
@@ -233,6 +263,7 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 			false,
 			selfData,
@@ -247,6 +278,7 @@ export class Expression {
 			node.name,
 			connectionInputData,
 			mode,
+			timezone,
 			additionalKeys,
 			false,
 			selfData,
@@ -276,6 +308,7 @@ export class Expression {
 		activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
+		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 		selfData = {},
@@ -301,6 +334,7 @@ export class Expression {
 					activeNodeName,
 					connectionInputData,
 					mode,
+					timezone,
 					additionalKeys,
 					returnObjectAsString,
 					selfData,
@@ -315,6 +349,7 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
+				timezone,
 				additionalKeys,
 				returnObjectAsString,
 				selfData,
@@ -332,6 +367,7 @@ export class Expression {
 				activeNodeName,
 				connectionInputData,
 				mode,
+				timezone,
 				additionalKeys,
 				returnObjectAsString,
 				selfData,
@@ -357,6 +393,7 @@ export class Expression {
 		if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		}
+
 		// Data is an object
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
@@ -370,6 +407,7 @@ export class Expression {
 		if (returnObjectAsString && typeof returnData === 'object') {
 			return this.convertObjectValueToString(returnData);
 		}
+
 		return returnData;
 	}
 }

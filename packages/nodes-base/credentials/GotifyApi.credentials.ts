@@ -13,21 +13,21 @@ export class GotifyApi implements ICredentialType {
 			name: 'appApiToken',
 			type: 'string',
 			default: '',
-			description: '(Optional) Needed for message creation.',
+			description: '(Optional) Needed for message creation',
 		},
 		{
 			displayName: 'Client API Token',
 			name: 'clientApiToken',
 			type: 'string',
 			default: '',
-			description: '(Optional) Needed for everything (delete, getAll) but message creation.',
+			description: '(Optional) Needed for everything (delete, getAll) but message creation',
 		},
 		{
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',
 			default: '',
-			description: 'The URL of the Gotify host.',
+			description: 'The URL of the Gotify host',
 		},
 	];
 }

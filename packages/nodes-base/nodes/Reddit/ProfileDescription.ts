@@ -7,6 +7,7 @@ export const profileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -21,7 +22,6 @@ export const profileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -33,7 +33,7 @@ export const profileFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: 'identity',
-		description: 'Details of my account to retrieve.',
+		description: 'Details of my account to retrieve',
 		options: [
 			{
 				name: 'Identity',
@@ -87,7 +87,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -107,7 +107,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

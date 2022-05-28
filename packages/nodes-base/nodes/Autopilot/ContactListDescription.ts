@@ -7,6 +7,7 @@ export const contactListOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,25 @@ export const contactListOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add contact to list.',
+				description: 'Add contact to list',
 			},
 			{
 				name: 'Exist',
 				value: 'exist',
-				description: 'Check if contact is on list.',
+				description: 'Check if contact is on list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all contacts on list.',
+				description: 'Get all contacts on list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a contact from a list.',
+				description: 'Remove a contact from a list',
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -68,7 +68,7 @@ export const contactListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the list to operate on.',
+		description: 'ID of the list to operate on',
 	},
 	{
 		displayName: 'Contact ID',
@@ -88,7 +88,7 @@ export const contactListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.',
+		description: 'Can be ID or email',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -109,7 +109,7 @@ export const contactListFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -133,6 +133,6 @@ export const contactListFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

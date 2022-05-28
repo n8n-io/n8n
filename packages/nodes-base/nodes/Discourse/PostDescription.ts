@@ -7,6 +7,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -61,7 +62,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title of the post.',
+		description: 'Title of the post',
 	},
 	{
 		displayName: 'Content',
@@ -82,7 +83,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Content of the post.',
+		description: 'Content of the post',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -147,7 +148,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post.',
+		description: 'ID of the post',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -168,7 +169,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -192,7 +193,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                post:update                                 */
@@ -213,7 +214,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post.',
+		description: 'ID of the post',
 	},
 	{
 		displayName: 'Content',

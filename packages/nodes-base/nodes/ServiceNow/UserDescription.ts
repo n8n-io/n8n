@@ -222,7 +222,6 @@ export const userFields: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source',
 			},
 			{
 				displayName: 'State',
@@ -298,7 +297,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -701,7 +700,6 @@ export const userFields: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source',
 			},
 			{
 				displayName: 'State',

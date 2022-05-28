@@ -7,6 +7,7 @@ export const subscriberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const subscriberOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +62,7 @@ export const subscriberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Email of new subscriber.',
+		description: 'Email of new subscriber',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -101,7 +101,7 @@ export const subscriberFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -116,14 +116,14 @@ export const subscriberFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -140,7 +140,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'resubscribe',
 				type: 'boolean',
 				default: false,
-				description: 'Reactivate subscriber if value is true.',
+				description: 'Reactivate subscriber if value is true',
 			},
 			{
 				displayName: 'Signup IP',
@@ -196,7 +196,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email of subscriber.',
+		description: 'Email of subscriber',
 	},
 	{
 		displayName: 'Update Fields',
@@ -223,7 +223,7 @@ export const subscriberFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -238,14 +238,14 @@ export const subscriberFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -262,7 +262,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'resend_autoresponders',
 				type: 'boolean',
 				default: false,
-				description: 'Defines if it is needed to resend autoresponders.',
+				description: 'Defines if it is needed to resend autoresponders',
 			},
 			{
 				displayName: 'Type',
@@ -306,7 +306,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email of subscriber to delete.',
+		description: 'Email of subscriber to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -328,7 +328,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email of subscriber to get.',
+		description: 'Email of subscriber to get',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  subscriber:getAll                         */
@@ -348,7 +348,7 @@ export const subscriberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -372,7 +372,7 @@ export const subscriberFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

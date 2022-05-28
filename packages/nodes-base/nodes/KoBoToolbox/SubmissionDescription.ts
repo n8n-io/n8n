@@ -7,6 +7,7 @@ export const submissionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -167,13 +168,12 @@ export const submissionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		required: false,
 		typeOptions: {
 			maxValue: 3000,
 		},
@@ -191,7 +191,74 @@ export const submissionFields: INodeProperties[] = [
 			},
 		},
 		default: 100,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filter',
+		name: 'filterType',
+		type: 'options',
+		default: 'none',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'None',
+				value: 'none',
+			},
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+		],
+	},
+	{
+		displayName: 'See <a href="https://github.com/SEL-Columbia/formhub/wiki/Formhub-Access-Points-(API)#api-parameters" target="_blank">Formhub API docs</a> to creating filters, using the MongoDB JSON format - e.g. {"_submission_time":{"$lt":"2021-10-01T01:02:03"}}',
+		name: 'jsonNotice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Filters (JSON)',
+		name: 'filterJson',
+		type: 'string',
+		default: '',
+		typeOptions: {
+			// alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Filter',
@@ -330,7 +397,7 @@ export const submissionFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved',
+				description: 'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved.',
 			},
 			{
 				displayName: 'File Size',
@@ -369,7 +436,7 @@ export const submissionFields: INodeProperties[] = [
 				name: 'selectMask',
 				type: 'string',
 				default: 'select_*',
-				description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays',
+				description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
 			},
 			{
 				displayName: 'Number Mask',

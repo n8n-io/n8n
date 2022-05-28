@@ -41,6 +41,8 @@ import {
 	Message,
 	Notification,
 	CollapseTransition,
+	Pagination,
+	Popover,
 
 	N8nActionBox,
 	N8nAvatar,
@@ -59,9 +61,13 @@ import {
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
+	N8nNotice,
 	N8nOption,
+	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,
+	N8nSticky,
+	N8nTabs,
 	N8nFormInputs,
 	N8nFormBox,
 	N8nSquareButton,
@@ -81,7 +87,7 @@ Vue.use(N8nAvatar);
 Vue.use(N8nButton);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
-Vue.use('n8n-icon', N8nIcon);
+Vue.component('n8n-icon', N8nIcon);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
@@ -93,11 +99,15 @@ Vue.use(N8nLink);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
+Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
+Vue.component('n8n-sticky', N8nSticky);
+Vue.use(N8nRadioButtons);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);
+Vue.component('n8n-tabs', N8nTabs);
 Vue.use(N8nTag);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
@@ -130,6 +140,9 @@ Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Container);
+Vue.use(Pagination);
+Vue.use(Popover);
+
 Vue.use(VueAgile);
 
 Vue.component(CollapseTransition.name, CollapseTransition);
