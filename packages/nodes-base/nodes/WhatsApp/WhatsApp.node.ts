@@ -7,13 +7,15 @@ import {
 } from './GenericFunctions';
 
 import {
+    IBinaryData,
     IDataObject,
     INodeExecutionData,
     INodeType,
     INodeTypeDescription,
+    NodeOperationError,
 } from 'n8n-workflow';
 
-import {messageFields, messageTypeFields} from "./MessagesDescription"
+import {messageFields, messageTypeFields, mediaTypes} from "./MessagesDescription"
 import {
     OptionsWithUri,
 } from 'request';
@@ -64,7 +66,7 @@ export class WhatsApp implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
         const phoneNumberId = this.getNodeParameter('phoneNumberId', 0)
-		const operation = this.getNodeParameter('type', 0) as string;
+		const messageType = this.getNodeParameter('type', 0) as string;
 
 
         let body: IDataObject;
@@ -85,17 +87,69 @@ export class WhatsApp implements INodeType {
                 body = {};
                 qs = {};
 
+                // ----------------------------------
+	            //         resource: messages
+	            // ----------------------------------
                 if (resource === "messages") {
+                    requestMethod = "POST"
                     endpoint = `${phoneNumberId}/messages`;
-                    body = { type: operation };
+                    body = { type: messageType,  to: this.getNodeParameter('recipientPhoneNumber', i), };
 
-                    if (operation === "template") {
+                    // ----------------------------------
+	                //         type: text
+	                // ----------------------------------
+                    if (messageType === "text") {
+                        const textBody = this.getNodeParameter('textBody', i) as string;
+                        const previewUrl = this.getNodeParameter('previewUrl', i) as string;
+
+                        body = {...body,
+                            "text": {
+                                body: textBody,
+                                preview_url: previewUrl,
+                            }
+                        }
+                        // ----------------------------------
+                        //         type: template
+                        // ----------------------------------
+                    } else if (messageType === "template") {
                         requestMethod = "POST"
-                        const to = this.getNodeParameter('to', i) as string;
-                        const name = this.getNodeParameter('name', i) as string;
-                        const language = this.getNodeParameter('language', i) as string;
+                        const templateName = this.getNodeParameter('templateName', i) as string;
+                        const templateLanguageCode = this.getNodeParameter('templateLanguageCode', i) as string;
 
-                        body = {...body, to, template: { name, language: {code: language} }}
+                        body = {...body, template: {
+                            name: templateName,
+                            language: {
+                                code: templateLanguageCode
+                            }
+                        }}
+                        // ----------------------------------
+                        //         type: media
+                        // ----------------------------------
+                    } else if (mediaTypes.includes(messageType)) {
+                        requestMethod = "POST"
+
+                        // some parameters are slightly different if using a link or an ID
+                        const mediaPath = this.getNodeParameter('mediaPath', i) as string;
+
+                        body = {...body, type: messageType};
+
+                        if (mediaPath === "useMediaLink") {
+                            const link = this.getNodeParameter('mediaLink', i) as string;
+                            const name = this.getNodeParameter('mediaLinkProvider', i) as string;
+                            const caption = this.getNodeParameter('mediaCaption', i) as string;
+
+
+                            body = {...body, [messageType]: { link, caption, ...(name && { provider: { name }}) } }
+
+                        } else {
+                            const mediaId = this.getNodeParameter('mediaId', i) as string;
+                            const caption = this.getNodeParameter('mediaCaption', i) as string;
+                            const filename = this.getNodeParameter('mediaFilename', i) as string;
+
+                            body = {...body, [messageType]: { id: mediaId, filename, caption } }
+
+                        }
+
                     }
                 }
 

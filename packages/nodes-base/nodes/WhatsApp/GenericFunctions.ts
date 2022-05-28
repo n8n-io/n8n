@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 /**
- * Make an API request to Whatsapp
+ * Make an API request to WhatsApp
  *
  * @param {IHookFunctions} this
  * @param {string} method
@@ -21,17 +21,15 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object = {}, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('whatsAppApi');
-
-	query = query || {};
 
 	const options: OptionsWithUri = {
 		headers: {
 			"Authorization": `Bearer ${credentials.accessToken}`
 		},
+		qs,
 		method,
-		qs: query,
 		body: {...body, messaging_product: "whatsapp"},
 		uri: `https://graph.facebook.com/v13.0/${endpoint}`,
 		json: true,
