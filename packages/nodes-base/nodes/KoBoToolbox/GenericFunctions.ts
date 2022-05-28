@@ -178,6 +178,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 	if (attachmentList && attachmentList.length) {
 		for (const [index, attachment] of attachmentList.entries()) {
 			// look for the question name linked to this attachment
+			const fileName = attachment.filename;
 			const sanitizedFileName = _.toString(fileName).replace(/_[^_]+(?=\.\w+)/,'');  // strip suffix
 
 			let relatedQuestion = null;
@@ -194,6 +195,16 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 					}
 				}
 			}
+
+			// Download attachment
+			// NOTE: this needs to follow redirects (possibly across domains), while keeping Authorization headers
+			// The Axios client will not propagate the Authorization header on redirects (see https://github.com/axios/axios/issues/3607), so we need to follow ourselves...
+			let response = null;
+			const attachmentUrl = attachment[options.version as string] || attachment.download_url as string;
+			let final = false, redir = 0;
+
+			const axiosOptions: IHttpRequestOptions = {
+				url: attachmentUrl,
 				method: 'GET',
 				headers: {
 					'Authorization': `Token ${credentials.token}`,
@@ -243,3 +254,9 @@ export async function loadForms(this: ILoadOptionsFunctions): Promise<INodePrope
 		qs: {
 			q: 'asset_type:survey',
 			ordering: 'name',
+		},
+		scroll: true,
+	});
+
+	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
+}
