@@ -117,8 +117,6 @@ export class Discord implements INodeType {
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
 
@@ -204,6 +202,7 @@ export class Discord implements INodeType {
 
 			if(!body.payload_json){
 				requestOptions = {
+					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
 					uri: webhookUri,
@@ -214,6 +213,7 @@ export class Discord implements INodeType {
 				};
 			}else {
 				requestOptions = {
+					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
 					uri: webhookUri,
@@ -223,33 +223,49 @@ export class Discord implements INodeType {
 				};
 			}
 			let maxTries = 5;
+			let response;
+
 			do {
 				try {
-					await this.helpers.request(requestOptions);
+					response = await this.helpers.request(requestOptions);
+					const resetAfter = response.headers['x-ratelimit-reset-after'] * 1000;
+					const remainingRatelimit = response.headers['x-ratelimit-remaining'];
+
+					// remaining requests 0
+					// https://discord.com/developers/docs/topics/rate-limits
+					if (!+remainingRatelimit) {
+						await new Promise<void>((resolve) =>
+							setTimeout(resolve, resetAfter || 1000),
+						);
+					}
+
 					break;
 				} catch (error) {
+					// HTTP/1.1 429 TOO MANY REQUESTS
+					// Await when the current rate limit will reset
+					// https://discord.com/developers/docs/topics/rate-limits
 					if (error.statusCode === 429) {
-						//* Await ratelimit to be over
+						const retryAfter = error.response?.headers['retry-after'] || 1000;
+
 						await new Promise<void>((resolve) =>
-							setTimeout(resolve, error.response.body.retry_after || 150),
+							setTimeout(resolve, +retryAfter),
 						);
 
 						continue;
 					}
 
-					//* Different Discord error, throw it
 					throw error;
 				}
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
 				throw new Error(
-					'Could not send Webhook message. Max. amount of rate-limit retries reached.',
+					'Could not send Webhook message. Max amount of rate-limit retries reached.',
 				);
 			}
+
 			returnData.push({ success: true });
 		}
-
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
