@@ -48,7 +48,7 @@ export class RabbitMQTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'queue-name',
-				description: 'Name of the queue to publish to',
+				description: 'The name of the queue to read from',
 			},
 
 			{
@@ -59,50 +59,35 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Acknowledge',
-						name: 'acknowledge',
-						type: 'options',
-						options: [
-							{
-								name: 'Execution finished',
-								value: 'executionFinished',
-								description: 'After the workflow execution finished. No matter if the execution was successful or not.',
-							},
-							{
-								name: 'Execution finished successfully',
-								value: 'executionFinishedSuccessfully',
-								description: 'After the workflow execution finished successfully',
-							},
-							{
-								name: 'Immediately',
-								value: 'immediately',
-								description: 'As soon as the message got received',
-							},
-						],
-						default: 'immediately',
-						description: 'When to acknowledge the message',
-					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-					{
-						displayName: 'Concurrent Messages',
-						name: 'concurrentMessages',
-						type: 'number',
-						default: -1,
-						displayOptions: {
-							hide: {
-								acknowledge: [
-									'immediately',
-								],
-							},
-						},
-						description: 'Maximum number of messages which get processed in parallel (-1 => unlimited). Messages will be acknowledged after the execution finished, no matter if successful or not unless overwritten with "Acknowledge".',
-					},
-					{
 						displayName: 'Content is Binary',
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
 						description: 'Saves the content as binary',
+					},
+					{
+						displayName: 'Delete from queue when',
+						name: 'acknowledge',
+						type: 'options',
+						options: [
+							{
+								name: 'Execution finishes',
+								value: 'executionFinishes',
+								description: 'After the workflow execution finished. No matter if the execution was successful or not.',
+							},
+							{
+								name: 'Execution finishes successfully',
+								value: 'executionFinishesSuccessfully',
+								description: 'After the workflow execution finished successfully',
+							},
+							{
+								name: 'Immediately',
+								value: 'Immediately',
+								description: 'As soon as the message got received',
+							},
+						],
+						default: 'immediately',
+						description: 'When to acknowledge the message',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -132,6 +117,21 @@ export class RabbitMQTrigger implements INodeType {
 						default: false,
 						description: 'Returns only the content property',
 					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'Parallel message processing limit',
+						name: 'parallelMessages',
+						type: 'number',
+						default: -1,
+						displayOptions: {
+							hide: {
+								acknowledge: [
+									'immediately',
+								],
+							},
+						},
+						description: 'Max number of executions at a time. Use -1 for no limit.',
+					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {
 					if ((a as INodeProperties).displayName.toLowerCase() < (b as INodeProperties).displayName.toLowerCase()) { return -1; }
@@ -151,27 +151,32 @@ export class RabbitMQTrigger implements INodeType {
 
 		const self = this;
 
-		let concurrentMessages = (options.concurrentMessages && options.concurrentMessages !== -1) ? parseInt(options.concurrentMessages as string, 10) : -1;
+		let parallelMessages = (options.parallelMessages !== undefined && options.parallelMessages !== -1) ? parseInt(options.parallelMessages as string, 10) : -1;
+
+		if (parallelMessages === 0 || parallelMessages < -1) {
+			throw new Error('Parallel message processing limit must be greater than zero (or -1 for no limit)');
+		}
 
 		if (this.getMode() === 'manual') {
 			// Do only catch a single message when executing manually, else messages will leak
-			concurrentMessages = 1;
+			parallelMessages = 1;
 		}
 
 		let acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
 
-		if (concurrentMessages !== -1 && acknowledgeMode === 'immediately') {
-			// If concurrent message limit is set, then the default mode is "executionFinished"
-			// unless acknowledgeMode got set specifically as "immediately" can not be supported
-			acknowledgeMode = 'executionFinished';
+		if (parallelMessages !== -1 && acknowledgeMode === 'immediately') {
+			// If parallel message limit is set, then the default mode is "executionFinishes"
+			// unless acknowledgeMode got set specifically. Be aware that the mode "immediately"
+			// can not be supported in this case.
+			acknowledgeMode = 'executionFinishes';
 		}
 
 		const messageTracker = new MessageTracker();
 		let consumerTag: string;
 
 		const startConsumer = async () => {
-			if (concurrentMessages !== -1) {
-				channel.prefetch(concurrentMessages);
+			if (parallelMessages !== -1) {
+				channel.prefetch(parallelMessages);
 			}
 
 			const consumerInfo = await channel.consume(queue, async (message) => {
@@ -225,7 +230,7 @@ export class RabbitMQTrigger implements INodeType {
 							.then(async (data: IRun) => {
 								if (data.data.resultData.error) {
 									// The execution did fail
-									if (acknowledgeMode === 'executionFinishedSuccessfully') {
+									if (acknowledgeMode === 'executionFinishesSuccessfully') {
 										channel.nack(message);
 										messageTracker.answered(message);
 										return;
