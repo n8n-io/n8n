@@ -131,7 +131,7 @@ export class MessageTracker {
 		// to acknowledge messages anymore for which the executions were already running
 		// when for example a new version of the workflow got saved. That would lead to
 		// them getting delivered and processed again.
-		while (unansweredMessages !== 0 && count <= 300) {
+		while (unansweredMessages !== 0 && count++ <= 300) {
 			await new Promise((resolve) => {
 				setTimeout(resolve, 1000);
 			});
