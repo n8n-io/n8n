@@ -82,7 +82,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 							{
 								name: 'Immediately',
-								value: 'Immediately',
+								value: 'immediately',
 								description: 'As soon as the message got received',
 							},
 						],
