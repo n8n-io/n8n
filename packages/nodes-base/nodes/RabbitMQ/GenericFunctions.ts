@@ -95,6 +95,7 @@ export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITrigger
 
 export class MessageTracker {
 	messages: number[] = [];
+	isClosing = false;
 
 	received(message: amqplib.ConsumeMessage) {
 		this.messages.push(message.fields.deliveryTag);
@@ -114,6 +115,11 @@ export class MessageTracker {
 	}
 
 	async closeChannel(channel: amqplib.Channel, consumerTag: string) {
+		if (this.isClosing) {
+			return;
+		}
+		this.isClosing = true;
+
 		// Do not accept any new messages
 		await channel.cancel(consumerTag);
 
@@ -126,9 +132,6 @@ export class MessageTracker {
 		// when for example a new version of the workflow got saved. That would lead to
 		// them getting delivered and processed again.
 		while (unansweredMessages !== 0 && count <= 300) {
-			if (count++ % 4 === 0) {
-				console.log(`Waiting for ${unansweredMessages} unanswered messages to finish ...`);
-			}
 			await new Promise((resolve) => {
 				setTimeout(resolve, 1000);
 			});

@@ -151,7 +151,13 @@ export class RabbitMQTrigger implements INodeType {
 
 		const self = this;
 
-		const concurrentMessages = (options.concurrentMessages && options.concurrentMessages !== -1) ? parseInt(options.concurrentMessages as string, 10) : -1;
+		let concurrentMessages = (options.concurrentMessages && options.concurrentMessages !== -1) ? parseInt(options.concurrentMessages as string, 10) : -1;
+
+		if (this.getMode() === 'manual') {
+			// Do only catch a single message when executing manually, else messages will leak
+			concurrentMessages = 1;
+		}
+
 		let acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
 
 		if (concurrentMessages !== -1 && acknowledgeMode === 'immediately') {
@@ -216,7 +222,7 @@ export class RabbitMQTrigger implements INodeType {
 							// Acknowledge message after the execution finished
 							await responsePromise
 							.promise()
-							.then((data: IRun) => {
+							.then(async (data: IRun) => {
 								if (data.data.resultData.error) {
 									// The execution did fail
 									if (acknowledgeMode === 'executionFinishedSuccessfully') {
@@ -258,7 +264,19 @@ export class RabbitMQTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
-			return messageTracker.closeChannel(channel, consumerTag);
+
+			try {
+				return messageTracker.closeChannel(channel, consumerTag);
+			} catch(error) {
+				const workflow = self.getWorkflow();
+				const node = self.getNode();
+				Logger.error(`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+					{
+						node: node.name,
+						workflowId: workflow.id,
+					},
+				);
+			}
 		}
 
 		return {

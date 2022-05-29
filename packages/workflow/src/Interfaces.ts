@@ -350,6 +350,10 @@ export interface IGetExecuteTriggerFunctions {
 	): ITriggerFunctions;
 }
 
+export interface IRunNodeResponse {
+	data: INodeExecutionData[][] | null | undefined;
+	closeFunction?: () => Promise<void>;
+}
 export interface IGetExecuteFunctions {
 	(
 		workflow: Workflow,
