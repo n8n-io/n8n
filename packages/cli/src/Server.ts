@@ -138,7 +138,7 @@ import * as TagHelpers from './TagHelpers';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
@@ -911,7 +911,14 @@ class App {
 				const requestedName =
 					req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-				return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+				const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+
+				const onboardingFlowEnabled =
+					!config.getEnv('workflows.onboardingFlowDisabled') &&
+					!req.user.settings?.isOnboarded &&
+					(await isBelowOnboardingThreshold(req.user));
+
+				return { name, onboardingFlowEnabled };
 			}),
 		);
 
@@ -1449,7 +1456,7 @@ class App {
 					if (defaultLocale === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							acc.push(description);
+							acc.push(injectCustomApiCallOption(description));
 							return acc;
 						}, []);
 					}
@@ -1473,7 +1480,7 @@ class App {
 							// ignore - no translation exists at path
 						}
 
-						nodeTypes.push(description);
+						nodeTypes.push(injectCustomApiCallOption(description));
 					}
 
 					const nodeTypes: INodeTypeDescription[] = [];
@@ -2269,7 +2276,7 @@ class App {
 						let filterToAdd = {};
 
 						if (key === 'waitTill') {
-							filterToAdd = { waitTill: !IsNull() };
+							filterToAdd = { waitTill: Not(IsNull()) };
 						} else if (key === 'finished' && value === false) {
 							filterToAdd = { finished: false, waitTill: IsNull() };
 						} else {
@@ -2658,7 +2665,8 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							!sharedWorkflowIds.includes(data.workflowId.toString())
+							(data.workflowId !== undefined &&
+								!sharedWorkflowIds.includes(data.workflowId.toString()))
 						) {
 							continue;
 						}
@@ -3105,4 +3113,59 @@ async function getExecutionsCount(
 	});
 
 	return { count, estimated: false };
+}
+
+const CUSTOM_API_CALL_NAME = 'Custom API Call';
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+/**
+ * Inject a `Custom API Call` option into `resource` and `operation`
+ * parameters in a node that supports proxy auth.
+ */
+function injectCustomApiCallOption(description: INodeTypeDescription) {
+	if (!supportsProxyAuth(description)) return description;
+
+	description.properties.forEach((p) => {
+		if (
+			['resource', 'operation'].includes(p.name) &&
+			Array.isArray(p.options) &&
+			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+		) {
+			p.options.push({
+				name: CUSTOM_API_CALL_NAME,
+				value: CUSTOM_API_CALL_KEY,
+			});
+		}
+
+		return p;
+	});
+
+	return description;
+}
+
+const credentialTypes = CredentialTypes();
+
+/**
+ * Whether any of the node's credential types may be used to
+ * make a request from a node other than itself.
+ */
+function supportsProxyAuth(description: INodeTypeDescription) {
+	if (!description.credentials) return false;
+
+	return description.credentials.some(({ name }) => {
+		const credType = credentialTypes.getByName(name);
+
+		if (credType.authenticate !== undefined) return true;
+
+		return isOAuth(credType);
+	});
+}
+
+function isOAuth(credType: ICredentialType) {
+	return (
+		Array.isArray(credType.extends) &&
+		credType.extends.some((parentType) =>
+			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+		)
+	);
 }

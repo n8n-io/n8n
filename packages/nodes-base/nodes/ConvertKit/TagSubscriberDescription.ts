@@ -7,6 +7,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const tagSubscriberOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -76,7 +76,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Subscriber email address.',
+		description: 'Subscriber email address',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -99,7 +99,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fields',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here).',
+				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -116,7 +116,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: `The field's key.`,
+								description: 'The field\'s key',
 							},
 							{
 								displayName: 'Field Value',
@@ -124,7 +124,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'Doe',
-								description: 'Value of the field.',
+								description: 'Value of the field',
 							},
 						],
 					},
@@ -135,7 +135,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'Subscriber first name.',
+				description: 'Subscriber first name',
 			},
 		],
 	},
@@ -154,7 +154,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -178,7 +178,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -214,6 +214,6 @@ export const tagSubscriberFields: INodeProperties[] = [
 				default: 'active',
 			},
 		],
-		description: 'Receive only active subscribers or cancelled subscribers.',
+		description: 'Receive only active subscribers or cancelled subscribers',
 	},
 ];

@@ -100,7 +100,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Type',
@@ -164,12 +163,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified ',
+						description: 'A survey response is disqualified',
 					},
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: `A response is over a survey’s quota`,
+						description: 'A response is over a survey’s quota',
 					},
 					{
 						name: 'Response Updated',
@@ -235,12 +234,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified ',
+						description: 'A survey response is disqualified',
 					},
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: `A response is over a survey’s quota`,
+						description: 'A response is over a survey’s quota',
 					},
 					{
 						name: 'Response Updated',
@@ -341,7 +340,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Returns only the answers of the form and not any of the other data',
 			},
 		],
 	};

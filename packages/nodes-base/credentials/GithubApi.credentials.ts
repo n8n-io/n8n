@@ -5,7 +5,7 @@ import {
 
 export class GithubApi implements ICredentialType {
 	name = 'githubApi';
-	displayName = 'Github API';
+	displayName = 'GitHub API';
 	documentationUrl = 'github';
 	properties: INodeProperties[] = [
 		{

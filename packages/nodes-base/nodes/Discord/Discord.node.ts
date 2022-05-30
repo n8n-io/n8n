@@ -42,7 +42,6 @@ export class Discord implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				required: false,
 				placeholder: 'Hello World!',
 			},
 			{
@@ -71,7 +70,6 @@ export class Discord implements INodeType {
 						name: 'avatarUrl',
 						type: 'string',
 						default: '',
-						required: false,
 					},
 					{
 						displayName: 'Components',
@@ -86,7 +84,6 @@ export class Discord implements INodeType {
 						type: 'json',
 						typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 						default: '',
-						required: false,
 					},
 					{
 						displayName: 'Flags',
@@ -106,7 +103,6 @@ export class Discord implements INodeType {
 						name: 'username',
 						type: 'string',
 						default: '',
-						required: false,
 						placeholder: 'User',
 					},
 					{
@@ -114,15 +110,12 @@ export class Discord implements INodeType {
 						name: 'tts',
 						type: 'boolean',
 						default: false,
-						required: false,
 						description: 'Should this message be sent as a Text To Speech message?',
 					},
 				],
 			},
 		],
 	};
-
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
@@ -209,6 +202,7 @@ export class Discord implements INodeType {
 
 			if(!body.payload_json){
 				requestOptions = {
+					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
 					uri: webhookUri,
@@ -219,6 +213,7 @@ export class Discord implements INodeType {
 				};
 			}else {
 				requestOptions = {
+					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
 					uri: webhookUri,
@@ -228,33 +223,49 @@ export class Discord implements INodeType {
 				};
 			}
 			let maxTries = 5;
+			let response;
+
 			do {
 				try {
-					await this.helpers.request(requestOptions);
+					response = await this.helpers.request(requestOptions);
+					const resetAfter = response.headers['x-ratelimit-reset-after'] * 1000;
+					const remainingRatelimit = response.headers['x-ratelimit-remaining'];
+
+					// remaining requests 0
+					// https://discord.com/developers/docs/topics/rate-limits
+					if (!+remainingRatelimit) {
+						await new Promise<void>((resolve) =>
+							setTimeout(resolve, resetAfter || 1000),
+						);
+					}
+
 					break;
 				} catch (error) {
+					// HTTP/1.1 429 TOO MANY REQUESTS
+					// Await when the current rate limit will reset
+					// https://discord.com/developers/docs/topics/rate-limits
 					if (error.statusCode === 429) {
-						//* Await ratelimit to be over
+						const retryAfter = error.response?.headers['retry-after'] || 1000;
+
 						await new Promise<void>((resolve) =>
-							setTimeout(resolve, error.response.body.retry_after || 150),
+							setTimeout(resolve, +retryAfter),
 						);
 
 						continue;
 					}
 
-					//* Different Discord error, throw it
 					throw error;
 				}
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
 				throw new Error(
-					'Could not send Webhook message. Max. amount of rate-limit retries reached.',
+					'Could not send Webhook message. Max amount of rate-limit retries reached.',
 				);
 			}
+
 			returnData.push({ success: true });
 		}
-
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}

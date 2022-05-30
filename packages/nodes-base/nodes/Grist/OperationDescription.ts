@@ -20,6 +20,7 @@ export const operationFields: INodeProperties[] = [
 				description: 'Delete rows from a table',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
 				name: 'Get All Rows',
 				value: 'getAll',
 				description: 'Read rows from a table',
@@ -282,7 +283,6 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},

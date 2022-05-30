@@ -59,6 +59,7 @@ export class Twitter implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Direct Message',
@@ -70,7 +71,6 @@ export class Twitter implements INodeType {
 					},
 				],
 				default: 'tweet',
-				description: 'The resource to operate on.',
 			},
 			// DIRECT MESSAGE
 			...directMessageOperations,

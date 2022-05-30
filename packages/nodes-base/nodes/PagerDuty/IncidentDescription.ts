@@ -7,6 +7,7 @@ export const incidentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const incidentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +62,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'A succinct description of the nature, symptoms, cause, or effect of the incident.',
+		description: 'A succinct description of the nature, symptoms, cause, or effect of the incident',
 	},
 	{
 		displayName: 'Service ID',
@@ -83,7 +83,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The incident will be created on this service.',
+		description: 'The incident will be created on this service',
 	},
 	{
 		displayName: 'Email',
@@ -101,7 +101,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The email address of a valid user associated with the account making the request.`,
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -142,7 +142,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
-				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key.',
+				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key',
 			},
 			{
 				displayName: 'Priority ID',
@@ -152,7 +152,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'The incident will be created on this service.',
+				description: 'The incident will be created on this service',
 			},
 			{
 				displayName: 'Urgency',
@@ -202,7 +202,7 @@ export const incidentFields: INodeProperties[] = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.`,
+						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input',
 					},
 					{
 						displayName: 'Conference URL',
@@ -234,7 +234,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 incident:getAll                            */
@@ -254,7 +254,7 @@ export const incidentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -278,7 +278,7 @@ export const incidentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -308,14 +308,14 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'When set to all, the since and until parameters and defaults are ignored.',
+				description: 'When set to all, the since and until parameters and defaults are ignored',
 			},
 			{
 				displayName: 'Incident Key',
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
-				description: `Incident de-duplication key. Incidents with child alerts do not have an incident key; querying by incident key will return incidents whose alerts have alert_key matching the given incident key.`,
+				description: 'Incident de-duplication key. Incidents with child alerts do not have an incident key; querying by incident key will return incidents whose alerts have alert_key matching the given incident key.',
 			},
 			{
 				displayName: 'Include',
@@ -360,7 +360,7 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Additional details to include.',
+				description: 'Additional details to include',
 			},
 			{
 				displayName: 'Service IDs',
@@ -370,7 +370,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getServices',
 				},
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s).',
+				description: 'Returns only the incidents associated with the passed service(s)',
 			},
 			{
 				displayName: 'Since',
@@ -385,7 +385,7 @@ export const incidentFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'created_at:asc,resolved_at:desc',
-				description: `Used to specify both the field you wish to sort the results on (incident_number/created_at/resolved_at/urgency), as well as the direction (asc/desc) of the results. The sort_by field and direction should be separated by a colon. A maximum of two fields can be included, separated by a comma.`,
+				description: 'Used to specify both the field you wish to sort the results on (incident_number/created_at/resolved_at/urgency), as well as the direction (asc/desc) of the results. The sort_by field and direction should be separated by a colon. A maximum of two fields can be included, separated by a comma.',
 			},
 			{
 				displayName: 'Statuses',
@@ -406,14 +406,14 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s).',
+				description: 'Returns only the incidents associated with the passed service(s)',
 			},
 			{
 				displayName: 'Team IDs',
 				name: 'teamIds',
 				type: 'string',
 				default: '',
-				description: 'Team IDs. Only results related to these teams will be returned. Account must have the teams ability to use this parameter. (multiples Ids can be added separated by comma)',
+				description: 'Team IDs. Only results related to these teams will be returned. Account must have the teams ability to use this parameter. (multiples IDs can be added separated by comma)',
 			},
 			{
 				displayName: 'Timezone',
@@ -454,7 +454,7 @@ export const incidentFields: INodeProperties[] = [
 				name: 'userIds',
 				type: 'string',
 				default: '',
-				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple Ids can be added separated by comma).',
+				description: 'Returns only the incidents currently assigned to the passed user(s). This expects one or more user IDs (multiple IDs can be added separated by comma).',
 			},
 		],
 	},
@@ -477,7 +477,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Email',
@@ -495,7 +495,7 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The email address of a valid user associated with the account making the request.`,
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 	{
 		displayName: 'Update Fields',
@@ -522,7 +522,7 @@ export const incidentFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Escalate the incident to this level in the escalation policy.',
+				description: 'Escalate the incident to this level in the escalation policy',
 			},
 			{
 				displayName: 'Escalation Policy ID',
@@ -542,7 +542,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'The incident will be created on this service.',
+				description: 'The incident will be created on this service',
 			},
 			{
 				displayName: 'Resolution',
@@ -552,7 +552,7 @@ export const incidentFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The resolution for this incident if status is set to resolved.',
+				description: 'The resolution for this incident if status is set to resolved',
 			},
 			{
 				displayName: 'Status',
@@ -569,14 +569,14 @@ export const incidentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The new status of the incident.',
+				description: 'The new status of the incident',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'A succinct description of the nature, symptoms, cause, or effect of the incident.',
+				description: 'A succinct description of the nature, symptoms, cause, or effect of the incident',
 			},
 			{
 				displayName: 'Urgency',
@@ -626,7 +626,7 @@ export const incidentFields: INodeProperties[] = [
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
-						description: `Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input.`,
+						description: 'Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input',
 					},
 					{
 						displayName: 'Conference URL',

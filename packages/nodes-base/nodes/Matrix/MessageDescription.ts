@@ -7,6 +7,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -56,7 +56,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The channel to send the message to.',
+		description: 'The channel to send the message to',
 	},
 	{
 		displayName: 'Text',
@@ -77,7 +77,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The text to send.',
+		description: 'The text to send',
 	},
 	{
 		displayName: 'Message Type',
@@ -97,21 +97,21 @@ export const messageFields: INodeProperties[] = [
 			{
 				name: 'Emote',
 				value: 'm.emote',
-				description: 'Perform an action (similar to /me in IRC).',
+				description: 'Perform an action (similar to /me in IRC)',
 			},
 			{
 				name: 'Notice',
 				value: 'm.notice',
-				description: 'Send a notice.',
+				description: 'Send a notice',
 			},
 			{
 				name: 'Text',
 				value: 'm.text',
-				description: 'Send a text message.',
+				description: 'Send a text message',
 			},
 		],
 		default: 'm.text',
-		description: 'The type of message to send.',
+		description: 'The type of message to send',
 	},
 	{
 		displayName: 'Message Format',
@@ -140,7 +140,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 		default: 'plain',
-		description: `The format of the message's body.`,
+		description: 'The format of the message\'s body',
 	},
 	{
 		displayName: 'Fallback Text',
@@ -163,7 +163,7 @@ export const messageFields: INodeProperties[] = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'A plain text message to display in case the HTML cannot be rendered by the Matrix client.',
+		description: 'A plain text message to display in case the HTML cannot be rendered by the Matrix client',
 	},
 
 
@@ -206,7 +206,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 		required: true,
 	},
 	{
@@ -231,7 +231,7 @@ export const messageFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Other Options',

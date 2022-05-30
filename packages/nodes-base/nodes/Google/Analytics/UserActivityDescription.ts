@@ -7,6 +7,7 @@ export const userActivityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,11 +19,10 @@ export const userActivityOperations: INodeProperties[] = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Return user activity data.',
+				description: 'Return user activity data',
 			},
 		],
 		default: 'search',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,7 +47,7 @@ export const userActivityFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '123456',
-		description: 'The View ID of Google Analytics.',
+		description: 'The View ID of Google Analytics',
 	},
 	{
 		displayName: 'User ID',
@@ -66,7 +66,7 @@ export const userActivityFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '123456',
-		description: 'ID of a user.',
+		description: 'ID of a user',
 	},
 	{
 		displayName: 'Return All',
@@ -83,7 +83,7 @@ export const userActivityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -107,7 +107,7 @@ export const userActivityFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -152,7 +152,7 @@ export const userActivityFields: INodeProperties[] = [
 						value: 'SCREENVIEW',
 					},
 				],
-				description: 'Type of activites requested.',
+				description: 'Type of activites requested',
 				default: [],
 			},
 		],

@@ -47,7 +47,7 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'outline', 'light', 'text'].includes(value),
+				['primary', 'outline', 'light', 'text', 'tertiary'].includes(value),
 		},
 		theme: {
 			type: String,
@@ -107,8 +107,8 @@ export default {
 		};
 	},
 	getClass(props: { type: string; theme?: string, transparentBackground: boolean }, $style: any): string {
-		const theme = props.type === 'text'
-			? 'text'
+		const theme = props.type === 'text' || props.type === 'tertiary'
+			? props.type
 			: `${props.type}-${props.theme || 'primary'}`;
 
 		if (props.transparentBackground) {
@@ -291,6 +291,20 @@ $color-danger-shade: lightness(
 	--button-active-background-color: transparent;
 	--button-active-color: var(--color-primary);
 	--button-active-border-color: transparent;
+}
+
+.tertiary {
+	composes: button;
+	font-weight: var(--font-weight-regular) !important;
+	--button-color: var(--color-text-dark);
+	--button-border-color: var(--color-foreground-base);
+	--button-background-color: var(--color-background-base);
+
+	--button-active-background-color: var(--color-primary-tint-2);
+	--button-active-color: var(--color-primary);
+	--button-active-border-color: var(--color-primary);
+
+	--button-disabled-border-color: var(--color-foreground-xdark);
 }
 
 .transparent {

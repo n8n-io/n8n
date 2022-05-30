@@ -5,6 +5,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,31 +17,30 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a user.',
+				description: 'Create a user',
 			},
 			{
 				name: 'Deactivate',
 				value: 'deactivate',
-				description: 'Deactivate a user.',
+				description: 'Deactivate a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a user.',
+				description: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all users.',
+				description: 'Get all users',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a user.',
+				description: 'Update a user',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -64,7 +64,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The email address of the new user.',
+		description: 'The email address of the new user',
 	},
 	{
 		displayName: 'Full Name',
@@ -82,7 +82,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The full name of the new user.',
+		description: 'The full name of the new user',
 	},
 	{
 		displayName: 'Password',
@@ -100,7 +100,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The password of the new user.',
+		description: 'The password of the new user',
 	},
 	{
 		displayName: 'Short Name',
@@ -140,7 +140,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of user to get.',
+		description: 'The ID of user to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -171,7 +171,7 @@ export const userFields: INodeProperties[] = [
 				name: 'includeCustomProfileFields',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the client wants custom profile field data to be included in the response.',
+				description: 'Whether the client wants custom profile field data to be included in the response',
 			},
 		],
 	},
@@ -195,7 +195,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of user to update.',
+		description: 'The ID of user to update',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -219,7 +219,7 @@ export const userFields: INodeProperties[] = [
 				name: 'fullName',
 				type: 'string',
 				default: '',
-				description: 'The users full name.',
+				description: 'The users full name',
 			},
 			{
 				displayName: 'Is Admin',
@@ -240,7 +240,7 @@ export const userFields: INodeProperties[] = [
 				name: 'profileData',
 				type: 'fixedCollection',
 				default: {},
-				description: 'A dictionary containing the to be updated custom profile field data for the user.',
+				description: 'A dictionary containing the to be updated custom profile field data for the user',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -255,14 +255,14 @@ export const userFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Id of custom profile data value.',
+								description: 'ID of custom profile data value',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of custom profile data.',
+								description: 'Value of custom profile data',
 							},
 						],
 					},
@@ -319,6 +319,6 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of user to deactivate.',
+		description: 'The ID of user to deactivate',
 	},
 ];

@@ -5,6 +5,7 @@ export const singletonOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,7 +21,6 @@ export const singletonOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -41,6 +41,6 @@ export const singletonFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the singleton to operate on.',
+		description: 'Name of the singleton to operate on',
 	},
 ];
