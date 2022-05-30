@@ -20,6 +20,7 @@ import {
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecutionData,
+	IRun,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
 	NodeHelpers,
@@ -52,6 +53,9 @@ import config from '../config';
 import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import * as ActiveExecutions from './ActiveExecutions';
+
+const activeExecutions = ActiveExecutions.getInstance();
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
 
@@ -134,22 +138,24 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeAll(): Promise<void> {
-		const activeWorkflowId: string[] = [];
+		let activeWorkflowIds: string[] = [];
 		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
 		if (this.activeWorkflows !== null) {
-			// TODO: This should be renamed!
-			activeWorkflowId.push.apply(activeWorkflowId, this.activeWorkflows.allActiveWorkflows());
+			activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
 		}
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowId.push.apply(
-			activeWorkflowId,
-			activeWorkflows.map((workflow) => workflow.id),
-		);
+		activeWorkflowIds = [
+			...activeWorkflowIds,
+			...activeWorkflows.map((workflow) => workflow.id.toString()),
+		];
+
+		// Make sure IDs are unique
+		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
 
 		const removePromises = [];
-		for (const workflowId of activeWorkflowId) {
+		for (const workflowId of activeWorkflowIds) {
 			removePromises.push(this.remove(workflowId));
 		}
 
@@ -673,14 +679,31 @@ export class ActiveWorkflowRunner {
 			returnFunctions.emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				WorkflowHelpers.saveStaticData(workflow);
 				// eslint-disable-next-line id-denylist
-				this.runWorkflow(workflowData, node, data, additionalData, mode, responsePromise).catch(
-					(error) => console.error(error),
+				const executePromise = this.runWorkflow(
+					workflowData,
+					node,
+					data,
+					additionalData,
+					mode,
+					responsePromise,
 				);
+
+				if (donePromise) {
+					executePromise.then((executionId) => {
+						activeExecutions
+							.getPostExecutePromise(executionId)
+							.then(donePromise.resolve)
+							.catch(donePromise.reject);
+					});
+				} else {
+					executePromise.catch(console.error);
+				}
 			};
 			returnFunctions.emitError = async (error: Error): Promise<void> => {
 				await this.activeWorkflows?.remove(workflowData.id.toString());

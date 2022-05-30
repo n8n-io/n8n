@@ -772,7 +772,7 @@ export const schema = {
 		endpoint: {
 			doc: 'Endpoint to retrieve version information from.',
 			format: String,
-			default: 'https://api.n8n.io/versions/',
+			default: 'https://api.n8n.io/api/versions/',
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
@@ -793,7 +793,7 @@ export const schema = {
 		host: {
 			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
 			format: String,
-			default: 'https://api.n8n.io/',
+			default: 'https://api.n8n.io/api/',
 			env: 'N8N_TEMPLATES_HOST',
 		},
 	},

@@ -27,6 +27,11 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Add note to a contact',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
@@ -35,11 +40,6 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new contact, or update the current one if it already exists (upsert)',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a contact',
 			},
 			{
 				name: 'Get',
@@ -575,7 +575,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'jigsaw',
 				type: 'string',
 				default: '',
-				description: 'references the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
+				description: 'References the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
 			},
 			{
 				displayName: 'Last Name',
@@ -1032,7 +1032,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner',
