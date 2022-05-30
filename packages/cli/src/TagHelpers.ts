@@ -117,7 +117,9 @@ const findOrCreateTag = async (
 		return nameMatch;
 	}
 
-	return createTag(transactionManager, importTag.name);
+	const created = await createTag(transactionManager, importTag.name);
+	tagsEntities.push(created);
+	return created;
 };
 
 const hasTags = (workflow: IWorkflowToImport) =>
