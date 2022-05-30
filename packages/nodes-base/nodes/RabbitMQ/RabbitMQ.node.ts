@@ -225,7 +225,7 @@ export class RabbitMQ implements INodeType {
 						],
 					},
 					{
-						displayName: 'Auto Delete',
+						displayName: 'Auto Delete Queue',
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,

@@ -60,12 +60,20 @@
 		</div>
 		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
-			class="node-buttons-wrapper"
+			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
+			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div class="node-creator-button">
-				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
-				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
+				<n8n-icon-button
+					size="xlarge"
+					icon="plus"
+					@click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"
+				/>
+				<div
+					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
+					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
+				>
 					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
 			</div>
@@ -385,6 +393,7 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
+				showStickyButton: false,
 			};
 		},
 		beforeDestroy () {
@@ -395,6 +404,29 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
+				const buttonsWrapper = mouseinEvent.target as Element;
+
+				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
+				this.showStickyButton = true;
+				const moveCallback = (mousemoveEvent: MouseEvent) => {
+					if(buttonsWrapper) {
+						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
+						const wrapperH = wrapperBounds.height;
+						const wrapperW = wrapperBounds.width;
+						const wrapperLeftNear = wrapperBounds.left;
+						const wrapperLeftFar = wrapperLeftNear + wrapperW;
+						const wrapperTopNear = wrapperBounds.top;
+						const wrapperTopFar = wrapperTopNear + wrapperH;
+						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
+						if(!inside) {
+							this.showStickyButton = false;
+							document.removeEventListener('mousemove', moveCallback, false);
+						}
+					}
+				};
+				document.addEventListener('mousemove', moveCallback, false);
+			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -2937,6 +2969,10 @@ export default mixins(
 	bottom: 10px;
 }
 
+.no-events {
+	pointer-events: none;
+}
+
 .node-buttons-wrapper {
 	position: fixed;
 	width: 150px;
@@ -2952,10 +2988,9 @@ export default mixins(
 		transition-timing-function: linear;
 	}
 
-	&:hover {
-		.add-sticky-button {
-			opacity: 1;
-		}
+	.visible-button {
+		opacity: 1;
+		pointer-events: all;
 	}
 }
 
@@ -2964,6 +2999,7 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
+	pointer-events: all !important;
 }
 
 .node-creator-button button {

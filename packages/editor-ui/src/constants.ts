@@ -46,7 +46,7 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 
-export const N8N_IO_BASE_URL = `https://api.n8n.io/`;
+export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
