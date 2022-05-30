@@ -31,6 +31,8 @@ export class InitialMigration1587669153312 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		await queryRunner.query(`DROP TABLE ${tablePrefix}workflow_entity`, undefined);
 		await queryRunner.query(`DROP INDEX IDX_${tablePrefixIndex}c4d999a5e90784e8caccf5589d`, undefined);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}execution_entity`, undefined);

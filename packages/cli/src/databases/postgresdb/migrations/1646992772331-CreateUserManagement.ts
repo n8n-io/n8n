@@ -148,6 +148,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab" ON ${tablePrefix}workflow_entity ("name")`,

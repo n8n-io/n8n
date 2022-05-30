@@ -26,6 +26,7 @@ export class AddWebhookId1611144599516 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}16f4436789e804e3e1c9eeb240`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "pathLength"`);

@@ -27,6 +27,7 @@ export class WebhookModel1589476000887 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}webhook_entity`, undefined);
 	}
 

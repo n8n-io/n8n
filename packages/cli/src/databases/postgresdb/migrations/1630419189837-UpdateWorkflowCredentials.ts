@@ -160,6 +160,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`

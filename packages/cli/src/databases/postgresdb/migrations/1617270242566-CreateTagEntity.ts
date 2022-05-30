@@ -49,6 +49,8 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 				tablePrefix = schema + '.' + tablePrefix;
 			}
 
+			await queryRunner.query(`SET search_path TO ${schema};`);
+
 			// `createdAt` and `updatedAt`
 
 			await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity ALTER COLUMN "updatedAt" DROP DEFAULT`);
