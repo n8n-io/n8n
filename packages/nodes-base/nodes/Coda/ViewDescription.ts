@@ -5,6 +5,7 @@ export const viewOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,7 +42,6 @@ export const viewOperations: INodeProperties[] = [
 			{
 				name: 'Update Row',
 				value: 'updateViewRow',
-				description: 'Update row',
 			},
 			{
 				name: 'Push Button',
@@ -50,7 +50,6 @@ export const viewOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

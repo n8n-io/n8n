@@ -5,6 +5,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,11 +42,9 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Upload a File',
 				value: 'updateFile',
-				description: 'Upload a file',
 			},
 		],
 		default: 'sendPrivate',
-		description: 'The operation to perform.',
 	},
 ];
 

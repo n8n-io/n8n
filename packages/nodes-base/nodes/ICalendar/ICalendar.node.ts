@@ -40,6 +40,7 @@ export class ICalendar implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create Event File',

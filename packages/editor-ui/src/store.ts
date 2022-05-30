@@ -437,6 +437,7 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
+			state.nodeMetadata = {};
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
@@ -657,6 +658,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		executedNode: (state): string | undefined => {
+			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
+		},
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
 		},
