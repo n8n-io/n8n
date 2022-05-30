@@ -122,10 +122,15 @@ export class Worker extends Command {
 		const executionDb = await Db.collections.Execution.findOne(jobData.executionId);
 
 		if (!executionDb) {
-			LoggerProxy.error('Worker failed to find execution data in database. Cannot continue.', {
-				executionId: jobData.executionId,
-			});
-			throw new Error('Unable to find execution data in database. Aborting execution.');
+			LoggerProxy.error(
+				`Worker failed to find data of execution "${jobData.executionId}" in database. Cannot continue.`,
+				{
+					executionId: jobData.executionId,
+				},
+			);
+			throw new Error(
+				`Unable to find data of execution "${jobData.executionId}" in database. Aborting execution.`,
+			);
 		}
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb);
 		LoggerProxy.info(
