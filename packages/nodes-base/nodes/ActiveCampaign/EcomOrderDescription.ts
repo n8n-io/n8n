@@ -15,6 +15,7 @@ export const ecomOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,7 +51,6 @@ export const ecomOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -416,7 +416,7 @@ export const ecomOrderFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Add Field',
+		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',

@@ -149,7 +149,6 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Authentication',
@@ -169,12 +168,12 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -202,7 +201,6 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'Resource to consume.',
 			},
 
 			// EVENT

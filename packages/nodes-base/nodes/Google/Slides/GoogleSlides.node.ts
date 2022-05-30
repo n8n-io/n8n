@@ -74,6 +74,7 @@ export class GoogleSlides implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Page',
@@ -85,12 +86,12 @@ export class GoogleSlides implements INodeType {
 					},
 				],
 				default: 'presentation',
-				description: 'Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
@@ -121,12 +122,12 @@ export class GoogleSlides implements INodeType {
 					},
 				},
 				default: 'create',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get',
@@ -147,7 +148,6 @@ export class GoogleSlides implements INodeType {
 					},
 				},
 				default: 'get',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Title',

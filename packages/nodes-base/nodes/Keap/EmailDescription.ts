@@ -7,6 +7,7 @@ export const emailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const emailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'createRecord',
-		description: 'The operation to perform.',
 	},
 ];
 
