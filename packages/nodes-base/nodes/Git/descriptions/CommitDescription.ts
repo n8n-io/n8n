@@ -15,7 +15,7 @@ export const commitFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The commit message to use.',
+		description: 'The commit message to use',
 	},
 	{
 		displayName: 'Options',

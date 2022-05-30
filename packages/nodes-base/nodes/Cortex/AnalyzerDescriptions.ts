@@ -11,6 +11,7 @@ export const analyzersOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		description: 'Choose an operation',
 		displayOptions: {
@@ -129,13 +130,12 @@ export const analyzerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
 	{
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [

@@ -30,8 +30,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	jest.mock('../../config');
-
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
@@ -111,6 +109,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 
 	const { id, email } = response.body.data;
 
+	expect(id).toBe(ownerShell.id);
 	expect(email).toBe(newOwnerData.email.toLowerCase());
 
 	const storedOwner = await Db.collections.User.findOneOrFail(id);

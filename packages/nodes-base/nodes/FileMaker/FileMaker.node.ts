@@ -66,7 +66,7 @@ export class FileMaker implements INodeType {
 						value: 'records',
 					},
 					{
-						name: 'Get Records By Id',
+						name: 'Get Records By ID',
 						value: 'record',
 					},
 					{
@@ -90,7 +90,6 @@ export class FileMaker implements INodeType {
 						value: 'delete',
 					},
 				],
-				description: 'Action to perform.',
 			},
 
 			// ----------------------------------
@@ -108,10 +107,10 @@ export class FileMaker implements INodeType {
 				required: true,
 				displayOptions: {},
 				placeholder: 'Layout Name',
-				description: 'FileMaker Layout Name.',
+				description: 'FileMaker Layout Name',
 			},
 			{
-				displayName: 'Record Id',
+				displayName: 'Record ID',
 				name: 'recid',
 				type: 'number',
 				default: '',
@@ -133,7 +132,7 @@ export class FileMaker implements INodeType {
 				displayName: 'Offset',
 				name: 'offset',
 				placeholder: '0',
-				description: 'The record number of the first record in the range of records.',
+				description: 'The record number of the first record in the range of records',
 				type: 'number',
 				default: '1',
 				displayOptions: {
@@ -149,8 +148,11 @@ export class FileMaker implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				placeholder: '100',
-				description: 'The maximum number of records that should be returned. If not specified, the default value is 100.',
+				description: 'Max number of results to return',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: '100',
 				displayOptions: {
 					show: {
@@ -215,7 +217,6 @@ export class FileMaker implements INodeType {
 				},
 				options: [],
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -239,7 +240,6 @@ export class FileMaker implements INodeType {
 						],
 					},
 				},
-				description: 'Queries ',
 				default: {},
 				options: [
 					{
@@ -343,7 +343,7 @@ export class FileMaker implements INodeType {
 									loadOptionsMethod: 'getFields',
 								},
 								options: [],
-								description: 'Field Name.',
+								description: 'Field Name',
 							},
 							{
 								displayName: 'Order',
@@ -360,7 +360,7 @@ export class FileMaker implements INodeType {
 										value: 'descend',
 									},
 								],
-								description: 'Sort order.',
+								description: 'Sort order',
 							},
 						],
 					},
@@ -371,7 +371,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptBefore',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run before the action specified by the API call and after the subsequent sort.',
+				description: 'Define a script to be run before the action specified by the API call and after the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -405,14 +405,13 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort.',
+				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptBeforeParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -426,14 +425,14 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 			{
 				displayName: 'Before sort script',
 				name: 'setScriptSort',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort.',
+				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -467,14 +466,13 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort.',
+				description: 'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptSortParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -488,14 +486,14 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 			{
 				displayName: 'After sort script',
 				name: 'setScriptAfter',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort.',
+				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -529,14 +527,13 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort.',
+				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptAfterParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -550,7 +547,7 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 			// ----------------------------------
 			//         create/edit
@@ -572,7 +569,7 @@ export class FileMaker implements INodeType {
 				}
 			},*/
 			{
-				displayName: 'Mod Id',
+				displayName: 'Mod ID',
 				name: 'modId',
 				description: 'The last modification ID. When you use modId, a record is edited only when the modId matches.',
 				type: 'number',
@@ -617,7 +614,7 @@ export class FileMaker implements INodeType {
 									loadOptionsMethod: 'getFields',
 								},
 								options: [],
-								description: 'Field Name.',
+								description: 'Field Name',
 							},
 							{
 								displayName: 'Value',
@@ -650,14 +647,13 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run.',
+				description: 'The name of the FileMaker script to be run',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -666,7 +662,7 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 		],
 	};

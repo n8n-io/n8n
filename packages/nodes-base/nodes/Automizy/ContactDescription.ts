@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The email address of the contact.',
+		description: 'The email address of the contact',
 	},
 	{
 		displayName: 'List ID',
@@ -128,14 +128,14 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 								default: '',
 							},
 						],
@@ -180,7 +180,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to set to the contact.',
+				description: 'The tags you want to set to the contact',
 			},
 		],
 	},
@@ -204,7 +204,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.',
+		description: 'Can be ID or email',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -267,7 +267,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -291,7 +291,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -332,7 +332,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response.',
+				description: 'A comma-separated list of attributes to include in the response',
 			},
 			{
 				displayName: 'Sort By',
@@ -388,7 +388,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to add to the contact.',
+				description: 'The tags you want to add to the contact',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -412,14 +412,14 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 								default: '',
 							},
 						],
@@ -434,7 +434,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to add to the contact.',
+				description: 'The tags you want to add to the contact',
 			},
 			{
 				displayName: 'Status',

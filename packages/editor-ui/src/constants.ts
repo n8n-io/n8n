@@ -4,6 +4,9 @@ export const NODE_NAME_PREFIX = 'node-';
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
 
+// parameter input
+export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
 export const DEFAULT_NODETYPE_VERSION = 1;
@@ -12,6 +15,7 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
+export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -42,7 +46,7 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 
-export const N8N_IO_BASE_URL = `https://api.n8n.io/`;
+export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -189,6 +193,7 @@ export const MODAL_CONFIRMED = 'confirmed';
 
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
+export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
                                                                     //////
