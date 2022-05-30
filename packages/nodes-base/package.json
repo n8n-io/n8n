@@ -570,6 +570,7 @@
       "dist/nodes/Pipedrive/Pipedrive.node.js",
       "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
       "dist/nodes/Plivo/Plivo.node.js",
+      "dist/nodes/PostBin/PostBin.node.js",
       "dist/nodes/Postgres/Postgres.node.js",
       "dist/nodes/PostHog/PostHog.node.js",
       "dist/nodes/Postmark/PostmarkTrigger.node.js",
@@ -684,6 +685,7 @@
     ]
   },
   "devDependencies": {
+    "@types/amqplib": "^0.8.2",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
     "@types/cheerio": "^0.22.15",

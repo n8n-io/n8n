@@ -46,7 +46,14 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import { IConnection, IDataObject, IConnectedNode, IObservableObject } from './Interfaces';
+import {
+	IConnection,
+	IDataObject,
+	IConnectedNode,
+	IObservableObject,
+	IRun,
+	IRunNodeResponse,
+} from './Interfaces';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -1040,6 +1047,7 @@ export class Workflow {
 					(
 						data: INodeExecutionData[][],
 						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+						donePromise?: IDeferredPromise<IRun>,
 					) => {
 						additionalData.hooks!.hookFunctions.sendResponse = [
 							async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -1048,6 +1056,14 @@ export class Workflow {
 								}
 							},
 						];
+
+						if (donePromise) {
+							additionalData.hooks!.hookFunctions.workflowExecuteAfter?.unshift(
+								async (runData: IRun): Promise<void> => {
+									return donePromise.resolve(runData);
+								},
+							);
+						}
 
 						resolveEmit(data);
 					}
@@ -1159,18 +1175,18 @@ export class Workflow {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
-	): Promise<INodeExecutionData[][] | null | undefined> {
+	): Promise<IRunNodeResponse> {
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
 			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
 				// If the node is disabled simply return the data from the first main input
 				if (inputData.main[0] === null) {
-					return undefined;
+					return { data: undefined };
 				}
-				return [inputData.main[0]];
+				return { data: [inputData.main[0]] };
 			}
-			return undefined;
+			return { data: undefined };
 		}
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -1195,7 +1211,7 @@ export class Workflow {
 
 			if (connectionInputData.length === 0) {
 				// No data for node so return
-				return undefined;
+				return { data: undefined };
 			}
 		}
 
@@ -1245,7 +1261,7 @@ export class Workflow {
 			}
 
 			if (returnPromises.length === 0) {
-				return null;
+				return { data: null };
 			}
 
 			let promiseResults;
@@ -1256,7 +1272,7 @@ export class Workflow {
 			}
 
 			if (promiseResults) {
-				return [promiseResults];
+				return { data: [promiseResults] };
 			}
 		} else if (nodeType.execute) {
 			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
@@ -1269,7 +1285,7 @@ export class Workflow {
 				additionalData,
 				mode,
 			);
-			return nodeType.execute.call(thisArgs);
+			return { data: await nodeType.execute.call(thisArgs) };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1280,10 +1296,10 @@ export class Workflow {
 					mode,
 					'manual',
 				);
-				return nodeType.poll.call(thisArgs);
+				return { data: await nodeType.poll.call(thisArgs) };
 			}
 			// In any other mode pass data through as it already contains the result of the poll
-			return inputData.main as INodeExecutionData[][];
+			return { data: inputData.main as INodeExecutionData[][] };
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
@@ -1296,7 +1312,7 @@ export class Workflow {
 				);
 
 				if (triggerResponse === undefined) {
-					return null;
+					return { data: null };
 				}
 
 				if (triggerResponse.manualTriggerFunction !== undefined) {
@@ -1306,22 +1322,27 @@ export class Workflow {
 
 				const response = await triggerResponse.manualTriggerResponse!;
 
-				// And then close it again after it did execute
+				let closeFunction;
 				if (triggerResponse.closeFunction) {
-					await triggerResponse.closeFunction();
+					// In manual mode we return the trigger closeFunction. That allows it to be called directly
+					// but we do not have to wait for it to finish. That is important for things like queue-nodes.
+					// There the full close will may be delayed till a message gets acknowledged after the execution.
+					// If we would not be able to wait for it to close would it cause problems with "own" mode as the
+					// process would be killed directly after it and so the acknowledge would not have been finished yet.
+					closeFunction = triggerResponse.closeFunction;
 				}
 
 				if (response.length === 0) {
-					return null;
+					return { data: null, closeFunction };
 				}
 
-				return response;
+				return { data: response, closeFunction };
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
-			return inputData.main as INodeExecutionData[][];
+			return { data: inputData.main as INodeExecutionData[][] };
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
-			return inputData.main as INodeExecutionData[][];
+			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
 			// For nodes which have routing information on properties
 
@@ -1334,9 +1355,11 @@ export class Workflow {
 				mode,
 			);
 
-			return routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions);
+			return {
+				data: await routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions),
+			};
 		}
 
-		return null;
+		return { data: null };
 	}
 }
