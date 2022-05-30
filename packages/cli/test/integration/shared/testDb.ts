@@ -1,3 +1,6 @@
+import { exec as callbackExec } from 'child_process';
+import { promisify } from 'util';
+
 import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
 import { Credentials, UserSettings } from 'n8n-core';
 
@@ -12,11 +15,13 @@ import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
 import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
-import { categorize } from './utils';
+import { categorize, getPostgresSchemaSection } from './utils';
 
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CollectionName, CredentialPayload } from './types';
+
+const exec = promisify(callbackExec);
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -35,20 +40,41 @@ export async function init() {
 
 	if (dbType === 'postgresdb') {
 		let bootstrapPostgres;
-		const bootstrapPostgresOptions = getBootstrapPostgresOptions();
+		const pgOptions = getBootstrapPostgresOptions();
 
 		try {
-			bootstrapPostgres = await createConnection(bootstrapPostgresOptions);
+			bootstrapPostgres = await createConnection(pgOptions);
 		} catch (error) {
-			const { username, password, host, port, schema } = bootstrapPostgresOptions;
-			console.error(
-				`ERROR: Failed to connect to Postgres default DB 'postgres'.\nPlease review your Postgres connection options:\n\thost: "${host}"\n\tusername: "${username}"\n\tpassword: "${password}"\n\tport: "${port}"\n\tschema: "${schema}"\nFix by setting correct values via environment variables:\n\texport DB_POSTGRESDB_HOST=value\n\texport DB_POSTGRESDB_USER=value\n\texport DB_POSTGRESDB_PASSWORD=value\n\texport DB_POSTGRESDB_PORT=value\n\texport DB_POSTGRESDB_SCHEMA=value`,
-			);
+			const pgConfig = getPostgresSchemaSection();
+
+			if (!pgConfig) throw new Error("Failed to find config schema section for 'postgresdb'");
+
+			const message = [
+				"ERROR: Failed to connect to Postgres default DB 'postgres'",
+				'Please review your Postgres connection options:',
+				`host: ${pgOptions.host} | port: ${pgOptions.port} | schema: ${pgOptions.schema} | username: ${pgOptions.username} | password: ${pgOptions.password}`,
+				'Fix by setting correct values via environment variables:',
+				`${pgConfig.host.env} | ${pgConfig.port.env} | ${pgConfig.schema.env} | ${pgConfig.user.env} | ${pgConfig.password.env}`,
+				'Otherwise, make sure your Postgres server is running.'
+			].join('\n');
+
+			console.error(message);
+
 			process.exit(1);
 		}
 
 		const testDbName = `pg_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
+
+		try {
+			const schema = config.getEnv('database.postgresdb.schema');
+			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
+		} catch (error) {
+			if (error instanceof Error && error.message.includes('command not found')) {
+				console.error('psql command not found. Make sure psql is installed and added to your PATH.');
+			}
+			process.exit(1);
+		}
 
 		await Db.init(getPostgresOptions({ name: testDbName }));
 
@@ -116,8 +142,10 @@ export async function truncate(collections: CollectionName[], testDbName: string
 	if (dbType === 'postgresdb') {
 		return Promise.all(
 			collections.map((collection) => {
-				const tableName = toTableName(collection);
-				testDb.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`);
+				const schema = config.getEnv('database.postgresdb.schema');
+				const fullTableName = `${schema}.${toTableName(collection)}`;
+
+				testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
 			}),
 		);
 	}
