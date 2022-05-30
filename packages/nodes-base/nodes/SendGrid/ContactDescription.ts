@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/update a contact',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -60,7 +60,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -84,7 +84,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -108,7 +108,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'The query field accepts valid <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/">SGQL</a> for searching for a contact.',
+				description: 'The query field accepts valid <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/">SGQL</a> for searching for a contact',
 			},
 		],
 	},
@@ -132,7 +132,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Primary email for the contact.',
+		description: 'Primary email for the contact',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -227,7 +227,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'List IDs',
 				name: 'listIdsUi',
 				placeholder: 'List IDs',
-				description: 'Adds a custom field to set also values which have not been predefined.',
+				description: 'Adds a custom field to set also values which have not been predefined',
 				type: 'fixedCollection',
 				default: {},
 				options: [
@@ -243,7 +243,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getListIds',
 								},
 								default: [],
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 							},
 						],
 					},
@@ -326,7 +326,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all contacts will be deleted.',
+		description: 'If set to true, all contacts will be deleted',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -358,7 +358,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: 'id',
-		description: 'Search the user by ID or email.',
+		description: 'Search the user by ID or email',
 	},
 	{
 		displayName: 'Contact ID',
@@ -379,7 +379,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the contact.',
+		description: 'ID of the contact',
 	},
 	{
 		displayName: 'Email',
@@ -400,6 +400,6 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email of the contact.',
+		description: 'Email of the contact',
 	},
 ];

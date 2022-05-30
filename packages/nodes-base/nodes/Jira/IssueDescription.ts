@@ -7,6 +7,7 @@ export const issueOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -48,7 +49,7 @@ export const issueOperations: INodeProperties[] = [
 			{
 				name: 'Status',
 				value: 'transitions',
-				description: `Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status`,
+				description: 'Return either all transitions or a transition that can be performed by the user on an issue, based on the issue\'s status',
 			},
 			{
 				name: 'Update',
@@ -57,7 +58,6 @@ export const issueOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -198,14 +198,14 @@ export const issueFields: INodeProperties[] = [
 										'project',
 									],
 								},
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 								default: '',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 								default: '',
 							},
 						],
@@ -273,7 +273,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira.',
+				description: 'Whether the project in which the issue is created is added to the user\'s Recently viewed project list, as shown under Projects in Jira',
 			},
 		],
 	},
@@ -354,14 +354,14 @@ export const issueFields: INodeProperties[] = [
 										'issueKey',
 									],
 								},
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 								default: '',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 								default: '',
 							},
 						],
@@ -445,7 +445,7 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTransitions',
 				},
 				default: '',
-				description: 'The ID of the issue status.',
+				description: 'The ID of the issue status',
 			},
 		],
 	},
@@ -509,10 +509,9 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -525,7 +524,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: `Return a simplified output of the issues fields.`,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -565,21 +564,21 @@ export const issueFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.`,
+				description: 'A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.`,
+				description: 'Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
 			},
 			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',
 				default: '',
-				description: `A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.`,
+				description: 'A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.',
 			},
 			{
 				displayName: 'Update History',
@@ -609,7 +608,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -633,7 +632,7 @@ export const issueFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -661,7 +660,7 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Changelog',
 						value: 'changelog',
-						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent.',
+						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent',
 					},
 					{
 						name: 'Editmeta',
@@ -676,54 +675,54 @@ export const issueFields: INodeProperties[] = [
 					{
 						name: 'Operations',
 						value: 'operations',
-						description: 'Returns all possible operations for the issue.',
+						description: 'Returns all possible operations for the issue',
 					},
 					{
 						name: 'Rendered Fields',
 						value: 'renderedFields',
-						description: ' Returns field values rendered in HTML format.',
+						description: 'Returns field values rendered in HTML format',
 					},
 					{
 						name: 'Schema',
 						value: 'schema',
-						description: 'Returns the schema describing a field type.',
+						description: 'Returns the schema describing a field type',
 					},
 					{
 						name: 'Transitions',
 						value: 'transitions',
-						description: ' Returns all possible transitions for the issue.',
+						description: 'Returns all possible transitions for the issue',
 					},
 					{
 						name: 'Versioned Representations',
 						value: 'versionedRepresentations',
-						description: `JSON array containing each version of a field's value`,
+						description: 'JSON array containing each version of a field\'s value',
 					},
 				],
-				description: `Use expand to include additional information about issues in the response`,
+				description: 'Use expand to include additional information about issues in the response',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '*navigable',
-				description: `A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.`,
+				description: 'A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.`,
+				description: 'Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
 			},
 			{
-				displayName: ' JQL',
+				displayName: 'JQL',
 				name: 'jql',
 				type: 'string',
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'A JQL expression.',
+				description: 'A JQL expression',
 			},
 		],
 	},
@@ -762,7 +761,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -786,7 +785,7 @@ export const issueFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:notify                                */
@@ -849,7 +848,7 @@ export const issueFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The HTML body of the email notification for the issue.',
+				description: 'The HTML body of the email notification for the issue',
 			},
 			{
 				displayName: 'Subject',
@@ -878,7 +877,7 @@ export const issueFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		description: 'The recipients of the email notification for the issue.',
+		description: 'The recipients of the email notification for the issue',
 		default: {},
 		displayOptions: {
 			show: {
@@ -902,7 +901,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'reporter',
 						type: 'boolean',
-						description: `Indicates whether the notification should be sent to the issue's reporter.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s reporter',
 						default: false,
 					},
 					{
@@ -910,21 +909,21 @@ export const issueFields: INodeProperties[] = [
 						name: 'assignee',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's assignees.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Watchers',
 						name: 'watchers',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's assignees.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Voters',
 						name: 'voters',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's voters.`,
+						description: 'Indicates whether the notification should be sent to the issue\'s voters',
 					},
 					{
 						displayName: 'Users',
@@ -934,7 +933,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: `List of users to receive the notification.`,
+						description: 'List of users to receive the notification',
 					},
 					{
 						displayName: 'Groups',
@@ -944,7 +943,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: `List of groups to receive the notification.`,
+						description: 'List of groups to receive the notification',
 					},
 				],
 
@@ -972,7 +971,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The recipients of the email notification for the issue.',
+		description: 'The recipients of the email notification for the issue',
 	},
 	{
 		displayName: 'Notification Recipients Restrictions',
@@ -982,7 +981,7 @@ export const issueFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		description: 'Restricts the notifications to users with the specified permissions.',
+		description: 'Restricts the notifications to users with the specified permissions',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1010,7 +1009,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: `List of users to receive the notification.`,
+						description: 'List of users to receive the notification',
 					},
 					{
 						displayName: 'Groups',
@@ -1020,7 +1019,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: `List of groups to receive the notification.`,
+						description: 'List of groups to receive the notification',
 					},
 				],
 
@@ -1048,7 +1047,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Restricts the notifications to users with the specified permissions.',
+		description: 'Restricts the notifications to users with the specified permissions',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1093,21 +1092,21 @@ export const issueFields: INodeProperties[] = [
 				name: 'expand',
 				type: 'string',
 				default: '',
-				description: `Use expand to include additional information about transitions in the response. This parameter accepts transitions.fields, which returns information about the fields in the transition screen for each transition. Fields hidden from the screen are not returned. Use this information to populate the fields and update fields in Transition issue.`,
+				description: 'Use expand to include additional information about transitions in the response. This parameter accepts transitions.fields, which returns information about the fields in the transition screen for each transition. Fields hidden from the screen are not returned. Use this information to populate the fields and update fields in Transition issue.',
 			},
 			{
 				displayName: 'Transition ID',
 				name: 'transitionId',
 				type: 'string',
 				default: '',
-				description: 'The ID of the transition.',
+				description: 'The ID of the transition',
 			},
 			{
 				displayName: 'Skip Remote Only Condition',
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response.',
+				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response',
 			},
 		],
 	},

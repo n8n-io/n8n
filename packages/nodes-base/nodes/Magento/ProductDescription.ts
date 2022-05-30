@@ -12,6 +12,7 @@ export const productOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const productOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -209,7 +209,7 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -233,7 +233,7 @@ export const productFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	...getSearchFilters(
 		'product',

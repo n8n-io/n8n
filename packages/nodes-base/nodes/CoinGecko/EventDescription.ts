@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,7 +42,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -65,7 +66,7 @@ export const eventFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -92,21 +93,21 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEventCountryCodes',
 				},
 				default: '',
-				description: 'Country code of event.',
+				description: 'Country code of event',
 			},
 			{
 				displayName: 'From date',
 				name: 'from_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Lists events after this date.',
+				description: 'Lists events after this date',
 			},
 			{
 				displayName: 'To date',
 				name: 'to_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Lists events before this date.',
+				description: 'Lists events before this date',
 			},
 			{
 				displayName: 'Type',
@@ -116,14 +117,14 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEventTypes',
 				},
 				default: '',
-				description: 'Type of event.',
+				description: 'Type of event',
 			},
 			{
 				displayName: 'Upcoming events only',
 				name: 'upcoming_events_only',
 				type: 'boolean',
 				default: true,
-				description: 'Lists only upcoming events.',
+				description: 'Lists only upcoming events',
 			},
 		],
 	},

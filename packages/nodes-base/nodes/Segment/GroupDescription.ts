@@ -7,6 +7,7 @@ export const groupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const groupOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,7 +46,6 @@ export const groupFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Group ID',
@@ -142,14 +141,14 @@ export const groupFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',

@@ -80,12 +80,12 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -117,7 +117,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -153,6 +152,7 @@ export class Github implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -164,37 +164,37 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new issue.',
+						description: 'Create a new issue',
 					},
 					{
 						name: 'Create Comment',
 						value: 'createComment',
-						description: 'Create a new comment on an issue.',
+						description: 'Create a new comment on an issue',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
-						description: 'Edit an issue.',
+						description: 'Edit an issue',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issue.',
+						description: 'Get the data of a single issue',
 					},
 					{
 						name: 'Lock',
 						value: 'lock',
-						description: 'Lock an issue.',
+						description: 'Lock an issue',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -206,37 +206,37 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new file in repository.',
+						description: 'Create a new file in repository',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a file in repository.',
+						description: 'Delete a file in repository',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
-						description: 'Edit a file in repository.',
+						description: 'Edit a file in repository',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single file.',
+						description: 'Get the data of a single file',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List contents of a folder.',
+						description: 'List contents of a folder',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -248,42 +248,42 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single repository.',
+						description: 'Get the data of a single repository',
 					},
 					{
 						name: 'Get License',
 						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected.',
+						description: 'Returns the contents of the repository\'s license file, if one is detected',
 					},
 					{
 						name: 'Get Issues',
 						value: 'getIssues',
-						description: 'Returns issues of a repository.',
+						description: 'Returns issues of a repository',
 					},
 					{
 						name: 'Get Profile',
 						value: 'getProfile',
-						description: 'Get the community profile of a repository with metrics, health score, description, license, etc.',
+						description: 'Get the community profile of a repository with metrics, health score, description, license, etc',
 					},
 					{
 						name: 'List Popular Paths',
 						value: 'listPopularPaths',
-						description: 'Get the top 10 popular content paths over the last 14 days.',
+						description: 'Get the top 10 popular content paths over the last 14 days',
 					},
 					{
 						name: 'List Referrers',
 						value: 'listReferrers',
-						description: 'Get the top 10 referrering domains over the last 14 days.',
+						description: 'Get the top 10 referrering domains over the last 14 days',
 					},
 				],
 				default: 'getIssues',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -295,22 +295,22 @@ export class Github implements INodeType {
 					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
-						description: 'Returns the repositories of a user.',
+						description: 'Returns the repositories of a user',
 					},
 					{
 						name: 'Invite',
 						value: 'invite',
-						description: 'Invites a user to an organization.',
+						description: 'Invites a user to an organization',
 					},
 				],
 				default: 'getRepositories',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -322,37 +322,37 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new release.',
+						description: 'Creates a new release',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a release.',
+						description: 'Get a release',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all repository releases.',
+						description: 'Get all repository releases',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a release.',
+						description: 'Delete a release',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a release.',
+						description: 'Update a release',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -364,26 +364,25 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new review.',
+						description: 'Creates a new review',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a review for a pull request.',
+						description: 'Get a review for a pull request',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all reviews for a pull request.',
+						description: 'Get all reviews for a pull request',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a review.',
+						description: 'Update a review',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -403,7 +402,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: 'n8n-io',
-				description: 'Owner of the repository.',
+				description: 'Owner of the repository',
 			},
 			{
 				displayName: 'Repository Name',
@@ -423,7 +422,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: 'n8n',
-				description: 'The name of the repository.',
+				description: 'The name of the repository',
 			},
 
 
@@ -465,7 +464,6 @@ export class Github implements INodeType {
 				name: 'filePath',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						resource: [
@@ -477,7 +475,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: 'docs/',
-				description: 'The path of the folder to list.',
+				description: 'The path of the folder to list',
 			},
 
 			// ----------------------------------
@@ -500,7 +498,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field.',
+				description: 'If the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -524,7 +522,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'The text content of the file.',
+				description: 'The text content of the file',
 			},
 			{
 				displayName: 'Binary Property',
@@ -548,7 +546,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file.',
+				description: 'Name of the binary property which contains the data for the file',
 			},
 			{
 				displayName: 'Commit Message',
@@ -573,7 +571,7 @@ export class Github implements INodeType {
 				displayName: 'Additional Parameters',
 				name: 'additionalParameters',
 				placeholder: 'Add Parameter',
-				description: 'Additional fields to add.',
+				description: 'Additional fields to add',
 				type: 'fixedCollection',
 				default: {},
 				displayOptions: {
@@ -598,14 +596,14 @@ export class Github implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'The name of the author of the commit.',
+								description: 'The name of the author of the commit',
 							},
 							{
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
 								default: '',
-								description: 'The email of the author of the commit.',
+								description: 'The email of the author of the commit',
 							},
 						],
 					},
@@ -631,14 +629,14 @@ export class Github implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'The name of the committer of the commit.',
+								description: 'The name of the committer of the commit',
 							},
 							{
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
 								default: '',
-								description: 'The email of the committer of the commit.',
+								description: 'The email of the committer of the commit',
 							},
 						],
 					},
@@ -663,7 +661,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'If set it will set the data of the file as binary property instead of returning the raw API response.',
+				description: 'If set it will set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
 				displayName: 'Binary Property',
@@ -686,14 +684,14 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save the binary data of the received file.',
+				description: 'Name of the binary property in which to save the binary data of the received file',
 			},
 
 			{
 				displayName: 'Additional Parameters',
 				name: 'additionalParameters',
 				placeholder: 'Add Parameter',
-				description: 'Additional fields to add.',
+				description: 'Additional fields to add',
 				type: 'collection',
 				default: {},
 				displayOptions: {
@@ -741,7 +739,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The title of the issue.',
+				description: 'The title of the issue',
 			},
 			{
 				displayName: 'Body',
@@ -761,7 +759,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The body of the issue.',
+				description: 'The body of the issue',
 			},
 			{
 				displayName: 'Labels',
@@ -788,7 +786,7 @@ export class Github implements INodeType {
 						name: 'label',
 						type: 'string',
 						default: '',
-						description: 'Label to add to issue.',
+						description: 'Label to add to issue',
 					},
 				],
 			},
@@ -817,7 +815,7 @@ export class Github implements INodeType {
 						name: 'assignee',
 						type: 'string',
 						default: '',
-						description: 'User to assign issue too.',
+						description: 'User to assign issue too',
 					},
 				],
 			},
@@ -841,7 +839,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the issue on which to create the comment on.',
+				description: 'The number of the issue on which to create the comment on',
 			},
 			{
 				displayName: 'Body',
@@ -861,7 +859,7 @@ export class Github implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The body of the comment.',
+				description: 'The body of the comment',
 			},
 
 			// ----------------------------------
@@ -883,7 +881,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the issue edit.',
+				description: 'The number of the issue edit',
 			},
 			{
 				displayName: 'Edit Fields',
@@ -909,7 +907,7 @@ export class Github implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The title of the issue.',
+						description: 'The title of the issue',
 					},
 					{
 						displayName: 'Body',
@@ -919,7 +917,7 @@ export class Github implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'The body of the issue.',
+						description: 'The body of the issue',
 					},
 					{
 						displayName: 'State',
@@ -929,16 +927,16 @@ export class Github implements INodeType {
 							{
 								name: 'Closed',
 								value: 'closed',
-								description: 'Set the state to "closed".',
+								description: 'Set the state to "closed"',
 							},
 							{
 								name: 'Open',
 								value: 'open',
-								description: 'Set the state to "open".',
+								description: 'Set the state to "open"',
 							},
 						],
 						default: 'open',
-						description: 'The state to set.',
+						description: 'The state to set',
 					},
 					{
 						displayName: 'Labels',
@@ -955,7 +953,7 @@ export class Github implements INodeType {
 								name: 'label',
 								type: 'string',
 								default: '',
-								description: 'Label to add to issue.',
+								description: 'Label to add to issue',
 							},
 						],
 					},
@@ -974,7 +972,7 @@ export class Github implements INodeType {
 								name: 'assignee',
 								type: 'string',
 								default: '',
-								description: 'User to assign issue to.',
+								description: 'User to assign issue to',
 							},
 						],
 					},
@@ -1000,7 +998,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the issue get data of.',
+				description: 'The number of the issue get data of',
 			},
 
 			// ----------------------------------
@@ -1022,7 +1020,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the issue to lock.',
+				description: 'The number of the issue to lock',
 			},
 			{
 				displayName: 'Lock Reason',
@@ -1061,7 +1059,7 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'resolved',
-				description: 'The reason to lock the issue.',
+				description: 'The reason to lock the issue',
 			},
 
 
@@ -1089,7 +1087,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The tag of the release.',
+				description: 'The tag of the release',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1115,7 +1113,7 @@ export class Github implements INodeType {
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The name of the issue.',
+						description: 'The name of the issue',
 					},
 					{
 						displayName: 'Body',
@@ -1125,21 +1123,21 @@ export class Github implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'The body of the release.',
+						description: 'The body of the release',
 					},
 					{
 						displayName: 'Draft',
 						name: 'draft',
 						type: 'boolean',
 						default: false,
-						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
+						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one',
 					},
 					{
 						displayName: 'Prerelease',
 						name: 'prerelease',
 						type: 'boolean',
 						default: false,
-						description: 'If set to "true" it will point out that the release is non-production ready.',
+						description: 'If set to "true" it will point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Target Commitish',
@@ -1204,35 +1202,35 @@ export class Github implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'The body of the release.',
+						description: 'The body of the release',
 					},
 					{
 						displayName: 'Draft',
 						name: 'draft',
 						type: 'boolean',
 						default: false,
-						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
+						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one',
 					},
 					{
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The name of the release.',
+						description: 'The name of the release',
 					},
 					{
 						displayName: 'Prerelease',
 						name: 'prerelease',
 						type: 'boolean',
 						default: false,
-						description: 'If set to "true" it will point out that the release is non-production ready.',
+						description: 'If set to "true" it will point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Tag Name',
 						name: 'tag_name',
 						type: 'string',
 						default: '',
-						description: 'The name of the tag.',
+						description: 'The name of the tag',
 					},
 					{
 						displayName: 'Target Commitish',
@@ -1261,7 +1259,7 @@ export class Github implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -1285,7 +1283,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 
 
@@ -1311,7 +1309,7 @@ export class Github implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -1335,7 +1333,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -1361,21 +1359,21 @@ export class Github implements INodeType {
 						name: 'assignee',
 						type: 'string',
 						default: '',
-						description: 'Return only issues which are assigned to a specific user.',
+						description: 'Return only issues which are assigned to a specific user',
 					},
 					{
 						displayName: 'Creator',
 						name: 'creator',
 						type: 'string',
 						default: '',
-						description: 'Return only issues which were created by a specific user.',
+						description: 'Return only issues which were created by a specific user',
 					},
 					{
 						displayName: 'Mentioned',
 						name: 'mentioned',
 						type: 'string',
 						default: '',
-						description: 'Return only issues in which a specific user was mentioned.',
+						description: 'Return only issues in which a specific user was mentioned',
 					},
 					{
 						displayName: 'Labels',
@@ -1389,7 +1387,7 @@ export class Github implements INodeType {
 						name: 'since',
 						type: 'dateTime',
 						default: '',
-						description: 'Return only issues updated at or after this time.',
+						description: 'Return only issues updated at or after this time',
 					},
 					{
 						displayName: 'State',
@@ -1399,21 +1397,21 @@ export class Github implements INodeType {
 							{
 								name: 'All',
 								value: 'all',
-								description: 'Returns issues with any state.',
+								description: 'Returns issues with any state',
 							},
 							{
 								name: 'Closed',
 								value: 'closed',
-								description: 'Return issues with "closed" state.',
+								description: 'Return issues with "closed" state',
 							},
 							{
 								name: 'Open',
 								value: 'open',
-								description: 'Return issues with "open" state.',
+								description: 'Return issues with "open" state',
 							},
 						],
 						default: 'open',
-						description: 'The state to set.',
+						description: 'The state to set',
 					},
 					{
 						displayName: 'Sort',
@@ -1423,21 +1421,21 @@ export class Github implements INodeType {
 							{
 								name: 'Created',
 								value: 'created',
-								description: 'Sort by created date.',
+								description: 'Sort by created date',
 							},
 							{
 								name: 'Updated',
 								value: 'updated',
-								description: 'Sort by updated date.',
+								description: 'Sort by updated date',
 							},
 							{
 								name: 'Comments',
 								value: 'comments',
-								description: 'Sort by comments.',
+								description: 'Sort by comments',
 							},
 						],
 						default: 'created',
-						description: 'The order the issues should be returned in.',
+						description: 'The order the issues should be returned in',
 					},
 					{
 						displayName: 'Direction',
@@ -1447,16 +1445,16 @@ export class Github implements INodeType {
 							{
 								name: 'Ascending',
 								value: 'asc',
-								description: 'Sort in ascending order.',
+								description: 'Sort in ascending order',
 							},
 							{
 								name: 'Descending',
 								value: 'desc',
-								description: 'Sort in descending order.',
+								description: 'Sort in descending order',
 							},
 						],
 						default: 'desc',
-						description: 'The sort order.',
+						description: 'The sort order',
 					},
 
 				],
@@ -1486,7 +1484,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the pull request.',
+				description: 'The number of the pull request',
 			},
 			{
 				displayName: 'Review ID',
@@ -1505,7 +1503,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'ID of the review.',
+				description: 'ID of the review',
 			},
 
 			// ----------------------------------
@@ -1527,7 +1525,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the pull request.',
+				description: 'The number of the pull request',
 			},
 			{
 				displayName: 'Return All',
@@ -1544,7 +1542,7 @@ export class Github implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -1568,7 +1566,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			// ----------------------------------
 			//         review:create
@@ -1589,7 +1587,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The number of the pull request to review.',
+				description: 'The number of the pull request to review',
 			},
 			{
 				displayName: 'Event',
@@ -1609,26 +1607,26 @@ export class Github implements INodeType {
 					{
 						name: 'Approve',
 						value: 'approve',
-						description: 'Approve the pull request.',
+						description: 'Approve the pull request',
 					},
 					{
 						name: 'Request Change',
 						value: 'requestChanges',
-						description: 'Request code changes.',
+						description: 'Request code changes',
 					},
 					{
 						name: 'Comment',
 						value: 'comment',
-						description: 'Add a comment without approval or change requests.',
+						description: 'Add a comment without approval or change requests',
 					},
 					{
 						name: 'Pending',
 						value: 'pending',
-						description: 'You will need to submit the pull request review when you are ready.',
+						description: 'You will need to submit the pull request review when you are ready',
 					},
 				],
 				default: 'approve',
-				description: 'The review action you want to perform.',
+				description: 'The review action you want to perform',
 			},
 			{
 				displayName: 'Body',
@@ -1652,7 +1650,7 @@ export class Github implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The body of the review (required for events Request Changes or Comment).',
+				description: 'The body of the review (required for events Request Changes or Comment)',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1676,7 +1674,7 @@ export class Github implements INodeType {
 						name: 'commitId',
 						type: 'string',
 						default: '',
-						description: 'The SHA of the commit that needs a review, if different from the latest.',
+						description: 'The SHA of the commit that needs a review, if different from the latest',
 					},
 				],
 			},
@@ -1721,7 +1719,7 @@ export class Github implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -1745,9 +1743,7 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return.',
-
-
+				description: 'Max number of results to return',
 			},
 
 			// ----------------------------------
@@ -1769,7 +1765,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The GitHub organization that the user is being invited to.',
+				description: 'The GitHub organization that the user is being invited to',
 			},
 			{
 				displayName: 'Email',
@@ -1787,7 +1783,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'The email address of the invited user.',
+				description: 'The email address of the invited user',
 			},
 		],
 	};

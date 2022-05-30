@@ -37,6 +37,7 @@ export class OpenWeatherMap implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Current Weather',
@@ -50,7 +51,6 @@ export class OpenWeatherMap implements INodeType {
 					},
 				],
 				default: 'currentWeather',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Format',
@@ -74,7 +74,7 @@ export class OpenWeatherMap implements INodeType {
 					},
 				],
 				default: 'metric',
-				description: 'The format in which format the data should be returned.',
+				description: 'The format in which format the data should be returned',
 			},
 
 			// ----------------------------------
@@ -103,7 +103,7 @@ export class OpenWeatherMap implements INodeType {
 					},
 				],
 				default: 'cityName',
-				description: 'How to define the location for which to return the weather.',
+				description: 'How to define the location for which to return the weather',
 			},
 
 			{
@@ -120,7 +120,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the city to return the weather of.',
+				description: 'The name of the city to return the weather of',
 			},
 
 			{
@@ -136,7 +136,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
+				description: 'The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -153,7 +153,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The latitude of the location to return the weather of.',
+				description: 'The latitude of the location to return the weather of',
 			},
 
 			{
@@ -170,7 +170,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The longitude of the location to return the weather of.',
+				description: 'The longitude of the location to return the weather of',
 			},
 
 			{
@@ -187,7 +187,7 @@ export class OpenWeatherMap implements INodeType {
 						],
 					},
 				},
-				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
+				description: 'The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.',
 			},
 
 			{
@@ -196,7 +196,6 @@ export class OpenWeatherMap implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'en',
-				required: false,
 				description: 'The two letter language code to get your output in (eg. en, de, ...).',
 			},
 

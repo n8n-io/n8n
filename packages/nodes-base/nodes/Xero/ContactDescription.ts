@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -431,7 +431,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -455,7 +455,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -479,7 +479,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: `Contacts with a status of ARCHIVED will be included in the response`,
+				description: 'Contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',

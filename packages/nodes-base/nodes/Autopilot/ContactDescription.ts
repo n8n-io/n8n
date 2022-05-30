@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/Update a contact',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +62,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the contact.',
+		description: 'Email address of the contact',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -109,14 +109,14 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'User-specified key of user-defined data.',
+								description: 'User-specified key of user-defined data',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'User-specified value of user-defined data.',
+								description: 'User-specified value of user-defined data',
 								default: '',
 							},
 						],
@@ -167,7 +167,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLists',
 				},
 				default: '',
-				description: 'List to which this contact will be added on creation.',
+				description: 'List to which this contact will be added on creation',
 			},
 			{
 				displayName: 'Mailing Country',
@@ -210,14 +210,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'newEmail',
 				type: 'string',
 				default: '',
-				description: 'If provided, will change the email address of the contact identified by the Email field.',
+				description: 'If provided, will change the email address of the contact identified by the Email field',
 			},
 			{
 				displayName: 'Notify',
 				name: 'notify',
 				type: 'boolean',
 				default: true,
-				description: `By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.`,
+				description: 'By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.',
 			},
 			{
 				displayName: 'Number of Employees',
@@ -248,7 +248,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'autopilotSessionId',
 				type: 'string',
 				default: '',
-				description: 'Used to associate a contact with a session.',
+				description: 'Used to associate a contact with a session',
 			},
 			{
 				displayName: 'Status',
@@ -267,7 +267,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'unsubscribed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to subscribe or un-subscribe a contact.',
+				description: 'Whether to subscribe or un-subscribe a contact',
 			},
 			{
 				displayName: 'Website URL',
@@ -297,7 +297,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.',
+		description: 'Can be ID or email',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -319,7 +319,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.',
+		description: 'Can be ID or email',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -340,7 +340,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -364,6 +364,6 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

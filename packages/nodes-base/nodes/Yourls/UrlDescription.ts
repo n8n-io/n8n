@@ -7,6 +7,7 @@ export const urlOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const urlOperations: INodeProperties[] = [
 			},
 		],
 		default: 'shorten',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -57,7 +57,7 @@ export const urlFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The URL to shorten.',
+		description: 'The URL to shorten',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -110,7 +110,7 @@ export const urlFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The short URL to expand.',
+		description: 'The short URL to expand',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -132,6 +132,6 @@ export const urlFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The short URL for which to get stats.',
+		description: 'The short URL for which to get stats',
 	},
 ];

@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,7 +53,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -254,6 +254,7 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{
@@ -666,7 +667,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -690,7 +691,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -736,7 +737,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -751,7 +752,7 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Operator',
@@ -792,7 +793,7 @@ export const taskFields: INodeProperties[] = [
 									},
 								],
 								default: 'equal',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 							{
 								displayName: 'Value',
@@ -807,7 +808,7 @@ export const taskFields: INodeProperties[] = [
 									},
 								},
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -977,7 +978,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1001,7 +1002,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1023,7 +1024,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the task to add custom field to.',
+		description: 'The ID of the task to add custom field to',
 	},
 	{
 		displayName: 'Field ID',
@@ -1041,7 +1042,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the field to add custom field to.',
+		description: 'The ID of the field to add custom field to',
 	},
 	{
 		displayName: 'Value is JSON',
@@ -1076,6 +1077,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The value to set on custom field.',
+		description: 'The value to set on custom field',
 	},
 ];
