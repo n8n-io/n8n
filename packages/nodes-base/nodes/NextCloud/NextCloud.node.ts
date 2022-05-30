@@ -1,4 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	IDataObject,
@@ -22,7 +23,7 @@ export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud',
 		name: 'nextCloud',
-		icon: 'file:nextcloud.png',
+		icon: 'file:nextcloud.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -305,7 +306,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/"',
+				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -372,7 +373,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/"',
+				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/".',
 			},
 			{
 				displayName: 'Binary Property',
@@ -499,7 +500,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to share. Has to contain the full path. The path should start with "/"',
+				description: 'The file path of the file to share. Has to contain the full path. The path should start with "/".',
 			},
 			{
 				displayName: 'Share Type',
@@ -720,7 +721,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/2019',
-				description: 'The folder to create. The parent folder has to exist. The path should start with "/"',
+				description: 'The folder to create. The parent folder has to exist. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -808,7 +809,7 @@ export class NextCloud implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Display name',
+						displayName: 'Display Name',
 						name: 'displayName',
 						type: 'string',
 						default: '',
@@ -1287,7 +1288,7 @@ export class NextCloud implements INodeType {
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+									return reject(new NodeApiError(this.getNode(), data.ocs.meta.message || data.ocs.meta.status));
 								}
 
 								resolve(data.ocs.data as IDataObject);
@@ -1307,7 +1308,7 @@ export class NextCloud implements INodeType {
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+									return reject(new NodeApiError(this.getNode(), data.ocs.meta.message || data.ocs.meta.status));
 								}
 
 								if (operation === 'delete' || operation === 'update') {
@@ -1328,7 +1329,7 @@ export class NextCloud implements INodeType {
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new Error(data.ocs.meta.message));
+									return reject(new NodeApiError(this.getNode(), data.ocs.meta.message));
 								}
 
 								if (typeof (data.ocs.data.users.element) === 'string') {
@@ -1366,7 +1367,6 @@ export class NextCloud implements INodeType {
 						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
 						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
 						let skippedFirst = false;
-
 						// @ts-ignore
 						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
 							// @ts-ignore
@@ -1379,7 +1379,12 @@ export class NextCloud implements INodeType {
 
 								newItem.path = item['d:href'].slice(19);
 
-								const props = item['d:propstat'][0]['d:prop'];
+								let props: IDataObject = {};
+								if (Array.isArray(item['d:propstat'])) {
+									props = item['d:propstat'][0]['d:prop'] as IDataObject;
+								} else {
+									props = item['d:propstat']['d:prop'] as IDataObject;
+								}
 
 								// Get the props and save them under a proper name
 								for (const propName of Object.keys(propNames)) {
@@ -1393,6 +1398,7 @@ export class NextCloud implements INodeType {
 								} else {
 									newItem.type = 'folder';
 								}
+								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
 								returnData.push(newItem as IDataObject);

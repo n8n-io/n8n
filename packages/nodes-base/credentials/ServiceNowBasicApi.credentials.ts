@@ -14,6 +14,24 @@ export class ServiceNowBasicApi implements ICredentialType {
 	documentationUrl = 'serviceNow';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'User',
+			name: 'user',
+			type: 'string',
+			required: true,
+			default: '',
+
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			type: 'string',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+		},
+		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
