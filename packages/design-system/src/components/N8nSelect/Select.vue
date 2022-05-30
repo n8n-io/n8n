@@ -82,6 +82,9 @@ export default {
 		limitPopperWidth: {
 			type: Boolean,
 		},
+		noDataText: {
+			type: String,
+		},
 	},
 	methods: {
 		getSize(size: string): string | undefined {

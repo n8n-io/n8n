@@ -74,7 +74,7 @@ export const flowFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 
@@ -114,7 +114,7 @@ export const flowFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the input variables should be set via the value-key pair UI or JSON/RAW',
+		description: 'Whether the input variables should be set via the value-key pair UI or JSON/RAW',
 	},
 	{
 		displayName: 'Variables',

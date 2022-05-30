@@ -8,7 +8,7 @@
 
 <script lang="ts">
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { ITab } from '@/Interface';
+import { INodeUi, ITab } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
@@ -16,15 +16,21 @@ import mixins from 'vue-typed-mixins';
 export default mixins(
 	externalHooks,
 ).extend({
-	name: 'NodeTabs',
+	name: 'NodeSettingsTabs',
 	props: {
 		value: {
 			type: String,
 		},
 		nodeType: {
 		},
+		sessionId: {
+			type: String,
+		},
 	},
 	computed: {
+		activeNode(): INodeUi {
+			return this.$store.getters.activeNode;
+		},
 		documentationUrl (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | null;
 			if (!nodeType) {
@@ -70,6 +76,13 @@ export default mixins(
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
 				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType as INodeTypeDescription, documentationUrl: this.documentationUrl });
+				this.$telemetry.track('User clicked ndv link', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: 'main',
+					type: 'docs',
+				});
 			}
 
 			if(tab === 'settings' && this.nodeType) {

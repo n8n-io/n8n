@@ -1,8 +1,11 @@
 <template>
 	<n8n-button
-		:loading="workflowRunning"
-		:label="label"
-		size="small"
+		:loading="nodeRunning"
+		:disabled="workflowRunning && !nodeRunning"
+		:label="buttonLabel"
+		:type="type"
+		:size="size"
+		:transparentBackground="transparent"
 		@click="onClick"
 	/>
 </template>
@@ -20,6 +23,19 @@ export default mixins(
 		nodeName: {
 			type: String,
 		},
+		label: {
+			type: String,
+		},
+		type: {
+			type: String,
+		},
+		size: {
+			type: String,
+		},
+		transparent: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
 		node (): INodeUi {
@@ -30,6 +46,11 @@ export default mixins(
 				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
+		},
+		nodeRunning (): boolean {
+			const triggeredNode = this.$store.getters.executedNode;
+			const executingNode = this.$store.getters.executingNode;
+			return executingNode === this.node.name || triggeredNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -43,7 +64,10 @@ export default mixins(
 		isScheduleTrigger (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
-		label(): string {
+		buttonLabel(): string {
+			if (this.label) {
+				return this.label;
+			}
 			if (this.isPollingTypeNode) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
