@@ -627,6 +627,7 @@ export class WorkflowExecute {
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
+		let closeFunction: Promise<void> | undefined;
 
 		return new PCancelable(async (resolve, reject, onCancel) => {
 			let gotCancel = false;
@@ -811,7 +812,7 @@ export class WorkflowExecute {
 								node: executionNode.name,
 								workflowId: workflow.id,
 							});
-							nodeSuccessData = await workflow.runNode(
+							const runNodeData = await workflow.runNode(
 								executionData.node,
 								executionData.data,
 								this.runExecutionData,
@@ -820,6 +821,14 @@ export class WorkflowExecute {
 								NodeExecuteFunctions,
 								this.mode,
 							);
+							nodeSuccessData = runNodeData.data;
+
+							if (runNodeData.closeFunction) {
+								// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+								closeFunction = runNodeData.closeFunction();
+							}
+
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {
 								node: executionNode.name,
 								workflowId: workflow.id,
@@ -1033,9 +1042,10 @@ export class WorkflowExecute {
 							startedAt,
 							workflow,
 							new WorkflowOperationError('Workflow has been canceled or timed out!'),
+							closeFunction,
 						);
 					}
-					return this.processSuccessExecution(startedAt, workflow, executionError);
+					return this.processSuccessExecution(startedAt, workflow, executionError, closeFunction);
 				})
 				.catch(async (error) => {
 					const fullRunData = this.getFullRunData(startedAt);
@@ -1061,6 +1071,20 @@ export class WorkflowExecute {
 						},
 					);
 
+					if (closeFunction) {
+						try {
+							await closeFunction;
+						} catch (errorClose) {
+							Logger.error(
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+								`There was a problem deactivating trigger of workflow "${workflow.id}": "${errorClose.message}"`,
+								{
+									workflowId: workflow.id,
+								},
+							);
+						}
+					}
+
 					return fullRunData;
 				});
 
@@ -1072,6 +1096,7 @@ export class WorkflowExecute {
 		startedAt: Date,
 		workflow: Workflow,
 		executionError?: ExecutionError,
+		closeFunction?: Promise<void>,
 	): Promise<IRun> {
 		const fullRunData = this.getFullRunData(startedAt);
 
@@ -1105,6 +1130,20 @@ export class WorkflowExecute {
 		}
 
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+
+		if (closeFunction) {
+			try {
+				await closeFunction;
+			} catch (error) {
+				Logger.error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+					`There was a problem deactivating trigger of workflow "${workflow.id}": "${error.message}"`,
+					{
+						workflowId: workflow.id,
+					},
+				);
+			}
+		}
 
 		return fullRunData;
 	}
