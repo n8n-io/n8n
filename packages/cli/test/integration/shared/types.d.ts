@@ -30,3 +30,7 @@ export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
 	{ user }: { user: User },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
+
+export type PostgresSchemaSection = {
+	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
+};

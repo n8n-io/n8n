@@ -44,8 +44,8 @@ import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import type { User } from '../../../src/databases/entities/User';
+import type { ApiPath, EndpointGroup, PostgresSchemaSection, SmtpTestAccount } from './types';
 import { Telemetry } from '../../../src/telemetry';
-import type { ApiPath, EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import { set } from 'lodash';
 interface TriggerTime {
@@ -912,3 +912,15 @@ export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
 		{ pass: [], fail: [] },
 	);
 };
+
+export function getPostgresSchemaSection(
+	schema = config.getSchema(),
+): PostgresSchemaSection | null {
+	for (const [key, value] of Object.entries(schema)) {
+		if (key === 'postgresdb') {
+			return value._cvtProperties;
+		}
+	}
+
+	return null;
+}
