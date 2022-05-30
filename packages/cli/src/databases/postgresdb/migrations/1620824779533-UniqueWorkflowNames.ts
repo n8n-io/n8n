@@ -12,6 +12,8 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		const workflowNames = await queryRunner.query(`
 				SELECT name
 				FROM ${tablePrefix}workflow_entity

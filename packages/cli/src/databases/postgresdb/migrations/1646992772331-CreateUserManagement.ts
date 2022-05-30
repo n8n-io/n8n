@@ -14,6 +14,8 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
 				"id" serial NOT NULL,

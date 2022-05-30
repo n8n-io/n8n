@@ -14,6 +14,9 @@ export class IncreaseTypeVarcharLimit1646834195327 implements MigrationInterface
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}credentials_entity ALTER COLUMN "type" TYPE VARCHAR(128)`);
 	}
 

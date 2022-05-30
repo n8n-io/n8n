@@ -13,6 +13,8 @@ export class AddExecutionEntityIndexes1644422880309 implements MigrationInterfac
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		await queryRunner.query(
 			`DROP INDEX IF EXISTS "${schema}".IDX_${tablePrefixPure}c4d999a5e90784e8caccf5589d`,
 		);
