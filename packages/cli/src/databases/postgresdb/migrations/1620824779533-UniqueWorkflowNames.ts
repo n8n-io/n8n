@@ -12,6 +12,8 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		const workflowNames = await queryRunner.query(`
 				SELECT name
 				FROM ${tablePrefix}workflow_entity
@@ -64,6 +66,8 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
 	}
