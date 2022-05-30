@@ -24,11 +24,7 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import type { User } from '../../../src/databases/entities/User';
-<<<<<<< HEAD
-import type { EndpointGroup, PostgresSchemaSection, SmtpTestAccount } from './types';
-=======
-import type { EndpointGroup, InstalledNodePayload, InstalledPackagePayload, SmtpTestAccount } from './types';
->>>>>>> 8100b8075 (Improved unit tests, refactored more helpers and created integration tests for GET)
+import type { EndpointGroup, InstalledNodePayload, InstalledPackagePayload, PostgresSchemaSection, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
 import { nodesController } from '../../../src/api/nodes.api';
