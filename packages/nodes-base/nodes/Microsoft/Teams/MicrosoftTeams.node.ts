@@ -82,7 +82,6 @@ export class MicrosoftTeams implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on',
 			},
 			// CHANNEL
 			...channelOperations,

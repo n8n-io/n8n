@@ -84,7 +84,6 @@ export class MailchimpTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'List',

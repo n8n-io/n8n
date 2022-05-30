@@ -141,7 +141,6 @@ export class GitlabTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Repository Owner',

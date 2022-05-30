@@ -7,6 +7,7 @@ export const profileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,6 +23,5 @@ export const profileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform.',
 	},
 ];

@@ -62,7 +62,7 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
@@ -76,6 +76,6 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 				],
 			},
 		},
-		description: 'Whether to simplify the output or not',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

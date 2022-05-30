@@ -76,6 +76,7 @@ export class Paddle implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Coupon',
@@ -103,7 +104,6 @@ export class Paddle implements INodeType {
 					},
 				],
 				default: 'coupon',
-				description: 'Resource to consume.',
 			},
 			// COUPON
 			...couponOperations,

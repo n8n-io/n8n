@@ -7,6 +7,7 @@ export const personTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const personTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform',
 	},
 ];
 

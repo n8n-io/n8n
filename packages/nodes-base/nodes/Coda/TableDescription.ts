@@ -5,6 +5,7 @@ export const tableOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,7 +27,6 @@ export const tableOperations: INodeProperties[] = [
 			{
 				name: 'Get All Columns',
 				value: 'getAllColumns',
-				description: 'Get all columns',
 			},
 			{
 				name: 'Get All Rows',
@@ -50,7 +50,6 @@ export const tableOperations: INodeProperties[] = [
 			},
 		],
 		default: 'createRow',
-		description: 'The operation to perform.',
 	},
 ];
 
