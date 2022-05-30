@@ -694,7 +694,6 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Filter Expression',
 		name: 'filterExpression',
 		type: 'string',
-		required: false,
 		displayOptions: {
 			show: {
 				scan: [
@@ -703,7 +702,7 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results.',
 	},
 	{
 		displayName: 'Key Condition Expression',
