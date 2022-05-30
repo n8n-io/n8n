@@ -222,7 +222,12 @@ $border-color-hover: var(--color-text-lighter);
 /// borderRadius|1|Radius|0
 $border-radius-circle: 100%;
 
-// Box-shadow
+/* Outline
+-------------------------- */
+$focus-outline-width: 2px;
+
+/* Box shadow
+-------------------------- */
 /// boxShadow|1|Shadow|1
 $box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
 // boxShadow|1|Shadow|1

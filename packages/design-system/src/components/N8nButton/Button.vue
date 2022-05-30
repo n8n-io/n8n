@@ -75,6 +75,7 @@ export default {
 			default: false,
 		},
 		icon: {
+			type: String,
 		},
 		round: {
 			type: Boolean,
@@ -108,8 +109,8 @@ export default {
 		float?: string;
 	}): { float?: string; width?: string } => {
 		return {
-			...(props.float ? { float: props.float } : {}),
-			...(props.fullWidth ? { width: '100%' } : {}),
+			...(props.float ? {float: props.float} : {}),
+			...(props.fullWidth ? {width: '100%'} : {}),
 		};
 	},
 	getClass(props: { type: string; outline: boolean; text: boolean; transparentBackground: boolean }, $style: any): string {
@@ -125,53 +126,53 @@ export default {
 @import "../../utils";
 
 .button {
-  > i {
-	display: none;
-  }
+	> i {
+		display: none;
+	}
 
-  > span {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-  }
+	> span {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
 
-  span + span {
-	margin-left: var(--spacing-3xs);
-  }
+	span + span {
+		margin-left: var(--spacing-3xs);
+	}
 }
 
 .secondary {
-  --button-color: var(--color-primary);
-  --button-border-color: var(--color-primary);
-  --button-background-color: var(--color-white);
+	--button-color: var(--color-primary);
+	--button-border-color: var(--color-primary);
+	--button-background-color: var(--color-white);
 
-  --button-active-background-color: var(--color-primary-900);
-  --button-active-color: var(--color-primary);
-  --button-active-border-color: var(--color-primary);
+	--button-active-background-color: var(--color-primary-900);
+	--button-active-color: var(--color-primary);
+	--button-active-border-color: var(--color-primary);
 
-  --button-hover-background-color: var(--color-primary-950);
-  --button-hover-color: var(--color-primary);
-  --button-hover-border-color: var(--color-primary);
+	--button-hover-background-color: var(--color-primary-950);
+	--button-hover-color: var(--color-primary);
+	--button-hover-border-color: var(--color-primary);
 
-  --button-focus-outline-color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-600-l), 0.33);
+	--button-focus-outline-color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-600-l), 0.33);
 }
 
 .tertiary {
-  font-weight: var(--font-weight-regular) !important;
+	font-weight: var(--font-weight-regular) !important;
 
-  --button-background-color: var(--color-white);
-  --button-color: var(--color-text-dark);
-  --button-border-color: var(--color-neutral-850);
+	--button-background-color: var(--color-white);
+	--button-color: var(--color-text-dark);
+	--button-border-color: var(--color-neutral-850);
 
-  --button-active-background-color: var(--color-primary-tint-2);
-  --button-active-color: var(--color-primary);
-  --button-active-border-color: var(--color-primary);
+	--button-active-background-color: var(--color-primary-tint-2);
+	--button-active-color: var(--color-primary);
+	--button-active-border-color: var(--color-primary);
 
-  --button-hover-background-color: var(--color-neutral-950);
-  --button-hover-color: var(--color-text-dark);
-  --button-hover-border-color: var(--color-neutral-800);
+	--button-hover-background-color: var(--color-neutral-950);
+	--button-hover-color: var(--color-text-dark);
+	--button-hover-border-color: var(--color-neutral-800);
 
-  --button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
+	--button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
 }
 
 .success {
@@ -199,7 +200,7 @@ export default {
 	--button-hover-background-color: var(--color-warning-650);
 	--button-hover-border-color: var(--color-warning-650);
 
-  	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
+	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
 }
 
 .danger {
@@ -222,28 +223,28 @@ export default {
 	--button-disabled-background-color: var(--color-foreground-xlight);
 	--button-active-background-color: var(--color-foreground-xlight);
 
-  	&.primary {
+	&.primary {
 		--button-color: var(--color-primary);
-	  	--button-border-color: var(--color-primary);
-	  	--button-active-background-color: var(--color-primary);
- 	}
+		--button-border-color: var(--color-primary);
+		--button-active-background-color: var(--color-primary);
+	}
 
 	&.success {
 		--button-color: var(--color-success);
 		--button-border-color: var(--color-success);
-	  	--button-active-background-color: var(--color-success);
+		--button-active-background-color: var(--color-success);
 	}
 
 	&.warning {
 		--button-color: var(--color-warning);
 		--button-border-color: var(--color-warning);
-	  	--button-active-background-color: var(--color-warning);
+		--button-active-background-color: var(--color-warning);
 	}
 
 	&.danger {
 		--button-color: var(--color-danger);
 		--button-border-color: var(--color-danger);
-	  	--button-active-background-color: var(--color-danger);
+		--button-active-background-color: var(--color-danger);
 	}
 }
 
@@ -252,8 +253,8 @@ export default {
 	--button-border-color: transparent;
 	--button-background-color: transparent;
 	--button-active-background-color: transparent;
-  	--button-active-border-color: transparent;
-  	--button-hover-background-color: transparent;
+	--button-active-border-color: transparent;
+	--button-hover-background-color: transparent;
 	--button-hover-border-color: transparent;
 
 	&.primary {
@@ -276,18 +277,18 @@ export default {
 
 	&.warning {
 		--button-color: var(--color-warning);
-	  	--button-active-color: var(--color-warning);
-	  	--button-hover-color: var(--color-warning);
+		--button-active-color: var(--color-warning);
+		--button-hover-color: var(--color-warning);
 	}
 
 	&.danger {
 		--button-color: var(--color-danger);
-	  	--button-active-color: var(--color-danger);
-	  	--button-hover-color: var(--color-danger);
+		--button-active-color: var(--color-danger);
+		--button-hover-color: var(--color-danger);
 	}
 
-    &:hover {
-	  text-decoration: underline;
+	&:hover {
+		text-decoration: underline;
 	}
 }
 
