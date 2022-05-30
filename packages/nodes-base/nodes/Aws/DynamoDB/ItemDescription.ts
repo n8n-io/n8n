@@ -73,7 +73,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data To Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -350,7 +350,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.',
 	},
 	{
 		displayName: 'Simplify',
@@ -593,7 +593,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -656,11 +656,11 @@ export const itemFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Strongly consistent read',
+						name: 'Strongly Consistent Read',
 						value: 'stronglyConsistentRead',
 					},
 					{
-						name: 'Eventually consistent read',
+						name: 'Eventually Consistent Read',
 						value: 'eventuallyConsistentRead',
 					},
 				],
@@ -909,7 +909,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
-				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas',
+				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas.',
 			},
 			{
 				displayName: 'Filter Expression',
