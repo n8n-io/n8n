@@ -45,6 +45,10 @@ export class WhatsApp implements INodeType {
 						name: 'Message',
 						value: 'messages',
 					},
+					{
+						name: 'Media',
+						value: 'media',
+					},
 				],
 				default: 'messages',
 			},
@@ -59,7 +63,6 @@ export class WhatsApp implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const phoneNumberId = this.getNodeParameter('phoneNumberId', 0);
-		const messageType = this.getNodeParameter('type', 0) as string;
 
 		let body: IDataObject;
 		let qs: IDataObject;
@@ -79,6 +82,8 @@ export class WhatsApp implements INodeType {
 				//         resource: messages
 				// ----------------------------------
 				if (resource === 'messages') {
+					const messageType = this.getNodeParameter('type', 0) as string;
+
 					requestMethod = 'POST';
 					endpoint = `${phoneNumberId}/messages`;
 					body = { type: messageType, to: this.getNodeParameter('recipientPhoneNumber', i) };
@@ -138,6 +143,39 @@ export class WhatsApp implements INodeType {
 							body = { ...body, [messageType]: { id: mediaId, filename, caption } };
 						}
 					}
+				// ----------------------------------
+				//         resource: media
+				// ----------------------------------
+				} else if (resource === 'media') {
+					const mediaOperation = this.getNodeParameter('mediaOperation', i) as string;
+
+					if (mediaOperation === 'mediaUpload') {
+						const phoneNumberId = this.getNodeParameter('phoneNumberId', i) as string;
+
+						//TODO: add support for multiple files
+						endpoint = `${phoneNumberId}/media`;
+
+
+					} else if (mediaOperation === "mediaUrlGet") {
+						const mediaId = this.getNodeParameter('mediaId', i) as string;
+						endpoint = `${mediaId}`;
+
+						requestMethod = 'GET';
+					} else if (mediaOperation === "mediaUrlDelete") {
+						const mediaId = this.getNodeParameter('mediaId', i) as string;
+						endpoint = `${mediaId}`;
+
+						requestMethod = 'DELETE';
+					} else if (mediaOperation === "mediaDownload") {
+						const mediaUrl = this.getNodeParameter('mediaUrl', i) as string;
+						endpoint = `${mediaUrl}`;
+
+						requestMethod = 'GET';
+					}
+
+
+
+
 				}
 
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
