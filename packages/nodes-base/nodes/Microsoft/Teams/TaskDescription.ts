@@ -338,7 +338,6 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Member ID',
 		name: 'memberId',
-		required: false,
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getMembers',
@@ -364,7 +363,6 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Plan ID',
 		name: 'planId',
-		required: false,
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getPlans',

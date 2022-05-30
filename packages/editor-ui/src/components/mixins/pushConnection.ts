@@ -263,10 +263,20 @@ export const pushConnection = mixins(
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
-						this.$showMessage({
-							title: this.$locale.baseText('pushConnection.showMessage.title'),
-							type: 'success',
-						});
+
+						const execution = this.$store.getters.getWorkflowExecution;
+						if (execution && execution.executedNode) {
+							this.$showMessage({
+								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
+								type: 'success',
+							});
+						}
+						else {
+							this.$showMessage({
+								title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
+								type: 'success',
+							});
+						}
 					}
 
 					// It does not push the runData as it got already pushed with each

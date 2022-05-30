@@ -52,6 +52,7 @@ export class Line implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -59,7 +60,6 @@ export class Line implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			...notificationOperations,
 			...notificationFields,

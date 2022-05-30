@@ -71,6 +71,7 @@ export class Matrix implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -98,7 +99,6 @@ export class Matrix implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 			...accountOperations,
 			...eventOperations,

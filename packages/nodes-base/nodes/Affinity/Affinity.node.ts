@@ -69,6 +69,7 @@ export class Affinity implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'List',
@@ -88,7 +89,6 @@ export class Affinity implements INodeType {
 					},
 				],
 				default: 'organization',
-				description: 'Resource to consume.',
 			},
 			...listOperations,
 			...listFields,

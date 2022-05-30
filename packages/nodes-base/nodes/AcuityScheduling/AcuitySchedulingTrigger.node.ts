@@ -75,7 +75,6 @@ export class AcuitySchedulingTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Event',

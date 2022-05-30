@@ -53,7 +53,7 @@ export class FormIoTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions" target="_blank" >expression</a>',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions" target="_blank" >expression</a>.',
 			},
 			{
 				displayName: 'Form Name/ID',
@@ -67,7 +67,7 @@ export class FormIoTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions" target="_blank" >expression</a>',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions" target="_blank" >expression</a>.',
 			},
 			{
 				displayName: 'Trigger Events',
@@ -87,11 +87,11 @@ export class FormIoTrigger implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

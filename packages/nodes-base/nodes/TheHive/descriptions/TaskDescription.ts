@@ -8,6 +8,7 @@ export const taskOperations: INodeProperties[] = [
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -80,7 +81,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -105,7 +106,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Title',
@@ -214,7 +215,6 @@ export const taskFields: INodeProperties[] = [
 		type: 'collection',
 		name: 'options',
 		placeholder: 'Add Option',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -265,7 +265,6 @@ export const taskFields: INodeProperties[] = [
 		name: 'updateFields',
 		placeholder: 'Add Field',
 		default: {},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -381,7 +380,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {

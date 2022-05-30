@@ -7,6 +7,7 @@ export const lightOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const lightOperations: INodeProperties[] = [
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -82,7 +82,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -106,7 +106,7 @@ export const lightFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -169,7 +169,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'On/Off state of the light.',
+		description: 'On/Off state of the light',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -201,7 +201,7 @@ export const lightFields: INodeProperties[] = [
 					{
 						name: 'Select',
 						value: 'select',
-						description: 'The light is performing one breathe cycle.',
+						description: 'The light is performing one breathe cycle',
 					},
 					{
 						name: 'LSelect',
@@ -221,7 +221,7 @@ export const lightFields: INodeProperties[] = [
 					maxValue: 254,
 				},
 				default: 100,
-				description: 'The brightness value to set the light to.Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
+				description: 'The brightness value to set the light to. Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
 			},
 			{
 				displayName: 'Brightness Increments',
@@ -258,7 +258,7 @@ export const lightFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '0.64394,0.33069',
-				description: `The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
+				description: 'The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1',
 			},
 			{
 				displayName: 'Coordinates Increments',
@@ -266,7 +266,7 @@ export const lightFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '0.5,0.5',
-				description: `Increments or decrements the value of the xy. This value is ignored if the Coordinates attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]`,
+				description: 'Increments or decrements the value of the xy. This value is ignored if the Coordinates attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]',
 			},
 			{
 				displayName: 'Dynamic Effect',
@@ -283,7 +283,7 @@ export const lightFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The dynamic effect of the light.',
+				description: 'The dynamic effect of the light',
 			},
 			{
 				displayName: 'Hue',

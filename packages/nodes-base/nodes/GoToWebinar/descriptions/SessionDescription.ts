@@ -7,8 +7,8 @@ export const sessionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
@@ -42,7 +42,7 @@ export const sessionFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -59,7 +59,7 @@ export const sessionFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -111,14 +111,14 @@ export const sessionFields: INodeProperties[] = [
 								displayName: 'Start Time',
 								name: 'fromTime',
 								type: 'dateTime',
-								description: 'Start of the datetime range for the session.',
+								description: 'Start of the datetime range for the session',
 								default: '',
 							},
 							{
 								displayName: 'End Time',
 								name: 'toTime',
 								type: 'dateTime',
-								description: 'End of the datetime range for the session.',
+								description: 'End of the datetime range for the session',
 								default: '',
 							},
 						],
@@ -133,7 +133,7 @@ export const sessionFields: INodeProperties[] = [
 					loadOptionsMethod: 'getWebinars',
 				},
 				default: {},
-				description: 'Webinar by which to filter the sessions to retrieve.',
+				description: 'Webinar by which to filter the sessions to retrieve',
 			},
 		],
 	},
@@ -150,7 +150,7 @@ export const sessionFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to which the session belongs.',
+		description: 'Key of the webinar to which the session belongs',
 		displayOptions: {
 			show: {
 				resource: [
@@ -194,22 +194,22 @@ export const sessionFields: INodeProperties[] = [
 			{
 				name: 'Performance',
 				value: 'performance',
-				description: 'Performance details for a webinar session.',
+				description: 'Performance details for a webinar session',
 			},
 			{
 				name: 'Polls',
 				value: 'polls',
-				description: 'Questions and answers for polls from a webinar session.',
+				description: 'Questions and answers for polls from a webinar session',
 			},
 			{
 				name: 'Questions',
 				value: 'questions',
-				description: 'Questions and answers for a past webinar session.',
+				description: 'Questions and answers for a past webinar session',
 			},
 			{
 				name: 'Surveys',
 				value: 'surveys',
-				description: 'Surveys for a past webinar session.',
+				description: 'Surveys for a past webinar session',
 			},
 		],
 		displayOptions: {
