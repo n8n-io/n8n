@@ -96,6 +96,23 @@ export const estimateFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Amount',
+				name: 'Amount',
+				description: 'Monetary amount of the line item',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Description',
+				name: 'Description',
+				description: 'Textual description of the line item',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
 				displayName: 'Detail Type',
 				name: 'DetailType',
 				type: 'options',
@@ -114,23 +131,6 @@ export const estimateFields: INodeProperties[] = [
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
-				displayName: 'Amount',
-				name: 'Amount',
-				description: 'Monetary amount of the line item',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Description',
-				name: 'Description',
-				description: 'Textual description of the line item',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
 				},
 			},
 			{
@@ -219,7 +219,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the estimate as a PDF file',
+		description: 'Whether to download the estimate as a PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -299,7 +299,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

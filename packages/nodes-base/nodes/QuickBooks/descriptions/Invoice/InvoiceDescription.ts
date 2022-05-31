@@ -107,6 +107,16 @@ export const invoiceFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
+				displayName: 'Description',
+				name: 'Description',
+				description: 'Textual description of the line item',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
 				displayName: 'Detail Type',
 				name: 'DetailType',
 				type: 'options',
@@ -117,16 +127,6 @@ export const invoiceFields: INodeProperties[] = [
 						value: 'SalesItemLineDetail',
 					},
 				],
-			},
-			{
-				displayName: 'Description',
-				name: 'Description',
-				description: 'Textual description of the line item',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Item',
@@ -223,7 +223,7 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the invoice as a PDF file',
+		description: 'Whether to download the invoice as a PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -303,7 +303,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
