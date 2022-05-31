@@ -12,7 +12,8 @@ export class IntroducePinData1654003370712 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE TABLE \`${tablePrefix}pin_data\` (
 				\`id\` int NOT NULL AUTO_INCREMENT,
-				\`data\` json NULL, PRIMARY KEY (\`id\`)
+				\`data\` json,
+				PRIMARY KEY (\`id\`)
 			) ENGINE=InnoDB`,
 		);
 
