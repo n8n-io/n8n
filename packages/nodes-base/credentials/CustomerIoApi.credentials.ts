@@ -1,5 +1,7 @@
 import {
+	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -50,4 +52,18 @@ export class CustomerIoApi implements ICredentialType {
 			description: 'Required for App API',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		if (requestOptions.url.includes('https://tracking/api/v1')) {
+			requestOptions.url = requestOptions.url.replace('tracking', credentials.region  as string);
+			const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
+		} else if (requestOptions.url.includes('api.customer.io')) {
+			const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
+		} else if (requestOptions.url.includes('beta-api.customer.io')) {
+			Object.assign(requestOptions.headers, { 'Authorization': `Bearer ${credentials.appApiKey as string}` });
+		}
+
+		return requestOptions;
+	}
 }
