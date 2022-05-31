@@ -65,6 +65,13 @@ export default Vue.extend({
 		},
 		icon: {
 			type: [String, Array],
+<<<<<<< HEAD
+=======
+		},
+		round: {
+			type: Boolean,
+			default: false,
+>>>>>>> 4e3546dbc (feat: Extracted code editor into separate form component.)
 		},
 		round: {
 			type: Boolean,
