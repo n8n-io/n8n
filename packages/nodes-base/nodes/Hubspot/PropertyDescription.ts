@@ -14,17 +14,17 @@ export const propertyOperations: INodeProperties[] = [
             {
                 name: 'Create',
                 value: 'create',
-                description: 'Create and return a copy of a new property for the specified object type.',
+                description: 'Create and return a copy of a new property for the specified object type',
             },
             {
                 name: 'Get',
                 value: 'get',
-                description: 'Read a property identified by {propertyName}.',
+                description: 'Read a property identified by {propertyName}',
             },
             {
                 name: 'Get All',
                 value: 'getAll',
-                description: 'Read all existing properties for the specified object type.',
+                description: 'Read all existing properties for the specified object type',
             },
             {
                 name: 'Update',
@@ -34,7 +34,7 @@ export const propertyOperations: INodeProperties[] = [
             {
                 name: 'Delete',
                 value: 'delete',
-                description: 'Move a property identified by {propertyName} to the recycling bin.',
+                description: 'Move a property identified by {propertyName} to the recycling bin',
             },
         ],
         default: 'get',
@@ -78,8 +78,7 @@ export const propertyFields: INodeProperties[] = [
             loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
-        description:
-            'The internal property name, which must be used when referencing the property via the API.',
+        description: 'The internal property name, which must be used when referencing the property via the API',
     },
     {
         displayName: 'Label',
@@ -93,7 +92,7 @@ export const propertyFields: INodeProperties[] = [
             },
         },
         default: '',
-        description: 'A human-readable property label that will be shown in HubSpot.',
+        description: 'A human-readable property label that will be shown in HubSpot',
     },
     {
         displayName: 'Data Type',
@@ -129,7 +128,7 @@ export const propertyFields: INodeProperties[] = [
             },
         ],
         default: 'string',
-        description: 'The data type of the property.',
+        description: 'The data type of the property',
     },
     {
         displayName: 'Field Type',
@@ -181,7 +180,7 @@ export const propertyFields: INodeProperties[] = [
             },
         ],
         default: 'text',
-        description: 'Controls how the property appears in HubSpot.',
+        description: 'Controls how the property appears in HubSpot',
     },
     {
         displayName: 'Group name',
@@ -199,7 +198,7 @@ export const propertyFields: INodeProperties[] = [
             loadOptionsMethod: 'getAvailablePropertyGroups',
         },
         default: '',
-        description: 'The name of the property group the property belongs to.',
+        description: 'The name of the property group the property belongs to',
     },
     {
         displayName: 'Options as JSON',
@@ -254,7 +253,7 @@ export const propertyFields: INodeProperties[] = [
                 name: 'description',
                 type: 'string',
                 default: '',
-                description: 'A description of the property that will be shown as help text in HubSpot.',
+                description: 'A description of the property that will be shown as help text in HubSpot',
             },
             {
                 displayName: 'Display Order',
@@ -278,14 +277,14 @@ export const propertyFields: INodeProperties[] = [
                 name: 'hidden',
                 type: 'boolean',
                 default: false,
-                description: 'If true, the property will not be visible and can not be used in HubSpot.',
+                description: 'If true, the property will not be visible and can not be used in HubSpot',
             },
             {
                 displayName: 'Form Field',
                 name: 'formField',
                 type: 'boolean',
                 default: false,
-                description: 'Whether or not the property can be used in a HubSpot form.',
+                description: 'Whether or not the property can be used in a HubSpot form',
             },
         ],
     },
@@ -324,8 +323,7 @@ export const propertyFields: INodeProperties[] = [
             loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
-        description:
-            'The internal property name, which must be used when referencing the property via the API.',
+        description: 'The internal property name, which must be used when referencing the property via the API',
     },
     {
         displayName: 'Additional Fields',
@@ -345,7 +343,7 @@ export const propertyFields: INodeProperties[] = [
                 name: 'archived',
                 type: 'boolean',
                 default: false,
-                description: 'Whether to return only results that have been archived.',
+                description: 'Whether to return only results that have been archived',
             },
         ],
     },
@@ -386,7 +384,7 @@ export const propertyFields: INodeProperties[] = [
                 name: 'archived',
                 type: 'boolean',
                 default: false,
-                description: 'Whether to return only results that have been archived.',
+                description: 'Whether to return only results that have been archived',
             },
         ],
     },
@@ -426,8 +424,7 @@ export const propertyFields: INodeProperties[] = [
             loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
-        description:
-            'The internal property name, which must be used when referencing the property via the API.',
+        description: 'The internal property name, which must be used when referencing the property via the API',
     },
     {
         displayName: 'Additional Fields',
@@ -447,7 +444,7 @@ export const propertyFields: INodeProperties[] = [
                 name: 'label',
                 type: 'string',
                 default: '',
-                description: 'A human-readable property label that will be shown in HubSpot.',
+                description: 'A human-readable property label that will be shown in HubSpot',
             },
             {
                 displayName: 'Data Type',
@@ -476,7 +473,7 @@ export const propertyFields: INodeProperties[] = [
                     },
                 ],
                 default: 'string',
-                description: 'The data type of the property.',
+                description: 'The data type of the property',
             },
             {
                 displayName: 'Field Type',
@@ -521,7 +518,7 @@ export const propertyFields: INodeProperties[] = [
                     },
                 ],
                 default: 'text',
-                description: 'Controls how the property appears in HubSpot.',
+                description: 'Controls how the property appears in HubSpot',
             },
             {
                 displayName: 'Group name',
@@ -532,7 +529,7 @@ export const propertyFields: INodeProperties[] = [
                     loadOptionsMethod: 'getAvailablePropertyGroups',
                 },
                 default: '',
-                description: 'The name of the property group the property belongs to.',
+                description: 'The name of the property group the property belongs to',
             },
             {
                 displayName: 'Options as JSON',
@@ -567,7 +564,7 @@ export const propertyFields: INodeProperties[] = [
                 name: 'description',
                 type: 'string',
                 default: '',
-                description: 'A description of the property that will be shown as help text in HubSpot.',
+                description: 'A description of the property that will be shown as help text in HubSpot',
             },
             {
                 displayName: 'Display Order',
@@ -582,14 +579,14 @@ export const propertyFields: INodeProperties[] = [
                 name: 'hidden',
                 type: 'boolean',
                 default: false,
-                description: 'If true, the property will not be visible and can not be used in HubSpot.',
+                description: 'If true, the property will not be visible and can not be used in HubSpot',
             },
             {
                 displayName: 'Form Field',
                 name: 'formField',
                 type: 'boolean',
                 default: false,
-                description: 'Whether or not the property can be used in a HubSpot form.',
+                description: 'Whether or not the property can be used in a HubSpot form',
             },
         ],
     },
@@ -628,7 +625,6 @@ export const propertyFields: INodeProperties[] = [
             loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
-        description:
-            'The internal property name, which must be used when referencing the property via the API.',
+        description: 'The internal property name, which must be used when referencing the property via the API',
     },
 ];

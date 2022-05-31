@@ -14,17 +14,17 @@ export const propertyGroupOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create and return a copy of a new property group.',
+				description: 'Create and return a copy of a new property group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Read a property group identified by {groupName}.',
+				description: 'Read a property group identified by {groupName}',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Read all existing property groups for the specified object type.',
+				description: 'Read all existing property groups for the specified object type',
 			},
 			{
 				name: 'Update',
@@ -35,7 +35,7 @@ export const propertyGroupOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Move a property group identified by {groupName} to the recycling bin.',
+				description: 'Move a property group identified by {groupName} to the recycling bin',
 			},
 		],
 		default: 'get',
@@ -75,8 +75,7 @@ export const propertyGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description:
-			'The internal property group name, which must be used when referencing the property group via the API.',
+		description: 'The internal property group name, which must be used when referencing the property group via the API',
 	},
 	{
 		displayName: 'Label',
@@ -90,7 +89,7 @@ export const propertyGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A human-readable property label that will be shown in HubSpot.',
+		description: 'A human-readable property label that will be shown in HubSpot',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -150,8 +149,7 @@ export const propertyGroupFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description:
-			'The internal property group name, which must be used when referencing the property group via the API.',
+		description: 'The internal property group name, which must be used when referencing the property group via the API',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*               propertyGroup:getAll                                         */
@@ -207,8 +205,7 @@ export const propertyGroupFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description:
-			'The internal property group name, which must be used when referencing the property group via the API.',
+		description: 'The internal property group name, which must be used when referencing the property group via the API',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -228,7 +225,7 @@ export const propertyGroupFields: INodeProperties[] = [
 				name: 'label',
 				type: 'string',
 				default: '',
-				description: 'A human-readable property label that will be shown in HubSpot.',
+				description: 'A human-readable property label that will be shown in HubSpot',
 			},
 			{
 				displayName: 'Display Order',
@@ -275,7 +272,6 @@ export const propertyGroupFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description:
-			'The internal property group name, which must be used when referencing the property group via the API.',
+		description: 'The internal property group name, which must be used when referencing the property group via the API',
 	},
 ];

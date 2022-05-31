@@ -64,7 +64,7 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 	{
 		displayName: 'To Object Type',
@@ -81,7 +81,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object.',
+		description: 'The type of the target object',
 	},
 	{
 		displayName: 'Target Object ID',
@@ -95,7 +95,7 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The id of the target object.',
+		description: 'The ID of the target object',
 	},
 	{
 		displayName: 'Association Type',
@@ -141,7 +141,7 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The value of the ID Property of the object.',
+		description: 'The value of the ID Property of the object',
 	},
 	{
 		displayName: 'To Object Type',
@@ -158,7 +158,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object.',
+		description: 'The type of the target object',
 	},
 	{
 		displayName: 'Return All',
@@ -171,7 +171,7 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -187,6 +187,6 @@ export const associationFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 500,
-		description: 'Limit the number of results.',
+		description: 'Max number of results to return',
 	},
 ];
