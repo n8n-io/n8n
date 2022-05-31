@@ -437,6 +437,12 @@ export class EmailReadImap implements INodeType {
 				};
 			}
 
+			if (credentials.secure) {
+				config.imap.tlsOptions = {
+					servername: credentials.host as string,
+				};
+			}
+
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async conn => {
@@ -445,8 +451,9 @@ export class EmailReadImap implements INodeType {
 						Logger.verbose('IMAP connection was reset - reconnecting.');
 						connection = await establishConnection();
 						await connection.openBox(mailbox);
+					} else {
+						throw err;
 					}
-					throw err;
 				});
 				return conn;
 			});
