@@ -69,6 +69,10 @@ export declare namespace WorkflowRequest {
 			destinationNode?: string;
 		}
 	>;
+
+	type PinData = AuthenticatedRequest<{ id: string }, {}, { nodeName: string; pinData: unknown }>;
+
+	type UnpinData = AuthenticatedRequest<{ id: string }, {}, { pinDataId: number }>;
 }
 
 // ----------------------------------

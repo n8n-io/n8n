@@ -34,6 +34,7 @@ import { User } from './databases/entities/User';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
+import { PinData } from './databases/entities/PinData';
 
 export interface IActivationError {
 	time: number;
@@ -82,6 +83,7 @@ export interface IDatabaseCollections {
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
+	PinData: Repository<PinData>;
 }
 
 export interface IWebhookDb {

@@ -157,6 +157,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { pinDataController } from './api/pinData.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -1150,6 +1151,8 @@ class App {
 				return true;
 			}),
 		);
+
+		this.app.use(`/${this.restEndpoint}/workflows/:id`, pinDataController);
 
 		this.app.post(
 			`/${this.restEndpoint}/workflows/run`,

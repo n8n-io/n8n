@@ -9,5 +9,5 @@ export class PinData {
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
 	})
-	data: object;
+	data: unknown;
 }
