@@ -37,6 +37,7 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	IHttpRequestHelper,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -167,6 +168,50 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return requestOptions as IHttpRequestOptions;
+	}
+
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		forcedRefresh: boolean,
+	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+		const credentialType = this.credentialTypes.getByName(typeName);
+
+		const propertyNames = credentialType.properties.map((property) => property.name);
+
+		if (credentialType.preAuthentication) {
+			if (typeof credentialType.preAuthentication === 'function') {
+				const output = await credentialType.preAuthentication.call(
+					helpers,
+					credentials,
+					forcedRefresh,
+				);
+				// if output empty, no need to update anything
+				if (!Object.keys(output).length) {
+					return { updatedCredentials: false, data: {} };
+				}
+
+				// if there is data in the output, make sure the returned
+				// property exists in the credentials properties
+				// else the database will not get updated
+
+				if (!propertyNames.includes(Object.keys(output)[0])) {
+					return { updatedCredentials: false, data: {} };
+				}
+
+				if (node.credentials) {
+					await this.updateCredentials(
+						node.credentials[credentialType.name],
+						credentialType.name,
+						Object.assign(credentials, output),
+					);
+				}
+				return { updatedCredentials: true, data: Object.assign(credentials, output) };
+			}
+		}
+		return { updatedCredentials: false, data: {} };
 	}
 
 	/**
@@ -652,7 +697,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
-			if (error.cause.response) {
+			if (error.cause?.response) {
 				const errorResponseData = {
 					statusCode: error.cause.response.status,
 					statusMessage: error.cause.response.statusText,

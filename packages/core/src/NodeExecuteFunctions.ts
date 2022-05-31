@@ -1060,6 +1060,7 @@ export async function httpRequestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
@@ -1078,7 +1079,6 @@ export async function httpRequestWithAuthentication(
 			);
 		}
 
-		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
@@ -1092,6 +1092,20 @@ export async function httpRequestWithAuthentication(
 			);
 		}
 
+		const { updatedCredentials, data } = await additionalData.credentialsHelper.preAuthentication(
+			{ helpers: { httpRequest: this.helpers.httpRequest } },
+			credentialsDecrypted,
+			credentialsType,
+			node,
+			false,
+		);
+
+		if (updatedCredentials) {
+			// make the updated property in the credentials
+			// available to the authenticate method
+			Object.assign(credentialsDecrypted, data);
+		}
+
 		requestOptions = await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
@@ -1101,8 +1115,50 @@ export async function httpRequestWithAuthentication(
 			additionalData.timezone,
 		);
 
+		// delete requestOptions.headers['X-Metabase-Session'];
 		return await httpRequest(requestOptions);
 	} catch (error) {
+		// if there is a pre execute method defined and
+		// the method failed due to unathorized request
+		if (
+			error.response?.status === 401 &&
+			additionalData.credentialsHelper.preAuthentication !== undefined
+		) {
+			try {
+				if (credentialsDecrypted !== undefined) {
+					// try to refresh the credentials
+
+					const { updatedCredentials, data } =
+						await additionalData.credentialsHelper.preAuthentication(
+							{ helpers: { httpRequest: this.helpers.httpRequest } },
+							credentialsDecrypted,
+							credentialsType,
+							node,
+							true,
+						);
+
+					if (updatedCredentials) {
+						// make the updated property in the credentials
+						// available to the authenticate method
+						Object.assign(credentialsDecrypted, data);
+					}
+
+					requestOptions = await additionalData.credentialsHelper.authenticate(
+						credentialsDecrypted,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData.timezone,
+					);
+				}
+				// retry the request
+				return await httpRequest(requestOptions);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
+			}
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }

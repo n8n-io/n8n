@@ -145,6 +145,9 @@ export interface IRequestOptionsSimplified {
 	qs: IDataObject;
 }
 
+export interface IHttpRequestHelper {
+	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
+}
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 
@@ -162,6 +165,14 @@ export abstract class ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
+
+	abstract preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		forcedRefresh: boolean,
+	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }>;
 
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
@@ -275,6 +286,11 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
+	preAuthentication?: (
+		this: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		forcedRefresh: boolean,
+	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
 }

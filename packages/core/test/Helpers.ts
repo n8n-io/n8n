@@ -6,7 +6,9 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
+	INode,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
@@ -32,6 +34,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<IHttpRequestOptions> {
 		return requestParams;
 	}
+
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		forcedRefresh: boolean,
+	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+		return { updatedCredentials: false, data: {} }
+	};
+
 
 	getParentTypes(name: string): string[] {
 		return [];
