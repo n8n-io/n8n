@@ -47,7 +47,6 @@ import {
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
-	LoggerProxy as Logger,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -56,6 +55,7 @@ import {
 	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1045,77 +1045,6 @@ export async function requestOAuth1(
 	});
 }
 
-/* Makes a request using OAuth1 data for authentication
- *
- * @export
- * @param {IAllExecuteFunctions} this
- * @param {string} credentialsType
- * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
- * @returns
- */
-
-export async function requestRenovateToken(
-	this: IAllExecuteFunctions,
-	credentialsType: string,
-	requestOptions:
-		| OptionsWithUrl
-		| OptionsWithUri
-		| requestPromise.RequestPromiseOptions
-		| IHttpRequestOptions,
-	isN8nRequest = false,
-) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as ICredentialDataDecryptedObject;
-
-	if (credentials === undefined) {
-		throw new Error('No credentials were returned!');
-	}
-	if (credentials.sessionToken === '') {
-		Logger.debug('Metabase session token not found. Should revalidate.');
-		const body = {
-			username: credentials.username as string,
-			password: credentials.password as string,
-		};
-		const requestOptionsToken = {
-			url: credentials.authEndpoint,
-			// @ts-ignore
-			baseURL: requestOptions.baseURL,
-			method: 'POST',
-			body,
-			returnFullResponse: true,
-		};
-
-		const test = (await this.helpers.httpRequest(
-			requestOptionsToken as IHttpRequestOptions,
-		)) as any;
-		credentials.sessionToken = test.body.id;
-	}
-
-	// @ts-ignore
-	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
-
-	// @ts-ignore
-	if (requestOptions.uri && !requestOptions.url) {
-		// @ts-ignore
-		requestOptions.url = requestOptions.uri;
-		// @ts-ignore
-		delete requestOptions.uri;
-	}
-	Object.assign(requestOptions.headers, {
-		'X-Metabase-Session': credentials.sessionToken,
-	} as IDataObject);
-
-	if (isN8nRequest) {
-		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
-	}
-
-	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
-		// Unknown error so simply throw it
-		throw error;
-	});
-}
-
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1127,6 +1056,7 @@ export async function httpRequestWithAuthentication(
 ) {
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
 		if (parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
@@ -1140,9 +1070,6 @@ export async function httpRequestWithAuthentication(
 				additionalCredentialOptions?.oauth2,
 				true,
 			);
-		}
-		if (parentTypes.includes('renovateToken')) {
-			return await requestRenovateToken.call(this, credentialsType, requestOptions, true);
 		}
 
 		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
@@ -1206,12 +1133,10 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
-	if (typeof executionData === 'object' && !Array.isArray(executionData)) {
+	if (typeof executionData === 'object' && !Array.isArray(executionData))
 		executionData = [{ json: executionData as IDataObject }];
-	}
-	if (executionData.every((item) => typeof item === 'object' && 'json' in item)) {
+	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
 		return executionData;
-	}
 
 	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
 		throw new Error('Inconsistent item format');
