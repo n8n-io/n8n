@@ -100,6 +100,13 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Amount',
+				name: 'Amount',
+				description: 'Monetary amount of the line item',
+				type: 'number',
+				default: 0,
+			},
+			{
 				displayName: 'Detail Type',
 				name: 'DetailType',
 				type: 'options',
@@ -112,22 +119,6 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item',
-				name: 'itemId',
-				type: 'options',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
-				displayName: 'Amount',
-				name: 'Amount',
-				description: 'Monetary amount of the line item',
-				type: 'number',
-				default: 0,
-			},
-			{
 				displayName: 'Description',
 				name: 'Description',
 				description: 'Textual description of the line item',
@@ -138,11 +129,29 @@ export const invoiceFields: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Item',
+				name: 'itemId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
+				},
+			},
+			{
 				displayName: 'Position',
 				name: 'LineNum',
 				description: 'Position of the line item relative to others',
 				type: 'number',
 				default: 1,
+			},
+			{
+				displayName: 'Tax Code Ref',
+				name: 'TaxCodeRef',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTaxCodeRefs',
+				},
 			},
 		],
 	},

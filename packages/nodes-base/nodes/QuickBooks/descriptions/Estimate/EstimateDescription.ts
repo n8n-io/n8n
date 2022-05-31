@@ -140,6 +140,15 @@ export const estimateFields: INodeProperties[] = [
 				type: 'number',
 				default: 1,
 			},
+			{
+				displayName: 'Tax Code Ref',
+				name: 'TaxCodeRef',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTaxCodeRefs',
+				},
+			},
 		],
 	},
 	{
