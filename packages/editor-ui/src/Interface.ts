@@ -571,15 +571,22 @@ export interface IUserManagementConfig {
 	smtpSetup: boolean;
 }
 
-export interface IPermissionGroup {
+interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
-	custom?: () => boolean;
+}
+
+interface IPermissionAllowGroup extends IPermissionGroup {
+	shouldAllow?: () => boolean;
+}
+
+interface IPermissionDenyGroup extends IPermissionGroup {
+	shouldDeny?: () => boolean;
 }
 
 export interface IPermissions {
-	allow?: IPermissionGroup;
-	deny?: IPermissionGroup;
+	allow?: IPermissionAllowGroup;
+	deny?: IPermissionDenyGroup;
 }
 
 export interface IUserPermissions {
