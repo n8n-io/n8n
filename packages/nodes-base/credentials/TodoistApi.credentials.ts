@@ -1,5 +1,6 @@
 import {
 	IAuthenticateBasicAuth,
+	IAuthenticateBearer,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -21,15 +22,18 @@ export class TodoistApi implements ICredentialType {
 		},
 
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-		return requestOptions;
-	}
+
+	authenticate = {
+		type: 'bearer',
+		properties: {
+			tokenPropertyName: 'apiKey',
+		},
+	} as IAuthenticateBearer;
+
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.todoist.com',
-			url: '/rest/v1/projects',
+			baseURL: 'https://api.todoist.com/rest/v1',
+			url: '/labels',
 		},
 	};
-
 }

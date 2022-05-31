@@ -7,6 +7,7 @@ export const assetOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -122,14 +123,14 @@ export const assetFields: INodeProperties[] = [
 							loadOptionsMethod: 'getAssetTypeFields',
 						},
 						default: '',
-						description: 'The ID of the field to add custom field to.',
+						description: 'The ID of the field to add custom field to',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'The value to set on custom field.',
+						description: 'The value to set on custom field',
 					},
 				],
 			},
@@ -204,7 +205,7 @@ export const assetFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -352,14 +353,14 @@ export const assetFields: INodeProperties[] = [
 							loadOptionsMethod: 'getAssetTypeFields',
 						},
 						default: '',
-						description: 'The ID of the field to add custom field to.',
+						description: 'The ID of the field to add custom field to',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'The value to set on custom field.',
+						description: 'The value to set on custom field',
 					},
 				],
 			},

@@ -38,6 +38,7 @@ export class Brandfetch implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 
 					{
@@ -67,7 +68,6 @@ export class Brandfetch implements INodeType {
 					},
 				],
 				default: 'logo',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------
@@ -78,7 +78,7 @@ export class Brandfetch implements INodeType {
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company.',
+				description: 'The domain name of the company',
 				required: true,
 			},
 			{
@@ -94,7 +94,7 @@ export class Brandfetch implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
 				displayName: 'Image Type',
@@ -153,7 +153,7 @@ export class Brandfetch implements INodeType {
 				default: [
 					'png',
 				],
-				description: 'The image format in which the logo should be returned as.',
+				description: 'The image format in which the logo should be returned as',
 				required: true,
 			},
 		],

@@ -7,6 +7,7 @@ export const channelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,7 +53,6 @@ export const channelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -79,7 +79,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace.',
+		description: 'The ID of the workspace',
 	},
 	{
 		displayName: 'Name',
@@ -97,7 +97,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the channel.',
+		description: 'The name of the channel',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -171,21 +171,21 @@ export const channelFields: INodeProperties[] = [
 					},
 				],
 				default: 0,
-				description: 'The color of the channel.',
+				description: 'The color of the channel',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The description of the channel.',
+				description: 'The description of the channel',
 			},
 			{
 				displayName: 'Public',
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, the channel will be marked as public.',
+				description: 'If enabled, the channel will be marked as public',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
@@ -206,7 +206,7 @@ export const channelFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will participate in the channel.',
+				description: 'The users that will participate in the channel',
 			},
 		],
 	},
@@ -233,7 +233,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the channel.',
+		description: 'The ID of the channel',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -258,7 +258,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace.',
+		description: 'The ID of the workspace',
 	},
 	{
 		displayName: 'Return All',
@@ -275,7 +275,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -299,7 +299,7 @@ export const channelFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -323,7 +323,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only archived conversations are returned.',
+				description: 'If enabled, only archived conversations are returned',
 			},
 		],
 	},
@@ -347,7 +347,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the channel.',
+		description: 'The ID of the channel',
 	},
 	{
 		displayName: 'Update Fields',
@@ -421,28 +421,28 @@ export const channelFields: INodeProperties[] = [
 					},
 				],
 				default: 0,
-				description: 'The color of the channel.',
+				description: 'The color of the channel',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The description of the channel.',
+				description: 'The description of the channel',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the channel.',
+				description: 'The name of the channel',
 			},
 			{
 				displayName: 'Public',
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, the channel will be marked as public.',
+				description: 'If enabled, the channel will be marked as public',
 			},
 		],
 	},

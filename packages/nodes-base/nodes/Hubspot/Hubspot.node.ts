@@ -150,12 +150,12 @@ export class Hubspot implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -187,7 +187,6 @@ export class Hubspot implements INodeType {
 					},
 				],
 				default: 'deal',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

@@ -7,6 +7,7 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -31,6 +32,11 @@ export const accountOperations: INodeProperties[] = [
 				description: 'Create a new account, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an account',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
@@ -43,12 +49,7 @@ export const accountOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of account's metadata.`,
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an account',
+				description: 'Returns an overview of account\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -57,7 +58,6 @@ export const accountOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -88,7 +88,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the account already exists`,
+		description: 'The field to check to see if the account already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -153,16 +153,6 @@ export const accountFields: INodeProperties[] = [
 				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Account Source',
-				name: 'accountSource',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountSources',
-				},
-				default: '',
-				description: 'The source of the account record.',
-			},
-			{
 				displayName: 'Annual Revenue',
 				name: 'annualRevenue',
 				type: 'number',
@@ -170,7 +160,17 @@ export const accountFields: INodeProperties[] = [
 					numberPrecision: 2,
 				},
 				default: '',
-				description: 'Estimated annual revenue of the account.',
+				description: 'Estimated annual revenue of the account',
+			},
+			{
+				displayName: 'Account Source',
+				name: 'accountSource',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountSources',
+				},
+				default: '',
+				description: 'The source of the account record',
 			},
 			{
 				displayName: 'Billing City',
@@ -205,7 +205,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'billingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for the billing address of this account.',
+				description: 'Street address for the billing address of this account',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -215,7 +215,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -230,14 +230,14 @@ export const accountFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -258,7 +258,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'Fax number for the account.',
+				description: 'Fax number for the account',
 			},
 			{
 				displayName: 'Jigsaw',
@@ -288,14 +288,21 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the account.',
+				description: 'The owner of the account',
+			},
+			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				description: 'ID of the parent object, if any',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the account.',
+				description: 'Phone number for the account',
 			},
 			{
 				displayName: 'Record Type ID',
@@ -314,7 +321,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'A brief description of an organization’s line of business, based on its SIC code.',
+				description: 'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
 				displayName: 'Type',
@@ -325,13 +332,6 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccountTypes',
 				},
 				description: 'Type of account',
-			},
-			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
-				default: '',
-				description: 'ID of the parent object, if any.',
 			},
 			{
 				displayName: 'Shipping City',
@@ -397,7 +397,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -431,7 +431,7 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccountSources',
 				},
 				default: '',
-				description: 'The source of the account record.',
+				description: 'The source of the account record',
 			},
 			{
 				displayName: 'Annual Revenue',
@@ -441,7 +441,7 @@ export const accountFields: INodeProperties[] = [
 					numberPrecision: 2,
 				},
 				default: '',
-				description: 'Estimated annual revenue of the account.',
+				description: 'Estimated annual revenue of the account',
 			},
 			{
 				displayName: 'Billing City',
@@ -476,7 +476,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'billingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for the billing address of this account.',
+				description: 'Street address for the billing address of this account',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -486,7 +486,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -501,14 +501,14 @@ export const accountFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -529,7 +529,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'Fax number for the account.',
+				description: 'Fax number for the account',
 			},
 			{
 				displayName: 'Industry',
@@ -546,42 +546,6 @@ export const accountFields: INodeProperties[] = [
 				description: 'References the ID of a company in Data.com',
 			},
 			{
-				displayName: 'Owner',
-				name: 'ownerId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				description: 'The owner of the account.',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'Phone number for the account.',
-			},
-			{
-				displayName: 'Record Type ID',
-				name: 'recordTypeId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getRecordTypes',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountTypes',
-				},
-				description: 'Type of account',
-			},
-			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -595,11 +559,37 @@ export const accountFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Owner',
+				name: 'ownerId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'The owner of the account',
+			},
+			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'ID of the parent object, if any.',
+				description: 'ID of the parent object, if any',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'Phone number for the account',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'SicDesc',
@@ -609,7 +599,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'A brief description of an organization’s line of business, based on its SIC code.',
+				description: 'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
 				displayName: 'Shipping City',
@@ -647,6 +637,16 @@ export const accountFields: INodeProperties[] = [
 				description: 'The street address of the shipping address for this account. Maximum of 255 characters.',
 			},
 			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountTypes',
+				},
+				description: 'Type of account',
+			},
+			{
 				displayName: 'Website',
 				name: 'website',
 				type: 'string',
@@ -675,7 +675,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -697,7 +697,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -718,7 +718,7 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -742,7 +742,7 @@ export const accountFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -776,7 +776,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -797,6 +797,7 @@ export const accountFields: INodeProperties[] = [
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
 									{
 										name: '=',
@@ -853,7 +854,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 	{
 		displayName: 'Title',
@@ -871,7 +872,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Title of the note.',
+		description: 'Title of the note',
 	},
 	{
 		displayName: 'Options',
@@ -905,7 +906,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner',
@@ -915,7 +916,7 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note.',
+				description: 'ID of the user who owns the note',
 			},
 		],
 	},

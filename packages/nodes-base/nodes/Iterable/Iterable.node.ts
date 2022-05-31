@@ -59,6 +59,7 @@ export class Iterable implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -74,7 +75,6 @@ export class Iterable implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,

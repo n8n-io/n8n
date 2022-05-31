@@ -7,6 +7,7 @@ export const hookOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -154,13 +155,12 @@ export const hookFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		required: false,
 		typeOptions: {
 			maxValue: 3000,
 		},
@@ -179,6 +179,6 @@ export const hookFields: INodeProperties[] = [
 			},
 		},
 		default: 1000,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 	},
 ];

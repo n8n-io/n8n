@@ -91,7 +91,7 @@ export class Ftp implements INodeType {
 					},
 				],
 				default: 'ftp',
-				description: 'File transfer protocol.',
+				description: 'File transfer protocol',
 			},
 			{
 				displayName: 'Operation',
@@ -101,31 +101,30 @@ export class Ftp implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a file/folder.',
+						description: 'Delete a file/folder',
 					},
 					{
 						name: 'Download',
 						value: 'download',
-						description: 'Download a file.',
+						description: 'Download a file',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List folder content.',
+						description: 'List folder content',
 					},
 					{
 						name: 'Rename',
 						value: 'rename',
-						description: 'Rename/move oldPath to newPath.',
+						description: 'Rename/move oldPath to newPath',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
-						description: 'Upload a file.',
+						description: 'Upload a file',
 					},
 				],
 				default: 'download',
-				description: 'Operation to perform.',
 				noDataExpression: true,
 			},
 
@@ -167,7 +166,7 @@ export class Ftp implements INodeType {
 						name: 'folder',
 						type: 'boolean',
 						default: false,
-						description: 'When set to true, folders can be deleted.',
+						description: 'When set to true, folders can be deleted',
 						required: true,
 					},
 					{
@@ -182,7 +181,7 @@ export class Ftp implements INodeType {
 						name: 'recursive',
 						type: 'boolean',
 						default: false,
-						description: 'If true, remove all files and directories in target directory.',
+						description: 'If true, remove all files and directories in target directory',
 						required: true,
 					},
 				],
@@ -219,7 +218,7 @@ export class Ftp implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data.',
+				description: 'Object property name which holds binary data',
 				required: true,
 			},
 
@@ -273,7 +272,7 @@ export class Ftp implements INodeType {
 						name: 'createDirectories',
 						type: 'boolean',
 						default: false,
-						description: `Recursively create destination directory when renaming an existing file or folder`,
+						description: 'Recursively create destination directory when renaming an existing file or folder',
 					},
 				],
 			},
@@ -308,7 +307,7 @@ export class Ftp implements INodeType {
 				name: 'binaryData',
 				type: 'boolean',
 				default: true,
-				description: 'The text content of the file to upload.',
+				description: 'The text content of the file to upload',
 			},
 			{
 				displayName: 'Binary Property',
@@ -325,7 +324,7 @@ export class Ftp implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data.',
+				description: 'Object property name which holds binary data',
 				required: true,
 			},
 			{
@@ -343,7 +342,7 @@ export class Ftp implements INodeType {
 				name: 'fileContent',
 				type: 'string',
 				default: '',
-				description: 'The text content of the file to upload.',
+				description: 'The text content of the file to upload',
 			},
 
 			// ----------------------------------
@@ -361,7 +360,7 @@ export class Ftp implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '/',
-				description: 'Path of directory to list contents of.',
+				description: 'Path of directory to list contents of',
 				required: true,
 			},
 			{

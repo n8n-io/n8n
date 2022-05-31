@@ -11,6 +11,7 @@ export const observableOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
@@ -65,7 +66,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,7 +91,7 @@ export const observableFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -381,7 +382,6 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -398,7 +398,6 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Observable Tags',
 				name: 'tags',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
@@ -409,7 +408,6 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -529,7 +527,6 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -568,14 +565,12 @@ export const observableFields: INodeProperties[] = [
 								displayName: 'From date',
 								name: 'fromDate',
 								type: 'dateTime',
-								required: false,
 								default: '',
 							},
 							{
 								displayName: 'To date',
 								name: 'toDate',
 								type: 'dateTime',
-								required: false,
 								default: '',
 							},
 						],

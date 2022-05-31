@@ -5,6 +5,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,7 +17,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'create',
-				description: `Create or update a user profile`,
+				description: 'Create or update a user profile',
 			},
 			{
 				name: 'Alias',
@@ -26,31 +27,30 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Unsubscribe',
 				value: 'unsubscribe',
-				description: 'Unsubscribe a user.',
+				description: 'Unsubscribe a user',
 			},
 			{
 				name: 'Re-subscribe',
 				value: 'resubscribe',
-				description: 'Resubscribe a user.',
+				description: 'Resubscribe a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a user.',
+				description: 'Delete a user',
 			},
 			{
 				name: 'Add Tags',
 				value: 'addTags',
-				description: 'Adds a tag to a users profile.',
+				description: 'Adds a tag to a users profile',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
-				description: 'Removes a tag from a users profile.',
+				description: 'Removes a tag from a users profile',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -116,7 +116,7 @@ export const userFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The table to create the row in.',
+				description: 'The table to create the row in',
 			},
 		],
 	},
@@ -153,14 +153,14 @@ export const userFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
 				],
 			},
@@ -171,7 +171,6 @@ export const userFields: INodeProperties[] = [
 		name: 'dataAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

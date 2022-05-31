@@ -93,11 +93,11 @@ export class FormstackTrigger implements INodeType {
 				description: 'The Formstack form to monitor for new submissions',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

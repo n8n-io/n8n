@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/Update a user',
+				description: 'Create a new user, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -32,7 +33,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -105,7 +105,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Create a new user if the idetifier does not exist.',
+		description: 'Create a new user if the idetifier does not exist',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -143,14 +143,14 @@ export const userFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 							},
 						],
 					},
@@ -161,7 +161,7 @@ export const userFields: INodeProperties[] = [
 				name: 'mergeNestedObjects',
 				type: 'boolean',
 				default: false,
-				description: `Merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}`,
+				description: 'Merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}',
 			},
 		],
 	},

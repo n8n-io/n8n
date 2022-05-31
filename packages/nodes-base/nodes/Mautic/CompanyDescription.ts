@@ -7,6 +7,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const companyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -66,10 +66,10 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the company to create.',
+		description: 'The name of the company to create',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -83,7 +83,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -172,7 +172,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -191,14 +191,14 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 							},
 						],
 					},
@@ -278,10 +278,10 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the company to update.',
+		description: 'The ID of the company to update',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -295,7 +295,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Update Fields',
@@ -390,7 +390,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -409,14 +409,14 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 							},
 						],
 					},
@@ -496,10 +496,10 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the company to return.',
+		description: 'The ID of the company to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -513,7 +513,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -534,7 +534,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -558,10 +558,10 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 30,
 		},
 		default: 30,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -575,7 +575,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -609,7 +609,7 @@ export const companyFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort direction: asc or desc.',
+				description: 'Sort direction: asc or desc',
 			},
 			{
 				displayName: 'Order By',
@@ -626,7 +626,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'String or search command to filter entities by.',
+				description: 'String or search command to filter entities by',
 			},
 		],
 	},
@@ -648,10 +648,10 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the company to delete.',
+		description: 'The ID of the company to delete',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -665,6 +665,6 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

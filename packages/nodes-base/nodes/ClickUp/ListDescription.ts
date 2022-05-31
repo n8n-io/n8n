@@ -7,6 +7,7 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,7 +24,7 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Custom Fields',
 				value: 'customFields',
-				description: `Retrieve list's custom fields`,
+				description: 'Retrieve list\'s custom fields',
 			},
 			{
 				name: 'Delete',
@@ -52,7 +53,6 @@ export const listOperations: INodeProperties[] = [
 			},
 		],
 		default: 'customFields',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -270,7 +270,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -294,7 +294,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                list:customFields                           */
@@ -760,7 +760,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',

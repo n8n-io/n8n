@@ -7,6 +7,7 @@ export const messageLabelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const messageLabelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -50,7 +50,7 @@ export const messageLabelFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The message ID of your email.',
+		description: 'The message ID of your email',
 	},
 	{
 		displayName: 'Label IDs',

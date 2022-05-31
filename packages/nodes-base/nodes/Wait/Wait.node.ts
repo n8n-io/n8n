@@ -123,7 +123,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security.',
+				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security',
 			},
 			{
 				displayName: 'Resume',
@@ -399,7 +399,7 @@ export class Wait implements INodeType {
 				name: 'limitType',
 				type: 'options',
 				default: 'afterTimeInterval',
-				description: `Sets the condition for the execution to resume. Can be a specified date or after some time.`,
+				description: 'Sets the condition for the execution to resume. Can be a specified date or after some time.',
 				displayOptions: {
 					show: {
 						limitWaitTime: [
@@ -588,6 +588,7 @@ export class Wait implements INodeType {
 						},
 						default: '',
 						placeholder: 'application/xml',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{

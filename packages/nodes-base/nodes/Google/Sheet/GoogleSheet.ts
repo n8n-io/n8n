@@ -15,6 +15,8 @@ import {
 	utils as xlsxUtils,
 } from 'xlsx';
 
+import { get } from 'lodash';
+
 export interface ISheetOptions {
 	scope: string[];
 }
@@ -245,8 +247,8 @@ export class GoogleSheet {
 	}
 
 
-	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<string[][]> {
-		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex);
+	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption, usePathForKeyRow: boolean): Promise<string[][]> {
+		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex, usePathForKeyRow);
 		return this.appendData(range, data, valueInputMode);
 	}
 
@@ -344,7 +346,7 @@ export class GoogleSheet {
 			if (itemKey === undefined || itemKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode);
+					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode, false);
 				}
 				continue;
 			}
@@ -354,7 +356,7 @@ export class GoogleSheet {
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode);
+					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode, false);
 				}
 				continue;
 			}
@@ -472,7 +474,7 @@ export class GoogleSheet {
 	}
 
 
-	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number): Promise<string[][]> {
+	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number, usePathForKeyRow: boolean): Promise<string[][]> {
 		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
@@ -501,9 +503,11 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				const data = item[key];
-				if (item.hasOwnProperty(key) && data !== null && typeof data !== 'undefined') {
-					rowData.push(data.toString());
+				const value = get(item, key) as string;
+				if (usePathForKeyRow && value !== undefined && value !== null) { //match by key path
+					rowData.push(value!.toString());
+				} else if (!usePathForKeyRow && item.hasOwnProperty(key) && item[key] !== null && item[key] !== undefined) { //match by exact key name
+					rowData.push(item[key]!.toString());
 				} else {
 					rowData.push('');
 				}
