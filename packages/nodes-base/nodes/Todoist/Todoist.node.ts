@@ -690,6 +690,7 @@ export class Todoist implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
+		const qs: IDataObject = {};
 		const service = new TodoistService();
 		let responseData;
 
