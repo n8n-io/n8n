@@ -88,6 +88,7 @@ import {
 } from './GenericFunctions';
 
 import { associationFields, associationOperations } from './AssociationDescription';
+import { propertyFields, propertyOperations } from './PropertyDescription';
 import { propertyGroupFields, propertyGroupOperations } from './PropertyGroupDescription';
 
 export class Hubspot implements INodeType {
@@ -189,6 +190,10 @@ export class Hubspot implements INodeType {
 						value: 'association',
 					},
 					{
+						name: 'Property',
+						value: 'property',
+					},
+					{
 						name: 'Property Group',
 						value: 'propertyGroup',
 					},
@@ -227,6 +232,9 @@ export class Hubspot implements INodeType {
 			// ASSOCIATION
 			...associationOperations,
 			...associationFields,
+			// PROPERTY
+			...propertyOperations,
+			...propertyFields,
 			// PROPERTY GROUP
 			...propertyGroupOperations,
 			...propertyGroupFields,
@@ -2631,6 +2639,105 @@ export class Hubspot implements INodeType {
 
 							const endpoint = `/crm/v3/properties/${objectType}/groups/${groupName}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+							if (!responseData?.length) {
+								responseData = [{ success: true }];
+							}
+						}
+					}
+					//https://developers.hubspot.com/docs/api/crm/properties
+					if (resource === 'property') {
+						if (operation === 'create') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const propertyName = this.getNodeParameter('propertyName', i) as string;
+							const label = this.getNodeParameter('label', i) as string;
+							const type = this.getNodeParameter('type', i) as string;
+							const fieldType = this.getNodeParameter('fieldType', i) as string;
+							const groupName = this.getNodeParameter('groupName', i) as string;
+							const optionsJson = this.getNodeParameter('optionsJson', i, null) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, any>;
+							const description = additionalFields.description as string;
+							const displayOrder = additionalFields.displayOrder as string;
+							const hasUniqueValue = additionalFields.hasUniqueValue as string;
+							const hidden = additionalFields.hidden as string;
+							const formField = additionalFields.formField as string;
+
+							const options = optionsJson && JSON.parse(optionsJson);
+
+							const parameters = {
+								name: propertyName,
+								label,
+								type,
+								fieldType,
+								groupName,
+								...(options ? { options } : {}),
+								...(description ? { description } : {}),
+								...(displayOrder ? { displayOrder } : {}),
+								...(hasUniqueValue ? { hasUniqueValue } : {}),
+								...(hidden ? { hidden } : {}),
+								...(formField ? { formField } : {}),
+							};
+
+							const endpoint = `/crm/v3/properties/${objectType}`;
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, parameters);
+						}
+						if (operation === 'update') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const propertyName = this.getNodeParameter('propertyName', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
+							const label = additionalFields.label as string;
+							const type = additionalFields.type as string;
+							const fieldType = additionalFields.fieldType as string;
+							const groupName = additionalFields.groupName as string;
+							const optionsJson = additionalFields.optionsJson as string;
+							const description = additionalFields.description as string;
+							const displayOrder = additionalFields.displayOrder as string;
+							const hidden = additionalFields.hidden as string;
+							const formField = additionalFields.formField as string;
+
+							const options = optionsJson && JSON.parse(optionsJson);
+
+							const parameters = {
+								...(label ? { label } : {}),
+								...(type ? { type } : {}),
+								...(fieldType ? { fieldType } : {}),
+								...(groupName ? { groupName } : {}),
+								...(options ? { options } : {}),
+								...(description ? { description } : {}),
+								...(displayOrder ? { displayOrder } : {}),
+								...(hidden ? { hidden } : {}),
+								...(formField ? { formField } : {}),
+							};
+
+							const endpoint = `/crm/v3/properties/${objectType}/${propertyName}`;
+							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, parameters);
+						}
+						if (operation === 'get') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const propertyName = this.getNodeParameter('propertyName', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
+							const archived = additionalFields.archived as boolean;
+
+							const endpoint = `/crm/v3/properties/${objectType}/${propertyName}`;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, archived != null ? { archived } : {});
+						}
+						if (operation === 'getAll') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
+							const archived = additionalFields.archived as boolean;
+
+							const endpoint = `/crm/v3/properties/${objectType}`;
+							const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, archived != null ? { archived } : {});
+							responseData = response?.results || [];
+						}
+						if (operation === 'delete') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const propertyName = this.getNodeParameter('propertyName', i) as string;
+
+							const endpoint = `/crm/v3/properties/${objectType}/${propertyName}`;
+							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+							if (!responseData?.length) {
+								responseData = [{ success: true }];
+							}
 						}
 					}
 					//https://developers.hubspot.com/docs/methods/deals/deals_overview
