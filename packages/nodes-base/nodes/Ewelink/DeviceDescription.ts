@@ -17,19 +17,9 @@ export const deviceOperations: INodeProperties[] = [
 		},
 		options: [
 				{
-					name: 'Get Devices',
-					value: 'getDevices',
-					description: 'Get all devices',
-				},
-				{
-						name: 'Get Device',
-						value: 'getDevice',
-						description: 'Get device by ID',
-				},
-				{
-					name: 'Get Power State',
+					name: 'Get Channel Count',
 					value: 'getDeviceChannelCount',
-					description: 'Get Device Power State',
+					description: 'Get Device Channel Count',
 				},
 				{
 					name: 'Get Current Humidity',
@@ -47,9 +37,14 @@ export const deviceOperations: INodeProperties[] = [
 					description: 'Get Device Current Temperature',
 				},
 				{
-					name: 'Get Power Usage',
-					value: 'getDevicePowerUsage',
-					description: 'Get Device Power Usage',
+					name: 'Get Device',
+					value: 'getDevice',
+					description: 'Get device by ID',
+				},
+				{
+					name: 'Get Devices',
+					value: 'getDevices',
+					description: 'Get all devices',
 				},
 				{
 					name: 'Get Firmware Version',
@@ -57,22 +52,25 @@ export const deviceOperations: INodeProperties[] = [
 					description: 'Get Device Firmware Version',
 				},
 				{
-					name: 'Get Device Power State',
+					name: 'Get Power State',
 					value: 'getDevicePowerState',
-					description: 'Get Power State',
+					description: 'Get Device Power State',
 				},
 				{
-					name: 'Toggle Device State',
-					value: 'toggleDevice',
-					description: 'Toggle Device Power State',
+					name: 'Get Power Usage',
+					value: 'getDevicePowerUsage',
+					description: 'Get Device Power Usage',
 				},
 				{
-					name: 'Set Device State',
+					name: 'Set Power State',
 					value: 'setDevicePowerState',
 					description: 'Set Device Power State',
 				},
-
-
+				{
+					name: 'Toggle State',
+					value: 'toggleDevice',
+					description: 'Toggle Device Power State',
+				},
 		],
 		default: 'getDevices',
 	},
@@ -96,7 +94,7 @@ export const deviceFields: INodeProperties[] = [
 								'getDevicePowerUsage',
 								'getFirmwareVersion',
 								'toggleDevice',
-								'setDevicePowerState'
+								'setDevicePowerState',
 						],
 						resource: [
 								'device',
@@ -114,7 +112,7 @@ export const deviceFields: INodeProperties[] = [
 		displayOptions: {
 				show: {
 						operation: [
-								'setDevicePowerState'
+								'setDevicePowerState',
 						],
 						resource: [
 								'device',
