@@ -61,26 +61,26 @@ export class Metabase implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Questions',
+						name: 'Question',
 						value: 'questions',
 					},
 					{
-						name: 'Metrics',
+						name: 'Metric',
 						value: 'metrics',
 					},
 					{
-						name: 'Databases',
+						name: 'Database',
 						value: 'databases',
 					},
 					{
-						name: 'Alerts',
+						name: 'Alert',
 						value: 'alerts',
 					},
 				],
 				default: 'questions',
-				description: 'The resource to operate on.',
 			},
 			...questionsOperations,
 			...questionsFields,
