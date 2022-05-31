@@ -37,8 +37,8 @@ function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IW
 	for (const workflow of workflows) {
 		if (
 			typeof workflow !== 'object' ||
-			Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
-			Object.prototype.hasOwnProperty.call(workflow, 'connections')
+			!Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
+			!Object.prototype.hasOwnProperty.call(workflow, 'connections')
 		) {
 			throw new Error('File does not seem to contain valid workflows.');
 		}
