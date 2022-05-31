@@ -13,6 +13,7 @@ import { AddExecutionEntityIndexes1644421939510 } from './1644421939510-AddExecu
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
+import { IntroducePinData1654002187508 } from './1654002187508-IntroducePinData';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -28,6 +29,7 @@ const sqliteMigrations = [
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
+	IntroducePinData1654002187508,
 ];
 
 export { sqliteMigrations };

@@ -10,6 +10,7 @@ import { Role } from './Role';
 import { Settings } from './Settings';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
+import { PinData } from './PinData';
 
 export const entities = {
 	CredentialsEntity,
@@ -22,4 +23,5 @@ export const entities = {
 	Settings,
 	SharedWorkflow,
 	SharedCredentials,
+	PinData,
 };
