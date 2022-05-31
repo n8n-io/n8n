@@ -119,34 +119,32 @@ export class Github implements INodeType {
 				default: 'issue',
 			},
 
-
-
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
 
-		{
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
-						show: {
-								resource: [
-										'organization',
-								],
+					show: {
+						resource: [
+							'organization',
+						],
 
-						},
+					},
 				},
 				options: [
-						{
-								name: 'Get all Repositories',
-								value: 'getRepositories',
-								description: 'Returns all repositories of an organization',
-						},
+					{
+						name: 'Get all Repositories',
+						value: 'getRepositories',
+						description: 'Returns all repositories of an organization',
+					},
 				],
 				default: 'getRepositories',
-				description: 'The operation to perform.',
-		},
+			},
 
 			{
 				displayName: 'Operation',
