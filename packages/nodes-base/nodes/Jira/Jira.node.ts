@@ -1,3 +1,8 @@
+
+import {
+	mergeWith,
+} from 'lodash';
+
 import {
 	OptionsWithUri,
 } from 'request';
@@ -657,7 +662,10 @@ export class Jira implements INodeType {
 							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
 							responseData.renderedFields && Object.keys(responseData.renderedFields).length
 						) {
-							responseData.fields = responseData.renderedFields;
+							responseData.fields = mergeWith(
+								responseData.fields,
+								responseData.renderedFields,
+								(a,b) => b === null ? a : b);
 						}
 						returnData.push(simplifyIssueOutput(responseData));
 					} else {
