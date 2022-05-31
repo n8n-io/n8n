@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -801,7 +802,31 @@ export class Telegram implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property that contains the data to upload',
 			},
-
+			{
+				displayName: 'File Name',
+				name: 'fileName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation',
+							'sendAudio',
+							'sendDocument',
+							'sendPhoto',
+							'sendVideo',
+							'sendSticker',
+						],
+						resource: [
+							'message',
+						],
+						binaryData: [
+							true,
+						],
+					},
+				},
+			},
 			{
 				displayName: 'Message ID',
 				name: 'messageId',
@@ -2186,6 +2211,7 @@ export class Telegram implements INodeType {
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
+					const fileName = this.getNodeParameter('fileName',0) as string;
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
@@ -2194,12 +2220,17 @@ export class Telegram implements INodeType {
 						[propertyName]: {
 							value: dataBuffer,
 							options: {
-								filename: binaryData.fileName,
+								filename: fileName,
 								contentType: binaryData.mimeType,
 							},
 						},
 					};
-					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+
+					const formDataOptions = new FormData(formData);
+
+					const options = {headers: formDataOptions.getHeaders(), formData};
+
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, options);
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
