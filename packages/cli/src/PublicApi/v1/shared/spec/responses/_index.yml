@@ -1,4 +1,4 @@
 NotFound:
-  $ref: './NotFound.yml'
+  $ref: './notFound.yml'
 Unauthorized:
-  $ref: './Unauthorized.yml'
+  $ref: './unauthorized.yml'

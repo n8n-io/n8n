@@ -2,4 +2,4 @@ description: The specified resource was not found.
 content:
   application/json:
     schema:
-      $ref: '../schemas/Error.yml'
+      $ref: '../schemas/error.yml'
