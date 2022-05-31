@@ -11,6 +11,8 @@ export class LowerCaseUserEmail1648740597343 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		await queryRunner.query(`
 			UPDATE ${tablePrefix}user
 			SET email = LOWER(email);
