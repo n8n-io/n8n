@@ -33,6 +33,16 @@ function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IW
 			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
 		);
 	}
+
+	for (const workflow of workflows) {
+		if (
+			typeof workflow !== 'object' ||
+			Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
+			Object.prototype.hasOwnProperty.call(workflow, 'connections')
+		) {
+			throw new Error('File does not seem to contain valid workflows.');
+		}
+	}
 }
 
 export class ImportWorkflowsCommand extends Command {
