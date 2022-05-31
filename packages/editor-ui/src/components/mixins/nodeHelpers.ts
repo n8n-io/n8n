@@ -1,6 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	CUSTOM_API_CALL_KEY,
 } from '@/constants';
 
 import {
@@ -43,8 +44,19 @@ export const nodeHelpers = mixins(
 			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
-			isHttpRequestNodeV2 (node: INodeUi): boolean {
-				return node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 2;
+			hasProxyAuth (node: INodeUi): boolean {
+				return Object.keys(node.parameters).includes('nodeCredentialType');
+			},
+
+			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
+				const { parameters } = nodeValues;
+
+				if (!isObjectLiteral(parameters)) return false;
+
+				return (
+					parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY) ||
+					parameters.operation !== undefined && parameters.operation.includes(CUSTOM_API_CALL_KEY)
+				);
 			},
 
 			// Returns the parameter value
@@ -225,14 +237,14 @@ export const nodeHelpers = mixins(
 				let selectedCredentials: INodeCredentialsDetails;
 
 				const {
-					authenticateWith,
+					authentication,
 					genericAuthType,
 					nodeCredentialType,
 				} = node.parameters as HttpRequestNode.V2.AuthParams;
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
-					authenticateWith === 'genericAuth' &&
+					authentication === 'genericCredentialType' &&
+					genericAuthType !== '' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
 					const credential = this.getCredentialTypeByName(genericAuthType);
@@ -240,8 +252,8 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
-					authenticateWith === 'nodeCredential' &&
+					this.hasProxyAuth(node) &&
+					authentication === 'predefinedCredentialType' &&
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
@@ -254,8 +266,8 @@ export const nodeHelpers = mixins(
 				}
 
 				if (
-					this.isHttpRequestNodeV2(node) &&
-					authenticateWith === 'nodeCredential' &&
+					this.hasProxyAuth(node) &&
+					authentication === 'predefinedCredentialType' &&
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
@@ -421,6 +433,10 @@ export const nodeHelpers = mixins(
 			},
 			// @ts-ignore
 			getNodeSubtitle (data, nodeType, workflow): string | undefined {
+				if (!data) {
+					return undefined;
+				}
+
 				if (data.notesInFlow) {
 					return data.notes;
 				}
@@ -489,9 +505,13 @@ function selectedCredsDoNotExist(
 declare namespace HttpRequestNode {
 	namespace V2 {
 		type AuthParams = {
-			authenticateWith: 'none' | 'genericAuth' | 'nodeCredential';
+			authentication: 'none' | 'genericCredentialType' | 'predefinedCredentialType';
 			genericAuthType: string;
 			nodeCredentialType: string;
 		};
 	}
+}
+
+function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
+	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
 }

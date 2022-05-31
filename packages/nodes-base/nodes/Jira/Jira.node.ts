@@ -116,6 +116,7 @@ export class Jira implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Issue',
@@ -139,7 +140,6 @@ export class Jira implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'Resource to consume.',
 			},
 			...issueOperations,
 			...issueFields,

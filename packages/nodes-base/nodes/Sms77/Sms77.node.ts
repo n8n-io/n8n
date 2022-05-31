@@ -39,8 +39,10 @@ export class Sms77 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -50,7 +52,6 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 
 			// operations
@@ -58,6 +59,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -73,12 +75,12 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -94,7 +96,6 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'From',

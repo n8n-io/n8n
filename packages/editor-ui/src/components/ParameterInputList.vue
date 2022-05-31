@@ -20,8 +20,6 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
-				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
 			/>
 
 			<div
@@ -103,6 +101,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -132,7 +131,7 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.isHttpRequestNodeV2(this.node)) return 2;
+				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
 
 				return 0;
 			},
@@ -171,8 +170,24 @@ export default mixins(
 
 				this.$emit('valueChanged', parameterData);
 			},
+
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
+					return false;
+				}
+
+				if (
+					this.isCustomApiCallSelected(this.nodeValues) &&
+					this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+				) {
 					return false;
 				}
 
@@ -268,11 +283,6 @@ export default mixins(
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-
-	div:first-child > .node-credentials {
-		padding-top: var(--spacing-xs);
-	}
-
 	.delete-option {
 		display: none;
 		position: absolute;

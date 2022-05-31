@@ -7,6 +7,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 

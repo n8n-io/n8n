@@ -7,6 +7,7 @@ export const coinOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -523,10 +524,6 @@ export const coinFields: INodeProperties[] = [
 						value: 'market_cap_asc',
 					},
 					{
-						name: 'Market Cap Desc',
-						value: 'market_cap_desc',
-					},
-					{
 						name: 'Volume Asc',
 						value: 'volume_asc',
 					},
@@ -535,11 +532,11 @@ export const coinFields: INodeProperties[] = [
 						value: 'volume_desc',
 					},
 					{
-						name: 'Id Asc',
+						name: 'ID Asc',
 						value: 'id_asc',
 					},
 					{
-						name: 'Id Desc',
+						name: 'ID Desc',
 						value: 'id_desc',
 					},
 				],

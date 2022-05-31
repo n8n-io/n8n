@@ -11,6 +11,7 @@ import { AddExecutionEntityIndexes1644422880309 } from './1644422880309-AddExecu
 import { IncreaseTypeVarcharLimit1646834195327 } from './1646834195327-IncreaseTypeVarcharLimit';
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
+import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -26,4 +27,5 @@ export const postgresMigrations = [
 	IncreaseTypeVarcharLimit1646834195327,
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
+	AddUserSettings1652367743993,
 ];

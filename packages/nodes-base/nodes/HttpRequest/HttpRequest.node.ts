@@ -51,7 +51,7 @@ export class HttpRequest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authenticateWith: [
+						authentication: [
 							'httpBasicAuth',
 						],
 						'@version': [
@@ -65,7 +65,7 @@ export class HttpRequest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authenticateWith: [
+						authentication: [
 							'httpDigestAuth',
 						],
 						'@version': [
@@ -79,7 +79,7 @@ export class HttpRequest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authenticateWith: [
+						authentication: [
 							'httpHeaderAuth',
 						],
 						'@version': [
@@ -93,7 +93,7 @@ export class HttpRequest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authenticateWith: [
+						authentication: [
 							'httpQueryAuth',
 						],
 						'@version': [
@@ -107,7 +107,7 @@ export class HttpRequest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authenticateWith: [
+						authentication: [
 							'oAuth1Api',
 						],
 						'@version': [
@@ -121,7 +121,7 @@ export class HttpRequest implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authenticateWith: [
+						authentication: [
 							'oAuth2Api',
 						],
 						'@version': [
@@ -221,24 +221,25 @@ export class HttpRequest implements INodeType {
 			//           v2 params
 			// ----------------------------------
 			{
-				displayName: 'Authenticate with',
-				name: 'authenticateWith',
+				displayName: 'Authentication',
+				name: 'authentication',
+				noDataExpression: true,
 				type: 'options',
 				required: true,
 				options: [
 					{
-						name: 'Node Credential',
-						value: 'nodeCredential',
-						description: 'Easiest. Use a credential from another node, like Google Sheets.',
-					},
-					{
-						name: 'Generic Auth',
-						value: 'genericAuth',
-						description: 'Fully customizable. Choose between Basic, Header, OAuth2 and more.',
-					},
-					{
 						name: 'None',
 						value: 'none',
+					},
+					{
+						name: 'Predefined Credential Type',
+						value: 'predefinedCredentialType',
+						description: 'We\'ve already implemented auth for many services so that you don\'t have to set it up manually',
+					},
+					{
+						name: 'Generic Credential Type',
+						value: 'genericCredentialType',
+						description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
 					},
 				],
 				default: 'none',
@@ -251,19 +252,21 @@ export class HttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Node Credential Type',
+				displayName: 'Credential Type',
 				name: 'nodeCredentialType',
-				type: 'options',
+				type: 'credentialsSelect',
+				noDataExpression: true,
 				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getNodeCredentialTypes',
-				},
 				default: '',
-				placeholder: 'None',
+				credentialTypes: [
+					'extends:oAuth2Api',
+					'extends:oAuth1Api',
+					'has:authenticate',
+				],
 				displayOptions: {
 					show: {
-						authenticateWith: [
-							'nodeCredential',
+						authentication: [
+							'predefinedCredentialType',
 						],
 						'@version': [
 							2,
@@ -274,39 +277,16 @@ export class HttpRequest implements INodeType {
 			{
 				displayName: 'Generic Auth Type',
 				name: 'genericAuthType',
-				type: 'options',
+				type: 'credentialsSelect',
 				required: true,
-				options: [
-					{
-						name: 'Basic Auth',
-						value: 'httpBasicAuth',
-					},
-					{
-						name: 'Digest Auth',
-						value: 'httpDigestAuth',
-					},
-					{
-						name: 'Header Auth',
-						value: 'httpHeaderAuth',
-					},
-					{
-						name: 'Query Auth',
-						value: 'httpQueryAuth',
-					},
-					{
-						name: 'OAuth1',
-						value: 'oAuth1Api',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2Api',
-					},
+				default: '',
+				credentialTypes: [
+					'has:genericAuth',
 				],
-				default: 'httpBasicAuth',
 				displayOptions: {
 					show: {
-						authenticateWith: [
-							'genericAuth',
+						authentication: [
+							'genericCredentialType',
 						],
 						'@version': [
 							2,
@@ -353,7 +333,7 @@ export class HttpRequest implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 				displayOptions: {
 					show: {
 						'@version': [
@@ -864,14 +844,6 @@ export class HttpRequest implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			getNodeCredentialTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return Promise.resolve(CREDENTIAL_TYPES);
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -882,13 +854,13 @@ export class HttpRequest implements INodeType {
 			'statusMessage',
 		];
 
-		let authenticateWith;
+		let authentication;
 		const nodeVersion = this.getNode().typeVersion;
 
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 		try {
-			authenticateWith = this.getNodeParameter('authenticateWith', 0) as 'nodeCredential' | 'genericAuth' | 'none';
+			authentication = this.getNodeParameter('authentication', 0) as 'predefinedCredentialType' | 'genericCredentialType' | 'none';
 		} catch (_) {}
 
 		let httpBasicAuth;
@@ -899,7 +871,7 @@ export class HttpRequest implements INodeType {
 		let oAuth2Api;
 		let nodeCredentialType;
 
-		if (authenticateWith === 'genericAuth' || nodeVersion === 1) {
+		if (authentication === 'genericCredentialType' || nodeVersion === 1) {
 			try {
 				httpBasicAuth = await this.getCredentials('httpBasicAuth');
 			} catch (_) {}
@@ -918,7 +890,7 @@ export class HttpRequest implements INodeType {
 			try {
 				oAuth2Api = await this.getCredentials('oAuth2Api');
 			} catch (_) {}
-		} else if (authenticateWith === 'nodeCredential') {
+		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			} catch (_) {}
@@ -1215,8 +1187,8 @@ export class HttpRequest implements INodeType {
 			} catch (e) { }
 
 			if (
-				authenticateWith === 'genericAuth' ||
-				authenticateWith === 'none' ||
+				authentication === 'genericCredentialType' ||
+				authentication === 'none' ||
 				nodeVersion === 1
 			) {
 				if (oAuth1Api) {
@@ -1233,7 +1205,7 @@ export class HttpRequest implements INodeType {
 						this.helpers.request(requestOptions),
 					);
 				}
-			} else if (authenticateWith === 'nodeCredential' && nodeCredentialType) {
+			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
 					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),

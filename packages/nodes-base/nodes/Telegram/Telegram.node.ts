@@ -46,6 +46,7 @@ export class Telegram implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					// {
 					// 	name: 'Bot',
@@ -69,7 +70,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -106,6 +106,7 @@ export class Telegram implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -146,13 +147,13 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -173,12 +174,12 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'answerQuery',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -194,13 +195,13 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -281,7 +282,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 
 

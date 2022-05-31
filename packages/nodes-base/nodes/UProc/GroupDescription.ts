@@ -12,7 +12,6 @@ const finalGroups = {
 	name: 'group',
 	type: 'options',
 	default: 'communication',
-	description: 'The Resource to consume.',
 	options: [],
 };
 
