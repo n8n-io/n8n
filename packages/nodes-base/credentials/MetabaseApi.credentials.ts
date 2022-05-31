@@ -46,7 +46,6 @@ export class MetabaseApi implements ICredentialType {
 					if (!forcedRefresh && credentials.sessionToken) {
 							return {};
 					}
-					//make reques to get session token
 					const { id } = await this.helpers.httpRequest({
 							method: 'POST',
 							url: `${credentials.url}/api/session`,
@@ -54,13 +53,13 @@ export class MetabaseApi implements ICredentialType {
 									username: credentials.username,
 									password: credentials.password,
 							}
-					}) as { id: string }
+					}) as { id: string };
 
 					return { sessionToken: id};
 	}
 
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-			requestOptions.headers!['X-Metabase-Session'] = credentials.sessionToken
+			requestOptions.headers!['X-Metabase-Session'] = credentials.sessionToken;
 			return requestOptions;
 	}
 }
