@@ -14,31 +14,31 @@ export const propertyOperations: INodeProperties[] = [
             {
                 name: 'Create',
                 value: 'create',
-                description: 'Create a property',
+                description: 'Create and return a copy of a new property for the specified object type.',
             },
             {
                 name: 'Get',
                 value: 'get',
-                description: 'Read a property',
+                description: 'Read a property identified by {propertyName}.',
             },
             {
                 name: 'Get All',
                 value: 'getAll',
-                description: 'Read all properties of a type',
+                description: 'Read all existing properties for the specified object type.',
             },
             {
                 name: 'Update',
                 value: 'update',
-                description: 'Update a property',
+                description: 'Perform a partial update of a property identified by {propertyName}. Provided fields will be overwritten.',
             },
             {
                 name: 'Delete',
                 value: 'delete',
-                description: 'Archive a property',
+                description: 'Move a property identified by {propertyName} to the recycling bin.',
             },
         ],
         default: 'get',
-        description: 'The operation to perform.',
+        description: 'All HubSpot objects store data in default and custom properties. These endpoints provide access to read and modify object properties in HubSpot.',
     },
 ];
 
@@ -65,13 +65,17 @@ export const propertyFields: INodeProperties[] = [
     {
         displayName: 'Property name',
         name: 'propertyName',
-        type: 'string',
+        type: 'options',
         required: true,
         displayOptions: {
             show: {
                 resource: ['property'],
                 operation: ['create'],
             },
+        },
+        typeOptions: {
+            loadOptionsDependsOn: ['objectType'],
+            loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
         description:
@@ -307,13 +311,17 @@ export const propertyFields: INodeProperties[] = [
     {
         displayName: 'Property name',
         name: 'propertyName',
-        type: 'string',
+        type: 'options',
         required: true,
         displayOptions: {
             show: {
                 resource: ['property'],
                 operation: ['get'],
             },
+        },
+        typeOptions: {
+            loadOptionsDependsOn: ['objectType'],
+            loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
         description:
@@ -405,13 +413,17 @@ export const propertyFields: INodeProperties[] = [
     {
         displayName: 'Property name',
         name: 'propertyName',
-        type: 'string',
+        type: 'options',
         required: true,
         displayOptions: {
             show: {
                 resource: ['property'],
                 operation: ['update'],
             },
+        },
+        typeOptions: {
+            loadOptionsDependsOn: ['objectType'],
+            loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
         description:
@@ -603,13 +615,17 @@ export const propertyFields: INodeProperties[] = [
     {
         displayName: 'Property name',
         name: 'propertyName',
-        type: 'string',
+        type: 'options',
         required: true,
         displayOptions: {
             show: {
                 resource: ['property'],
                 operation: ['delete'],
             },
+        },
+        typeOptions: {
+            loadOptionsDependsOn: ['objectType'],
+            loadOptionsMethod: 'getAvailableProperties',
         },
         default: '',
         description:

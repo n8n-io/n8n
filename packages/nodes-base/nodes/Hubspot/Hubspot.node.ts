@@ -1143,7 +1143,32 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
+			/* -------------------------------------------------------------------------- */
+			/*                                 Properties                                 */
+			/* -------------------------------------------------------------------------- */
+			// Get all property groups
+			async getAvailableProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const objectType = this.getNodeParameter('objectType', 0) as string;
+				if (!objectType) {
+					return [];
+				}
+				const endpoint = `/crm/v3/properties/${objectType}`;
+				const response = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = response?.results as Array<{ name: string, label: string }> | undefined;
 
+				if (!properties) {
+					return [];
+				}
+
+				for (const property of properties) {
+					returnData.push({
+						name: `${property.label} (${property.name})`,
+						value: property.name,
+					});
+				}
+				return returnData;
+			},
 			/* -------------------------------------------------------------------------- */
 			/*                               Property Groups                              */
 			/* -------------------------------------------------------------------------- */
