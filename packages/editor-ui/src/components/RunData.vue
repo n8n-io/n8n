@@ -40,10 +40,15 @@
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer">
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" :class="$style['actions-group']">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" :circle="false" />
+						<n8n-icon-button
+							:title="$locale.baseText('runData.copyToClipboard')"
+							icon="copy"
+							type="tertiary"
+							:circle="false"
+						/>
 					</span>
 					<el-dropdown-menu slot="dropdown">
 						<el-dropdown-item :command="{command: 'itemPath'}">
@@ -57,7 +62,13 @@
 						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
-				<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="edit" type="tertiary" :circle="false" />
+				<n8n-icon-button
+					:title="$locale.baseText('runData.editValue')"
+					icon="pencil-alt"
+					type="tertiary"
+					:circle="false"
+					@click="enterEditMode"
+				/>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
@@ -128,7 +139,15 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+				<div v-if="editMode.enabled" :class="$style['edit-mode']">
+					<code-editor v-model="editMode.value" />
+					<div>
+						<n8n-button type="tertiary" :label="$locale.baseText('runData.editor.save')" />
+						<n8n-button type="tertiary" :label="$locale.baseText('runData.editor.cancel')" />
+					</div>
+				</div>
 				<vue-json-pretty
+					v-else
 					:data="jsonData"
 					:deep="10"
 					v-model="state.path"
@@ -262,6 +281,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 
 import { saveAs } from 'file-saver';
+import {CodeEditor} from "@/components/forms";
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -279,6 +299,7 @@ export default mixins(
 			NodeErrorView,
 			VueJsonPretty,
 			WarningTooltip,
+			CodeEditor,
 		},
 		props: {
 			nodeUi: {
@@ -333,6 +354,10 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
+				editMode: {
+					enabled: false,
+					value: '',
+				},
 			};
 		},
 		mounted() {
@@ -492,6 +517,10 @@ export default mixins(
 			},
 		},
 		methods: {
+			enterEditMode() {
+				this.editMode.enabled = true;
+				this.editMode.value = JSON.stringify(this.jsonData, null, 2);
+			},
 			switchToBinary() {
 				this.onDisplayModeChange('binary');
 			},
@@ -1083,6 +1112,15 @@ export default mixins(
 	display: flex;
 	justify-content: center;
 	margin-bottom: var(--spacing-s);
+}
+
+.edit-mode {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	align-items: flex-end;
+	padding-right: var(--spacing-s);
 }
 
 </style>
