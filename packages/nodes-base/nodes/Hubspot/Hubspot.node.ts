@@ -2607,7 +2607,12 @@ export class Hubspot implements INodeType {
 								console.log(responseData);
 							} else {
 								const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, { limit });
-								responseData = response.results;
+								const results = response.results.flatMap((result: Record<string, unknown>) => typeof result === 'object' ? [{
+									type: result.type,
+									fromId: objectId,
+									toId: result.id,
+								}] : []);
+								responseData = results;
 							}
 						}
 					}
