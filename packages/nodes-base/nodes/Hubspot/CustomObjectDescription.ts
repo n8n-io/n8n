@@ -471,7 +471,7 @@ export const customObjectFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsDependsOn: ['objectType'],
-			loadOptionsMethod: 'getCustomObjectIdProperties',
+			loadOptionsMethod: 'getUpsertCustomObjectIdProperties',
 		},
 		displayOptions: {
 			show: {
@@ -480,7 +480,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		default: '',
+		default: null,
 		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
 	},
 	{

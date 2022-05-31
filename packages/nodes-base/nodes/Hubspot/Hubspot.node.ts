@@ -1088,6 +1088,36 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
+			// Get all properties that can be used as property id
+			async getUpsertCustomObjectIdProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const objectType = this.getNodeParameter('objectType', 0) as string;
+				if (!objectType) {
+					return [];
+				}
+				const endpoint = `/crm/v3/schemas/${objectType}`;
+				const result = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = result.properties;
+				const idProperties = properties.filter((property: { hasUniqueValue?: boolean }) => property.hasUniqueValue === true);
+
+				if (objectType === '0-1' || objectType === 'contact') {
+					returnData.push({
+						name: 'Email',
+						value: 'email',
+					});
+				}
+
+				for (const property of idProperties) {
+					const propertyLabel = property.label;
+					const propertyValue = property.name;
+					returnData.push({
+						name: propertyLabel,
+						value: propertyValue,
+					});
+				}
+				return returnData;
+			},
+
 		},
 	};
 
@@ -1129,7 +1159,7 @@ export class Hubspot implements INodeType {
 						const results = response.results;
 
 						// results.push(...getErrorsFromBatchResponse(response));
-						if(response.errors && !this.continueOnFail()) {
+						if (response.errors && !this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response.errors);
 						}
 						return [...results, ...response.errors];
