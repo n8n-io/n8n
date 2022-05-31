@@ -15,12 +15,22 @@ export default {
 		},
 		type: {
 			control: 'select',
-			options: ['primary', 'outline', 'light', 'text', 'tertiary'],
+			options: ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'],
 		},
 		size: {
 			control: {
 				type: 'select',
 				options: ['mini', 'small', 'medium', 'large', 'xlarge'],
+			},
+		},
+		outline: {
+			control: {
+				type: 'boolean',
+			},
+		},
+		text: {
+			control: {
+				type: 'boolean',
 			},
 		},
 		loading: {
@@ -31,11 +41,6 @@ export default {
 		icon: {
 			control: {
 				type: 'text',
-			},
-		},
-		circle: {
-			control: {
-				type: 'boolean',
 			},
 		},
 		fullWidth: {

@@ -1,5 +1,7 @@
+/* tslint:disable:variable-name */
 import N8nIconButton from './IconButton.vue';
 import { action } from '@storybook/addon-actions';
+import { StoryFn } from "@storybook/vue";
 
 export default {
 	title: 'Atoms/Icon Button',
@@ -7,16 +9,16 @@ export default {
 	argTypes: {
 		type: {
 			control: 'select',
-			options: ['primary', 'outline', 'light', 'text'],
-		},
-		title: {
-			control: 'text',
+			options: ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'],
 		},
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large', 'xlarge'],
+				options: ['mini', 'small', 'medium', 'large', 'xlarge'],
 			},
+		},
+		title: {
+			control: 'text',
 		},
 		loading: {
 			control: {
@@ -26,12 +28,6 @@ export default {
 		icon: {
 			control: {
 				type: 'text',
-			},
-		},
-		theme: {
-			control: {
-				type: 'select',
-				options: ['success', 'warning', 'danger'],
 			},
 		},
 	},
@@ -44,7 +40,7 @@ const methods = {
 	onClick: action('click'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nIconButton,
@@ -59,7 +55,7 @@ Button.args = {
 	title: 'my title',
 };
 
-const ManyTemplate = (args, { argTypes }) => ({
+const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nIconButton,

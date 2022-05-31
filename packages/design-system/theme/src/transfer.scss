@@ -2,7 +2,6 @@
 @use "mixins/utils";
 @use "./common/var";
 @use "input";
-@use "button";
 @use "checkbox";
 @use "checkbox-group";
 
@@ -15,7 +14,7 @@
 		padding: 0 30px;
 	}
 
-	@include mixins.e(button) {
+	.button {
 		display: block;
 		margin: 0 auto;
 		padding: 10px;

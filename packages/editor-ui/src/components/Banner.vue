@@ -31,7 +31,6 @@
 				:loading="buttonLoading"
 				size="small"
 				outline
-				:transparentBackground="true"
 				@click.stop="onClick"
 			/>
 		</div>

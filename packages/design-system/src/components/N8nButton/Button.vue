@@ -1,49 +1,39 @@
-<template functional>
-	<component
-		:is="$options.components.ElButton"
-		:plain="props.outline"
-		:disabled="props.disabled"
-		:size="props.size"
-		:loading="props.loading"
-		:title="props.title || props.label"
-		:class="$options.getClass(props, $style)"
-		:round="!props.circle && props.round"
-		:circle="props.circle"
-		:style="$options.styles(props)"
-		tabindex="0"
-		@click="(e) => listeners.click && listeners.click(e)"
+<template>
+	<button
+		:class="classes"
+		:disabled="disabled || loading"
+		:aria-disabled="ariaDisabled"
+		:aria-pressed="ariaPressed"
+		:aria-busy="ariaBusy"
+		aria-live="polite"
+		v-on="$listeners"
 	>
-		<span :class="$style.icon" v-if="props.loading || props.icon">
-			<component
-				:is="$options.components.N8nSpinner"
-				v-if="props.loading"
-				:size="props.size"
+		<span :class="$style.icon" v-if="loading || icon">
+			<n8n-spinner
+				v-if="loading"
+				:size="size"
 			/>
-			<component
-				:is="$options.components.N8nIcon"
-				v-else-if="props.icon"
-				:icon="props.icon"
-				:size="props.size"
+			<n8n-icon
+				v-else-if="icon"
+				:icon="icon"
+				:size="size"
 			/>
 		</span>
-		<span v-if="props.label">
-			<slot>{{ props.label }}</slot>
+		<span v-if="label || $slots.default">
+			<slot>{{ label }}</slot>
 		</span>
-	</component>
+	</button>
 </template>
 
 <script lang="ts">
+import Vue from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import ElButton from 'element-ui/lib/button';
 
-export default {
+export default Vue.extend({
 	name: 'n8n-button',
 	props: {
 		label: {
-			type: String,
-		},
-		title: {
 			type: String,
 		},
 		type: {
@@ -66,6 +56,10 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		active: {
+			type: Boolean,
+			default: false,
+		},
 		outline: {
 			type: Boolean,
 			default: false,
@@ -77,11 +71,7 @@ export default {
 		icon: {
 			type: String,
 		},
-		round: {
-			type: Boolean,
-			default: false,
-		},
-		circle: {
+		block: {
 			type: Boolean,
 			default: false,
 		},
@@ -90,42 +80,92 @@ export default {
 			validator: (value: string): boolean =>
 				['left', 'right'].includes(value),
 		},
-		fullWidth: {
-			type: Boolean,
-			default: false,
-		},
-		transparentBackground: {
-			type: Boolean,
-			default: false,
-		},
 	},
 	components: {
-		ElButton,
 		N8nSpinner,
 		N8nIcon,
 	},
-	styles: (props: {
-		fullWidth?: boolean;
-		float?: string;
-	}): { float?: string; width?: string } => {
-		return {
-			...(props.float ? {float: props.float} : {}),
-			...(props.fullWidth ? {width: '100%'} : {}),
-		};
+	computed: {
+		ariaBusy(): string {
+			return this.loading ? 'true' : 'false';
+		},
+		ariaDisabled(): string {
+			return this.disabled ? 'true' : 'false';
+		},
+		ariaPressed(): string {
+			return this.active ? 'true' : 'false';
+		},
+		classes(): string {
+			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
+				`${this.loading ? ` ${this.$style['loading']}` : ''}` +
+				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
+				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
+				`${this.text ? ` ${this.$style['text']}` : ''}` +
+				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
+				`${this.active ? ` ${this.$style['active']}` : ''}` +
+				`${this.block ? ` ${this.$style['block']}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}`;
+		},
 	},
-	getClass(props: { type: string; outline: boolean; text: boolean; transparentBackground: boolean }, $style: any): string {
-		return `${$style['button']} ${$style[props.type]}` +
-			`${props.transparentBackground ? ` ${$style['transparent']}` : ''}` +
-			`${props.outline ? ` ${$style['outline']}` : ''}` +
-			`${props.text ? ` ${$style['text']}` : ''}`;
-	},
-};
+});
 </script>
 
 <style lang="scss" module>
+@use '../../../theme/src/mixins/mixins';
+@use '../../../theme/src/mixins/utils';
+@use '../../../theme/src/mixins/function';
+@use '../../../theme/src/common/var';
 @import "../../utils";
 
+$disabled-border-color: var(--color-foreground-base);
+$loading-overlay-background-color: rgba(255, 255, 255, 0.35);
+
 .button {
+	display: inline-block;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
+
+	border: var(--border-width-base) var.$button-border-color var(--border-style-base);
+	color: var.$button-font-color;
+	background-color: var.$button-background-color;
+	font-weight: var(--font-weight-bold);
+	border-radius: var.$button-border-radius;
+	padding: var.$button-padding-vertical var.$button-padding-horizontal;
+	font-size: var.$button-font-size;
+
+	-webkit-appearance: none;
+	text-align: center;
+	box-sizing: border-box;
+	outline: none;
+	margin: 0;
+	transition: 0.3s;
+
+	@include utils.utils-user-select(none);
+
+	&:hover {
+		color: var.$button-hover-color;
+		border-color: var.$button-hover-border-color;
+		background-color: var.$button-hover-background-color;
+	}
+
+	&:focus {
+		border-color: var.$button-focus-outline-color;
+		outline: var.$focus-outline-width solid var.$button-focus-outline-color;
+	}
+
+	&:active {
+		color: var.$button-active-color;
+		border-color: var.$button-active-border-color;
+		background-color: var.$button-active-background-color;
+		outline: none;
+	}
+
+	&::-moz-focus-inner {
+		border: 0;
+	}
+
 	> i {
 		display: none;
 	}
@@ -141,20 +181,114 @@ export default {
 	}
 }
 
+/**
+ * States
+ */
+
+.loading,
+.active {
+	position: relative;
+	pointer-events: none;
+
+	&:before {
+		pointer-events: none;
+		content: '';
+		position: absolute;
+		left: -1px;
+		top: -1px;
+		right: -1px;
+		bottom: -1px;
+		border-radius: inherit;
+		background-color: $loading-overlay-background-color;
+	}
+}
+
+.disabled {
+	&,
+	&:hover,
+	&:active,
+	&:focus {
+		cursor: not-allowed;
+		background-image: none;
+		color: var.$button-disabled-font-color;
+		background-color: var.$button-disabled-background-color;
+		border-color: var.$button-disabled-border-color;
+	}
+}
+
+/**
+ * Sizes
+ */
+
+.mini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-2xs);
+	--button-font-size: var(--font-size-2xs);
+
+	&.icon-button {
+		height: 22px;
+		width: 22px;
+	}
+}
+
+.small {
+	--button-padding-vertical: var(--spacing-3xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	&.icon-button {
+		height: 26px;
+		width: 26px;
+	}
+}
+
+.medium {
+	--button-padding-vertical: var(--spacing-2xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	&.icon-button {
+		height: 32px;
+		width: 32px;
+	}
+}
+
+.large {
+	&.icon-button {
+		height: 42px;
+		width: 42px;
+	}
+}
+
+.xlarge {
+	--button-padding-vertical: var(--spacing-xs);
+	--button-padding-horizontal: var(--spacing-s);
+	--button-font-size: var(--font-size-m);
+
+	&.icon-button {
+		height: 46px;
+		width: 46px;
+	}
+}
+
+/**
+ * Colors
+ */
+
 .secondary {
 	--button-color: var(--color-primary);
 	--button-border-color: var(--color-primary);
 	--button-background-color: var(--color-white);
 
-	--button-active-background-color: var(--color-primary-900);
+	--button-active-background-color: var(--color-primary-tint-2);
 	--button-active-color: var(--color-primary);
 	--button-active-border-color: var(--color-primary);
 
-	--button-hover-background-color: var(--color-primary-950);
+	--button-hover-background-color: var(--color-primary-tint-3);
 	--button-hover-color: var(--color-primary);
 	--button-hover-border-color: var(--color-primary);
 
-	--button-focus-outline-color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-600-l), 0.33);
+	--button-focus-outline-color: var(--color-primary-tint-1);
 }
 
 .tertiary {
@@ -218,10 +352,14 @@ export default {
 	--button-focus-outline-color: hsla(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l), 0.33);
 }
 
+/**
+ * Modifiers
+ */
+
 .outline {
-	--button-background-color: var(--color-foreground-xlight);
-	--button-disabled-background-color: var(--color-foreground-xlight);
-	--button-active-background-color: var(--color-foreground-xlight);
+	--button-background-color: transparent;
+	--button-disabled-background-color: transparent;
+	--button-active-background-color: transparent;
 
 	&.primary {
 		--button-color: var(--color-primary);
@@ -303,5 +441,17 @@ export default {
 	svg {
 		display: block;
 	}
+}
+
+.block {
+	width: 100%;
+}
+
+.float-left {
+	float: left;
+}
+
+.float-right {
+	float: right;
 }
 </style>

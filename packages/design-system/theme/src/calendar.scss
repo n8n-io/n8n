@@ -1,6 +1,5 @@
 @use "mixins/mixins";
 @use "./common/var";
-@use "button";
 @use "button-group";
 
 @include mixins.b(calendar) {

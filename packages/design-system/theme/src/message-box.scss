@@ -2,7 +2,6 @@
 @use "mixins/button";
 @use "./common/var";
 @use "common/popup";
-@use "button" as buttons;
 @use "input";
 
 @include mixins.b(message-box) {
