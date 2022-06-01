@@ -30,6 +30,11 @@ import {
 } from './ProjectInterfaces';
 
 import {
+	clientFields,
+	clientOperations,
+} from './ClientDescription';
+
+import {
 	projectFields,
 	projectOperations,
 } from './ProjectDescription';
@@ -48,6 +53,15 @@ import {
 	timeEntryFields,
 	timeEntryOperations,
 } from './TimeEntryDescription';
+
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
+	workspaceOperations,
+} from './WorkspaceDescription';
 
 import moment from 'moment-timezone';
 
@@ -79,6 +93,10 @@ export class Clockify implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Client',
+						value: 'client',
+					},
+					{
 						name: 'Project',
 						value: 'project',
 					},
@@ -94,13 +112,24 @@ export class Clockify implements INodeType {
 						name: 'Time Entry',
 						value: 'timeEntry',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
+					{
+						name: 'Workspace',
+						value: 'workspace',
+					},
 				],
 				default: 'project',
 			},
+			...clientOperations,
 			...projectOperations,
 			...tagOperations,
 			...taskOperations,
 			...timeEntryOperations,
+			...userOperations,
+			...workspaceOperations,
 			{
 				displayName: 'Workspace ID',
 				name: 'workspaceId',
@@ -110,10 +139,19 @@ export class Clockify implements INodeType {
 				},
 				required: true,
 				default: [],
+				displayOptions: {
+					hide: {
+						resource: [
+							'workspace',
+						],
+					},
+				},
 			},
+			...clientFields,
 			...projectFields,
 			...tagFields,
 			...taskFields,
+			...userFields,
 			...timeEntryFields,
 		],
 	};
@@ -242,8 +280,127 @@ export class Clockify implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-
 			try {
+				if (resource === 'client') {
+
+
+					if (operation === 'create') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const name = this.getNodeParameter('name', i) as string;
+						const address = this.getNodeParameter('address', i, '') as string;
+
+						const body: IDataObject = {
+							name,
+							address,
+						};
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'POST',
+							`/workspaces/${workspaceId}/clients`,
+							body,
+							qs,
+						);
+					}
+
+
+					if (operation === 'delete') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const clientId = this.getNodeParameter('clientId', i) as string;
+
+						await clockifyApiRequest.call(
+							this,
+							'DELETE',
+							`/workspaces/${workspaceId}/clients/${clientId}`,
+							{},
+							qs,
+						);
+
+						responseData = { success: true };
+					}
+
+					if (operation === 'update') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const clientId = this.getNodeParameter('clientId', i) as string;
+
+						const archived = this.getNodeParameter('archived', i, false) as boolean;
+						const name = this.getNodeParameter('name', i) as string;
+						const address = this.getNodeParameter('address', i, '') as string;
+
+						const body: IDataObject = {
+							archived,
+							name,
+							address,
+						};
+
+						console.log(`\nbody: ${JSON.stringify(body,null,2)}`);
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'PUT',
+							`/workspaces/${workspaceId}/clients/${clientId}`,
+							body,
+							qs,
+						);
+					}
+
+					if (operation === 'get') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const clientId = this.getNodeParameter('clientId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'GET',
+							`/workspaces/${workspaceId}/clients/${clientId}`,
+							{},
+							qs,
+						);
+					}
+
+					if (operation === 'getAll') {
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(qs, additionalFields);
+
+						if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/clients`,
+								{},
+								qs,
+							);
+
+						} else {
+
+							qs.limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/clients`,
+								{},
+								qs,
+							);
+
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+				}
+
 				if (resource === 'project') {
 
 					if (operation === 'create') {
@@ -723,6 +880,57 @@ export class Clockify implements INodeType {
 							'PUT',
 							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 							body,
+							qs,
+						);
+					}
+				}
+
+				if (resource === 'user') {
+
+					if (operation === 'getAll') {
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(qs, additionalFields);
+
+						if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/users`,
+								{},
+								qs,
+							);
+
+						} else {
+
+							qs.limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/users`,
+								{},
+								qs,
+							);
+
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+				}
+
+				if (resource === 'workspace') {
+					if (operation === 'getAll') {
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'GET',
+							'/workspaces',
+							{},
 							qs,
 						);
 					}
