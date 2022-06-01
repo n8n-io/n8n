@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
+		<div :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
 		<div :class="$style.outputPanel" :style="outputPanelStyles">
@@ -29,6 +29,8 @@ import PanelDragButton from './PanelDragButton.vue';
 
 const MAIN_PANEL_WIDTH = 360;
 const SIDE_MARGIN = 24;
+const TRIGGER_PANEL_WIDTH = 320;
+const MINIMUM_INPUT_PANEL_WIDTH = 320;
 
 export default Vue.extend({
 	name: 'NDVDraggablePanels',
@@ -57,7 +59,7 @@ export default Vue.extend({
 	computed: {
 		mainPanelPosition(): number {
 			if (this.isTriggerNode) {
-				return 0;
+				return TRIGGER_PANEL_WIDTH + MAIN_PANEL_WIDTH / 2 + SIDE_MARGIN;
 			}
 
 			const relativePosition = this.$store.getters['ui/mainPanelPosition'] as number;
@@ -93,6 +95,12 @@ export default Vue.extend({
 			};
 		},
 		inputPanelStyles(): { width: string } {
+			if (this.isTriggerNode) {
+				return {
+					width: '320px',
+				};
+			}
+
 			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
 			width = Math.min(
 				width,
@@ -109,7 +117,7 @@ export default Vue.extend({
 				width,
 				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
 			);
-			width = Math.max(320, width);
+			width = Math.max(MINIMUM_INPUT_PANEL_WIDTH, width);
 			return {
 				width: `${width}px`,
 			};

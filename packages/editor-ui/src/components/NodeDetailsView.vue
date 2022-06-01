@@ -29,7 +29,9 @@
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @init="onPanelsInit" @dragstart="onDragStart" @dragend="onDragEnd">
 				<template #input>
+					<TriggerPanel v-if="isTriggerNode" />
 					<InputPanel
+						v-else
 						:workflow="workflow"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="inputRun"
@@ -100,6 +102,7 @@ import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
+import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
 import { BASE_NODE_SURVEY_URL, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { editor } from 'monaco-editor';
@@ -111,6 +114,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		InputPanel,
 		OutputPanel,
 		NDVDraggablePanels,
+		TriggerPanel,
 	},
 	props: {
 		renaming: {
