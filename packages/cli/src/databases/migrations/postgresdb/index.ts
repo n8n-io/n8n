@@ -13,6 +13,7 @@ import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserMan
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { IntroducePinData1654090467022 } from './1654090467022-IntroducePinData';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -30,4 +31,5 @@ export const postgresMigrations = [
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
 	AddAPIKeyColumn1652905585850,
+	IntroducePinData1654090467022,
 ];
