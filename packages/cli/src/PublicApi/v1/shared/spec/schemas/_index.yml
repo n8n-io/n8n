@@ -4,18 +4,12 @@ Execution:
   $ref: './../../../handlers/executions/spec/schemas/execution.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
-Role:
-  $ref: './../../../handlers/users/spec/schemas/role.yml'
 Tag:
   $ref: './../../../handlers/workflows/spec/schemas/tag.yml'
-User:
-  $ref: './../../../handlers/users/spec/schemas/user.yml'
 Workflow:
   $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
 WorkflowSettings:
   $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
-UserList:
-  $ref: './../../../handlers/users/spec/schemas/userList.yml'
 ExecutionList:
   $ref: './../../../handlers/executions/spec/schemas/executionList.yml'
 WorkflowList:

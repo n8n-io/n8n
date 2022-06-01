@@ -1,9 +1,5 @@
-UserIdentifier:
-  $ref: '../../../handlers/users/spec/schemas/parameters/userIdentifier.yml'
 Cursor:
   $ref: './cursor.yml'
-includeRole:
-  $ref: '../../../handlers/users/spec/schemas/parameters/includeRole.yml'
 Limit:
   $ref: './limit.yml'
 ExecutionId:

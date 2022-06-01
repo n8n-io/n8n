@@ -16,8 +16,6 @@ externalDocs:
 servers:
   - url: /api/v1
 tags:
-  - name: User
-    description: Operations about users
   - name: Execution
     description: Operations about executions
   - name: Workflow
@@ -32,10 +30,6 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
   /credentials/schema/{id}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
-  /users:
-    $ref: './handlers/users/spec/paths/users.yml'
-  /users/{id}:
-    $ref: './handlers/users/spec/paths/users.id.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
