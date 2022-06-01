@@ -1,9 +1,16 @@
 <template>
 	<div :class="$style.container">
-		<div>
-			<n8n-heading v-if="header" tag="h1" bold>
-				{{ header }}
-			</n8n-heading>
+		<div :class="$style.action">
+			<div :class="$style.header">
+				<n8n-heading v-if="header" tag="h1" bold>
+					{{ header }}
+				</n8n-heading>
+				<n8n-text v-if="subheader">
+					<span v-html="subheader"></span>
+				</n8n-text>
+			</div>
+
+			<NodeExecuteButton v-if="showExecuteButton" :nodeName="nodeName" @execute="onNodeExecute" size="medium" />
 		</div>
 
 		<n8n-text size="small" v-if="activationHint === 'activate'">
@@ -21,28 +28,58 @@ import { START_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { workflowActivate } from '@/components/mixins/workflowActivate';
+import { INodeTypeDescription } from 'n8n-workflow';
+import { getTriggerNodeServiceName } from './helpers';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 export default mixins(
 	workflowActivate,
 ).extend({
 	name: 'TriggerPanel',
+	components: {
+		NodeExecuteButton,
+	},
 	props: {
 		nodeName: {
 			type: String,
 		},
 	},
 	computed: {
-		node(): INodeUi {
+		node(): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.nodeName);
+		},
+		nodeType(): INodeTypeDescription | null {
+			if (this.node) {
+				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+			}
+
+			return null;
+		},
+		isPollingNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.polling);
 		},
 		isWorkflowActive (): boolean {
 			return this.$store.getters.isActive;
 		},
 		header(): string {
+			if (this.nodeType && this.isPollingNode) {
+				const serviceName = getTriggerNodeServiceName(this.nodeType.displayName);
+
+				return this.$locale.baseText('triggerPanel.scheduledNode.action', { interpolate: { name: serviceName } });
+			}
 			return this.$locale.baseText('triggerPanel.executeWorkflow');
 		},
+		subheader(): string {
+			if (this.nodeType && this.isPollingNode) {
+				const serviceName = getTriggerNodeServiceName(this.nodeType.displayName);
+
+				return this.$locale.baseText('triggerPanel.scheduledNode.hint', { interpolate: { name: serviceName }});
+			}
+
+			return '';
+		},
 		activationHint(): string {
-			if (this.node.type === START_NODE_TYPE) {
+			if (this.node && this.node.type === START_NODE_TYPE) {
 				return this.$locale.baseText('triggerPanel.startNodeHint');
 			}
 
@@ -52,6 +89,9 @@ export default mixins(
 
 			return '';
 		},
+		showExecuteButton(): boolean {
+			return this.isPollingNode;
+		},
 	},
 	methods: {
 		onActivate() {
@@ -59,6 +99,9 @@ export default mixins(
 			setTimeout(() => {
 				this.activateCurrentWorkflow();
 			}, 1000);
+		},
+		onNodeExecute () {
+			this.$emit('execute');
 		},
 	},
 });
@@ -85,5 +128,14 @@ export default mixins(
 		margin-bottom: var(--spacing-2xl);
 	}
 }
+
+.header {
+	margin-bottom: var(--spacing-s);
+
+	> * {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
 
 </style>

@@ -1,6 +1,4 @@
 import { externalHooks } from '@/components/mixins/externalHooks';
-// import { restApi } from '@/components/mixins/restApi';
-// import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
@@ -10,8 +8,6 @@ import { LOCAL_STORAGE_ACTIVATION_FLAG, WORKFLOW_ACTIVE_MODAL_KEY } from '@/cons
 
 export const workflowActivate = mixins(
 	externalHooks,
-	// nodeHelpers,
-	// restApi,
 	workflowHelpers,
 	showMessage,
 )

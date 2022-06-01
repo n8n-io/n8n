@@ -767,6 +767,8 @@
 	"timeAgo.rightNow": "Right now",
 	"timeAgo.weeksAgo": "%s weeks ago",
 	"timeAgo.yearsAgo": "%s years ago",
+	"triggerPanel.scheduledNode.action": "Pull in events from {name}",
+	"triggerPanel.scheduledNode.hint": "This node will immediately fetch a recent similar event from <b>{name}</b>",
 	"triggerPanel.executeWorkflow": "Execute workflow to test node",
 	"triggerPanel.startNodeHint": "This node will not run automatically. Use it to manually execute your workflow.",
 	"triggerPanel.activateWorkflow.activate": "Activate",
