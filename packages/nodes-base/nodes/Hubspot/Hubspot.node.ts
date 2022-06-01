@@ -864,6 +864,27 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
+			// For update operations, filter stage list by update field pipeline ID
+			async getTicketUpdateStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const currentPipelineId = this.getCurrentNodeParameter('updateFields.pipelineId') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/crm-pipelines/v1/pipelines/tickets';
+				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const pipeline of results) {
+					if (currentPipelineId === pipeline.pipelineId) {
+						for (const stage of pipeline.stages) {
+							const stageName = stage.label;
+							const stageId = stage.stageId;
+							returnData.push({
+								name: stageName,
+								value: stageId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
 			/* -------------------------------------------------------------------------- */
 			/*                                 COMMON                                     */
 			/* -------------------------------------------------------------------------- */
@@ -2462,6 +2483,12 @@ export class Hubspot implements INodeType {
 								body.push({
 									name: 'hs_pipeline',
 									value: updateFields.pipelineId as string,
+								});
+							}
+							if (updateFields.pipelineId) {
+								body.push({
+									name: 'hs_pipeline_stage',
+									value: updateFields.stageId as string,
 								});
 							}
 							if (updateFields.ticketName) {
