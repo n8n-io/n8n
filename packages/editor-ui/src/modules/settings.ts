@@ -24,6 +24,7 @@ const module: Module<ISettingsState, IRootState> = {
 			smtpSetup: false,
 		},
 		templatesEndpointHealthy: false,
+		communityNodesFeatureEnabled: true,
 	},
 	getters: {
 		versionCli(state: ISettingsState) {
@@ -71,6 +72,9 @@ const module: Module<ISettingsState, IRootState> = {
 		executionMode: (state): string => {
 			return state.settings.executionMode;
 		},
+		isCommunityNodesFeatureEnabled: (state): boolean => {
+			return state.communityNodesFeatureEnabled;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -87,6 +91,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setTemplatesEndpointHealthy(state: ISettingsState) {
 			state.templatesEndpointHealthy = true;
+		},
+		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
+			state.communityNodesFeatureEnabled = isEnabled;
 		},
 	},
 	actions: {

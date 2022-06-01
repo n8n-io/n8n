@@ -42,11 +42,20 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
+/**
+ * To be authorized, user must pass all deny rules and pass any of the allow rules.
+ *
+ * @param permissions
+ * @param currentUser
+ * @returns
+ */
 export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
+	// big AND block
+	// if any of these are false, block user
 	if (permissions.deny) {
-		if(permissions.deny.custom) {
-			return !permissions.deny.custom();
+		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
+			return false;
 		}
 
 		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
@@ -54,7 +63,7 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -64,9 +73,11 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 		}
 	}
 
+	// big OR block
+	// if any of these are true, allow user
 	if (permissions.allow) {
-		if(permissions.allow.custom) {
-			return permissions.allow.custom();
+		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
+			return true;
 		}
 
 		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
@@ -74,7 +85,7 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}
