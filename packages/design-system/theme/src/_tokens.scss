@@ -181,8 +181,26 @@
 				  var(--color-info-tint-2-l)
   );
 
-  --color-neutral-h: 220;
-  --color-neutral-s: 7.4%;
+  --color-grey-h: 228;
+  --color-grey-s: 10%;
+  --color-grey-l: 80%;
+  --color-grey: hsl(
+				  var(--color-grey-h),
+				  var(--color-grey-s),
+				  var(--color-grey-l)
+  );
+
+  --color-light-grey-h: 220;
+  --color-light-grey-s: 20%;
+  --color-light-grey-l: 88%;
+  --color-light-grey: hsl(
+				  var(--color-light-grey-h),
+				  var(--color-light-grey-s),
+				  var(--color-light-grey-l)
+  );
+
+  --color-neutral-h: 228;
+  --color-neutral-s: 10%;
   --color-neutral-l: 50%;
   --color-neutral: hsl(
 				  var(--color-neutral-h),

@@ -112,13 +112,11 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-@use '../../../theme/src/mixins/mixins';
-@use '../../../theme/src/mixins/utils';
-@use '../../../theme/src/mixins/function';
-@use '../../../theme/src/common/var';
-@import "../../utils";
+@import '../../../theme/src/mixins/mixins';
+@import '../../../theme/src/mixins/utils';
+@import '../../../theme/src/mixins/function';
+@import '../../../theme/src/common/var';
 
-$disabled-border-color: var(--color-foreground-base);
 $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 .button {
@@ -127,13 +125,13 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	white-space: nowrap;
 	cursor: pointer;
 
-	border: var(--border-width-base) var.$button-border-color var(--border-style-base);
-	color: var.$button-font-color;
-	background-color: var.$button-background-color;
+	border: var(--border-width-base) $button-border-color var(--border-style-base);
+	color: $button-font-color;
+	background-color: $button-background-color;
 	font-weight: var(--font-weight-bold);
-	border-radius: var.$button-border-radius;
-	padding: var.$button-padding-vertical var.$button-padding-horizontal;
-	font-size: var.$button-font-size;
+	border-radius: $button-border-radius;
+	padding: $button-padding-vertical $button-padding-horizontal;
+	font-size: $button-font-size;
 
 	-webkit-appearance: none;
 	text-align: center;
@@ -142,23 +140,23 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	margin: 0;
 	transition: 0.3s;
 
-	@include utils.utils-user-select(none);
+	@include utils-user-select(none);
 
 	&:hover {
-		color: var.$button-hover-color;
-		border-color: var.$button-hover-border-color;
-		background-color: var.$button-hover-background-color;
+		color: $button-hover-color;
+		border-color: $button-hover-border-color;
+		background-color: $button-hover-background-color;
 	}
 
 	&:focus {
-		border-color: var.$button-focus-outline-color;
-		outline: var.$focus-outline-width solid var.$button-focus-outline-color;
+		border-color: $button-focus-outline-color;
+		outline: $focus-outline-width solid $button-focus-outline-color;
 	}
 
 	&:active {
-		color: var.$button-active-color;
-		border-color: var.$button-active-border-color;
-		background-color: var.$button-active-background-color;
+		color: $button-active-color;
+		border-color: $button-active-border-color;
+		background-color: $button-active-background-color;
 		outline: none;
 	}
 
@@ -178,41 +176,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 	span + span {
 		margin-left: var(--spacing-3xs);
-	}
-}
-
-/**
- * States
- */
-
-.loading,
-.active {
-	position: relative;
-	pointer-events: none;
-
-	&:before {
-		pointer-events: none;
-		content: '';
-		position: absolute;
-		left: -1px;
-		top: -1px;
-		right: -1px;
-		bottom: -1px;
-		border-radius: inherit;
-		background-color: $loading-overlay-background-color;
-	}
-}
-
-.disabled {
-	&,
-	&:hover,
-	&:active,
-	&:focus {
-		cursor: not-allowed;
-		background-image: none;
-		color: var.$button-disabled-font-color;
-		background-color: var.$button-disabled-background-color;
-		border-color: var.$button-disabled-border-color;
 	}
 }
 
@@ -428,6 +391,37 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	&:hover {
 		text-decoration: underline;
 	}
+}
+
+.loading,
+.active {
+  position: relative;
+  pointer-events: none;
+
+  &:before {
+	pointer-events: none;
+	content: '';
+	position: absolute;
+	left: -1px;
+	top: -1px;
+	right: -1px;
+	bottom: -1px;
+	border-radius: inherit;
+	background-color: $loading-overlay-background-color;
+  }
+}
+
+.disabled {
+  &,
+  &:hover,
+  &:active,
+  &:focus {
+	cursor: not-allowed;
+	background-image: none;
+	color: $button-disabled-font-color;
+	background-color: $button-disabled-background-color;
+	border-color: $button-disabled-border-color;
+  }
 }
 
 .transparent {
