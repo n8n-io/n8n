@@ -11,7 +11,7 @@ export class IntroducePinData1654089251344 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "pinData" text NOT NULL`,
+			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "pinData" text`,
 		);
 
 		logMigrationEnd(this.name);
