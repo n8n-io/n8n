@@ -62,6 +62,8 @@ export class CustomerIoApi implements ICredentialType {
 			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
 		} else if (requestOptions.url.includes('beta-api.customer.io')) {
 			Object.assign(requestOptions.headers, { 'Authorization': `Bearer ${credentials.appApiKey as string}` });
+		} else {
+			throw new Error('Unknown way of authenticating');
 		}
 
 		return requestOptions;
