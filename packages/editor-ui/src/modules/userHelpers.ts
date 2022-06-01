@@ -43,6 +43,7 @@ export const PERMISSIONS: IUserPermissions = {
 };
 
 /**
+ * To be authorized, user must pass all deny rules and pass any of the allow rules.
  *
  * @param permissions
  * @param currentUser
