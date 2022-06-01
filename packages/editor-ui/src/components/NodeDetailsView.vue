@@ -29,7 +29,7 @@
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @init="onPanelsInit" @dragstart="onDragStart" @dragend="onDragEnd">
 				<template #input>
-					<TriggerPanel v-if="isTriggerNode" />
+					<TriggerPanel v-if="isTriggerNode" :nodeName="activeNode.name" />
 					<InputPanel
 						v-else
 						:workflow="workflow"
