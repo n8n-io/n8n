@@ -1,5 +1,9 @@
 <template>
 	<div :class="$style.container">
+		<span>
+			<n8n-spinner v-if="isActivelyPolling" type="ring" />
+		</span>
+
 		<div :class="$style.action">
 			<div :class="$style.header">
 				<n8n-heading v-if="header" tag="h1" bold>
@@ -58,10 +62,18 @@ export default mixins(
 		isPollingNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.polling);
 		},
+		isActivelyPolling(): boolean {
+			const triggeredNode = this.$store.getters.executedNode;
+
+			return this.isPollingNode && this.nodeName === triggeredNode;
+		},
 		isWorkflowActive (): boolean {
 			return this.$store.getters.isActive;
 		},
 		header(): string {
+			if (this.isActivelyPolling) {
+				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
+			}
 			if (this.nodeType && this.isPollingNode) {
 				const serviceName = getTriggerNodeServiceName(this.nodeType.displayName);
 
@@ -70,9 +82,12 @@ export default mixins(
 			return this.$locale.baseText('triggerPanel.executeWorkflow');
 		},
 		subheader(): string {
-			if (this.nodeType && this.isPollingNode) {
-				const serviceName = getTriggerNodeServiceName(this.nodeType.displayName);
+			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName): '';
+			if (this.isActivelyPolling) {
+				return this.$locale.baseText('triggerPanel.pollingNode.fetchingHint', { interpolate: { name: serviceName }});
+			}
 
+			if (this.nodeType && this.isPollingNode) {
 				return this.$locale.baseText('triggerPanel.scheduledNode.hint', { interpolate: { name: serviceName }});
 			}
 
@@ -83,14 +98,14 @@ export default mixins(
 				return this.$locale.baseText('triggerPanel.startNodeHint');
 			}
 
-			if (!this.isWorkflowActive) {
+			if (!this.isWorkflowActive && !this.isActivelyPolling) {
 				return 'activate';
 			}
 
 			return '';
 		},
 		showExecuteButton(): boolean {
-			return this.isPollingNode;
+			return this.isPollingNode && !this.isActivelyPolling;
 		},
 	},
 	methods: {

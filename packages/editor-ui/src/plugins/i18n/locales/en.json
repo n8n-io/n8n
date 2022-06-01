@@ -767,6 +767,8 @@
 	"timeAgo.rightNow": "Right now",
 	"timeAgo.weeksAgo": "%s weeks ago",
 	"timeAgo.yearsAgo": "%s years ago",
+	"triggerPanel.pollingNode.fetchingEvent": "Fetching event",
+	"triggerPanel.pollingNode.fetchingHint": "This node is looking for an event in {name} that is similar to the one you defined",
 	"triggerPanel.scheduledNode.action": "Pull in events from {name}",
 	"triggerPanel.scheduledNode.hint": "This node will immediately fetch a recent similar event from <b>{name}</b>",
 	"triggerPanel.executeWorkflow": "Execute workflow to test node",
