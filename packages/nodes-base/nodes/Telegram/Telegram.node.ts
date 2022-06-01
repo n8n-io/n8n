@@ -21,7 +21,6 @@ import {
 	getPropertyName,
 } from './GenericFunctions';
 
-
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram',
@@ -807,7 +806,8 @@ export class Telegram implements INodeType {
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				required: true,
+				required: false,
+				description: 'Name of the file name. It is required if your input file name is empty.',
 				displayOptions: {
 					show: {
 						operation: [
@@ -1176,6 +1176,7 @@ export class Telegram implements INodeType {
 										default: 'HTML',
 										description: 'How to parse the text',
 									},
+
 								],
 							},
 						],
@@ -2211,9 +2212,10 @@ export class Telegram implements INodeType {
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
-					const fileName = this.getNodeParameter('fileName',0) as string;
+
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
+					var fileName = binaryData.fileName?.toString() || this.getNodeParameter('fileName',0) as string;
 
 					const formData = {
 						...body,
