@@ -1232,7 +1232,7 @@ export default mixins(
 					workflow_id: this.$store.getters.workflowId,
 				});
 
-				return this.importWorkflowData(workflowData!);
+				return this.importWorkflowData(workflowData!, false);
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
@@ -1259,7 +1259,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1287,7 +1287,7 @@ export default mixins(
 					});
 
 					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
-					if (tagsEnabled && Array.isArray(workflowData.tags)) {
+					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
 						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
 						const tagNames = new Set(allTags.map((tag) => tag.name));
 
