@@ -6,10 +6,7 @@ import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 
 import { UserSettings } from 'n8n-core';
 import { PublicInstalledPackage } from 'n8n-workflow';
-<<<<<<< HEAD
 import axios from 'axios';
-=======
->>>>>>> c11ec39e3 (Implemented detection of missing packages on init and added warning to frontend settings)
 import {
 	NODE_PACKAGE_PREFIX,
 	NPM_PACKAGE_NOT_FOUND_ERROR,

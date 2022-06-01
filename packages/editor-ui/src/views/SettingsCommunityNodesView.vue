@@ -1,10 +1,23 @@
 <template>
 	<SettingsView>
 		<div :class="$style.container">
-			<div>
+			<div :class="$style.headingContainer">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
+				<n8n-button
+					v-if="getInstalledPackages.length > 0 && !isLoading"
+					label="Install"
+					size="large"
+					@click="openNPMPage"
+				/>
 			</div>
-			<div :class="$style.actionBoxContainer">
+			<div :class="$style.loadingContainer" v-if="isLoading">
+				<n8n-spinner size="large"/>
+				<n8n-text>{{ $locale.baseText('settings.communityNodes.loading.message') }}</n8n-text>
+			</div>
+			<div
+				v-else-if="getInstalledPackages.length === 0"
+				:class="$style.actionBoxContainer"
+			>
 				<n8n-action-box
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
@@ -15,6 +28,16 @@
 					@click="openNPMPage"
 				/>
 			</div>
+			<div
+				:class="$style.cardsContainer"
+				v-else
+			>
+				<community-package-card
+					v-for="communityPackage in getInstalledPackages"
+					:key="communityPackage.packageName"
+					:communityPackage="communityPackage"
+				></community-package-card>
+			</div>
 		</div>
 	</SettingsView>
 </template>
@@ -23,16 +46,21 @@
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import SettingsView from './SettingsView.vue';
+import CommunityPackageCard from '../components/CommunityPackageCard.vue';
+
 export default Vue.extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
 		SettingsView,
+		CommunityPackageCard,
 	},
 	async mounted() {
+		await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 		await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
 	},
 	computed: {
 		...mapGetters('settings', ['executionMode']),
+		...mapGetters('communityNodes', ['getInstalledPackages', 'isLoading']),
 		getEmptyStateDescription() {
 			// Get the number for NPM packages with `n8n-community-node-package` keyword
 			// If there are > 31 packages available, show the number rounded to nearest 10 (floor) for nicer display
@@ -56,7 +84,8 @@ export default Vue.extend({
 	methods: {
 		openNPMPage() {
 			// TODO: This will open new modal once it is implemented
-			window.open('https://www.npmjs.com/search?q=keywords:n8n-community-node-package', '_blank');
+			// window.open('https://www.npmjs.com/search?q=keywords:n8n-community-node-package', '_blank');
+			this.$store.dispatch('ui/openModal', 'CommunityPackageInstallModal');
 		},
 	},
 });
@@ -70,7 +99,24 @@ export default Vue.extend({
 			margin-bottom: var(--spacing-2xl);
 		}
 	}
+
+	.headingContainer {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.loadingContainer {
+		display: flex;
+		gap: var(--spacing-xs);
+	}
+
 	.actionBoxContainer {
 		text-align: center;
+	}
+
+	.cardsContainer {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-2xs);
 	}
 </style>

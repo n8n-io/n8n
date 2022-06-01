@@ -13,6 +13,9 @@
 					:command="action.value"
 				>
 					{{action.label}}
+					<component v-if="action.type === 'external-link'" :is="$options.components.N8nIcon"
+						icon="external-link-alt" size="small"
+					/>
 				</el-dropdown-item>
 			</el-dropdown-menu>
 		</el-dropdown>

@@ -21,6 +21,7 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 
 export * from 'n8n-design-system/src/types';
@@ -941,6 +942,8 @@ export interface IWorkflowsState {
 
 export interface ICommunityNodesState {
 	availablePackageCount: number;
+	loading: boolean;
+	installedPackages: PublicInstalledPackage[];
 }
 
 export interface IRestApiContext {

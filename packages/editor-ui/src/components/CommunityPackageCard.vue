@@ -1,0 +1,120 @@
+<template>
+	<div
+		:key="communityPackage.packageName"
+		:class="$style.packageCard"
+	>
+		<div :class="$style.cardInfoContainer">
+			<div :class="$style.cardTitle">
+				<n8n-text :bold="true" size="large" >{{ communityPackage.packageName }}</n8n-text>
+			</div>
+			<n8n-text :bold="true" size="small" color="text-light">
+				{{ $locale.baseText(
+						'settings.communityNodes.packageNodes.label',
+						{ adjustToNumber: communityPackage.installedNodes.length }
+					)
+				}}:&nbsp;
+			</n8n-text>
+			<n8n-text size="small" color="text-light">
+				<span
+					v-for="(node, index) in communityPackage.installedNodes"
+					:key="node.name"
+				>
+					{{ node.name }}<span v-if="index != (communityPackage.installedNodes.length - 1)">,</span>
+				</span>
+			</n8n-text>
+		</div>
+		<div :class="$style.cardControlsContainer">
+			<n8n-text :bold="true" size="large" color="text-light">{{ communityPackage.installedVersion }}</n8n-text>
+			<n8n-tooltip v-if="communityPackage.updateAvailable" placement="top">
+				<div slot="content">{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}</div>
+				<n8n-button type="outline" label="Update" />
+			</n8n-tooltip>
+			<n8n-tooltip v-else placement="top">
+				<div slot="content">{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}</div>
+				<n8n-icon icon="check-circle" color="text-light" size="large" />
+			</n8n-tooltip>
+			<div :class="$style.cardActions">
+				<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>
+			</div>
+		</div>
+				</div>
+</template>
+
+<script lang="ts">
+import { PublicInstalledPackage } from 'n8n-workflow';
+import Vue from 'vue';
+import { NPM_PACKAGE_DOCS_BASE_URL } from '../constants';
+
+const PACKAGE_ACTIONS = {
+	VIEW_DOCS: 'view-docs',
+	UNINSTALL: 'uninstall-package',
+};
+
+export default Vue.extend({
+	name: "CommunityPackageCard",
+	props: {
+		communityPackage: {
+			type: Object as () =>  PublicInstalledPackage,
+		},
+	},
+	data () {
+		return {
+			packageActions: [
+				{
+					label: this.$locale.baseText('settings.communityNodes.viewDocsAction.label'),
+					value: PACKAGE_ACTIONS.VIEW_DOCS,
+					type: 'external-link',
+				},
+				{
+					label: this.$locale.baseText('settings.communityNodes.uninstallAction.label'),
+					value: PACKAGE_ACTIONS.UNINSTALL,
+				},
+			],
+		};
+	},
+	methods: {
+		onAction(value: string) {
+			switch (value) {
+				case PACKAGE_ACTIONS.VIEW_DOCS:
+					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${ this.communityPackage.packageName }`, '_blank');
+					break;
+				case PACKAGE_ACTIONS.UNINSTALL:
+					//TODO Will be implemented as part of N8N-3661
+					break;
+				default:
+					break;
+			}
+		},
+	},
+});
+</script>
+
+<style lang="scss" module>
+.packageCard {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing-s);
+	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
+	border-radius: var(--border-radius-large);
+}
+
+.cardInfoContainer {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.cardTitle {
+	flex-basis: 100%;
+}
+
+.cardControlsContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+}
+
+.cardActions {
+	padding-left: var(--spacing-3xs);
+}
+</style>
