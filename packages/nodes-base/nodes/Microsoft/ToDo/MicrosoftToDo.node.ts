@@ -59,6 +59,7 @@ export class MicrosoftToDo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Linked Resource',
@@ -74,7 +75,6 @@ export class MicrosoftToDo implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			...linkedResourceOperations,
 			...linkedResourceFields,

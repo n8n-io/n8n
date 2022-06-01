@@ -150,6 +150,7 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Boolean',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -234,6 +235,7 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Dates',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -318,6 +320,7 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Numbers',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -418,6 +421,7 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Strings',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',

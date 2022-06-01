@@ -65,6 +65,7 @@ export class S3 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Bucket',
@@ -80,7 +81,6 @@ export class S3 implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The operation to perform.',
 			},
 			// BUCKET
 			...bucketOperations,

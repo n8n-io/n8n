@@ -11,6 +11,7 @@ export const analyzersOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		description: 'Choose an operation',
 		displayOptions: {

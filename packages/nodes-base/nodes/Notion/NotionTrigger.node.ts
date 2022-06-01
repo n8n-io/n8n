@@ -78,7 +78,7 @@ export class NotionTrigger implements INodeType {
 				description: 'The ID of this database',
 			},
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
