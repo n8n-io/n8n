@@ -11,6 +11,7 @@
 	"generic.copy": "Copy",
 	"generic.clickToCopy": "Click to copy",
 	"generic.copiedToClipboard": "Copied to clipboard",
+	"generic.beta": "beta",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",

@@ -4,6 +4,9 @@
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText('settings.api') }}
+					<span :style="{ fontSize: '0.5em', fontStyle: 'italic' }">
+						({{ $locale.baseText('beta') }})
+					</span>
 				</n8n-heading>
 			</div>
 
