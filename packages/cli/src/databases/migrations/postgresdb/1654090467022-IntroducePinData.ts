@@ -14,7 +14,7 @@ export class IntroducePinData1654090467022 implements MigrationInterface {
 		await queryRunner.query(`SET search_path TO ${schema}`);
 
 		await queryRunner.query(
-			`ALTER TABLE ${schema}.${tablePrefix}workflow_entity ADD "pinData" json NOT NULL`,
+			`ALTER TABLE ${schema}.${tablePrefix}workflow_entity ADD "pinData" json`,
 		);
 
 		logMigrationEnd(this.name);

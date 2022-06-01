@@ -117,6 +117,7 @@ export class WorkflowEntity implements IWorkflowDb {
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
+		nullable: true,
 	})
 	pinData: { [nodeName: string]: object };
 
