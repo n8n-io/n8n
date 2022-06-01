@@ -1071,6 +1071,7 @@ export class Hubspot implements INodeType {
 					returnData.push({
 						name: propertyLabel,
 						value: propertyValue,
+						description: propertyValue,
 					});
 				}
 				return returnData;
@@ -1148,11 +1149,19 @@ export class Hubspot implements INodeType {
 			async getAvailableProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const objectType = this.getNodeParameter('objectType', 0) as string;
+				const archived = this.getNodeParameter('additionalFields.archived', false) as boolean;
+
 				if (!objectType) {
 					return [];
 				}
+
+				const qs: IDataObject = {};
+				if (archived) {
+					qs.archived = archived;
+				}
+
 				const endpoint = `/crm/v3/properties/${objectType}`;
-				const response = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 				const properties = response?.results as Array<{ name: string, label: string }> | undefined;
 
 				if (!properties) {
@@ -1161,8 +1170,9 @@ export class Hubspot implements INodeType {
 
 				for (const property of properties) {
 					returnData.push({
-						name: `${property.label} (${property.name})`,
+						name: property.label,
 						value: property.name,
+						description: property.name,
 					});
 				}
 				return returnData;
@@ -1187,8 +1197,9 @@ export class Hubspot implements INodeType {
 
 				for (const propertyGroup of propertyGroups) {
 					returnData.push({
-						name: `${propertyGroup.label} (${propertyGroup.name})`,
+						name: propertyGroup.label,
 						value: propertyGroup.name,
+						description: propertyGroup.name,
 					});
 				}
 				return returnData;
@@ -2747,7 +2758,7 @@ export class Hubspot implements INodeType {
 						if (operation === 'get') {
 							const objectType = this.getNodeParameter('objectType', i) as string;
 							const propertyName = this.getNodeParameter('propertyName', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 							const archived = additionalFields.archived as boolean;
 
 							const endpoint = `/crm/v3/properties/${objectType}/${propertyName}`;
@@ -2755,7 +2766,7 @@ export class Hubspot implements INodeType {
 						}
 						if (operation === 'getAll') {
 							const objectType = this.getNodeParameter('objectType', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 							const archived = additionalFields.archived as boolean;
 
 							const endpoint = `/crm/v3/properties/${objectType}`;

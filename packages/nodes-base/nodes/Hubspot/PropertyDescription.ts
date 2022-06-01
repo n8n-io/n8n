@@ -68,7 +68,7 @@ export const propertyFields: INodeProperties[] = [
 	{
 		displayName: 'Property Name',
 		name: 'propertyName',
-		type: 'options',
+		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
@@ -76,13 +76,14 @@ export const propertyFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		typeOptions: {
-			loadOptionsDependsOn: ['objectType'],
-			loadOptionsMethod: 'getAvailableProperties',
-		},
+		// typeOptions: {
+		// 	loadOptionsDependsOn: ['objectType'],
+		// 	loadOptionsMethod: 'getAvailableProperties',
+		// },
 		default: '',
 		description:
 			'The internal property name, which must be used when referencing the property via the API',
+		hint: 'Must be lowercase or snake_case',
 	},
 	{
 		displayName: 'Label',
@@ -323,7 +324,10 @@ export const propertyFields: INodeProperties[] = [
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: ['objectType'],
+			loadOptionsDependsOn: [
+				'objectType',
+				'additionalFields.archived',
+			],
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
