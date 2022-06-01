@@ -13,14 +13,19 @@ export const customObjectOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a custom Object',
+			},
+			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a custom Object',
+				name: 'Create or Update (Batch)',
+				value: 'batchUpsert',
+				description: 'Like upsert, but this costs only up to three requests per 100 objects',
 			},
 			{
 				name: 'Define',
@@ -33,9 +38,19 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Archive a custom Object',
 			},
 			{
+				name: 'Delete (Batch)',
+				value: 'batchDelete',
+				description: 'Like delete, but this costs only up to two requests per 100 objects',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom Object',
+			},
+			{
+				name: 'Get (Batch)',
+				value: 'batchGet',
+				description: 'Like get, but this has fewer options and costs only one request per 100 objects',
 			},
 			{
 				name: 'Search',
@@ -46,21 +61,6 @@ export const customObjectOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a custom Object',
-			},
-			{
-				name: 'Batched Get',
-				value: 'batchGet',
-				description: 'Like get, but this has fewer options and costs only one request per 100 objects. Requires continueOnFail.',
-			},
-			{
-				name: 'Batched Delete',
-				value: 'batchDelete',
-				description: 'Like delete, but this costs only up to two requests per 100 objects. Requires continueOnFail.',
-			},
-			{
-				name: 'Batched Create/Update',
-				value: 'batchUpsert',
-				description: 'Like upsert, but this costs only up to three requests per 100 objects. Requires continueOnFail.',
 			},
 		],
 		default: 'create',
@@ -470,8 +470,8 @@ export const customObjectFields: INodeProperties[] = [
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectIdProperties',
 			loadOptionsDependsOn: ['objectType'],
-			loadOptionsMethod: 'getUpsertCustomObjectIdProperties',
 		},
 		displayOptions: {
 			show: {
@@ -480,8 +480,9 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		default: null,
+		default: '',
 		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+		hint: 'When "Hubspot object ID" is used and object with such ID does not exist, a new object will be created with ID assigned by system',
 	},
 	{
 		displayName: 'Object ID',
@@ -937,7 +938,7 @@ export const customObjectFields: INodeProperties[] = [
 												typeOptions: {
 													multipleValues: true,
 												},
-												default: [],
+												default: '',
 											},
 										],
 									},

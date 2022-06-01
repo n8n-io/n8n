@@ -369,7 +369,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
-				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
+				description: 'Whether to get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
 	},
@@ -415,7 +415,7 @@ export const dealFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 250,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -440,7 +440,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
-				description: 'Include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
+				description: 'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
 				displayName: 'Properties',
@@ -450,7 +450,7 @@ export const dealFields: INodeProperties[] = [
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>.',
 			},
 			{
 				displayName: 'Properties With History',
@@ -564,7 +564,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
-				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
+				description: 'Whether to only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
 	},
@@ -610,7 +610,7 @@ export const dealFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 250,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -730,7 +730,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+		description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -774,7 +774,7 @@ export const dealFields: INodeProperties[] = [
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>.',
 			},
 			{
 				displayName: 'Query',

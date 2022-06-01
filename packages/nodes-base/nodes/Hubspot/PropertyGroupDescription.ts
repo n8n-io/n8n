@@ -5,6 +5,7 @@ export const propertyGroupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['propertyGroup'],
@@ -17,6 +18,11 @@ export const propertyGroupOperations: INodeProperties[] = [
 				description: 'Create and return a copy of a new property group',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Move a property group identified by {groupName} to the recycling bin',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Read a property group identified by {groupName}',
@@ -26,20 +32,15 @@ export const propertyGroupOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Read all existing property groups for the specified object type',
 			},
+
 			{
 				name: 'Update',
 				value: 'update',
 				description:
 					'Perform a partial update of a property group identified by {groupName}. Provided fields will be overwritten.',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Move a property group identified by {groupName} to the recycling bin',
-			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -64,7 +65,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group name',
+		displayName: 'Property Group Name',
 		name: 'groupName',
 		type: 'string',
 		required: true,
@@ -134,7 +135,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group name',
+		displayName: 'Property Group Name',
 		name: 'groupName',
 		type: 'options',
 		required: true,
@@ -190,7 +191,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group name',
+		displayName: 'Property Group Name',
 		name: 'groupName',
 		type: 'options',
 		required: true,
@@ -208,8 +209,8 @@ export const propertyGroupFields: INodeProperties[] = [
 		description: 'The internal property group name, which must be used when referencing the property group via the API',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -257,7 +258,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group name',
+		displayName: 'Property Group Name',
 		name: 'groupName',
 		type: 'options',
 		required: true,

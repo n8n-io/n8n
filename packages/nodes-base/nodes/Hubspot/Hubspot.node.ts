@@ -23,7 +23,6 @@ import {
 	getAssociations,
 	getCallMetadata,
 	getEmailMetadata,
-	getErrorsFromBatchResponse,
 	getMeetingMetadata,
 	getTaskMetadata,
 	hubspotApiRequest,
@@ -170,6 +169,10 @@ export class Hubspot implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Association',
+						value: 'association',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 					},
@@ -186,18 +189,6 @@ export class Hubspot implements INodeType {
 						value: 'customObject',
 					},
 					{
-						name: 'Association',
-						value: 'association',
-					},
-					{
-						name: 'Property',
-						value: 'property',
-					},
-					{
-						name: 'Property Group',
-						value: 'propertyGroup',
-					},
-					{
 						name: 'Deal',
 						value: 'deal',
 					},
@@ -208,6 +199,14 @@ export class Hubspot implements INodeType {
 					{
 						name: 'Form',
 						value: 'form',
+					},
+					{
+						name: 'Property Group',
+						value: 'propertyGroup',
+					},
+					{
+						name: 'Property',
+						value: 'property',
 					},
 					{
 						name: 'Ticket',
@@ -1234,7 +1233,6 @@ export class Hubspot implements INodeType {
 
 						const results = response.results;
 
-						// results.push(...getErrorsFromBatchResponse(response));
 						if (response.errors && !this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response.errors);
 						}
@@ -1243,7 +1241,6 @@ export class Hubspot implements INodeType {
 
 					if (operation === 'batchDelete') {
 						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
-						const errors: Array<{ error: string, errorDetails: unknown }> = [];
 
 						// Resolve object ids, if a custom idPorperty is used
 						const idMap: Record<string, string | undefined> = {};
@@ -1275,13 +1272,15 @@ export class Hubspot implements INodeType {
 						};
 						const endpoint = `/crm/v3/objects/${objectType}/batch/archive`;
 						const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
-						errors.push(...(response ? getErrorsFromBatchResponse(response) : []));
 
-						return [...(errors.length ? errors : [{ success: true }])];
+						if (response?.errors && !this.continueOnFail()) {
+							throw new NodeApiError(this.getNode(), response.errors);
+						}
+
+						return [...(response?.errors?.length ? response.errors : [{ success: true }])];
 					}
 					if (operation === 'batchUpsert') {
 						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
-						const errors: Array<{ error: string, errorDetails: unknown }> = [];
 
 						// Resolve object ids and check for existence
 						const idMap: Record<string, string | undefined> = {};
@@ -1340,18 +1339,25 @@ export class Hubspot implements INodeType {
 						const createResponse = createBody.inputs.length > 0
 							? await hubspotApiRequest.call(this, 'POST', createEndpoint, createBody)
 							: undefined;
-
 						const updateResponse = updateBody.inputs.length > 0
 							? await hubspotApiRequest.call(this, 'POST', updateEndpoint, updateBody)
 							: undefined;
 
-						errors.push(...(createResponse ? getErrorsFromBatchResponse(createResponse) : []));
-						errors.push(...(updateResponse ? getErrorsFromBatchResponse(updateResponse) : []));
+						const responseErrors = [
+							...(createResponse.errors ? createResponse.errors : []),
+							...(updateResponse.errors ? updateResponse.errors : []),
+						];
+						if (responseErrors.length && !this.continueOnFail()) {
+							throw new NodeApiError(this.getNode(), responseErrors as unknown as JsonObject);
+						}
 
-						return [...(createResponse?.results || []), ...(updateResponse?.results || []), ...errors];
+						return [
+							...(createResponse?.results || []),
+							...(updateResponse?.results || []),
+							...responseErrors,
+						];
 					}
 					return [];
-
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: (error as JsonObject).message });
@@ -2444,9 +2450,9 @@ export class Hubspot implements INodeType {
 								if ((error as NodeApiError).httpCode !== '404') {
 									throw error;
 								}
-								if (!idProperty) {
-									throw new NodeOperationError(this.getNode(), 'A custom id property needs to be used when creating a new object');
-								}
+								// if (!idProperty) {
+								// 	throw new NodeOperationError(this.getNode(), 'A custom id property needs to be used when creating a new object');
+								// }
 								const endpoint = `/crm/v3/objects/${objectType}`;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties });
 							}
@@ -2602,8 +2608,6 @@ export class Hubspot implements INodeType {
 									responseData.push(...response.results);
 									after = response.paging.next?.after;
 								} while (after);
-
-								console.log(responseData);
 							} else {
 								const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, { limit });
 								const results = response.results.flatMap((result: Record<string, unknown>) => typeof result === 'object' ? [{
@@ -2621,7 +2625,7 @@ export class Hubspot implements INodeType {
 							const objectType = this.getNodeParameter('objectType', i) as string;
 							const groupName = this.getNodeParameter('groupName', i) as string;
 							const label = this.getNodeParameter('label', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, any>;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 							const displayOrder = additionalFields.displayOrder as string;
 
 							const parameters = {
@@ -2636,9 +2640,9 @@ export class Hubspot implements INodeType {
 						if (operation === 'update') {
 							const objectType = this.getNodeParameter('objectType', i) as string;
 							const groupName = this.getNodeParameter('groupName', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, any>;
-							const displayOrder = additionalFields.displayOrder as number | undefined;
-							const label = additionalFields.label as string | undefined;
+							const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+							const displayOrder = updateFields.displayOrder as number | undefined;
+							const label = updateFields.label as string | undefined;
 
 							const parameters = {
 								...(label != null ? { label } : {}),
@@ -2683,7 +2687,7 @@ export class Hubspot implements INodeType {
 							const fieldType = this.getNodeParameter('fieldType', i) as string;
 							const groupName = this.getNodeParameter('groupName', i) as string;
 							const optionsJson = this.getNodeParameter('optionsJson', i, null) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, any>;
+							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 							const description = additionalFields.description as string;
 							const displayOrder = additionalFields.displayOrder as string;
 							const hasUniqueValue = additionalFields.hasUniqueValue as string;
@@ -2712,16 +2716,16 @@ export class Hubspot implements INodeType {
 						if (operation === 'update') {
 							const objectType = this.getNodeParameter('objectType', i) as string;
 							const propertyName = this.getNodeParameter('propertyName', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
-							const label = additionalFields.label as string;
-							const type = additionalFields.type as string;
-							const fieldType = additionalFields.fieldType as string;
-							const groupName = additionalFields.groupName as string;
-							const optionsJson = additionalFields.optionsJson as string;
-							const description = additionalFields.description as string;
-							const displayOrder = additionalFields.displayOrder as string;
-							const hidden = additionalFields.hidden as string;
-							const formField = additionalFields.formField as string;
+							const updateFields = this.getNodeParameter('updateFields', i, {}) as Record<string, unknown>;
+							const label = updateFields.label as string;
+							const type = updateFields.type as string;
+							const fieldType = updateFields.fieldType as string;
+							const groupName = updateFields.groupName as string;
+							const optionsJson = updateFields.optionsJson as string;
+							const description = updateFields.description as string;
+							const displayOrder = updateFields.displayOrder as string;
+							const hidden = updateFields.hidden as string;
+							const formField = updateFields.formField as string;
 
 							const options = optionsJson && JSON.parse(optionsJson);
 

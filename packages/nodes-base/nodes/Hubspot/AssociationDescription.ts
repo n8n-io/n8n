@@ -5,6 +5,7 @@ export const associationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['association'],
@@ -28,7 +29,6 @@ export const associationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -186,7 +186,7 @@ export const associationFields: INodeProperties[] = [
 		typeOptions: {
 			minValue: 1,
 		},
-		default: 500,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 ];

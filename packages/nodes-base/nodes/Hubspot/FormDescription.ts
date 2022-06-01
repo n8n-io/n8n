@@ -115,7 +115,14 @@ export const formFields: INodeProperties[] = [
 				name: 'contextValue',
 				values: [
 					{
-						displayName: 'HubSpot usertoken',
+						displayName: 'Go to Webinar Webinar ID',
+						name: 'goToWebinarWebinarKey',
+						type: 'string',
+						default: '',
+						description: 'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form',
+					},
+					{
+						displayName: 'HubSpot Usertoken',
 						name: 'hutk',
 						type: 'string',
 						default: '',
@@ -127,13 +134,6 @@ export const formFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description: 'The IP address of the visitor filling out the form',
-					},
-					{
-						displayName: 'Page URI',
-						name: 'pageUri',
-						type: 'string',
-						default: '',
-						description: 'The URI of the page the submission happened on',
 					},
 					{
 						displayName: 'Page Name',
@@ -150,18 +150,18 @@ export const formFields: INodeProperties[] = [
 						description: 'The ID of a page created on the HubSpot CMS',
 					},
 					{
-						displayName: 'SFDC campaign ID',
+						displayName: 'Page URI',
+						name: 'pageUri',
+						type: 'string',
+						default: '',
+						description: 'The URI of the page the submission happened on',
+					},
+					{
+						displayName: 'SFDC Campaign ID',
 						name: 'sfdcCampaignId',
 						type: 'string',
 						default: '',
 						description: 'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign',
-					},
-					{
-						displayName: 'Go to Webinar Webinar ID',
-						name: 'goToWebinarWebinarKey',
-						type: 'string',
-						default: '',
-						description: 'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form',
 					},
 				],
 			},
@@ -268,7 +268,7 @@ export const formFields: INodeProperties[] = [
 						name: 'value',
 						type: 'boolean',
 						default: false,
-						description: 'This must be true when using the \'legitimateInterest\' option, as it reflects the consent indicated by the visitor when submitting the form',
+						description: 'Whether using the \'legitimateInterest\' option must be set to true, as it reflects the consent indicated by the visitor when submitting the form',
 					},
 					{
 						displayName: 'Legal Basis',
