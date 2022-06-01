@@ -273,7 +273,7 @@ const router = new Router({
 						role: [ROLE.Default],
 					},
 					deny: {
-						custom: () => {
+						shouldDeny: () => {
 							return store.getters['settings/isUserManagementEnabled'] === false;
 						},
 					},
@@ -333,7 +333,7 @@ const router = new Router({
 						role: [ROLE.Default, ROLE.Owner],
 					},
 					deny: {
-						custom: () => {
+						shouldDeny: () => {
 							return store.getters['settings/isUserManagementEnabled'] === false;
 						},
 					},
@@ -375,8 +375,8 @@ const router = new Router({
 						role: [ROLE.Default, ROLE.Owner],
 					},
 					deny: {
-						custom: () => {
-							return store.getters['communityNodes/isFeatureAvailable'] === false;
+						shouldDeny: () => {
+							return store.getters['settings/isCommunityNodesFeatureEnabled'] === false;
 						},
 					},
 				},
