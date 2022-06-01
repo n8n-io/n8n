@@ -690,6 +690,7 @@ export interface IN8nUISettings {
 		host: string;
 	};
 	executionMode: string;
+	communityNodesFeatureEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -903,7 +904,6 @@ export interface ISettingsState {
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementConfig;
 	templatesEndpointHealthy: boolean;
-	communityNodesFeatureEnabled: boolean;
 }
 
 export interface ITemplateState {

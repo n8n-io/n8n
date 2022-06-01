@@ -18,7 +18,7 @@ export async function submitValueSurvey(instanceId: string, userId: string, para
 	return await post(N8N_IO_BASE_URL, '/value-survey', params, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
 
-export async function getCommunityPackageCount(): Promise<number> {
+export async function getAvailableCommunityPackageCount(): Promise<number> {
 	const response = await get(NPM_COMMUNITY_NODE_SEARCH_API_URL, 'search?q=keywords:n8n-community-node-package');
 
 	return response.total || 0;

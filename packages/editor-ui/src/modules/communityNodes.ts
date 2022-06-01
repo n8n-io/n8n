@@ -1,5 +1,5 @@
 import { getInstalledCommunityNodes } from '@/api/communityNodes';
-import { getCommunityPackageCount } from '@/api/settings';
+import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { ICommunityNodesState, IRootState } from '@/Interface';
 import { PublicInstalledPackage } from 'n8n-workflow';
 import { ActionContext, Module } from 'vuex';
@@ -7,12 +7,13 @@ import { ActionContext, Module } from 'vuex';
 const module: Module<ICommunityNodesState, IRootState> = {
 	namespaced: true,
 	state: {
-		availablePackageCount: 0,
+		// -1 means that package count has not been fetched yet
+		availablePackageCount: -1,
 		loading: true,
 		installedPackages: [],
 	},
 	mutations: {
-		setPackageCount: (state: ICommunityNodesState, count: number) => {
+		setAvailablePackageCount: (state: ICommunityNodesState, count: number) => {
 			state.availablePackageCount = count;
 		},
 		setInstalledPackages: (state: ICommunityNodesState, packages: PublicInstalledPackage[]) => {
@@ -23,7 +24,7 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		},
 	},
 	getters: {
-		packageCount(state: ICommunityNodesState): number {
+		availablePackageCount(state: ICommunityNodesState): number {
 			return state.availablePackageCount;
 		},
 		getInstalledPackages(state: ICommunityNodesState): PublicInstalledPackage[] {
@@ -35,8 +36,10 @@ const module: Module<ICommunityNodesState, IRootState> = {
 	},
 	actions: {
 		async fetchAvailableCommunityPackageCount(context: ActionContext<ICommunityNodesState, IRootState>) {
-			const packageCount = await getCommunityPackageCount();
-			context.commit('setPackageCount', packageCount);
+			if(context.state.availablePackageCount === -1) {
+				const packageCount = await getAvailableCommunityPackageCount();
+				context.commit('setAvailablePackageCount', packageCount);
+			}
 		},
 		async fetchInstalledPackages(context: ActionContext<ICommunityNodesState, IRootState>) {
 			context.commit('setLoading', true);

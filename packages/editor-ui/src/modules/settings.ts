@@ -24,7 +24,6 @@ const module: Module<ISettingsState, IRootState> = {
 			smtpSetup: false,
 		},
 		templatesEndpointHealthy: false,
-		communityNodesFeatureEnabled: true,
 	},
 	getters: {
 		versionCli(state: ISettingsState) {
@@ -73,7 +72,10 @@ const module: Module<ISettingsState, IRootState> = {
 			return state.settings.executionMode;
 		},
 		isCommunityNodesFeatureEnabled: (state): boolean => {
-			return state.communityNodesFeatureEnabled;
+			return state.settings.communityNodesFeatureEnabled;
+		},
+		isQueueModeEnabled: (state): boolean => {
+			return state.settings.executionMode === 'queue';
 		},
 	},
 	mutations: {
@@ -93,7 +95,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.templatesEndpointHealthy = true;
 		},
 		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
-			state.communityNodesFeatureEnabled = isEnabled;
+			state.settings.communityNodesFeatureEnabled = isEnabled;
 		},
 	},
 	actions: {

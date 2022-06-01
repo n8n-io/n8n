@@ -115,7 +115,7 @@
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 				</n8n-menu-item>
 
-				<n8n-menu-item index="settings" v-if="currentUser">
+				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
 					<font-awesome-icon icon="cog"/>&nbsp;
 					<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
 				</n8n-menu-item>
@@ -258,6 +258,19 @@ export default mixins(
 			...mapGetters('settings', [
 				'isTemplatesEnabled',
 			]),
+			canUserAccessSettings(): boolean {
+				const settingsRoutes = [
+					VIEWS.PERSONAL_SETTINGS,
+					VIEWS.USERS_SETTINGS,
+					VIEWS.COMMUNITY_NODES,
+				];
+				for(const route of settingsRoutes) {
+					if(this.canUserAccessRouteByName(route)) {
+						return true;
+					}
+				}
+				return false;
+			},
 			helpMenuItems (): object[] {
 				return [
 					{

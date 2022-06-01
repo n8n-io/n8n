@@ -4,7 +4,7 @@
 			<div :class="$style.headingContainer">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 				<n8n-button
-					v-if="getInstalledPackages.length > 0 && !isLoading"
+					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !isLoading"
 					label="Install"
 					size="large"
 					@click="openNPMPage"
@@ -14,6 +14,16 @@
 				<n8n-spinner size="large"/>
 				<n8n-text>{{ $locale.baseText('settings.communityNodes.loading.message') }}</n8n-text>
 			</div>
+			<n8n-action-box
+				v-else-if="isQueueModeEnabled"
+				:heading="$locale.baseText('settings.communityNodes.empty.title')"
+				:description="getEmptyStateDescription"
+				:buttonText="$locale.baseText('settings.communityNodes.empty.installPackageLabel')"
+				:calloutText="actionBoxConfig.calloutText"
+				:calloutTheme="actionBoxConfig.calloutTheme"
+				:hideButton="actionBoxConfig.hideButton"
+				@click="openNPMPage"
+			/>
 			<div
 				v-else-if="getInstalledPackages.length === 0"
 				:class="$style.actionBoxContainer"
@@ -48,6 +58,8 @@ import { mapGetters } from 'vuex';
 import SettingsView from './SettingsView.vue';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 
+const PACKAGE_COUNT_THRESHOLD = 31;
+
 export default Vue.extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
@@ -56,21 +68,21 @@ export default Vue.extend({
 	},
 	async mounted() {
 		await this.$store.dispatch('communityNodes/fetchInstalledPackages');
-		await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
+		try {
+			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
+		} finally { }
 	},
 	computed: {
-		...mapGetters('settings', ['executionMode']),
+		...mapGetters('settings', ['isQueueModeEnabled']),
 		...mapGetters('communityNodes', ['getInstalledPackages', 'isLoading']),
 		getEmptyStateDescription() {
-			// Get the number for NPM packages with `n8n-community-node-package` keyword
-			// If there are > 31 packages available, show the number rounded to nearest 10 (floor) for nicer display
-			const packageCount = this.$store.getters['communityNodes/packageCount'];
-			return  packageCount < 31 ?
+			const packageCount = this.$store.getters['communityNodes/availablePackageCount'];
+			return  packageCount < PACKAGE_COUNT_THRESHOLD ?
 				this.$locale.baseText('settings.communityNodes.empty.description.no-packages') :
 				this.$locale.baseText('settings.communityNodes.empty.description', { interpolate: { count: (Math.floor(packageCount / 10) * 10).toString() } });
 		},
 		actionBoxConfig() {
-			return this.executionMode === 'queue' ? {
+			return this.isQueueModeEnabled ? {
 				calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning'),
 				calloutTheme: 'warning',
 				hideButton: true,

@@ -19,7 +19,7 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/community-nodes" :class="$style.tab">
+			<n8n-menu-item index="/settings/community-nodes" v-if="canAccessCommunityNodes()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="cube" />
 				</i>
@@ -53,6 +53,9 @@ export default mixins(
 		},
 		canAccessUsersSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
+		},
+		canAccessCommunityNodes(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
