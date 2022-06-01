@@ -41,7 +41,7 @@ export function isUserManagementEnabled(): boolean {
 
 export function isUserManagementDisabled(): boolean {
 	return (
-		config.getEnv('userManagement.disabled') ||
+		config.getEnv('userManagement.disabled') &&
 		!config.getEnv('userManagement.isInstanceOwnerSetUp')
 	);
 }
