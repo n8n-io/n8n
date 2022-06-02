@@ -19,13 +19,23 @@ import {
 
 import moment from 'moment';
 
+const hubspotCredentialType = {
+	apiKey: 'hubspotApi',
+	appToken: 'hubspotAppToken',
+	oAuth2: 'hubspotOAuth2Api',
+	developerApi: 'hubspotDeveloperApi',
+};
+
+type hubspotAuthMethods = 'apiKey' | 'appToken' | 'oAuth2' | 'developerApi';
+
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	let authenticationMethod = this.getNodeParameter('authentication', 0);
+	let authenticationMethod = this.getNodeParameter('authentication', 0) as hubspotAuthMethods;
 
 	if (this.getNode().type.includes('Trigger')) {
 		authenticationMethod = 'developerApi';
 	}
+	const credentialsType = hubspotCredentialType[authenticationMethod];
 
 	const options: OptionsWithUri = {
 		method,
@@ -38,17 +48,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	try {
-		if (authenticationMethod === 'apiKey') {
-			const credentials = await this.getCredentials('hubspotApi');
-
-			options.qs.hapikey = credentials.apiKey as string;
-			return await this.helpers.request!(options);
-		} else if (authenticationMethod === 'appToken') {
-			const credentials = await this.getCredentials('hubspotAppToken');
-
-			options.headers!['Authorization'] = `Bearer ${credentials.appToken}`;
-			return await this.helpers.request!(options);
-		} else if (authenticationMethod === 'developerApi') {
+		if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
 
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
@@ -59,7 +59,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 				return await this.helpers.requestOAuth2!.call(this, 'hubspotDeveloperApi', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
 			}
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
+			return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -114,29 +114,6 @@ export function clean(obj: any) {
 		}
 	}
 	return obj;
-}
-
-// tslint:disable-next-line: no-any
-export function getErrorsFromBatchResponse(batchResponse: any, idProperty?: string) {
-	const results: Array<{ error: string, errorDetails: unknown }> = [];
-
-	const missingObjectsError = batchResponse?.errors?.filter((error: { category: string }) => error.category === 'OBJECT_NOT_FOUND')[0];
-	if (missingObjectsError) {
-		missingObjectsError.context.ids.forEach((objectId: string) => {
-			results.push({
-				error: missingObjectsError.message,
-				errorDetails: {
-					idProperty: idProperty || undefined,
-					objectId,
-					message: missingObjectsError.message,
-					errorCode: '404',
-					timestamp: new Date(batchResponse.completedAt).getTime(),
-				},
-			});
-		});
-	}
-
-	return results;
 }
 
 export const propertyEvents = [

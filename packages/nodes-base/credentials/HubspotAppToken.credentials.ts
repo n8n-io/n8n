@@ -1,4 +1,6 @@
 import {
+	IAuthenticateHeaderAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +17,17 @@ export class HubspotAppToken implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateHeaderAuth = {
+		type: 'headerAuth',
+		properties: {
+			name: 'Authorization',
+			value: '=Bearer {{$credentials?.appToken}}',
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.hubapi.com/deals/v1',
+			url: '/deal/paged',
+		},
+	};
 }

@@ -108,7 +108,6 @@ export class Hubspot implements INodeType {
 			{
 				name: 'hubspotApi',
 				required: true,
-				testedBy: 'hubspotApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
@@ -120,7 +119,6 @@ export class Hubspot implements INodeType {
 			{
 				name: 'hubspotAppToken',
 				required: true,
-				testedBy: 'hubspotApiTest',
 				displayOptions: {
 					show: {
 						authentication: [

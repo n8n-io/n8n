@@ -16,6 +16,9 @@ const scopes = [
 	'crm.schemas.companies.read',
 	'forms',
 	'tickets',
+	'contacts',
+	'crm.objects.custom.read',
+	'crm.objects.custom.write',
 ];
 
 export class HubspotOAuth2Api implements ICredentialType {

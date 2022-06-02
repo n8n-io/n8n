@@ -1,4 +1,6 @@
 import {
+	IAuthenticateQueryAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +17,17 @@ export class HubspotApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateQueryAuth = {
+		type: 'queryAuth',
+		properties: {
+			key: 'hapikey',
+			value: '={{$credentials?.apiKey}}',
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.hubapi.com/deals/v1',
+			url: '/deal/paged',
+		},
+	};
 }
