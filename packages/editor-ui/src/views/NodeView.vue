@@ -1904,9 +1904,9 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
+				// await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
 
-				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
+				// this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
 
 				this.$store.commit('setStateDirty', false);
 
