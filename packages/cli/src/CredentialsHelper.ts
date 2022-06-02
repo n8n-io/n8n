@@ -767,7 +767,10 @@ export async function getCredentialWithoutUser(
 	return credential;
 }
 
-export function createCredentiasFromCredentialsEntity(credential: CredentialsEntity, encrypt = false): Credentials {
+export function createCredentiasFromCredentialsEntity(
+	credential: CredentialsEntity,
+	encrypt = false,
+): Credentials {
 	const { id, name, type, nodesAccess, data } = credential;
 	if (encrypt) {
 		return new Credentials({ id: null, name }, type, nodesAccess);
