@@ -42,6 +42,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 
 	const user = await Db.collections.User.findOne();
 
+	expect(user?.email).toBeNull();
 	expect(user?.firstName).toBeNull();
 	expect(user?.lastName).toBeNull();
 	expect(user?.password).toBeNull();
