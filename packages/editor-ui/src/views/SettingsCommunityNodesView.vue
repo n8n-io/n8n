@@ -77,11 +77,11 @@ export default mixins(
 		try {
 			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 		} catch (error) {
-			this.$showToast({
-				title: this.$locale.baseText('settings.communityNodes.fetchError.title'),
-				message: error.message || this.$locale.baseText('settings.communityNodes.fetchError.message'),
-				type: 'error',
-			});
+			this.$showError(
+				error,
+				this.$locale.baseText('settings.communityNodes.fetchError.title'),
+				this.$locale.baseText('settings.communityNodes.fetchError.message'),
+			);
 		}
 		try {
 			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
