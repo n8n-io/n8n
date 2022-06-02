@@ -720,6 +720,18 @@ export function getNodeParameters(
 				}
 			}
 
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				propertyValues &&
+				Object.keys(propertyValues).length === 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the empty object which indicates that a value got added, even if it does not have
+				// anything set. If that is not done, the value would get lost.
+				return nodeValues;
+			}
+
 			// Iterate over all collections
 			for (const itemName of Object.keys(propertyValues || {})) {
 				if (
@@ -793,6 +805,25 @@ export function getNodeParameters(
 						collectionValues[itemName] = tempNodeParameters;
 					}
 				}
+			}
+
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				collectionValues &&
+				Object.keys(collectionValues).length === 0 &&
+				propertyValues &&
+				propertyValues?.constructor.name === 'Object' &&
+				Object.keys(propertyValues).length !== 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the object with an empty collection property which indicates that a value got added
+				// which contains all default values. If that is not done, the value would get lost.
+				const returnValue = {} as INodeParameters;
+				Object.keys(propertyValues || {}).forEach((value) => {
+					returnValue[value] = {};
+				});
+				return { [nodeProperties.name]: returnValue };
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {

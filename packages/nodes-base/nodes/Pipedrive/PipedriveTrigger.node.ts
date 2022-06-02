@@ -109,7 +109,6 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Incoming Authentication',
@@ -126,7 +125,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If authentication should be activated for the webhook (makes it more secure).',
+				description: 'If authentication should be activated for the webhook (makes it more secure)',
 			},
 			{
 				displayName: 'Action',
@@ -160,7 +159,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of action to receive notifications about.',
+				description: 'Type of action to receive notifications about',
 			},
 			{
 				displayName: 'Object',
@@ -213,7 +212,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of object to receive notifications about.',
+				description: 'Type of object to receive notifications about',
 			},
 		],
 	};

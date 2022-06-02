@@ -129,7 +129,7 @@ export class GraphQL implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'HTTP Request Method',
@@ -146,7 +146,7 @@ export class GraphQL implements INodeType {
 					},
 				],
 				default: 'POST',
-				description: 'The underlying HTTP request method to use.',
+				description: 'The underlying HTTP request method to use',
 			},
 			{
 				displayName: 'Endpoint',
@@ -154,7 +154,7 @@ export class GraphQL implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com/graphql',
-				description: 'The GraphQL endpoint.',
+				description: 'The GraphQL endpoint',
 				required: true,
 			},
 			{
@@ -162,7 +162,8 @@ export class GraphQL implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still fetch the response even if SSL certificate validation is not possible.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
+				description: 'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Request Format',
@@ -246,7 +247,7 @@ export class GraphQL implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'The format in which the data gets returned from the URL.',
+				description: 'The format in which the data gets returned from the URL',
 			},
 			{
 				displayName: 'Response Data Property Name',
@@ -261,7 +262,7 @@ export class GraphQL implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the response data.',
+				description: 'Name of the property to which to write the response data',
 			},
 
 			// Header Parameters
@@ -273,7 +274,7 @@ export class GraphQL implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The headers to send.',
+				description: 'The headers to send',
 				default: {},
 				options: [
 					{
@@ -285,14 +286,14 @@ export class GraphQL implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the header.',
+								description: 'Name of the header',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the header.',
+								description: 'Value to set for the header',
 							},
 						],
 					},

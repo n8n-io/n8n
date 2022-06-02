@@ -59,6 +59,7 @@ export class ItemLists implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Split Out Items',

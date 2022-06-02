@@ -7,6 +7,7 @@ export const personTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const personTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -36,7 +36,7 @@ export const personTagFields: INodeProperties[] = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		description: 'ID of the tag to add.',
+		description: 'ID of the tag to add',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
@@ -57,7 +57,7 @@ export const personTagFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to add the tag to.',
+		description: 'ID of the person to add the tag to',
 		type: 'string',
 		default: '',
 		required: true,
@@ -79,7 +79,7 @@ export const personTagFields: INodeProperties[] = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		description: 'ID of the tag whose tagging to delete.',
+		description: 'ID of the tag whose tagging to delete',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
@@ -100,7 +100,7 @@ export const personTagFields: INodeProperties[] = [
 	{
 		displayName: 'Tagging ID',
 		name: 'taggingId',
-		description: 'ID of the tagging to remove.',
+		description: 'ID of the tagging to remove',
 		type: 'options',
 		typeOptions: {
 			loadOptionsDependsOn: [

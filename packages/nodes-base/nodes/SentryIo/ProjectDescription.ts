@@ -7,6 +7,7 @@ export const projectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const projectOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -70,7 +70,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The slug of the organization the events belong to',
 	},
 	{
 		displayName: 'Project Slug',
@@ -94,7 +94,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to retrieve.',
+		description: 'The slug of the project to retrieve',
 	},
 	{
 		displayName: 'Team Slug',
@@ -118,7 +118,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to create a new project for.',
+		description: 'The slug of the team to create a new project for',
 	},
 	{
 		displayName: 'Name',
@@ -136,7 +136,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name for the new project.',
+		description: 'The name for the new project',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -183,7 +183,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -207,7 +207,7 @@ export const projectFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -232,7 +232,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the project belong to.',
+		description: 'The slug of the organization the project belong to',
 	},
 	{
 		displayName: 'Project Slug',
@@ -256,7 +256,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to update.',
+		description: 'The slug of the project to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -280,49 +280,49 @@ export const projectFields: INodeProperties[] = [
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: false,
-				description: 'The new platform for the updated project.',
+				description: 'The new platform for the updated project',
 			},
 			{
 				displayName: 'Digests Maximum Delay',
 				name: 'digestsMaxDelay',
 				type: 'number',
 				default: 1800,
-				description: 'Maximum interval to digest alerts.',
+				description: 'Maximum interval to digest alerts',
 			},
 			{
 				displayName: 'Digests Minimun Delay',
 				name: 'digestsMinDelay',
 				type: 'number',
 				default: 60,
-				description: 'Minium interval to digest alerts.',
+				description: 'Minium interval to digest alerts',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The new name for the updated project.',
+				description: 'The new name for the updated project',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The new slug for the updated project.',
+				description: 'The new slug for the updated project',
 			},
 			{
 				displayName: 'Team',
 				name: 'team',
 				type: 'string',
 				default: '',
-				description: 'The new team name.',
+				description: 'The new team name',
 			},
 			{
 				displayName: 'Platform',
 				name: 'platform',
 				type: 'string',
 				default: '',
-				description: 'The new platform for the updated project.',
+				description: 'The new platform for the updated project',
 			},
 		],
 	},
@@ -349,7 +349,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the project belong to.',
+		description: 'The slug of the organization the project belong to',
 	},
 	{
 		displayName: 'Project Slug',
@@ -373,6 +373,6 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to delete.',
+		description: 'The slug of the project to delete',
 	},
 ];

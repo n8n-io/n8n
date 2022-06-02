@@ -7,6 +7,7 @@ export const buildOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const buildOperations: INodeProperties[] = [
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -66,7 +66,7 @@ export const buildFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Value uniquely identifying the build.',
+		description: 'Value uniquely identifying the build',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -87,7 +87,7 @@ export const buildFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Value uniquely identifying the build.',
+		description: 'Value uniquely identifying the build',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -112,7 +112,7 @@ export const buildFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'build.commit',
-				description: 'List of attributes to eager load.',
+				description: 'List of attributes to eager load',
 			},
 		],
 	},
@@ -135,7 +135,7 @@ export const buildFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -159,7 +159,7 @@ export const buildFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -184,7 +184,7 @@ export const buildFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'build.commit',
-				description: 'List of attributes to eager load.',
+				description: 'List of attributes to eager load',
 			},
 			{
 				displayName: 'Order',
@@ -201,7 +201,7 @@ export const buildFields: INodeProperties[] = [
 					},
 				],
 				default: 'asc',
-				description: 'You may specify order to sort your response.',
+				description: 'You may specify order to sort your response',
 			},
 			{
 				displayName: 'Sort By',
@@ -219,10 +219,6 @@ export const buildFields: INodeProperties[] = [
 					{
 						name: 'Started At',
 						value: 'started_at',
-					},
-					{
-						name: 'Finished At',
-						value: 'finished_at',
 					},
 					{
 						name: 'Finished At',
@@ -256,7 +252,7 @@ export const buildFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Value uniquely identifying the build.',
+		description: 'Value uniquely identifying the build',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -296,7 +292,7 @@ export const buildFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'master',
-		description: 'Branch requested to be built.',
+		description: 'Branch requested to be built',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -320,7 +316,7 @@ export const buildFields: INodeProperties[] = [
 				name: 'message',
 				type: 'string',
 				default: '',
-				description: 'Travis-ci status message attached to the request.',
+				description: 'Travis-ci status message attached to the request',
 			},
 			{
 				displayName: 'Merge Mode',

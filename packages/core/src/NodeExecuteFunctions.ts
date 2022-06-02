@@ -542,7 +542,10 @@ async function proxyRequestToAxios(
 		return requestPromiseWithDefaults.call(null, uriOrObject, options);
 	}
 
-	let axiosConfig: AxiosRequestConfig = {};
+	let axiosConfig: AxiosRequestConfig = {
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
+	};
 	let axiosPromise: AxiosPromise;
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
@@ -709,7 +712,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		};
 	}
 
-	if (n8nRequest.body) {
+	// if there is a body and it's empty (does not have properties),
+	// make sure not to send anything in it as some services fail when
+	// sending GET request with empty body.
+	if (n8nRequest.body && Object.keys(n8nRequest.body).length) {
 		axiosRequest.data = n8nRequest.body;
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
@@ -1388,6 +1394,36 @@ export function getNode(node: INode): INode {
 }
 
 /**
+ * Clean up parameter data to make sure that only valid data gets returned
+ * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
+ */
+function cleanupParameterData(
+	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	if (inputData === null || inputData === undefined) {
+		return inputData;
+	}
+
+	if (Array.isArray(inputData)) {
+		inputData.forEach((value) => cleanupParameterData(value));
+		return inputData;
+	}
+
+	if (inputData.constructor.name === 'DateTime') {
+		// Is a special luxon date so convert to string
+		return inputData.toString();
+	}
+
+	if (typeof inputData === 'object') {
+		Object.keys(inputData).forEach((key) => {
+			inputData[key] = cleanupParameterData(inputData[key]);
+		});
+	}
+
+	return inputData;
+}
+
+/**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
  * @export
@@ -1440,6 +1476,8 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
+
+		returnData = cleanupParameterData(returnData);
 	} catch (e) {
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;

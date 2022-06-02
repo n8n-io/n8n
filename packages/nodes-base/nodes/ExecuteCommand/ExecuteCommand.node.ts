@@ -66,7 +66,7 @@ export class ExecuteCommand implements INodeType {
 				name: 'executeOnce',
 				type: 'boolean',
 				default: true,
-				description: 'If activated it executes only once instead of once for each entry.',
+				description: 'If activated it executes only once instead of once for each entry',
 			},
 			{
 				displayName: 'Command',

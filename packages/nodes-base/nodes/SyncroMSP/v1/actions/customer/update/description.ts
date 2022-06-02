@@ -117,7 +117,7 @@ export const customerUpdateDescription: CustomerProperties = [
 				name: 'referredBy',
 				type: 'string',
 				default: '',
-				description: 'Source from which customer is referred to the platform like Linkedin, Google, Customer name etc.',
+				description: 'Source from which customer is referred to the platform like Linkedin, Google, Customer name etc',
 			},
 		],
 	},

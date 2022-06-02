@@ -21,8 +21,8 @@ export const transactionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getReport',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Report',
@@ -44,7 +44,7 @@ export const transactionFields: INodeProperties[] = [
 	//       transaction: getReport
 	// ----------------------------------
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -58,7 +58,7 @@ export const transactionFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Filters',

@@ -19,7 +19,13 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
-import { isAuthExcluded, isPostUsersId, isAuthenticatedRequest } from '../UserManagementHelper';
+import {
+	isAuthExcluded,
+	isPostUsersId,
+	isAuthenticatedRequest,
+	isUserManagementDisabled,
+} from '../UserManagementHelper';
+import { Db } from '../..';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
@@ -47,7 +53,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	this.app.use(passport.initialize());
 
-	this.app.use((req: Request, res: Response, next: NextFunction) => {
+	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
 			// TODO: refactor me!!!
 			// skip authentication for preflight requests
@@ -70,6 +76,17 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`) ||
 			isAuthExcluded(req.url, ignoredEndpoints)
 		) {
+			return next();
+		}
+
+		// skip authentication if user management is disabled
+		if (isUserManagementDisabled()) {
+			req.user = await Db.collections.User.findOneOrFail(
+				{},
+				{
+					relations: ['globalRole'],
+				},
+			);
 			return next();
 		}
 

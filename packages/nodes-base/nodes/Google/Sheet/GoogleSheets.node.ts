@@ -92,6 +92,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Spreadsheet',
@@ -104,12 +105,12 @@ export class GoogleSheets implements INodeType {
 
 				],
 				default: 'sheet',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -136,7 +137,7 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Create or Update',
 						value: 'upsert',
-						description: 'Create a new record, or update the current one if it already exists',
+						description: 'Create a new record, or update the current one if it already exists (upsert)',
 					},
 					{
 						name: 'Delete',
@@ -165,7 +166,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -216,7 +216,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'To Delete',
 				name: 'toDelete',
 				placeholder: 'Add Columns/Rows to delete',
-				description: 'Deletes columns and rows from a sheet.',
+				description: 'Deletes columns and rows from a sheet',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -257,7 +257,7 @@ export class GoogleSheets implements INodeType {
 									minValue: 0,
 								},
 								default: 0,
-								description: 'The start index (0 based and inclusive) of column to delete.',
+								description: 'The start index (0 based and inclusive) of column to delete',
 							},
 							{
 								displayName: 'Amount',
@@ -267,7 +267,7 @@ export class GoogleSheets implements INodeType {
 									minValue: 1,
 								},
 								default: 1,
-								description: 'Number of columns to delete.',
+								description: 'Number of columns to delete',
 							},
 						],
 					},
@@ -295,7 +295,7 @@ export class GoogleSheets implements INodeType {
 									minValue: 0,
 								},
 								default: 0,
-								description: 'The start index (0 based and inclusive) of row to delete.',
+								description: 'The start index (0 based and inclusive) of row to delete',
 							},
 							{
 								displayName: 'Amount',
@@ -305,7 +305,7 @@ export class GoogleSheets implements INodeType {
 									minValue: 1,
 								},
 								default: 1,
-								description: 'Number of rows to delete.',
+								description: 'Number of rows to delete',
 							},
 						],
 					},
@@ -331,7 +331,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
+				description: 'If the data should be returned RAW instead of parsed into keys according to their header',
 			},
 			{
 				displayName: 'Data Property',
@@ -351,7 +351,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the property into which to write the RAW data.',
+				description: 'The name of the property into which to write the RAW data',
 			},
 
 			// ----------------------------------
@@ -373,7 +373,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If the data supplied is RAW instead of parsed into keys.',
+				description: 'If the data supplied is RAW instead of parsed into keys',
 			},
 			{
 				displayName: 'Data Property',
@@ -394,7 +394,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the property from which to read the RAW data.',
+				description: 'The name of the property from which to read the RAW data',
 			},
 
 			// ----------------------------------
@@ -483,7 +483,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the column in which to look for value.',
+				description: 'The name of the column in which to look for value',
 			},
 			{
 				displayName: 'Lookup Value',
@@ -501,7 +501,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The value to look for in column.',
+				description: 'The value to look for in column',
 			},
 
 			// ----------------------------------
@@ -526,7 +526,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the key to identify which data should be updated in the sheet.',
+				description: 'The name of the key to identify which data should be updated in the sheet',
 			},
 
 			{
@@ -563,7 +563,7 @@ export class GoogleSheets implements INodeType {
 								],
 							},
 						},
-						description: 'By default, the workflow stops executing if the lookup/read does not return values.',
+						description: 'By default, the workflow stops executing if the lookup/read does not return values',
 					},
 					{
 						displayName: 'Return All Matches',
@@ -610,7 +610,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'RAW',
 								value: 'RAW',
-								description: 'The values will not be parsed and will be stored as-is.',
+								description: 'The values will not be parsed and will be stored as-is',
 							},
 							{
 								name: 'User Entered',
@@ -619,7 +619,7 @@ export class GoogleSheets implements INodeType {
 							},
 						],
 						default: 'RAW',
-						description: 'Determines how data should be interpreted.',
+						description: 'Determines how data should be interpreted',
 					},
 					{
 						displayName: 'Value Render Mode',
@@ -637,7 +637,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Formatted Value',
 								value: 'FORMATTED_VALUE',
-								description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23".',
+								description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23"',
 							},
 							{
 								name: 'Formula',
@@ -651,7 +651,7 @@ export class GoogleSheets implements INodeType {
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
-						description: 'Determines how values should be rendered in the output.',
+						description: 'Determines how values should be rendered in the output',
 					},
 					{
 						displayName: 'Value Render Mode',
@@ -672,12 +672,12 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Formatted Value',
 								value: 'FORMATTED_VALUE',
-								description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23".',
+								description: 'Values will be calculated & formatted in the reply according to the cell\'s formatting.Formatting is based on the spreadsheet\'s locale, not the requesting user\'s locale. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "$1.23".',
 							},
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description: '	Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 							},
 							{
 								name: 'Unformatted Value',
@@ -686,7 +686,7 @@ export class GoogleSheets implements INodeType {
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
-						description: 'Determines how values should be rendered in the output.',
+						description: 'Determines how values should be rendered in the output',
 					},
 				],
 			},
@@ -695,6 +695,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -710,7 +711,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         spreadsheet:create
@@ -730,7 +730,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The title of the spreadsheet.',
+				description: 'The title of the spreadsheet',
 			},
 			{
 				displayName: 'Sheets',
@@ -826,21 +826,21 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'On Change',
 								value: 'ON_CHANGE',
-								description: 'Volatile functions are updated on every change.',
+								description: 'Volatile functions are updated on every change',
 							},
 							{
 								name: 'Minute',
 								value: 'MINUTE',
-								description: 'Volatile functions are updated on every change and every minute.',
+								description: 'Volatile functions are updated on every change and every minute',
 							},
 							{
 								name: 'Hour',
 								value: 'HOUR',
-								description: '	Volatile functions are updated on every change and hourly.',
+								description: 'Volatile functions are updated on every change and hourly',
 							},
 						],
 						default: '',
-						description: 'Cell recalculation interval options.',
+						description: 'Cell recalculation interval options',
 					},
 				],
 			},
@@ -849,7 +849,7 @@ export class GoogleSheets implements INodeType {
 			//         sheet:create
 			// ----------------------------------
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
@@ -863,7 +863,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Options',
@@ -894,67 +894,67 @@ export class GoogleSheets implements INodeType {
 								name: 'columnCount',
 								type: 'number',
 								default: 0,
-								description: 'The number of columns in the grid.',
+								description: 'The number of columns in the grid',
 							},
 							{
 								displayName: 'Column Group Control After',
 								name: 'columnGroupControlAfter',
 								type: 'boolean',
 								default: false,
-								description: 'True if the column grouping control toggle is shown after the group.',
+								description: 'True if the column grouping control toggle is shown after the group',
 							},
 							{
 								displayName: 'Frozen Column Count',
 								name: 'frozenColumnCount',
 								type: 'number',
 								default: 0,
-								description: 'The number of columns that are frozen in the grid.',
+								description: 'The number of columns that are frozen in the grid',
 							},
 							{
 								displayName: 'Frozen Row Count',
 								name: 'frozenRowCount',
 								type: 'number',
 								default: 0,
-								description: 'The number of rows that are frozen in the grid.',
+								description: 'The number of rows that are frozen in the grid',
 							},
 							{
 								displayName: 'Hide Gridlines',
 								name: 'hideGridlines',
 								type: 'boolean',
 								default: false,
-								description: 'True if the grid isn\'t showing gridlines in the UI.',
+								description: 'True if the grid isn\'t showing gridlines in the UI',
 							},
 							{
 								displayName: 'Row Count',
 								name: 'rowCount',
 								type: 'number',
 								default: 0,
-								description: 'The number of rows in the grid.',
+								description: 'The number of rows in the grid',
 							},
 							{
 								displayName: 'Row Group Control After',
 								name: 'rowGroupControlAfter',
 								type: 'boolean',
 								default: false,
-								description: 'True if the row grouping control toggle is shown after the group.',
+								description: 'True if the row grouping control toggle is shown after the group',
 							},
 
 						],
-						description: 'The type of the sheet.',
+						description: 'The type of the sheet',
 					},
 					{
 						displayName: 'Hidden',
 						name: 'hidden',
 						type: 'boolean',
 						default: false,
-						description: 'True if the sheet is hidden in the UI, false if it\'s visible.',
+						description: 'True if the sheet is hidden in the UI, false if it\'s visible',
 					},
 					{
 						displayName: 'Right To Left',
 						name: 'rightToLeft',
 						type: 'boolean',
 						default: false,
-						description: 'True if the sheet is an RTL sheet instead of an LTR sheet.',
+						description: 'True if the sheet is an RTL sheet instead of an LTR sheet',
 					},
 					{
 						displayName: 'Sheet ID',
@@ -968,21 +968,21 @@ export class GoogleSheets implements INodeType {
 						name: 'index',
 						type: 'number',
 						default: 0,
-						description: 'The index of the sheet within the spreadsheet.',
+						description: 'The index of the sheet within the spreadsheet',
 					},
 					{
 						displayName: 'Tab Color',
 						name: 'tabColor',
 						type: 'color',
 						default: '0aa55c',
-						description: 'The color of the tab in the UI.',
+						description: 'The color of the tab in the UI',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The Sheet name.',
+						description: 'The Sheet name',
 					},
 				],
 			},
@@ -1006,7 +1006,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the sheet to delete.',
+				description: 'The ID of the sheet to delete',
 			},
 		],
 	};

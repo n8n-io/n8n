@@ -36,7 +36,7 @@ export class SplitInBatches implements INodeType {
 					minValue: 1,
 				},
 				default: 10,
-				description: 'The number of items to return with each call.',
+				description: 'The number of items to return with each call',
 			},
 			{
 				displayName: 'Options',
@@ -50,7 +50,7 @@ export class SplitInBatches implements INodeType {
 						name: 'reset',
 						type: 'boolean',
 						default: false,
-						description: 'If set to true, the node will be reset and so with the current input-data newly initialized.',
+						description: 'If set to true, the node will be reset and so with the current input-data newly initialized',
 					},
 				],
 			},

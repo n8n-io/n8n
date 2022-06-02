@@ -74,7 +74,7 @@ export class HtmlExtract implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'If HTML should be read from binary or json data.',
+				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
 				displayName: 'Binary Property',
@@ -89,7 +89,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property in which the HTML to extract the data from can be found.',
+				description: 'Name of the binary property in which the HTML to extract the data from can be found',
 			},
 			{
 				displayName: 'JSON Property',
@@ -104,7 +104,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the json property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
+				description: 'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
 				displayName: 'Extraction Values',
@@ -125,7 +125,7 @@ export class HtmlExtract implements INodeType {
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'The key under which the extracted value should be saved.',
+								description: 'The key under which the extracted value should be saved',
 							},
 							{
 								displayName: 'CSS Selector',
@@ -133,7 +133,7 @@ export class HtmlExtract implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: '.price',
-								description: 'The CSS selector to use.',
+								description: 'The CSS selector to use',
 							},
 							{
 								displayName: 'Return Value',
@@ -143,26 +143,26 @@ export class HtmlExtract implements INodeType {
 									{
 										name: 'Attribute',
 										value: 'attribute',
-										description: 'Get an attribute value like "class" from an element.',
+										description: 'Get an attribute value like "class" from an element',
 									},
 									{
 										name: 'HTML',
 										value: 'html',
-										description: 'Get the HTML the element contains.',
+										description: 'Get the HTML the element contains',
 									},
 									{
 										name: 'Text',
 										value: 'text',
-										description: 'Get only the text content of the element.',
+										description: 'Get only the text content of the element',
 									},
 									{
 										name: 'Value',
 										value: 'value',
-										description: 'Get value of an input, select or textarea.',
+										description: 'Get value of an input, select or textarea',
 									},
 								],
 								default: 'text',
-								description: 'What kind of data should be returned.',
+								description: 'What kind of data should be returned',
 							},
 							{
 								displayName: 'Attribute',
@@ -177,7 +177,7 @@ export class HtmlExtract implements INodeType {
 								},
 								default: '',
 								placeholder: 'class',
-								description: 'The name of the attribute to return the value off.',
+								description: 'The name of the attribute to return the value off',
 							},
 							{
 								displayName: 'Return Array',
@@ -203,7 +203,7 @@ export class HtmlExtract implements INodeType {
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,
-						description: 'Removes automatically all spaces and newlines from the beginning and end of the values.',
+						description: 'Removes automatically all spaces and newlines from the beginning and end of the values',
 					},
 				],
 			},

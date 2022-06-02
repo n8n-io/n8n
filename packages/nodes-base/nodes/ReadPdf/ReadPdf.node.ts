@@ -29,7 +29,7 @@ export class ReadPdf implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property from which to read the PDF file.',
+				description: 'Name of the binary property from which to read the PDF file',
 			},
 		],
 	};

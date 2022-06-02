@@ -46,7 +46,7 @@ item.myNewField = 1;
 console.log('Done!');
 
 return item;`,
-				description: 'The JavaScript code to execute for each item.',
+				description: 'The JavaScript code to execute for each item',
 				noDataExpression: true,
 			},
 		],

@@ -7,6 +7,7 @@ export const reportOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const reportOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -64,7 +64,7 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -88,10 +88,10 @@ export const reportFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 1000,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -105,7 +105,7 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -175,7 +175,7 @@ export const reportFields: INodeProperties[] = [
 									loadOptionsMethod: 'getDimensions',
 								},
 								default: '',
-								description: 'Name of the dimension to fetch, for example ga:browser.',
+								description: 'Name of the dimension to fetch, for example ga:browser',
 							},
 						],
 					},
@@ -204,7 +204,7 @@ export const reportFields: INodeProperties[] = [
 									loadOptionsMethod: 'getDimensions',
 								},
 								default: '',
-								description: 'Name of the dimension to filter by.',
+								description: 'Name of the dimension to filter by',
 							},
 							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
 							{
@@ -212,7 +212,7 @@ export const reportFields: INodeProperties[] = [
 								name: 'operator',
 								type: 'options',
 								default: 'EXACT',
-								description: 'Operator to use in combination with value.',
+								description: 'Operator to use in combination with value',
 								options: [
 									{
 										name: 'Begins With',
@@ -254,7 +254,7 @@ export const reportFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'ga:newUsers',
-								description: `String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against.`,
+								description: 'String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against',
 							},
 						],
 					},
@@ -265,21 +265,21 @@ export const reportFields: INodeProperties[] = [
 				name: 'hideTotals',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, hides the total of all metrics for all the matching rows, for every date range.',
+				description: 'If set to true, hides the total of all metrics for all the matching rows, for every date range',
 			},
 			{
 				displayName: 'Hide Value Ranges',
 				name: 'hideValueRanges',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, hides the minimum and maximum across all matching rows.',
+				description: 'If set to true, hides the minimum and maximum across all matching rows',
 			},
 			{
 				displayName: 'Include Empty Rows',
 				name: 'includeEmptyRows',
 				type: 'boolean',
 				default: false,
-				description: 'If set to false, the response exclude rows if all the retrieved metrics are equal to zero.',
+				description: 'If set to false, the response exclude rows if all the retrieved metrics are equal to zero',
 			},
 			{
 				displayName: 'Metrics',
@@ -315,7 +315,7 @@ export const reportFields: INodeProperties[] = [
 								name: 'formattingType',
 								type: 'options',
 								default: 'INTEGER',
-								description: 'Specifies how the metric expression should be formatted.',
+								description: 'Specifies how the metric expression should be formatted',
 								options: [
 									{
 										name: 'Currency',
@@ -348,7 +348,7 @@ export const reportFields: INodeProperties[] = [
 				name: 'useResourceQuotas',
 				type: 'boolean',
 				default: false,
-				description: 'Enables resource based quotas.',
+				description: 'Enables resource based quotas',
 			},
 		],
 	},

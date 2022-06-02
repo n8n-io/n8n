@@ -56,12 +56,6 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
-					const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
-					const isTemplatesEndpointReachable: boolean = store.getters['settings/isTemplatesEndpointReachable'];
-					if (isTemplatesEnabled && isTemplatesEndpointReachable) {
-						return { name: VIEWS.TEMPLATES };
-					}
-
 					return { name: VIEWS.NEW_WORKFLOW };
 				},
 				permissions: {

@@ -35,15 +35,12 @@ import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
-	FindConditions,
 	FindManyOptions,
 	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
-	LessThan,
 	LessThanOrEqual,
-	MoreThan,
 	Not,
 	Raw,
 } from 'typeorm';
@@ -61,13 +58,7 @@ import { createHmac } from 'crypto';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
-import {
-	BinaryDataManager,
-	Credentials,
-	IBinaryDataConfig,
-	LoadNodeParameterOptions,
-	UserSettings,
-} from 'n8n-core';
+import { BinaryDataManager, Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
 
 import {
 	ICredentialType,
@@ -147,21 +138,18 @@ import * as TagHelpers from './TagHelpers';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type {
-	CredentialRequest,
 	ExecutionRequest,
 	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
-	AuthenticatedRequest,
 	TagsRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
@@ -169,7 +157,11 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
+import {
+	getInstanceBaseUrl,
+	isEmailSetUp,
+	isUserManagementEnabled,
+} from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -311,9 +303,7 @@ class App {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled:
-					config.getEnv('userManagement.disabled') === false ||
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+				enabled: isUserManagementEnabled(),
 				showSetupOnFirstLoad:
 					config.getEnv('userManagement.disabled') === false &&
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -346,9 +336,7 @@ class App {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled:
-				config.getEnv('userManagement.disabled') === false ||
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			enabled: isUserManagementEnabled(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -567,12 +555,14 @@ class App {
 						return;
 					}
 
-					try {
-						const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-						await resolveJwt(authCookie);
-					} catch (error) {
-						res.status(401).send('Unauthorized');
-						return;
+					if (isUserManagementEnabled()) {
+						try {
+							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
+							await resolveJwt(authCookie);
+						} catch (error) {
+							res.status(401).send('Unauthorized');
+							return;
+						}
 					}
 
 					this.push.add(req.query.sessionId as string, req, res);
@@ -921,7 +911,14 @@ class App {
 				const requestedName =
 					req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-				return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+				const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+
+				const onboardingFlowEnabled =
+					!config.getEnv('workflows.onboardingFlowDisabled') &&
+					!req.user.settings?.isOnboarded &&
+					(await isBelowOnboardingThreshold(req.user));
+
+				return { name, onboardingFlowEnabled };
 			}),
 		);
 
@@ -1244,7 +1241,7 @@ class App {
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
-					return Db.collections.Tag.find({ select: ['id', 'name'] });
+					return Db.collections.Tag.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });
 				},
 			),
 		);
@@ -1459,7 +1456,7 @@ class App {
 					if (defaultLocale === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							acc.push(description);
+							acc.push(injectCustomApiCallOption(description));
 							return acc;
 						}, []);
 					}
@@ -1483,7 +1480,7 @@ class App {
 							// ignore - no translation exists at path
 						}
 
-						nodeTypes.push(description);
+						nodeTypes.push(injectCustomApiCallOption(description));
 					}
 
 					const nodeTypes: INodeTypeDescription[] = [];
@@ -2279,7 +2276,7 @@ class App {
 						let filterToAdd = {};
 
 						if (key === 'waitTill') {
-							filterToAdd = { waitTill: !IsNull() };
+							filterToAdd = { waitTill: Not(IsNull()) };
 						} else if (key === 'finished' && value === false) {
 							filterToAdd = { finished: false, waitTill: IsNull() };
 						} else {
@@ -2668,7 +2665,8 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							!sharedWorkflowIds.includes(data.workflowId.toString())
+							(data.workflowId !== undefined &&
+								!sharedWorkflowIds.includes(data.workflowId.toString()))
 						) {
 							continue;
 						}
@@ -3041,9 +3039,7 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
-			n8n_multi_user_allowed:
-				config.getEnv('userManagement.disabled') === false ||
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true,
+			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 		};
 
@@ -3117,4 +3113,59 @@ async function getExecutionsCount(
 	});
 
 	return { count, estimated: false };
+}
+
+const CUSTOM_API_CALL_NAME = 'Custom API Call';
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+/**
+ * Inject a `Custom API Call` option into `resource` and `operation`
+ * parameters in a node that supports proxy auth.
+ */
+function injectCustomApiCallOption(description: INodeTypeDescription) {
+	if (!supportsProxyAuth(description)) return description;
+
+	description.properties.forEach((p) => {
+		if (
+			['resource', 'operation'].includes(p.name) &&
+			Array.isArray(p.options) &&
+			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+		) {
+			p.options.push({
+				name: CUSTOM_API_CALL_NAME,
+				value: CUSTOM_API_CALL_KEY,
+			});
+		}
+
+		return p;
+	});
+
+	return description;
+}
+
+const credentialTypes = CredentialTypes();
+
+/**
+ * Whether any of the node's credential types may be used to
+ * make a request from a node other than itself.
+ */
+function supportsProxyAuth(description: INodeTypeDescription) {
+	if (!description.credentials) return false;
+
+	return description.credentials.some(({ name }) => {
+		const credType = credentialTypes.getByName(name);
+
+		if (credType.authenticate !== undefined) return true;
+
+		return isOAuth(credType);
+	});
+}
+
+function isOAuth(credType: ICredentialType) {
+	return (
+		Array.isArray(credType.extends) &&
+		credType.extends.some((parentType) =>
+			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+		)
+	);
 }

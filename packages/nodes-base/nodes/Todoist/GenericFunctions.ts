@@ -28,12 +28,11 @@ export async function todoistApiRequest(
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
+	const authentication = this.getNodeParameter('authentication', 0) as string;
 
 	const endpoint = 'api.todoist.com/rest/v1';
 
 	const options: OptionsWithUri = {
-		headers: {},
 		method,
 		qs,
 		uri: `https://${endpoint}${resource}`,
@@ -45,16 +44,8 @@ export async function todoistApiRequest(
 	}
 
 	try {
-		if (authentication === 'apiKey') {
-			const credentials = await this.getCredentials('todoistApi');
-
-			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-			return this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
-		}
+		const credentialType = authentication === 'apiKey' ? 'todoistApi' : 'todoistOAuth2Api';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
