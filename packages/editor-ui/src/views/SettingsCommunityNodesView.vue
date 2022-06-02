@@ -7,7 +7,7 @@
 					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !isLoading"
 					label="Install"
 					size="large"
-					@click="openNPMPage"
+					@click="openInstallModal"
 				/>
 			</div>
 			<n8n-action-box
@@ -16,7 +16,7 @@
 				:description="getEmptyStateDescription"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="openNPMPage"
+				@click="openInstallModal"
 			/>
 			<div
 				:class="$style.cardsContainer"
@@ -38,7 +38,7 @@
 					:buttonText="$locale.baseText('settings.communityNodes.empty.installPackageLabel')"
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
-					@click="openNPMPage"
+					@click="openInstallModal"
 				/>
 			</div>
 			<div
@@ -61,7 +61,7 @@ import SettingsView from './SettingsView.vue';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-
+import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '../constants';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -109,10 +109,8 @@ export default mixins(
 		},
 	},
 	methods: {
-		openNPMPage() {
-			// TODO: This will open new modal once it is implemented
-			// window.open('https://www.npmjs.com/search?q=keywords:n8n-community-node-package', '_blank');
-			this.$store.dispatch('ui/openModal', 'CommunityPackageInstallModal');
+		openInstallModal() {
+			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},
 });
