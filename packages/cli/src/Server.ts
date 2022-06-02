@@ -1241,7 +1241,7 @@ class App {
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
-					return Db.collections.Tag.find({ select: ['id', 'name'] });
+					return Db.collections.Tag.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });
 				},
 			),
 		);
