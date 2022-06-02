@@ -18,14 +18,19 @@ export const associationOperations: INodeProperties[] = [
 				description: 'Create an association between two objects',
 			},
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Read an association',
+				name: 'Define',
+				value: 'define',
+				description: 'Define a new association',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an association between two objects',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Read an association',
 			},
 		],
 		default: 'get',
@@ -100,8 +105,12 @@ export const associationFields: INodeProperties[] = [
 	{
 		displayName: 'Association Type',
 		name: 'associationType',
-		type: 'string',
+		type: 'options',
 		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getAssociationTypes',
+			loadOptionsDependsOn: ['objectType', 'toObjectType'],
+		},
 		displayOptions: {
 			show: {
 				resource: ['association'],
@@ -109,6 +118,55 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*               association: define                                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Object Type',
+		name: 'objectType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['association'],
+				operation: ['define'],
+			},
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectTypes',
+		},
+		default: '',
+	},
+	{
+		displayName: 'To Object Type',
+		name: 'toObjectType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['association'],
+				operation: ['define'],
+			},
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectTypes',
+		},
+		default: '',
+		description: 'The type of the target object',
+	},
+	{
+		displayName: 'Association Name',
+		name: 'associationName',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['association'],
+				operation: ['define'],
+			},
+		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                association:get                             */

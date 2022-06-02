@@ -962,6 +962,32 @@ export class Hubspot implements INodeType {
 			},
 
 			/* -------------------------------------------------------------------------- */
+			/*                               Associations                                 */
+			/* -------------------------------------------------------------------------- */
+			async getAssociationTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const objectType = this.getNodeParameter('objectType', '') as string;
+				const toObjectType = this.getNodeParameter('toObjectType', '') as string;
+
+				const endpoint = `/crm/v3/associations/${objectType}/${toObjectType}/types`;
+
+				const associationTypes =  await hubspotApiRequest.call(this, 'GET', endpoint);
+
+				if (!associationTypes.results) {
+					return returnData;
+				}
+
+				for (const type of associationTypes.results) {
+					returnData.push({
+						name: type.name,
+						value: type.name,
+					});
+				}
+
+				return returnData;
+			},
+
+			/* -------------------------------------------------------------------------- */
 			/*                               Custom objects                               */
 			/* -------------------------------------------------------------------------- */
 
@@ -2601,6 +2627,21 @@ export class Hubspot implements INodeType {
 								responseData = [{ success: true }];
 							}
 						}
+						if (operation === 'define') {
+							const objectType = this.getNodeParameter('objectType', i) as string;
+							const toObjectType = this.getNodeParameter('toObjectType', i) as string;
+							const associationName = this.getNodeParameter('associationName', i) as string;
+
+							const endpoint = `/crm/v3/schemas/${objectType}/associations`;
+
+							const body = {
+								fromObjectTypeId: objectType,
+								toObjectTypeId: toObjectType,
+								name: associationName,
+							};
+
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+						}
 						if (operation === 'get') {
 							const objectType = this.getNodeParameter('objectType', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
@@ -2621,7 +2662,7 @@ export class Hubspot implements INodeType {
 								} while (after);
 							} else {
 								const response = await hubspotApiRequest.call(this, 'GET', endpoint, {}, { limit });
-								const results = response.results.flatMap((result: Record<string, unknown>) => typeof result === 'object' ? [{
+								const results = response.results.flatMap((result: IDataObject) => typeof result === 'object' ? [{
 									type: result.type,
 									fromId: objectId,
 									toId: result.id,
