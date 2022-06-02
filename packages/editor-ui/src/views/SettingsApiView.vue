@@ -166,7 +166,6 @@ export default mixins(
 }
 
 .hint {
-	text-align: left;
 	padding-left: var(--spacing-s);
 	color: var(--color-text-light);
 }
