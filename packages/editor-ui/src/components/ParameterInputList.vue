@@ -1,6 +1,6 @@
 <template>
 	<div class="parameter-input-list-wrapper">
-		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
 			<slot v-if="indexToShowSlotAt === index" />
 
 			<div
