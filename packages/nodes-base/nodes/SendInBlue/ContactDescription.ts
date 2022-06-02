@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import { GenericValue, IDataObject, IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 
 
 export const contactOperations: INodeProperties[] = [
@@ -56,6 +56,28 @@ const createOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
+		routing: {
+			request: {
+				method: 'POST',
+				url: '/v3/contacts',
+			},
+			send: {
+				type: 'body',
+				property: '=email',
+				preSend: [
+					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
+						// if something special is required it is possible to write custom code and get from parameter
+						if(this.getNodeParameter('email') != '' && this.getNodeParameter('sms') == '') {
+							const value = requestOptions?.body?.valueOf();
+							delete (value as IDataObject).SMS;
+						};
+
+						return requestOptions;
+					},
+				]
+			}
+		}
 	},
 	{
 		displayName: 'SMS',
@@ -72,6 +94,29 @@ const createOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
+		routing: {
+			request: {
+				method: 'POST',
+				url: '={{$credentials.domain}}/v3/contacts',
+			},
+			send: {
+				type: 'body',
+				property: '=SMS',
+				preSend: [
+					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
+						// if something special is required it is possible to write custom code and get from parameter
+						if(this.getNodeParameter('email') == '' && this.getNodeParameter('sms') != '') {
+							const value = requestOptions?.body?.valueOf();
+							delete (value as IDataObject).email;
+							requestOptions.body = { attributes: { ...requestOptions.body as IDataObject } };
+						};
+
+						return requestOptions;
+					},
+				]
+			}
+		}
 	},
 	{
 		displayName: 'Additional Fields',
@@ -193,7 +238,7 @@ const getAllOperations: Array<INodeProperties> = [
 					{
 						type: 'set',
 						properties: {
-							value: '={{ { "statusCode": $response.statusCode, "statusMessage": $response.statusMessage, "contacts": $response.body.contacts, "count": $response.body.count } }}', // Also possible to use the original response data
+							value: '={{ { "contacts": $response.body.contacts, "count": $response.body.count } }}', // Also possible to use the original response data
 						},
 					},
 				],
@@ -278,6 +323,52 @@ const getOperations: Array<INodeProperties> = [
 	}
 ];
 
+const deleteOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'delete',
+				]
+			},
+		},
+		routing: {
+			request: {
+				method: 'DELETE',
+				url: '={{$credentials.domain}}/v3/contacts',
+			},
+			send: {
+				preSend: [
+					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+						requestOptions.url = (requestOptions.url || '') as string;
+						// if something special is required it is possible to write custom code and get from parameter
+						requestOptions.url = `${requestOptions.url}/${encodeURIComponent(this.getNodeParameter('identifier') as string)}`;
+						return requestOptions;
+					},
+				],
+			},
+			output: {
+				postReceive: [
+					{
+						type: 'set',
+						properties: {
+							value: '={{ { "success": true } }}', // Also possible to use the original response data
+						},
+					},
+				],
+			},
+		},
+		default: '',
+		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
+	}
+];
+
 export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
@@ -292,4 +383,9 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:get                                 */
 	/* -------------------------------------------------------------------------- */
 	...getOperations,
+
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:delete                              */
+	/* -------------------------------------------------------------------------- */
+	...deleteOperations,
 ];
