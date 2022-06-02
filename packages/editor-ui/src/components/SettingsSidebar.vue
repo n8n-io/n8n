@@ -102,9 +102,8 @@ export default mixins(
 }
 
 .icon {
-	width: 24px;
+	width: 16px;
 	display: inline-flex;
-	justify-content: center;
 	margin-right: 10px;
 }
 

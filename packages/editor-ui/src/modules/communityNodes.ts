@@ -4,6 +4,8 @@ import { ICommunityNodesState, IRootState } from '@/Interface';
 import { PublicInstalledPackage } from 'n8n-workflow';
 import { ActionContext, Module } from 'vuex';
 
+const LOADER_DELAY = 300;
+
 const module: Module<ICommunityNodesState, IRootState> = {
 	namespaced: true,
 	state: {
@@ -45,7 +47,10 @@ const module: Module<ICommunityNodesState, IRootState> = {
 			context.commit('setLoading', true);
 			const installedPackages = await getInstalledCommunityNodes();
 			context.commit('setInstalledPackages', installedPackages);
-			context.commit('setLoading', false);
+			const timeout = installedPackages.length > 0 ? 0 : LOADER_DELAY;
+			setTimeout(() => {
+				context.commit('setLoading', false);
+			}, timeout);
 		},
 	},
 };
