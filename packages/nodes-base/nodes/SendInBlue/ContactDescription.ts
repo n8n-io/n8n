@@ -1,6 +1,5 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -41,10 +40,7 @@ export const contactOperations: INodeProperties[] = [
 	},
 ];
 
-export const contactFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                contact:create                              */
-/* -------------------------------------------------------------------------- */
+const createOperations: Array<INodeProperties> = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -159,80 +155,141 @@ export const contactFields: INodeProperties[] = [
 				description: 'Array of supported attachments to add to the message',
 			},
 		],
-	},
-/* -------------------------------------------------------------------------- */
-/*                                contact:getAll                             */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	displayOptions: {
-		show: {
-			resource: [
-				'contact',
-			],
-			operation: [
-				'getAll',
-			],
+	}
+];
+
+const getAllOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
 		},
-	},
-	default: false,
-	routing: {
-		request: {
-			method: 'GET',
-			url: 'contacts',
-		},
-		send: {
-			paginate: true,
-		},
-		output: {
-			postReceive: [
-				{
-					type: 'rootProperty',
-					properties: {
-						property: 'contacts',
+		default: false,
+		routing: {
+			request: {
+				method: 'GET',
+				url: '={{$credentials.domain}}/v3/contacts?limit={{$parameter.limit}}&sort=desc',
+			},
+			send: {
+				paginate: false,
+			},
+			output: {
+				postReceive: [
+					{
+						type: 'rootProperty',
+						properties: {
+							property: 'contacts',
+						},
 					},
-				},
-				{
-					type: 'set',
-					properties: {
-						value: '={{ { "success": true } }}',
-						// value: '={{ { "success": $response } }}', // Also possible to use the original response data
+					{
+						type: 'set',
+						properties: {
+							value: '={{ { "statusCode": $response.statusCode, "statusMessage": $response.statusMessage, "contacts": $response.body.contacts, "count": $response.body.count } }}', // Also possible to use the original response data
+						},
 					},
-				},
-			],
+				],
+			},
 		},
+		description: 'Whether to return all results or only up to a given limit',
 	},
-	description: 'Whether to return all results or only up to a given limit',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	displayOptions: {
-		show: {
-			resource: [
-				'contact',
-			],
-			operation: [
-				'getAll',
-			],
-			returnAll: [
-				false,
-			],
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
-	},
-	typeOptions: {
-		minValue: 1,
-		maxValue: 500,
-	},
-	default: 10,
-	routing: {
-		output: {
-			maxResults: '={{$value}}', // Set maxResults to the value of current parameter
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
 		},
-	},
-	description: 'Max number of results to return',
-},
+		default: 10,
+		routing: {
+			output: {
+				maxResults: '={{$value}}', // Set maxResults to the value of current parameter
+			},
+		},
+		description: 'Max number of results to return',
+	}
+];
+
+const getOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'get',
+				]
+			},
+		},
+		routing: {
+			request: {
+				method: 'GET',
+				url: '={{$credentials.domain}}/v3/contacts',
+			},
+			send: {
+				preSend: [
+					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+						requestOptions.url = (requestOptions.url || '') as string;
+						// if something special is required it is possible to write custom code and get from parameter
+						requestOptions.url = `${requestOptions.url}/${encodeURIComponent(this.getNodeParameter('identifier') as string)}`;
+						return requestOptions;
+					},
+				],
+			},
+			output: {
+				postReceive: [
+					{
+						type: 'set',
+						properties: {
+							value: '={{ { "contacts": $response.body } }}', // Also possible to use the original response data
+						},
+					},
+				],
+			},
+		},
+		default: '',
+		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
+	}
+];
+
+export const contactFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:create                              */
+	/* -------------------------------------------------------------------------- */
+	...createOperations,
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:getAll                              */
+	/* -------------------------------------------------------------------------- */
+	...getAllOperations,
+
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:get                                 */
+	/* -------------------------------------------------------------------------- */
+	...getOperations,
 ];
