@@ -27,6 +27,7 @@ import type { User } from '../../../src/databases/entities/User';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
+import { workflowsController } from '../../../src/api/workflows.api';
 
 /**
  * Initialize a test server.
@@ -44,7 +45,7 @@ export function initTestServer({
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
-		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
+		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}), // TODO: Improve
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -62,12 +63,13 @@ export function initTestServer({
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
-		const map: Record<string, express.Router> = {
-			credentials: credentialsController,
+		const map: Record<string, { controller: express.Router; path: string }> = {
+			credentials: { controller: credentialsController, path: 'credentials' },
+			workflows: { controller: workflowsController, path: 'workflows' },
 		};
 
 		for (const group of routerEndpoints) {
-			testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+			testServer.app.use(`/${testServer.restEndpoint}/${map[group].path}`, map[group].controller);
 		}
 	}
 
@@ -105,8 +107,10 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
+	const ROUTER_GROUP = ['credentials', 'workflows'];
+
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];
