@@ -1,3 +1,4 @@
+/* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
@@ -116,12 +117,17 @@ export class Expression {
 			versions: process.versions,
 		};
 
+		/**
+		 * Denylist
+		 */
+
 		// @ts-ignore
 		data.document = {};
 		data.global = {};
 		data.window = {};
 		data.Window = {};
 		data.this = {};
+		data.globalThis = {};
 		data.self = {};
 
 		// Alerts
@@ -139,20 +145,76 @@ export class Expression {
 		data.fetch = {};
 		data.XMLHttpRequest = {};
 
-		// @ts-ignore
-		data.DateTime = DateTime;
-		data.Interval = Interval;
-		data.Duration = Duration;
+		// Prevent control abstraction
+		data.Promise = {};
+		data.Generator = {};
+		data.GeneratorFunction = {};
+		data.AsyncFunction = {};
+		data.AsyncGenerator = {};
+		data.AsyncGeneratorFunction = {};
+
+		// Prevent WASM
+		data.WebAssembly = {};
+
+		// Prevent Reflection
+		data.Reflect = {};
+		data.Proxy = {};
 
 		// @ts-ignore
 		data.constructor = {};
 
+		/**
+		 * Allowlist
+		 */
+
+		// Dates
+		data.Date = Date;
+		data.DateTime = DateTime;
+		data.Interval = Interval;
+		data.Duration = Duration;
+
+		// Objects
+		data.Object = Object;
+
+		// Arrays
+		data.Array = Array;
+
+		// Collections
+		data.Map = Map;
+		data.WeakMap = WeakMap;
+		data.Set = Set;
+		data.WeakSet = WeakSet;
+
+		// Errors
+		data.Error = Error;
+
+		// Internationalization
+		data.Intl = Intl;
+
+		// Text
+		data.String = String;
+		data.RegExp = RegExp;
+
+		// Math
+		data.Math = Math;
+		data.Number = Number;
+		data.BigInt = BigInt;
+		data.Infinity = Infinity;
+		data.NaN = NaN;
+		data.isFinite = Number.isFinite;
+		data.isNaN = Number.isNaN;
+		data.parseFloat = parseFloat;
+		data.parseInt = parseInt;
+
+		// Structured data
+		data.JSON = JSON;
+
+		// Other
+		data.Boolean = Boolean;
+		data.Symbol = Symbol;
+
 		// Execute the expression
 		try {
-			if (/([^a-zA-Z0-9"']window[^a-zA-Z0-9"'])/g.test(parameterValue)) {
-				throw new Error(`window is not allowed`);
-			}
-
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
 
