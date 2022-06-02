@@ -49,7 +49,7 @@ test('POST /workflows should store pin data for node in workflow', async () => {
 	expect(JSON.parse(pinData)).toMatchObject({ Spotify: { myKey: 'myValue' } });
 });
 
-test('POST /workflows without pin data should store pin data as null', async () => {
+test('POST /workflows should set pin data to null if no pin data', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
@@ -64,19 +64,19 @@ test('POST /workflows without pin data should store pin data as null', async () 
 	expect(pinData).toBeNull();
 });
 
-test('GET /workflows/:id should retrieve a workflow - node with pin data', async () => {
+test('GET /workflows/:id should return pin data at node level', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	const workflow1 = makeWorkflow({ withPinData: true });
+	const workflow = makeWorkflow({ withPinData: true });
 
-	await authOwnerAgent.post('/workflows').send(workflow1);
+	await authOwnerAgent.post('/workflows').send(workflow);
 
-	const response1 = await authOwnerAgent.get('/workflows/1');
+	const response = await authOwnerAgent.get('/workflows/1');
 
-	expect(response1.statusCode).toBe(200);
+	expect(response.statusCode).toBe(200);
 
-	const { nodes } = response1.body.data as { nodes: INode[] };
+	const { nodes } = response.body.data as { nodes: INode[] };
 
 	const node = nodes.find((node) => node.name === 'Spotify');
 
