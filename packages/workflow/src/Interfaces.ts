@@ -792,7 +792,7 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
-	pinData?: object | null;
+	pinData?: IDataObject;
 }
 
 export interface INodes {
