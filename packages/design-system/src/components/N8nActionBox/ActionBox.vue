@@ -6,7 +6,7 @@
 		<div :class="$style.description">
 			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
 		</div>
-		<component v-if="!props.hideButton" :is="$options.components.N8nButton" :label="props.buttonText" size="large"
+		<component v-if="props.buttonText" :is="$options.components.N8nButton" :label="props.buttonText" size="large"
 			@click="(e) => listeners.click && listeners.click(e)"
 		/>
 		<component v-if="props.calloutText" :is="$options.components.N8nCallout"
@@ -32,10 +32,6 @@ export default {
 		},
 		description: {
 			type: String,
-		},
-		hideButton: {
-			type: Boolean,
-			default: false,
 		},
 		calloutText: {
 			type: String,

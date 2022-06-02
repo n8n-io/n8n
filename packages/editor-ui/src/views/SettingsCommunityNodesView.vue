@@ -18,10 +18,8 @@
 				v-else-if="isQueueModeEnabled"
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
-				:buttonText="$locale.baseText('settings.communityNodes.empty.installPackageLabel')"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
-				:hideButton="actionBoxConfig.hideButton"
 				@click="openNPMPage"
 			/>
 			<div
@@ -34,7 +32,6 @@
 					:buttonText="$locale.baseText('settings.communityNodes.empty.installPackageLabel')"
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
-					:hideButton="actionBoxConfig.hideButton"
 					@click="openNPMPage"
 				/>
 			</div>
@@ -67,8 +64,8 @@ export default Vue.extend({
 		CommunityPackageCard,
 	},
 	async mounted() {
-		await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 		try {
+			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
 		} finally { }
 	},

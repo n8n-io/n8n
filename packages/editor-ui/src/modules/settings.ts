@@ -68,9 +68,6 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
-		executionMode: (state): string => {
-			return state.settings.executionMode;
-		},
 		isCommunityNodesFeatureEnabled: (state): boolean => {
 			return state.settings.communityNodesFeatureEnabled;
 		},

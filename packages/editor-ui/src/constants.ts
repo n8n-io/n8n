@@ -46,7 +46,7 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 
-export const N8N_IO_BASE_URL = `https://api.n8n.io/`;
+export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
 

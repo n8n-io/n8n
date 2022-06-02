@@ -219,6 +219,12 @@ import {
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 
+const settingsRoutes = [
+	VIEWS.PERSONAL_SETTINGS,
+	VIEWS.USERS_SETTINGS,
+	VIEWS.COMMUNITY_NODES,
+];
+
 export default mixins(
 	genericHelpers,
 	restApi,
@@ -259,17 +265,8 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				const settingsRoutes = [
-					VIEWS.PERSONAL_SETTINGS,
-					VIEWS.USERS_SETTINGS,
-					VIEWS.COMMUNITY_NODES,
-				];
-				for(const route of settingsRoutes) {
-					if(this.canUserAccessRouteByName(route)) {
-						return true;
-					}
-				}
-				return false;
+				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
+				return accessibleRoute !== null;
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -611,13 +608,23 @@ export default mixins(
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
-					if ((this.currentUser as IUser).isDefaultUser) {
-						this.$router.push('/settings/users');
-					}
-					else {
-						this.$router.push('/settings/personal');
+					const defaultRoute = this.findFirstAccessibleSettingsRoute();
+					if(defaultRoute) {
+						const routeProps = this.$router.resolve({ name: defaultRoute });
+						this.$router.push(routeProps.route.path);
 					}
 				}
+			},
+			findFirstAccessibleSettingsRoute() {
+				let defaultSettingsRoute = null;
+
+				for(const route of settingsRoutes) {
+					if(this.canUserAccessRouteByName(route)) {
+						defaultSettingsRoute = route;
+						break;
+					}
+				}
+				return defaultSettingsRoute;
 			},
 		},
 	});
