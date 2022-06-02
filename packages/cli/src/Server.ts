@@ -1160,6 +1160,7 @@ class App {
 				): Promise<IExecutionPushResponse> => {
 					const { workflowData } = req.body;
 					const { runData } = req.body;
+					const { pinData } = req.body;
 					const { startNodes } = req.body;
 					const { destinationNode } = req.body;
 					const executionMode = 'manual';
@@ -1210,6 +1211,7 @@ class App {
 						destinationNode,
 						executionMode,
 						runData,
+						pinData,
 						sessionId,
 						startNodes,
 						workflowData,

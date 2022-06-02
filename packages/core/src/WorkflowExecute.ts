@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-labels */
@@ -29,6 +30,7 @@ import {
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
+	PinDataPayload,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
@@ -56,6 +58,7 @@ export class WorkflowExecute {
 			startData: {},
 			resultData: {
 				runData: {},
+				pinData: {},
 			},
 			executionData: {
 				contextData: {},
@@ -78,7 +81,12 @@ export class WorkflowExecute {
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	run(
+		workflow: Workflow,
+		startNode?: INode,
+		destinationNode?: string,
+		pinData?: PinDataPayload,
+	): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -116,6 +124,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData: {},
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -146,6 +155,7 @@ export class WorkflowExecute {
 		runData: IRunData,
 		startNodes: string[],
 		destinationNode: string,
+		pinData?: PinDataPayload,
 		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
@@ -236,6 +246,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData,
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -808,25 +819,32 @@ export class WorkflowExecute {
 								}
 							}
 
-							Logger.debug(`Running node "${executionNode.name}" started`, {
-								node: executionNode.name,
-								workflowId: workflow.id,
-							});
-							const runNodeData = await workflow.runNode(
-								executionData.node,
-								executionData.data,
-								this.runExecutionData,
-								runIndex,
-								this.additionalData,
-								NodeExecuteFunctions,
-								this.mode,
-							);
-							nodeSuccessData = runNodeData.data;
+							const { pinData } = this.runExecutionData.resultData;
 
-							if (runNodeData.closeFunction) {
-								// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-								closeFunction = runNodeData.closeFunction();
+							if (pinData && pinData[executionNode.name] !== undefined) {
+								const nodePinData = pinData[executionNode.name][runIndex];
+								nodeSuccessData = [[{ json: nodePinData }]];
+							} else {
+								Logger.debug(`Running node "${executionNode.name}" started`, {
+									node: executionNode.name,
+									workflowId: workflow.id,
+								});
+								const runNodeData = await workflow.runNode(
+									executionData.node,
+									executionData.data,
+									this.runExecutionData,
+									runIndex,
+									this.additionalData,
+									NodeExecuteFunctions,
+									this.mode,
+								);
+								nodeSuccessData = runNodeData.data;
+
+								if (runNodeData.closeFunction) {
+									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+									closeFunction = runNodeData.closeFunction();
+								}
 							}
 
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {

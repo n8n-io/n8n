@@ -8,6 +8,7 @@ import {
 	INodeCredentialTestRequest,
 	IRunData,
 	IWorkflowSettings,
+	PinDataPayload,
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
@@ -65,6 +66,7 @@ export declare namespace WorkflowRequest {
 		{
 			workflowData: IWorkflowDb;
 			runData: IRunData;
+			pinData: PinDataPayload;
 			startNodes?: string[];
 			destinationNode?: string;
 		}
