@@ -519,8 +519,14 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
-		const createExpressionError = (message: string) => {
+		const createExpressionError = (
+			message: string,
+			messageTemplate?: string,
+			description?: string,
+		) => {
 			return new ExpressionError(message, {
+				description,
+				messageTemplate,
 				runIndex: that.runIndex,
 				itemIndex: that.itemIndex,
 				failExecution: true,
@@ -595,7 +601,9 @@ export class WorkflowDataProxy {
 
 					if (results.length !== 1) {
 						throw createExpressionError(
-							`Could not resolve, as no clear pairedItem could be found. There are '${results.length}' matching items starting from node '${sourceData.previousNode}'.`,
+							'Invalid expression',
+							'Invalid expression under ‘%%PARAMETER%%’',
+							`The expression uses data in node ‘${sourceData.previousNode}’ but there is more than one matching item in that node`,
 						);
 					}
 

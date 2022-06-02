@@ -11,6 +11,7 @@ export class ExpressionError extends ExecutionBaseError {
 			description?: string;
 			runIndex?: number;
 			itemIndex?: number;
+			messageTemplate?: string;
 			parameter?: string;
 			failExecution?: boolean;
 		},
@@ -31,6 +32,10 @@ export class ExpressionError extends ExecutionBaseError {
 
 		if (options?.parameter !== undefined) {
 			this.context.parameter = options.parameter;
+		}
+
+		if (options?.messageTemplate !== undefined) {
+			this.context.messageTemplate = options.messageTemplate;
 		}
 
 		this.context.failExecution = !!options?.failExecution;

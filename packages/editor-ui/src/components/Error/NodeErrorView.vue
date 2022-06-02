@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + error.message }}</div>
+			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 			<div v-if="error.context && error.context.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
 				<span class="error-details__summary">Item Index:</span>
@@ -133,13 +133,21 @@ export default mixins(
 		},
 	},
 	methods: {
+		getErrorMessage (): string {
+			if (!this.error.context.messageTemplate) {
+				return this.error.message;
+			}
+
+			const parameterName = this.parameterDisplayName(this.error.context.parameter);
+			return this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+		},
 		parameterDisplayName(path: string) {
 			try {
 				const parameters = this.parameterName(this.parameters, path.split('.'));
 				if (!parameters.length) {
 					throw new Error();
 				}
-				return parameters.map(parameter => parameter.displayName).join(' => ');
+				return parameters.map(parameter => parameter.displayName).join(' > ');
 			} catch (error) {
 				return `Could not find parameter "${path}"`;
 			}
