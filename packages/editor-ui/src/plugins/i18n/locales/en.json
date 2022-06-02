@@ -775,6 +775,8 @@
 	"triggerPanel.startNodeHint": "This node will not run automatically. Use it to manually execute your workflow.",
 	"triggerPanel.activateWorkflow.activate": "Activate",
 	"triggerPanel.activateWorkflow.message": "this workflow to have it also run automatically on the schedule you define",
+	"triggerPanel.webhookBasedNode.action": "Pull in events from {name}",
+	"triggerPanel.webhookNode.action": "Pull in test webhook events",
 	"updatesPanel.andIs": "and is",
 	"updatesPanel.behindTheLatest": "behind the latest and greatest n8n",
 	"updatesPanel.howToUpdateYourN8nVersion": "How to update your n8n version",

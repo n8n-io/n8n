@@ -28,7 +28,7 @@
 </template>
 
 <script lang="ts">
-import { START_NODE_TYPE } from '@/constants';
+import { START_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { workflowActivate } from '@/components/mixins/workflowActivate';
@@ -59,6 +59,12 @@ export default mixins(
 
 			return null;
 		},
+		isWebhookNode(): boolean {
+			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
+		},
+		isWebhookBasedNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.webhooks && this.nodeType.webhooks.length);
+		},
 		isPollingNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.polling);
 		},
@@ -71,14 +77,24 @@ export default mixins(
 			return this.$store.getters.isActive;
 		},
 		header(): string {
+			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName): '';
+
 			if (this.isActivelyPolling) {
 				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
 			}
-			if (this.nodeType && this.isPollingNode) {
-				const serviceName = getTriggerNodeServiceName(this.nodeType.displayName);
 
+			if (this.nodeType && this.isPollingNode) {
 				return this.$locale.baseText('triggerPanel.scheduledNode.action', { interpolate: { name: serviceName } });
 			}
+
+			if (this.isWebhookNode) {
+				return this.$locale.baseText('triggerPanel.webhookNode.action');
+			}
+
+			if (this.isWebhookBasedNode) {
+				return this.$locale.baseText('triggerPanel.webhookBasedNode.action', { interpolate: { name: serviceName }});
+			}
+
 			return this.$locale.baseText('triggerPanel.executeWorkflow');
 		},
 		subheader(): string {
@@ -105,7 +121,7 @@ export default mixins(
 			return '';
 		},
 		showExecuteButton(): boolean {
-			return this.isPollingNode && !this.isActivelyPolling;
+			return (this.isPollingNode && !this.isActivelyPolling) || this.isWebhookNode || this.isWebhookBasedNode;
 		},
 	},
 	methods: {
