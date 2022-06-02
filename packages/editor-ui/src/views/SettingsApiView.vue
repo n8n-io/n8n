@@ -4,14 +4,14 @@
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText('settings.api') }}
-					<span :style="{ fontSize: '0.5em', fontStyle: 'italic' }">
+					<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)', }">
 						({{ $locale.baseText('beta') }})
 					</span>
 				</n8n-heading>
 			</div>
 
 			<div v-if="apiKey">
-				<p class="mb-s">
+				<p class="mb-s ml-s">
 					<n8n-info-tip :bold="false">
 						<span v-html="$locale.baseText('settings.api.view.info')"></span>
 					</n8n-info-tip>
@@ -166,7 +166,9 @@ export default mixins(
 }
 
 .hint {
-	text-align: center;
+	text-align: left;
+	padding-left: var(--spacing-s);
+	color: var(--color-text-light);
 }
 </style>
 
