@@ -11,7 +11,7 @@
 			</div>
 
 			<div v-if="apiKey">
-				<p class="mb-s ml-s">
+				<p class="mb-s">
 					<n8n-info-tip :bold="false">
 						<span v-html="$locale.baseText('settings.api.view.info')"></span>
 					</n8n-info-tip>
@@ -166,7 +166,6 @@ export default mixins(
 }
 
 .hint {
-	padding-left: var(--spacing-s);
 	color: var(--color-text-light);
 }
 </style>

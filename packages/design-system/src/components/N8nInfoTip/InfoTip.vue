@@ -1,7 +1,7 @@
 <template>
 	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
 		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
-			<span>
+			<span :class="$style.iconText">
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
 				<span v-if="type === 'note'"><slot></slot></span>
 			</span>
@@ -72,6 +72,10 @@ export default {
 
 .tooltip {
 	composes: base;
+	display: inline-flex;
+}
+
+.iconText {
 	display: inline-flex;
 }
 
