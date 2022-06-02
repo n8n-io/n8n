@@ -10,18 +10,24 @@
 					@click="openNPMPage"
 				/>
 			</div>
-			<div :class="$style.loadingContainer" v-if="isLoading">
-				<n8n-spinner size="large"/>
-				<n8n-text>{{ $locale.baseText('settings.communityNodes.loading.message') }}</n8n-text>
-			</div>
 			<n8n-action-box
-				v-else-if="isQueueModeEnabled"
+				v-if="isQueueModeEnabled"
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
 				@click="openNPMPage"
 			/>
+			<div
+				:class="$style.cardsContainer"
+				v-else-if="isLoading"
+			>
+				<community-package-card
+					v-for="n in 2"
+					:key="'index-' + n"
+					:loading="true"
+				></community-package-card>
+			</div>
 			<div
 				v-else-if="getInstalledPackages.length === 0"
 				:class="$style.actionBoxContainer"

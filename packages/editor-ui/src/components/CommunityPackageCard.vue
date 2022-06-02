@@ -1,39 +1,47 @@
 <template>
-	<div :key="communityPackage.packageName" :class="$style.packageCard">
-		<div :class="$style.cardInfoContainer">
-			<div :class="$style.cardTitle">
-				<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
-			</div>
-			<n8n-text :bold="true" size="small" color="text-light">
-				{{
-					$locale.baseText('settings.communityNodes.packageNodes.label', {
-						adjustToNumber: communityPackage.installedNodes.length,
-					})
-				}}:&nbsp;
-			</n8n-text>
-			<n8n-text size="small" color="text-light">
-				<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-					{{ node.name }}
-					<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
-				</span>
-			</n8n-text>
+	<div :class="$style.cardContainer">
+		<div v-if="loading" :class="$style.cardSkeleton">
+			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 		</div>
-		<div :class="$style.cardControlsContainer">
-			<n8n-text :bold="true" size="large" color="text-light">
-				{{ communityPackage.installedVersion }}
-			</n8n-text>
-			<n8n-tooltip v-if="communityPackage.updateAvailable" placement="top">
-				<div slot="content">
-					{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+		<div v-else :class="$style.packageCard">
+			<div :class="$style.cardInfoContainer">
+				<div :class="$style.cardTitle">
+					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
 				</div>
-				<n8n-button type="outline" label="Update" />
-			</n8n-tooltip>
-			<n8n-tooltip v-else placement="top">
-				<div slot="content">{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}</div>
-				<n8n-icon icon="check-circle" color="text-light" size="large" />
-			</n8n-tooltip>
-			<div :class="$style.cardActions">
-				<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>
+				<n8n-text :bold="true" size="small" color="text-light">
+					{{
+						$locale.baseText('settings.communityNodes.packageNodes.label', {
+							adjustToNumber: communityPackage.installedNodes.length,
+						})
+					}}:&nbsp;
+				</n8n-text>
+				<n8n-text size="small" color="text-light">
+					<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
+						{{ node.name }}
+						<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
+					</span>
+				</n8n-text>
+			</div>
+			<div :class="$style.cardControlsContainer">
+				<n8n-text :bold="true" size="large" color="text-light">
+					{{ communityPackage.installedVersion }}
+				</n8n-text>
+				<n8n-tooltip v-if="communityPackage.updateAvailable" placement="top">
+					<div slot="content">
+						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+					</div>
+					<n8n-button type="outline" label="Update" />
+				</n8n-tooltip>
+				<n8n-tooltip v-else placement="top">
+					<div slot="content">
+						{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+					</div>
+					<n8n-icon icon="check-circle" color="text-light" size="large" />
+				</n8n-tooltip>
+				<div :class="$style.cardActions">
+					<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -54,6 +62,10 @@ export default Vue.extend({
 	props: {
 		communityPackage: {
 			type: Object as () => PublicInstalledPackage,
+		},
+		loading: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -89,13 +101,38 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.packageCard {
+.cardContainer {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
 	padding: var(--spacing-s);
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
 	border-radius: var(--border-radius-large);
+}
+
+.packageCard, .cardSkeleton {
+	display: flex;
+	flex-basis: 100%;
+	justify-content: space-between;
+}
+
+.packageCard {
+	align-items: center;
+}
+
+.cardSkeleton {
+	flex-direction: column;
+}
+
+.loader {
+	width: 50%;
+	transform: scaleY(-1);
+
+	&:last-child {
+		width: 70%;
+
+		div {
+			margin: 0;
+		}
+	}
 }
 
 .cardInfoContainer {
