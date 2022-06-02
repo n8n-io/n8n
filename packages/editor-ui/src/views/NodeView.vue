@@ -76,7 +76,7 @@
 				>
 					<n8n-icon-button
 						size="large"
-						outline
+						type="secondary"
 						:icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')"
 					/>
@@ -89,23 +89,17 @@
 			@closeNodeCreator="closeNodeCreator"
 		/>
 		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
-			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
-				<font-awesome-icon icon="expand"/>
-			</button>
-			<button @click="zoomIn()" class="button-white" :title="$locale.baseText('nodeView.zoomIn')">
-				<font-awesome-icon icon="search-plus"/>
-			</button>
-			<button @click="zoomOut()" class="button-white" :title="$locale.baseText('nodeView.zoomOut')">
-				<font-awesome-icon icon="search-minus"/>
-			</button>
-			<button
+			<n8n-icon-button @click="zoomToFit" type="tertiary" size="xlarge" :title="$locale.baseText('nodeView.zoomToFit')" icon="expand" />
+			<n8n-icon-button @click="zoomIn" type="tertiary" size="xlarge" :title="$locale.baseText('nodeView.zoomIn')" icon="search-plus" />
+			<n8n-icon-button @click="zoomOut" type="tertiary" size="xlarge" :title="$locale.baseText('nodeView.zoomOut')" icon="search-minus" />
+			<n8n-icon-button
 				v-if="nodeViewScale !== 1 && !isDemo"
-				@click="resetZoom()"
-				class="button-white"
+				@click="resetZoom"
+				type="tertiary"
+				size="xlarge"
 				:title="$locale.baseText('nodeView.resetZoom')"
-				>
-				<font-awesome-icon icon="undo" :title="$locale.baseText('nodeView.resetZoom')"/>
-			</button>
+				icon="undo"
+			/>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<n8n-button
@@ -2948,7 +2942,7 @@ export default mixins(
 
 	position: fixed;
 	left: $--sidebar-width + $--zoom-menu-margin;
-	width: 200px;
+	width: 210px;
 	bottom: 45px;
 	line-height: 25px;
 	color: #444;
@@ -2960,6 +2954,16 @@ export default mixins(
 
 	button {
 		border: var(--border-base);
+	}
+
+	> * {
+		+ * {
+			margin-left: var(--spacing-3xs);
+		}
+
+		&:hover {
+			transform: scale(1.1);
+		}
 	}
 }
 
@@ -3131,23 +3135,6 @@ export default mixins(
 
 .node-input-endpoint-label {
 	text-align: right;
-}
-
-.button-white {
-	border: none;
-	padding: 0.3em;
-	margin: 0 0.1em;
-	border-radius: 3px;
-	font-size: 1.2em;
-	background: #fff;
-	width: 40px;
-	height: 40px;
-	color: #666;
-	cursor: pointer;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .connection-actions {

@@ -69,7 +69,7 @@ export default Vue.extend({
 			default: false,
 		},
 		icon: {
-			type: String,
+			type: [String, Array],
 		},
 		block: {
 			type: Boolean,

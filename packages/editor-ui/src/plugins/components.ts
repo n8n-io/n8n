@@ -84,7 +84,7 @@ Vue.use(Fragment.Plugin);
 Vue.use(N8nActionBox);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
-Vue.use(N8nButton);
+Vue.component('n8n-button', N8nButton);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
 Vue.component('n8n-icon', N8nIcon);

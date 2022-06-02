@@ -44,7 +44,7 @@ export default {
 			default: false,
 		},
 		icon: {
-			type: String,
+			type: [String, Array],
 			required: true,
 		},
 		float: {
