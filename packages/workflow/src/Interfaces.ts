@@ -350,6 +350,10 @@ export interface IGetExecuteTriggerFunctions {
 	): ITriggerFunctions;
 }
 
+export interface IRunNodeResponse {
+	data: INodeExecutionData[][] | null | undefined;
+	closeFunction?: () => Promise<void>;
+}
 export interface IGetExecuteFunctions {
 	(
 		workflow: Workflow,
@@ -690,6 +694,7 @@ export interface ITriggerFunctions {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
