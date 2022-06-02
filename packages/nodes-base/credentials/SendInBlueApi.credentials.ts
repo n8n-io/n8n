@@ -1,5 +1,6 @@
 import {
 	IAuthenticateHeaderAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -13,13 +14,13 @@ export class SendinblueApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
-			default: 'YOUR API KEY',
+			default: '',
 		},
 		{
 			displayName: 'Domain',
 			name: 'domain',
 			type: 'string',
-			default: '',
+			default: 'https://api.sendinblue.com',
 		},
 	];
 	authenticate = {
@@ -29,4 +30,10 @@ export class SendinblueApi implements ICredentialType {
 			value: '={{$credentials.apiKey}}',
 		},
 	} as IAuthenticateHeaderAuth;
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.domain}}/v3',
+			url: '/account',
+		},
+	};
 }

@@ -9,6 +9,7 @@ import {
 	INodeTypeDescription,
 	IRequestOptionsFromParameters,
 } from 'n8n-workflow';
+import { contactFields, contactOperations } from './ContactDescription';
 
 export class Sendinblue implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,21 +30,6 @@ export class Sendinblue implements INodeType {
 			{
 				name: 'sendinblueApi',
 				required: true,
-				testedBy: {
-					request: {
-						method: 'GET',
-						url: '/account',
-					},
-					rules: [
-						{
-							type: 'responseCode',
-							properties: {
-								value: 401,
-								message: 'Blub - Does not exist.',
-							},
-						},
-					],
-				},
 			},
 		],
 		requestDefaults: {
@@ -626,102 +612,8 @@ export class Sendinblue implements INodeType {
 				},
 				description: 'Max number of results to return',
 			},
-
-			// Contact
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'contact',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Get All',
-						value: 'getAll',
-					},
-				],
-				default: 'create',
-			},
-
-			// contact:getAll
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'getAll',
-						],
-					},
-				},
-				default: false,
-				routing: {
-					request: {
-						method: 'GET',
-						url: 'contacts',
-					},
-					send: {
-						paginate: true,
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'contacts',
-								},
-							},
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "success": true } }}',
-									// value: '={{ { "success": $response } }}', // Also possible to use the original response data
-								},
-							},
-						],
-					},
-				},
-				description: 'Whether to return all results or only up to a given limit',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 10,
-				routing: {
-					output: {
-						maxResults: '={{$value}}', // Set maxResults to the value of current parameter
-					},
-				},
-				description: 'Max number of results to return',
-			},
+			...contactOperations,
+			...contactFields,
 		],
 	};
 }
