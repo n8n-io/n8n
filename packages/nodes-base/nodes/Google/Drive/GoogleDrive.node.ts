@@ -2369,7 +2369,7 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						return [this.helpers.returnJsonArray(files as IDataObject[])];
+						returnData.push(...files);
 
 					} else if (operation === 'upload') {
 						// ----------------------------------
