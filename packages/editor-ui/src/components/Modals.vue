@@ -88,6 +88,10 @@
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
 		</ModalRoot>
+
+		<ModalRoot :name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY">
+			<CommunityPackageInstallModal />
+		</ModalRoot>
 	</div>
 </template>
 
@@ -96,6 +100,7 @@ import Vue from "vue";
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_LIST_MODAL_KEY,
@@ -114,6 +119,7 @@ import {
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from "./ChangePasswordModal.vue";
 import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
@@ -137,6 +143,7 @@ export default Vue.extend({
 	components: {
 		AboutModal,
 		ActivationModal,
+		CommunityPackageInstallModal,
 		ContactPromptModal,
 		ChangePasswordModal,
 		CredentialEdit,
@@ -155,6 +162,7 @@ export default Vue.extend({
 		WorkflowOpen,
 	},
 	data: () => ({
+		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_LIST_MODAL_KEY,
