@@ -3,7 +3,7 @@
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { INode, LoggerProxy } from 'n8n-workflow';
+import { IDataObject, INode, LoggerProxy } from 'n8n-workflow';
 
 import { Db, ResponseHelper, whereClause, WorkflowHelpers } from '..';
 import config from '../../config';
@@ -147,7 +147,7 @@ workflowsController.get(
 			workflow: { id, name, nodes, pinData, ...rest },
 		} = shared;
 
-		const pinDataObject: { [nodeName: string]: object } | null =
+		const pinDataObject: { [nodeName: string]: IDataObject } | null =
 			typeof pinData === 'string' ? JSON.parse(pinData) : pinData;
 
 		const workflowNodes = nodes.map((node) => {

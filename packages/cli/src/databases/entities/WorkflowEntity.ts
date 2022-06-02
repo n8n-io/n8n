@@ -119,7 +119,7 @@ export class WorkflowEntity implements IWorkflowDb {
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
 		nullable: true,
 	})
-	pinData: { [nodeName: string]: object };
+	pinData: { [nodeName: string]: IDataObject };
 
 	@BeforeUpdate()
 	setUpdateDate() {
