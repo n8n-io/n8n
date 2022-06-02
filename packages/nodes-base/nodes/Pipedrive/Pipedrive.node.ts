@@ -4813,6 +4813,11 @@ export class Pipedrive implements INodeType {
 
 						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
 
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 						if (Object.keys(filters).length) {
