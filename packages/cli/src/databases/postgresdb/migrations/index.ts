@@ -30,9 +30,6 @@ export const postgresMigrations = [
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
-<<<<<<< HEAD
 	AddAPIKeyColumn1652905585850,
-=======
 	IntroducePinData1654090467022,
->>>>>>> ab158decc (:card_file_box: Add `pinData` column to `workflow_entity`)
 ];

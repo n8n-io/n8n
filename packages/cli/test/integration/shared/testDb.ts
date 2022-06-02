@@ -140,7 +140,13 @@ export async function truncate(collections: CollectionName[], testDbName: string
 
 	if (dbType === 'sqlite') {
 		await testDb.query('PRAGMA foreign_keys=OFF');
-		await Promise.all(collections.map((collection) => Db.collections[collection].clear()));
+		await Promise.all(
+			collections.map((collection) => {
+				const tableName = toTableName(collection);
+				Db.collections[collection].clear();
+				testDb.query(`DELETE FROM sqlite_sequence WHERE name = '${tableName}';`); // reset autoincrement
+			}),
+		);
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
