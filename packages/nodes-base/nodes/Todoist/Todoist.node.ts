@@ -2,6 +2,8 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
+import {v4 as uuid} from 'uuid';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -14,6 +16,7 @@ import {
 import {
 	FormatDueDatetime,
 	todoistApiRequest,
+	todoistSyncRequest,
 } from './GenericFunctions';
 
 interface IBodyCreateTask {
@@ -151,6 +154,11 @@ export class Todoist implements INodeType {
 						value: 'update',
 						description: 'Update a task',
 					},
+					{
+						name: 'Move',
+						value: 'move',
+						description: 'Move a task',
+					},
 				],
 				default: 'create',
 			},
@@ -168,11 +176,35 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'create',
+							'move',
 						],
 					},
 				},
 				default: '',
 				description: 'The project you want to operate on',
+			},
+			{
+				displayName: 'Section',
+				name: 'section',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getSections',
+					loadOptionsDependsOn: [
+						'project',
+					],
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+						],
+						operation: [
+							'move',
+						],
+					},
+				},
+				default: '',
+				description: 'Section to which you want move the task',
 			},
 			{
 				displayName: 'Labels',
@@ -232,6 +264,7 @@ export class Todoist implements INodeType {
 							'get',
 							'reopen',
 							'update',
+							'move',
 						],
 					},
 				},
@@ -744,6 +777,25 @@ export class Todoist implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 					}
+					if (operation === 'move') {
+						const taskId = this.getNodeParameter('taskId', i) as string;
+						const section = this.getNodeParameter('section', i) as string;
+						const body = {
+							commands: [
+								{
+									type: 'item_move',
+									uuid: uuid(),
+									args: {
+										id: taskId,
+										section_id: section,
+									},
+								},
+							],
+						};
+
+						await todoistSyncRequest.call(this, body);
+						responseData = { success: true };
+					}
 					if (operation === 'reopen') {
 						//https://developer.todoist.com/rest/v1/#get-an-active-task
 						const id = this.getNodeParameter('taskId', i) as string;
@@ -752,7 +804,6 @@ export class Todoist implements INodeType {
 
 						responseData = { success: true };
 					}
-
 					if (operation === 'update') {
 						//https://developer.todoist.com/rest/v1/#update-a-task
 						const id = this.getNodeParameter('taskId', i) as string;
@@ -811,3 +862,5 @@ export class Todoist implements INodeType {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+
+
