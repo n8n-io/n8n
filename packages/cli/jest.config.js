@@ -3,6 +3,7 @@ module.exports = {
 	transform: {
 		'^.+\\.ts?$': 'ts-jest',
 	},
+	testTimeout: 30_000,
 	testURL: 'http://localhost/',
 	testRegex: '(/__tests__/.*|(\\.|/)(test))\\.ts$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
