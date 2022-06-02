@@ -10,10 +10,10 @@ export class SendinblueApi implements ICredentialType {
 	documentationUrl = 'sendinblue';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Access Token',
-			name: 'accessToken',
+			displayName: 'API Key',
+			name: 'apiKey',
 			type: 'string',
-			default: '',
+			default: 'YOUR API KEY',
 		},
 		{
 			displayName: 'Domain',
@@ -26,7 +26,7 @@ export class SendinblueApi implements ICredentialType {
 		type: 'headerAuth',
 		properties: {
 			name: 'api-key',
-			value: '={{$credentials.accessToken}}',
+			value: '={{$credentials.apiKey}}',
 		},
 	} as IAuthenticateHeaderAuth;
 }
