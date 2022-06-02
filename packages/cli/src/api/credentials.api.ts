@@ -23,7 +23,7 @@ import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { validateEntity } from '../GenericHelpers';
-import { createCoreCredential } from '../CredentialsHelper';
+import { createCredentiasFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
@@ -166,7 +166,7 @@ credentialsController.post(
 		}
 
 		// Encrypt the data
-		const coreCredential = createCoreCredential(newCredential, true);
+		const coreCredential = createCredentiasFromCredentialsEntity(newCredential, true);
 
 		// @ts-ignore
 		coreCredential.setData(newCredential.data, encryptionKey);
@@ -298,7 +298,7 @@ credentialsController.patch(
 			);
 		}
 
-		const coreCredential = createCoreCredential(credential);
+		const coreCredential = createCredentiasFromCredentialsEntity(credential);
 
 		const decryptedData = coreCredential.getData(encryptionKey);
 
@@ -402,7 +402,7 @@ credentialsController.get(
 			);
 		}
 
-		const coreCredential = createCoreCredential(credential);
+		const coreCredential = createCredentiasFromCredentialsEntity(credential);
 
 		return {
 			id: id.toString(),
