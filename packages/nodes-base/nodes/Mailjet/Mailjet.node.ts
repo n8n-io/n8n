@@ -78,7 +78,6 @@ export class Mailjet implements INodeType {
 						value: 'email',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
