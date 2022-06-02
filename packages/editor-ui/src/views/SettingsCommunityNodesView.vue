@@ -56,14 +56,18 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import SettingsView from './SettingsView.vue';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
+import { showMessage } from '@/components/mixins/showMessage';
+import mixins from 'vue-typed-mixins';
+
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default Vue.extend({
+export default mixins(
+	showMessage,
+).extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
 		SettingsView,
@@ -72,6 +76,14 @@ export default Vue.extend({
 	async mounted() {
 		try {
 			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+		} catch (error) {
+			this.$showToast({
+				title: this.$locale.baseText('settings.communityNodes.fetchError.title'),
+				message: error.message || this.$locale.baseText('settings.communityNodes.fetchError.message'),
+				type: 'error',
+			});
+		}
+		try {
 			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
 		} finally { }
 	},

@@ -646,6 +646,8 @@
 	"settings.communityNodes.viewDocsAction.label": "Documentation",
 	"settings.communityNodes.uninstallAction.label": "Uninstall package",
 	"settings.communityNodes.upToDate.tooltip": "You are up to date",
+	"settings.communityNodes.fetchError.title": "Error loading installed packages",
+	"settings.communityNodes.fetchError.message": "Please try again or contact our support",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",

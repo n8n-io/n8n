@@ -609,7 +609,7 @@ export default mixins(
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
-					if(defaultRoute) {
+					if (defaultRoute) {
 						const routeProps = this.$router.resolve({ name: defaultRoute });
 						this.$router.push(routeProps.route.path);
 					}
@@ -618,8 +618,8 @@ export default mixins(
 			findFirstAccessibleSettingsRoute() {
 				let defaultSettingsRoute = null;
 
-				for(const route of settingsRoutes) {
-					if(this.canUserAccessRouteByName(route)) {
+				for (const route of settingsRoutes) {
+					if (this.canUserAccessRouteByName(route)) {
 						defaultSettingsRoute = route;
 						break;
 					}
