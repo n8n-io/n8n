@@ -58,7 +58,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		name: 'n8nTrainingCustomerDatastore',
 		icon: 'file:n8nTrainingCustomerDatastore.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Dummy node used for n8n training',
 		defaults: {
@@ -67,6 +67,56 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					}
+				},
+				options: [
+					{
+						name: 'Version 1',
+						value: 'version1',
+					},
+					{
+						name: 'Version 2',
+						value: 'version2',
+					},
+				],
+				default: 'version1',
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					}
+				},
+				options: [
+					{
+						name: 'Version 1',
+						value: 'version1',
+					},
+					{
+						name: 'Version 2',
+						value: 'version2',
+					},
+				],
+				default: 'version2',
+				description: 'Whether to return all results or only up to a given limit',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -83,6 +133,24 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					},
 				],
 				default: 'getOnePerson',
+			},
+			{
+				displayName: 'Department ID',
+				name: 'departmentId',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+						operation: [
+							'getAllPeople',
+						],
+					},
+				},
+				default: '',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Return All',
@@ -145,6 +213,14 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				} else {
 					const limit = this.getNodeParameter('limit', i) as number;
 					responseData = data.slice(0, limit);
+				}
+
+				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+
+				if (apiVersion === 'version2') {
+					const departmentId = this.getNodeParameter('departmentId', i) as string;
+					responseData = responseData.map(data => ({ ...data, departmentId: departmentId }));
+
 				}
 			}
 
