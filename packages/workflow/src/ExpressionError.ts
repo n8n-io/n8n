@@ -8,6 +8,7 @@ export class ExpressionError extends ExecutionBaseError {
 	constructor(
 		message: string,
 		options?: {
+			causeDetailed?: string;
 			description?: string;
 			runIndex?: number;
 			itemIndex?: number;
@@ -20,6 +21,10 @@ export class ExpressionError extends ExecutionBaseError {
 
 		if (options?.description !== undefined) {
 			this.description = options.description;
+		}
+
+		if (options?.causeDetailed !== undefined) {
+			this.context.causeDetailed = options.causeDetailed;
 		}
 
 		if (options?.runIndex !== undefined) {

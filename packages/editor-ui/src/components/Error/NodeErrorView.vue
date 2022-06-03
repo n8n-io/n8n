@@ -22,6 +22,13 @@
 				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $locale.baseText('nodeErrorView.details') }}
 			</summary>
 			<div class="error-details__content">
+				<div v-if="error.context.causeDetailed">
+					<el-card class="box-card" shadow="never">
+						<div>
+							{{error.context.causeDetailed}}
+						</div>
+					</el-card>
+				</div>
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
