@@ -135,7 +135,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Type of the observable',
+		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Data',

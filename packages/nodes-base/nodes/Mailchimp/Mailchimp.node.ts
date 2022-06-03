@@ -295,7 +295,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -543,7 +543,7 @@ export class Mailchimp implements INodeType {
 									],
 								},
 								required: true,
-								description: 'Merge Field name',
+								description: 'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -705,7 +705,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -748,7 +748,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -824,7 +824,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -990,7 +990,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -1167,7 +1167,7 @@ export class Mailchimp implements INodeType {
 											],
 										},
 										required: true,
-										description: 'Merge Field name',
+										description: 'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 										default: '',
 									},
 									{
@@ -1391,7 +1391,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -1483,7 +1483,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Group Category Name or ID',
@@ -1660,7 +1660,7 @@ export class Mailchimp implements INodeType {
 							loadOptionsMethod: 'getLists',
 						},
 						default: '',
-						description: 'List of lists',
+						description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Since Create Time',

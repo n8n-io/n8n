@@ -135,7 +135,7 @@ export const ticketFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'Custom field ID',
+								description: 'Custom field ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -163,7 +163,7 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getGroups',
 				},
 				default: '',
-				description: 'The group this ticket is assigned to',
+				description: 'The group this ticket is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Recipient',
@@ -358,7 +358,7 @@ export const ticketFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'Custom field ID',
+								description: 'Custom field ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -386,7 +386,7 @@ export const ticketFields: INodeProperties[] = [
 					loadOptionsMethod: 'getGroups',
 				},
 				default: '',
-				description: 'The group this ticket is assigned to',
+				description: 'The group this ticket is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Internal Note',
@@ -658,7 +658,7 @@ export const ticketFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'The group to search',
+				description: 'The group to search. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Query',

@@ -94,7 +94,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEventCountryCodes',
 				},
 				default: '',
-				description: 'Country code of event',
+				description: 'Country code of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'From Date',
@@ -118,7 +118,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEventTypes',
 				},
 				default: '',
-				description: 'Type of event',
+				description: 'Type of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Upcoming Events Only',

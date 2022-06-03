@@ -78,7 +78,7 @@ export class AwsSqs implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Queue to send a message to',
+				description: 'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',

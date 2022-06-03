@@ -70,7 +70,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace',
+		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Conversation Name or ID',
@@ -94,7 +94,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation',
+		description: 'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -271,7 +271,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace',
+		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Conversation Name or ID',
@@ -295,7 +295,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation',
+		description: 'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',

@@ -148,7 +148,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The owner of the company',
+				description: 'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Country/Region',
@@ -179,7 +179,7 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -224,7 +224,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs',
+				description: 'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Is Public',
@@ -241,7 +241,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyleadStatuses',
 				},
 				default: '',
-				description: 'The company\'s sales, prospecting or outreach status',
+				description: 'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -251,7 +251,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanylifecycleStages',
 				},
 				default: '',
-				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization',
+				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn Bio',
@@ -285,7 +285,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanySourceTypes',
 				},
 				default: '',
-				description: 'Original source for the contact with the earliest activity for this company or organization',
+				description: 'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
@@ -331,7 +331,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTargetAccounts',
 				},
 				default: '',
-				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy',
+				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Timezone',
@@ -385,7 +385,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc',
+				description: 'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Web Technologies Name or ID',
@@ -395,7 +395,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
-				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights.',
+				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website URL',
@@ -500,7 +500,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The owner of the company',
+				description: 'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Country/Region',
@@ -531,7 +531,7 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -576,7 +576,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs',
+				description: 'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Is Public',
@@ -593,7 +593,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyleadStatuses',
 				},
 				default: '',
-				description: 'The company\'s sales, prospecting or outreach status',
+				description: 'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -603,7 +603,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanylifecycleStages',
 				},
 				default: '',
-				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization',
+				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Linkedin Bio',
@@ -643,7 +643,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanySourceTypes',
 				},
 				default: '',
-				description: 'Original source for the contact with the earliest activity for this company or organization',
+				description: 'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
@@ -689,7 +689,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTargetAccounts',
 				},
 				default: '',
-				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy',
+				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Timezone',
@@ -743,7 +743,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc',
+				description: 'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Web Technologies Name or ID',
@@ -753,7 +753,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
-				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights.',
+				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website URL',

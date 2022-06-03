@@ -48,7 +48,7 @@ export const itemFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableName',
-		description: 'Table to operate on',
+		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
 		displayOptions: {

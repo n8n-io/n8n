@@ -93,7 +93,7 @@ export const incidentFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Which user is the incident assigned to. Requires the selection of an assignment group.',
+				description: 'Which user is the incident assigned to. Requires the selection of an assignment group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Assignment Group Name or ID',
@@ -104,7 +104,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAssignmentGroups',
 				},
 				default: '',
-				description: 'The assignment group of the incident',
+				description: 'The assignment group of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Business Service Name or ID',
@@ -132,7 +132,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getIncidentCategories',
 				},
 				default: '',
-				description: 'The category of the incident',
+				description: 'The category of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Close Notes',
@@ -213,7 +213,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getIncidentResolutionCodes',
 				},
 				default: '',
-				description: 'The resolution code of the incident, \'close_code\' in metadata',
+				description: 'The resolution code of the incident, \'close_code\' in metadata. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State Name or ID',
@@ -224,7 +224,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getIncidentStates',
 				},
 				default: '',
-				description: 'The state of the incident',
+				description: 'The state of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Subcategory Name or ID',
@@ -238,7 +238,7 @@ export const incidentFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The subcategory of the incident',
+				description: 'The subcategory of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Urgency',
@@ -507,7 +507,7 @@ export const incidentFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Which user is the incident assigned to. Requires the selection of an assignment group.',
+				description: 'Which user is the incident assigned to. Requires the selection of an assignment group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Assignment Group Name or ID',
@@ -518,7 +518,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAssignmentGroups',
 				},
 				default: '',
-				description: 'The assignment group of the incident',
+				description: 'The assignment group of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Business Service Name or ID',
@@ -546,7 +546,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getIncidentCategories',
 				},
 				default: '',
-				description: 'The category of the incident',
+				description: 'The category of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Close Notes',
@@ -628,7 +628,7 @@ export const incidentFields: INodeProperties[] = [
 				},
 				default: '',
 				// nodelinter-ignore-next-line
-				description: 'The resolution code of the incident. \'close_code\' in metadata.',
+				description: 'The resolution code of the incident. \'close_code\' in metadata. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'On Hold Reason Name or ID',
@@ -639,7 +639,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getIncidentHoldReasons',
 				},
 				default: '',
-				description: 'The on hold reason for the incident. It applies if the state is <code>On Hold</code>',
+				description: 'The on hold reason for the incident. It applies if the state is <code>On Hold</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State Name or ID',
@@ -650,7 +650,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getIncidentStates',
 				},
 				default: '',
-				description: 'The state of the incident',
+				description: 'The state of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Subcategory Name or ID',
@@ -664,7 +664,7 @@ export const incidentFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The subcategory of the incident',
+				description: 'The subcategory of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Urgency',

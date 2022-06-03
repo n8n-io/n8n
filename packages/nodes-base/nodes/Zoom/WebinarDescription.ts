@@ -235,7 +235,7 @@ export const webinarFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Webinar Topic',
@@ -622,7 +622,7 @@ export const webinarFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Webinar Topic',

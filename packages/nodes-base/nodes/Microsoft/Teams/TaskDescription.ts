@@ -129,7 +129,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The plan for the task to belong to',
+		description: 'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Bucket Name or ID',
@@ -153,7 +153,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The bucket for the task to belong to',
+		description: 'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -201,7 +201,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Who the task should be assigned to',
+				description: 'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -476,7 +476,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Who the task should be assigned to',
+				description: 'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Bucket Name or ID',
@@ -489,7 +489,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The bucket for the task to belong to',
+				description: 'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -545,7 +545,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The plan for the task to belong to',
+				description: 'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

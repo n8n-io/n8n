@@ -172,7 +172,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The project you want to operate on',
+				description: 'The project you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Labels',
@@ -293,7 +293,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: {},
-						description: 'The parent task you want to operate on',
+						description: 'The parent task you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Priority',
@@ -317,7 +317,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: {},
-						description: 'The section you want to operate on',
+						description: 'The section you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 			},
@@ -401,7 +401,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getLabels',
 						},
 						default: {},
-						description: 'Filter tasks by label',
+						description: 'Filter tasks by label. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Lang',
@@ -422,7 +422,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: '',
-						description: 'Filter tasks by parent task ID',
+						description: 'Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Project Name or ID',
@@ -432,7 +432,7 @@ export class Todoist implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'Filter tasks by project ID',
+						description: 'Filter tasks by project ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Section Name or ID',
@@ -445,7 +445,7 @@ export class Todoist implements INodeType {
 							],
 						},
 						default: '',
-						description: 'Filter tasks by section ID',
+						description: 'Filter tasks by section ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 			},

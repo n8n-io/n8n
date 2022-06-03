@@ -229,7 +229,7 @@ export const fileFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
-				description: 'Channel containing the file to be listed',
+				description: 'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Show Files Hidden By Limit',
@@ -299,7 +299,7 @@ export const fileFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'Filter files created by a single user',
+				description: 'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

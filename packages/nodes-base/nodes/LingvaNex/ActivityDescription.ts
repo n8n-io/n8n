@@ -115,7 +115,7 @@ export const activityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getActivityTypes',
 				},
 				default: '',
-				description: 'A user-defined way to group activities of the same nature',
+				description: 'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',

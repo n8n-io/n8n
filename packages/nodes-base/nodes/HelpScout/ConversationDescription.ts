@@ -62,7 +62,7 @@ export const conversationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of a mailbox where the conversation is being created',
+		description: 'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Status',
