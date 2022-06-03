@@ -134,7 +134,7 @@ export class FileMaker implements INodeType {
 				placeholder: '0',
 				description: 'The record number of the first record in the range of records',
 				type: 'number',
-				default: '1',
+				default: 1,
 				displayOptions: {
 					show: {
 						action: [
@@ -153,7 +153,7 @@ export class FileMaker implements INodeType {
 				typeOptions: {
 					minValue: 1,
 				},
-				default: '100',
+				default: 100,
 				displayOptions: {
 					show: {
 						action: [
