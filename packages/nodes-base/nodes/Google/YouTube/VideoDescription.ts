@@ -606,7 +606,7 @@ export const videoFields: INodeProperties[] = [
 						description: 'YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale',
 					},
 					{
-						name: 'none',
+						name: 'None',
 						value: 'none',
 						description: 'YouTube will not filter the search result set',
 					},

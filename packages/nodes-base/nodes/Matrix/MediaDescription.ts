@@ -70,7 +70,7 @@ export const mediaFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Media type',
+		displayName: 'Media Type',
 		name: 'mediaType',
 		type: 'options',
 		default: 'image',

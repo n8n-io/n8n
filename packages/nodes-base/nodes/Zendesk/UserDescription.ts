@@ -166,7 +166,7 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: 'true if the user can only create private comments',
+				description: 'True if the user can only create private comments',
 			},
 			{
 				displayName: 'Organization Name or ID',
@@ -430,7 +430,7 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: 'true if the user can only create private comments',
+				description: 'True if the user can only create private comments',
 			},
 			{
 				displayName: 'Organization Name or ID',

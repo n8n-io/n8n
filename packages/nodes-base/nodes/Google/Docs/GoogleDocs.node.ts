@@ -113,7 +113,7 @@ export class GoogleDocs implements INodeType {
 						value: 'myDrive',
 					},
 					{
-						name: 'Shared with me',
+						name: 'Shared with Me',
 						value: 'sharedWithMe',
 					},
 				];

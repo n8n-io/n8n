@@ -536,11 +536,11 @@ export const conversationFields: INodeProperties[] = [
 						value: 'createdAt',
 					},
 					{
-						name: 'customer Email',
+						name: 'Customer Email',
 						value: 'customerEmail',
 					},
 					{
-						name: 'customer Name',
+						name: 'Customer Name',
 						value: 'customerName',
 					},
 					{

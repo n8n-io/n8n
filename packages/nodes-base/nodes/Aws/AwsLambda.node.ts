@@ -88,12 +88,12 @@ export class AwsLambda implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Wait for results',
+						name: 'Wait for Results',
 						value: 'RequestResponse',
 						description: 'Invoke the function synchronously and wait for the response',
 					},
 					{
-						name: 'Continue workflow',
+						name: 'Continue Workflow',
 						value: 'Event',
 						description: 'Invoke the function and immediately continue the workflow',
 					},

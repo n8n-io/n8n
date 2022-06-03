@@ -164,7 +164,7 @@ export class FileMaker implements INodeType {
 				},
 			},
 			{
-				displayName: 'Get portals',
+				displayName: 'Get Portals',
 				name: 'getPortals',
 				type: 'boolean',
 				default: false,
@@ -293,7 +293,7 @@ export class FileMaker implements INodeType {
 				],
 			},
 			{
-				displayName: 'Sort data?',
+				displayName: 'Sort Data?',
 				name: 'setSort',
 				type: 'boolean',
 				default: false,
@@ -367,7 +367,7 @@ export class FileMaker implements INodeType {
 				],
 			},
 			{
-				displayName: 'Before find script',
+				displayName: 'Before Find Script',
 				name: 'setScriptBefore',
 				type: 'boolean',
 				default: false,
@@ -428,7 +428,7 @@ export class FileMaker implements INodeType {
 				description: 'A parameter for the FileMaker script',
 			},
 			{
-				displayName: 'Before sort script',
+				displayName: 'Before Sort Script',
 				name: 'setScriptSort',
 				type: 'boolean',
 				default: false,
@@ -489,7 +489,7 @@ export class FileMaker implements INodeType {
 				description: 'A parameter for the FileMaker script',
 			},
 			{
-				displayName: 'After sort script',
+				displayName: 'After Sort Script',
 				name: 'setScriptAfter',
 				type: 'boolean',
 				default: false,

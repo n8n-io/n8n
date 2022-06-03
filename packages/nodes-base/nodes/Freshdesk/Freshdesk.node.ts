@@ -425,7 +425,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config ID',
+						displayName: 'Email Config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -479,7 +479,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'separated by a comma (,) tags that have been associated with the ticket',
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
@@ -655,7 +655,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config ID',
+						displayName: 'Email Config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -835,7 +835,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'separated by a comma (,) tags that have been associated with the ticket',
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',

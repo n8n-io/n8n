@@ -61,7 +61,7 @@ export class EmailReadImap implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Mark as read',
+						name: 'Mark as Read',
 						value: 'read',
 					},
 					{
@@ -149,7 +149,7 @@ export class EmailReadImap implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Custom email rules',
+						displayName: 'Custom Email Rules',
 						name: 'customEmailConfig',
 						type: 'string',
 						default: '["UNSEEN"]',
@@ -163,7 +163,7 @@ export class EmailReadImap implements INodeType {
 						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
 					{
-						displayName: 'Force reconnect',
+						displayName: 'Force Reconnect',
 						name: 'forceReconnect',
 						type: 'number',
 						default: 60,

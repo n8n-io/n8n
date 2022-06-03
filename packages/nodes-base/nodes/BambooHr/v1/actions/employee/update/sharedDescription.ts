@@ -122,7 +122,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'exempt',
 				},
 				{
-					name: 'Non-exempt',
+					name: 'Non-Exempt',
 					value: 'non-exempt',
 				},
 			],

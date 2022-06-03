@@ -610,7 +610,7 @@ export class Pipedrive implements INodeType {
 				},
 				options: [
 					{
-						name: 'Not done',
+						name: 'Not Done',
 						value: '0',
 					},
 					{
@@ -847,7 +847,7 @@ export class Pipedrive implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Not done',
+								name: 'Not Done',
 								value: '0',
 							},
 							{
@@ -1213,16 +1213,16 @@ export class Pipedrive implements INodeType {
 						description: 'Value of the deal. If not set it will automatically be set to 0.',
 					},
 					{
-						displayName: 'Visible to',
+						displayName: 'Visible To',
 						name: 'visible_to',
 						type: 'options',
 						options: [
 							{
-								name: 'Owner & followers (private)',
+								name: 'Owner & Followers (Private)',
 								value: '1',
 							},
 							{
-								name: 'Entire company (shared)',
+								name: 'Entire Company (Shared)',
 								value: '3',
 							},
 						],
@@ -1483,16 +1483,16 @@ export class Pipedrive implements INodeType {
 						description: 'Value of the deal. If not set it will automatically be set to 0.',
 					},
 					{
-						displayName: 'Visible to',
+						displayName: 'Visible To',
 						name: 'visible_to',
 						type: 'options',
 						options: [
 							{
-								name: 'Owner & followers (private)',
+								name: 'Owner & Followers (Private)',
 								value: '1',
 							},
 							{
-								name: 'Entire company (shared)',
+								name: 'Entire Company (Shared)',
 								value: '3',
 							},
 						],
@@ -2794,16 +2794,16 @@ export class Pipedrive implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Visible to',
+						displayName: 'Visible To',
 						name: 'visible_to',
 						type: 'options',
 						options: [
 							{
-								name: 'Owner & followers (private)',
+								name: 'Owner & Followers (Private)',
 								value: '1',
 							},
 							{
-								name: 'Entire company (shared)',
+								name: 'Entire Company (Shared)',
 								value: '3',
 							},
 						],
@@ -3031,16 +3031,16 @@ export class Pipedrive implements INodeType {
 						description: 'The ID of the user who will be marked as the owner of this Organization. When omitted, the authorized User ID will be used.',
 					},
 					{
-						displayName: 'Visible to',
+						displayName: 'Visible To',
 						name: 'visible_to',
 						type: 'options',
 						options: [
 							{
-								name: 'Owner & followers (private)',
+								name: 'Owner & Followers (Private)',
 								value: '1',
 							},
 							{
-								name: 'Entire company (shared)',
+								name: 'Entire Company (Shared)',
 								value: '3',
 							},
 						],
@@ -3195,16 +3195,16 @@ export class Pipedrive implements INodeType {
 						description: 'Phone number of the person',
 					},
 					{
-						displayName: 'Visible to',
+						displayName: 'Visible To',
 						name: 'visible_to',
 						type: 'options',
 						options: [
 							{
-								name: 'Owner & followers (private)',
+								name: 'Owner & Followers (Private)',
 								value: '1',
 							},
 							{
-								name: 'Entire company (shared)',
+								name: 'Entire Company (Shared)',
 								value: '3',
 							},
 						],
@@ -3425,16 +3425,16 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Visible to',
+						displayName: 'Visible To',
 						name: 'visible_to',
 						type: 'options',
 						options: [
 							{
-								name: 'Owner & followers (private)',
+								name: 'Owner & Followers (Private)',
 								value: '1',
 							},
 							{
-								name: 'Entire company (shared)',
+								name: 'Entire Company (Shared)',
 								value: '3',
 							},
 						],

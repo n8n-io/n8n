@@ -19,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'create a contact',
+				description: 'Create a contact',
 			},
 			{
 				name: 'Get',

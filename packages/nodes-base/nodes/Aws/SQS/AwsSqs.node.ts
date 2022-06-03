@@ -54,7 +54,7 @@ export class AwsSqs implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Send message',
+						name: 'Send Message',
 						value: 'sendMessage',
 						description: 'Send a message to a queue',
 					},

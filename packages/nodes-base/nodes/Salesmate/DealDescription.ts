@@ -295,7 +295,7 @@ export const dealFields: INodeProperties[] = [
 						value: 'Website',
 					},
 					{
-						name: 'Word of mouth',
+						name: 'Word of Mouth',
 						value: 'Word of mouth',
 					},
 				],
@@ -526,7 +526,7 @@ export const dealFields: INodeProperties[] = [
 						value: 'Website',
 					},
 					{
-						name: 'Word of mouth',
+						name: 'Word of Mouth',
 						value: 'Word of mouth',
 					},
 				],

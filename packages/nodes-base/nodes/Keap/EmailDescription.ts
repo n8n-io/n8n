@@ -114,7 +114,7 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'HTML content',
+				displayName: 'HTML Content',
 				name: 'htmlContent',
 				type: 'string',
 				default: '',
@@ -378,7 +378,7 @@ export const emailFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Address field',
+				displayName: 'Address Field',
 				name: 'addressField',
 				type: 'string',
 				default: '',

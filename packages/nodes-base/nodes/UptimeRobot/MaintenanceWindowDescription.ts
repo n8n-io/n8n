@@ -52,7 +52,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -330,7 +330,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The ID of the maintenance window',
 	},
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,

@@ -140,21 +140,21 @@ export const paymentFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'payment starting from date',
+				description: 'Payment starting from date',
 			},
 			{
 				displayName: 'Date To',
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'payment up until date',
+				description: 'Payment up until date',
 			},
 			{
 				displayName: 'Is Paid',
 				name: 'isPaid',
 				type: 'boolean',
 				default: false,
-				description: 'payment is paid',
+				description: 'Payment is paid',
 			},
 			{
 				displayName: 'Plan ID',
@@ -196,7 +196,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'One off charge',
+				displayName: 'One Off Charge',
 				name: 'isOneOffCharge',
 				type: 'boolean',
 				default: false,

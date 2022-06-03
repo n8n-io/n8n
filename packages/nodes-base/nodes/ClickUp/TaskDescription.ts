@@ -348,7 +348,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -483,7 +483,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -1045,7 +1045,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the field to add custom field to',
 	},
 	{
-		displayName: 'Value is JSON',
+		displayName: 'Value Is JSON',
 		name: 'jsonParse',
 		type: 'boolean',
 		displayOptions: {

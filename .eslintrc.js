@@ -431,6 +431,8 @@ module.exports = {
 				'n8n-nodes-base/node-param-option-name-wrong-for-upsert': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-string': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-number': 'error',
+				'n8n-nodes-base/node-param-description-lowercase-first-char': 'error',
+				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 			},
 		},
 	],

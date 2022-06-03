@@ -154,14 +154,14 @@ export const boardFields: INodeProperties[] = [
 				description: 'The color of the board',
 			},
 			{
-				displayName: 'Comment only',
+				displayName: 'Comment Only',
 				name: 'isCommentOnly',
 				type: 'boolean',
 				default: false,
 				description: 'Only enable comments',
 			},
 			{
-				displayName: 'No comments',
+				displayName: 'No Comments',
 				name: 'isNoComments',
 				type: 'boolean',
 				default: false,

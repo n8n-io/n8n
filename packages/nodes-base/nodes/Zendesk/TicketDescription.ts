@@ -186,7 +186,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-hold',
+						name: 'On-Hold',
 						value: 'hold',
 					},
 					{
@@ -423,7 +423,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-hold',
+						name: 'On-Hold',
 						value: 'hold',
 					},
 					{
@@ -740,7 +740,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-hold',
+						name: 'On-Hold',
 						value: 'hold',
 					},
 					{

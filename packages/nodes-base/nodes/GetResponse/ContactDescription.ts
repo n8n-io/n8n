@@ -427,7 +427,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'forward',
 					},
 					{
-						name: 'import',
+						name: 'Import',
 						value: 'import',
 					},
 					{

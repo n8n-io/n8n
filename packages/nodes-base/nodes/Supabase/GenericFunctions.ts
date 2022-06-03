@@ -181,12 +181,12 @@ export function getFilters(
 								{
 									name: 'LIKE operator',
 									value: 'like',
-									description: 'use * in place of %',
+									description: 'Use * in place of %',
 								},
 								{
 									name: 'ILIKE operator',
 									value: 'ilike',
-									description: 'use * in place of %',
+									description: 'Use * in place of %',
 								},
 								{
 									name: 'Is',

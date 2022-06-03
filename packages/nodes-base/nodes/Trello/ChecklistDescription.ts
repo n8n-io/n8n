@@ -529,11 +529,11 @@ export const checklistFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'complete',
+						name: 'Complete',
 						value: 'complete',
 					},
 					{
-						name: 'incomplete',
+						name: 'Incomplete',
 						value: 'incomplete',
 					},
 				],
