@@ -51,7 +51,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -117,7 +117,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -138,7 +138,7 @@ export const teamFields: INodeProperties[] = [
 		description: 'The slug of the organization the team belongs to',
 	},
 	{
-		displayName: 'Team Slug',
+		displayName: 'Team Slug Name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {
@@ -166,7 +166,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -235,7 +235,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -256,7 +256,7 @@ export const teamFields: INodeProperties[] = [
 		description: 'The slug of the organization the team belongs to',
 	},
 	{
-		displayName: 'Team Slug',
+		displayName: 'Team Slug Name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {
@@ -317,7 +317,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -338,7 +338,7 @@ export const teamFields: INodeProperties[] = [
 		description: 'The slug of the organization the team belongs to',
 	},
 	{
-		displayName: 'Team Slug',
+		displayName: 'Team Slug Name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {

@@ -28,7 +28,7 @@ export const reportOperations: INodeProperties[] = [
 
 export const reportFields: INodeProperties[] = [
 	{
-		displayName: 'View ID',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -168,7 +168,7 @@ export const reportFields: INodeProperties[] = [
 						name: 'dimensionValues',
 						values: [
 							{
-								displayName: 'Name',
+								displayName: 'Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -197,7 +197,7 @@ export const reportFields: INodeProperties[] = [
 						name: 'filterValues',
 						values: [
 							{
-								displayName: 'Dimension Name',
+								displayName: 'Dimension Name or ID',
 								name: 'dimensionName',
 								type: 'options',
 								typeOptions: {

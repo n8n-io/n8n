@@ -141,7 +141,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:leave                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -165,7 +165,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                 room:invite                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -210,7 +210,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:kick                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {

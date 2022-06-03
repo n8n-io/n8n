@@ -53,7 +53,7 @@ export const caseTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag',
+		displayName: 'Tag Name or ID',
 		name: 'tag',
 		type: 'options',
 		description: 'Tag to attach to the case. Choose from the list or enter a new one with an expression.',
@@ -95,7 +95,7 @@ export const caseTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag',
+		displayName: 'Tag Name or ID',
 		name: 'tag',
 		type: 'options',
 		required: true,

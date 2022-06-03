@@ -47,7 +47,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket Type',
+		displayName: 'Ticket Type Name or ID',
 		name: 'ticketType',
 		type: 'options',
 		default: '',
@@ -104,7 +104,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name/ID',
+				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -264,7 +264,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name/ID',
+				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',

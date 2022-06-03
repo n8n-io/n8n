@@ -30,7 +30,7 @@ export const reportFields: INodeProperties[] = [
 	/*                                   report:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event ID',
+		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
 		typeOptions: {
@@ -49,7 +49,7 @@ export const reportFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Session ID',
+		displayName: 'Session Name or ID',
 		name: 'dateId',
 		type: 'options',
 		typeOptions: {

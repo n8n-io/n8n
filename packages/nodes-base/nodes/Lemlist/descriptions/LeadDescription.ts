@@ -42,7 +42,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: create
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -159,7 +159,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: delete
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -222,7 +222,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: unsubscribe
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,

@@ -37,7 +37,7 @@ export const imageFields: INodeProperties[] = [
 /*                                image:create                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {
@@ -140,7 +140,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'modificationsValues',
 				values: [
 					{
-						displayName: 'Name',
+						displayName: 'Name or ID',
 						name: 'name',
 						type: 'options',
 						typeOptions: {

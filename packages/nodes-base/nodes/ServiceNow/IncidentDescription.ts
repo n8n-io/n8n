@@ -82,7 +82,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -96,7 +96,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Which user is the incident assigned to. Requires the selection of an assignment group.',
 			},
 			{
-				displayName: 'Assignment Group',
+				displayName: 'Assignment Group Name or ID',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
@@ -107,7 +107,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The assignment group of the incident',
 			},
 			{
-				displayName: 'Business Service',
+				displayName: 'Business Service Name or ID',
 				name: 'business_service',
 				type: 'options',
 				typeOptions: {
@@ -124,7 +124,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The unique identifier of the caller of the incident',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -205,7 +205,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The impact of the incident',
 			},
 			{
-				displayName: 'Resolution Code',
+				displayName: 'Resolution Code Name or ID',
 				name: 'close_code',
 				type: 'options',
 				typeOptions: {
@@ -216,7 +216,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The resolution code of the incident, \'close_code\' in metadata',
 			},
 			{
-				displayName: 'State',
+				displayName: 'State Name or ID',
 				name: 'state',
 				type: 'options',
 				typeOptions: {
@@ -227,7 +227,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The state of the incident',
 			},
 			{
-				displayName: 'Subcategory',
+				displayName: 'Subcategory Name or ID',
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {
@@ -496,7 +496,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -510,7 +510,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Which user is the incident assigned to. Requires the selection of an assignment group.',
 			},
 			{
-				displayName: 'Assignment Group',
+				displayName: 'Assignment Group Name or ID',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
@@ -521,7 +521,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The assignment group of the incident',
 			},
 			{
-				displayName: 'Business Service',
+				displayName: 'Business Service Name or ID',
 				name: 'business_service',
 				type: 'options',
 				typeOptions: {
@@ -538,7 +538,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The unique identifier of the caller of the incident',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -619,7 +619,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The impact of the incident',
 			},
 			{
-				displayName: 'Resolution Code',
+				displayName: 'Resolution Code Name or ID',
 				name: 'close_code',
 				type: 'options',
 				typeOptions: {
@@ -631,7 +631,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The resolution code of the incident. \'close_code\' in metadata.',
 			},
 			{
-				displayName: 'On Hold Reason',
+				displayName: 'On Hold Reason Name or ID',
 				name: 'hold_reason',
 				type: 'options',
 				typeOptions: {
@@ -642,7 +642,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The on hold reason for the incident. It applies if the state is <code>On Hold</code>',
 			},
 			{
-				displayName: 'State',
+				displayName: 'State Name or ID',
 				name: 'state',
 				type: 'options',
 				typeOptions: {
@@ -653,7 +653,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The state of the incident',
 			},
 			{
-				displayName: 'Subcategory',
+				displayName: 'Subcategory Name or ID',
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {

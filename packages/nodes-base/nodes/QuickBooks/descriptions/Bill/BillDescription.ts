@@ -50,7 +50,7 @@ export const billFields: INodeProperties[] = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor',
+		displayName: 'For Vendor Name or ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
@@ -108,7 +108,7 @@ export const billFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item',
+				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
 				default: [],

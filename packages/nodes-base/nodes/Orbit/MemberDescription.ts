@@ -57,7 +57,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -99,7 +99,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -157,7 +157,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -281,7 +281,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -466,7 +466,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -606,7 +606,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {

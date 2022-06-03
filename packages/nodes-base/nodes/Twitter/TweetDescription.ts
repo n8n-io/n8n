@@ -262,7 +262,7 @@ export const tweetFields: INodeProperties[] = [
 				description: 'The entities node will not be included when set to false',
 			},
 			{
-				displayName: 'Language',
+				displayName: 'Language Name or ID',
 				name: 'lang',
 				type: 'options',
 				typeOptions: {

@@ -87,7 +87,7 @@ const managersField = {
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub Name/ID',
+	displayName: 'Hub Name or ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
