@@ -38,6 +38,7 @@ get:
       in: query
       required: false
       explode: false
+      allowReserved: true
       schema:
         type: string
         example: test,production

@@ -70,6 +70,7 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		{
+			tags?: string;
 			status?: ExecutionStatus;
 			limit?: number;
 			cursor?: string;

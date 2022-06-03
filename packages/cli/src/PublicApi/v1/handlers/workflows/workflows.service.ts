@@ -1,5 +1,5 @@
 import type { INode } from 'n8n-workflow';
-import { FindManyOptions } from 'typeorm';
+import { FindManyOptions, In } from 'typeorm';
 import { User } from '../../../../databases/entities/User';
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { Db } from '../../../..';
@@ -32,13 +32,17 @@ export async function getSharedWorkflow(
 
 export async function getSharedWorkflows(
 	user: User,
-	resolveWorkflows = false,
+	options: {
+		relations?: string[];
+		workflowIds?: number[];
+	},
 ): Promise<SharedWorkflow[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		where: {
 			...(!isInstanceOwner(user) && { user }),
+			...(options.workflowIds && { workflow: { id: In(options.workflowIds) } }),
 		},
-		...(resolveWorkflows && { relations: ['workflow'] }),
+		...(options.relations && { relations: options.relations }),
 	});
 	return sharedWorkflows;
 }
@@ -50,6 +54,24 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
 		},
 	});
 	return workflow;
+}
+
+export async function getWorkflowsIdsWithTags(tags: string[]): Promise<number[]> {
+	const dbTags = await Db.collections.Tag.find({
+		where: {
+			name: In(tags),
+		},
+		relations: ['workflows'],
+	});
+
+	return Array.from(
+		dbTags.reduce((acc, tag) => {
+			tag.workflows.forEach((workflow) => {
+				acc.add(workflow.id);
+			});
+			return acc;
+		}, new Set<number>()),
+	);
 }
 
 export async function createWorkflow(
@@ -118,4 +140,8 @@ export function getStartNode(): INode {
 		typeVersion: 1,
 		position: [240, 300],
 	};
+}
+
+export function sanatizeTags(tags: string): string[] {
+	return tags.split(',').map((tag) => tag.trim());
 }

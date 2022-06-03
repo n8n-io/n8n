@@ -22,6 +22,8 @@ import {
 	getSharedWorkflows,
 	getWorkflowsCount,
 	createWorkflow,
+	getWorkflowsIdsWithTags,
+	sanatizeTags,
 } from './workflows.service';
 
 export = {
@@ -104,7 +106,7 @@ export = {
 		authorize(['owner', 'member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active = undefined } = req.query;
+			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
 
 			let workflows: WorkflowEntity[];
 			let count: number;
@@ -119,14 +121,29 @@ export = {
 			};
 
 			if (isInstanceOwner(req.user)) {
+				if (tags) {
+					const workflowIds = await getWorkflowsIdsWithTags(sanatizeTags(tags));
+					Object.assign(query.where, { id: In(workflowIds) });
+				}
+
 				workflows = await getWorkflows(query);
 
 				count = await getWorkflowsCount(query);
 			} else {
-				const sharedWorkflows = await getSharedWorkflows(req.user);
+				const options: { workflowIds?: number[] } = {};
+
+				if (tags) {
+					const workflowIds = await getWorkflowsIdsWithTags(sanatizeTags(tags));
+					Object.assign(options, { workflowIds });
+				}
+
+				const sharedWorkflows = await getSharedWorkflows(req.user, options);
 
 				if (!sharedWorkflows.length) {
-					return res.status(404).json();
+					return res.status(200).json({
+						data: [],
+						nextCursor: null,
+					});
 				}
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
