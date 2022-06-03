@@ -102,7 +102,8 @@ export class LingvaNex implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'From Name or ID',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'From',
 						name: 'from',
 						type: 'options',
 						typeOptions: {

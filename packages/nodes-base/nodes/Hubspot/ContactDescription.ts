@@ -356,7 +356,8 @@ export const contactFields: INodeProperties[] = [
 				description: 'A contact\'s mobile phone number',
 			},
 			{
-				displayName: 'Number Of Employees Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'options',
 				typeOptions: {

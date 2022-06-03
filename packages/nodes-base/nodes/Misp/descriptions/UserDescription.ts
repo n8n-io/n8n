@@ -104,7 +104,8 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Inviter Email/ID Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Inviter Email or ID',
 				name: 'invited_by',
 				type: 'options',
 				default: '',

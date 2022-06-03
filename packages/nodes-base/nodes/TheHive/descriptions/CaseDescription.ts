@@ -8,7 +8,8 @@ import {
 
 export const caseOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation Name or ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Operation',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
