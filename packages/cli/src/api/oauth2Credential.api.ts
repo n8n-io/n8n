@@ -163,7 +163,7 @@ oauth2CredentialController.get(
  */
 
 oauth2CredentialController.get(
-	`/${restEndpoint}/oauth2-credential/callback`,
+	'/callback',
 	// eslint-disable-next-line consistent-return
 	async (req: OAuthRequest.OAuth2Credential.Callback, res: express.Response) => {
 		try {
@@ -325,7 +325,7 @@ oauth2CredentialController.get(
 				credentialId: state.cid,
 			});
 
-			res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
+			res.sendFile(pathResolve(__dirname, '../../../templates/oauth-callback.html'));
 		} catch (error) {
 			// Error response
 			return ResponseHelper.sendErrorResponse(res, error);
