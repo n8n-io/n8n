@@ -74,6 +74,12 @@ export class UpdateWorkflowCommand extends Command {
 
 			await Db.collections.Workflow.update(findQuery, updateQuery);
 			console.info('Done');
+			console.log('=-=-=-=-=-=');
+			console.log('  WARNING');
+			console.log('=-=-=-=-=-=');
+			console.log(
+				'If your n8n instance is currently running please restart it otherwise changes might not take effect',
+			);
 		} catch (e) {
 			console.error('Error updating database. See log messages for details.');
 			logger.error('\nGOT ERROR');

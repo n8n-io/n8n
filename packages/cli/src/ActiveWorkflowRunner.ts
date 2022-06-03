@@ -29,11 +29,13 @@ import {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
+	LoggerProxy,
 } from 'n8n-workflow';
 
 import express from 'express';
 
 // eslint-disable-next-line import/no-cycle
+import { In } from 'typeorm';
 import {
 	Db,
 	IActivationError,
@@ -58,6 +60,8 @@ import * as ActiveExecutions from './ActiveExecutions';
 const activeExecutions = ActiveExecutions.getInstance();
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
+
+const databaseCheckInterval = 5 * 60 * 1000;
 
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
@@ -124,6 +128,38 @@ export class ActiveWorkflowRunner {
 		}
 		const externalHooks = ExternalHooks();
 		await externalHooks.run('activeWorkflows.initialized', []);
+
+		this.initializeDatabaseWatcher();
+	}
+
+	initializeDatabaseWatcher(): void {
+		setInterval(() => {
+			const currentlyActiveWorkflows = this.activeWorkflows!.allActiveWorkflows();
+			Db.collections.Workflow.find({
+				select: ['id'],
+				where: {
+					active: false,
+					id: In(currentlyActiveWorkflows),
+				},
+			}).then((workflows) => {
+				// We got workflows that should be inactive but are
+				// somehow still active (cli, possibly)
+				if (workflows.length) {
+					workflows.forEach((workflow) => {
+						this.activeWorkflows!.remove(workflow.id.toString())
+							.then(() => {
+								LoggerProxy.info(
+									'Interrupted workflow that was inactive in database but still running.',
+									{ workflowId: workflow.id.toString() },
+								);
+							})
+							.catch(() => {
+								// Do nothing
+							});
+					});
+				}
+			});
+		}, databaseCheckInterval);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
