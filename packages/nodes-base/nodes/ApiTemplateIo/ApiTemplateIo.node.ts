@@ -105,12 +105,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'imageTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use',
+				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -126,12 +126,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'pdfTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use',
+				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},

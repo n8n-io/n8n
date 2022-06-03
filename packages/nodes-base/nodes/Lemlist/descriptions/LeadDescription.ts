@@ -42,7 +42,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: create
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -50,7 +50,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
-		description: 'ID of the campaign to create the lead under',
+		description: 'ID of the campaign to create the lead under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -143,14 +143,14 @@ export const leadFields: INodeProperties[] = [
 				name: 'picture',
 				type: 'string',
 				default: '',
-				description: 'Picture url of the lead to create',
+				description: 'Picture URL of the lead to create',
 			},
 			{
 				displayName: 'LinkedIn URL',
 				name: 'linkedinUrl',
 				type: 'string',
 				default: '',
-				description: 'LinkedIn url of the lead to create',
+				description: 'LinkedIn URL of the lead to create',
 			},
 		],
 	},
@@ -159,7 +159,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: delete
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -167,7 +167,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
-		description: 'ID of the campaign to remove the lead from',
+		description: 'ID of the campaign to remove the lead from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -222,7 +222,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: unsubscribe
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -230,7 +230,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
-		description: 'ID of the campaign to unsubscribe the lead from',
+		description: 'ID of the campaign to unsubscribe the lead from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

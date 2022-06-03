@@ -47,7 +47,7 @@ export const invoiceFields: INodeProperties[] = [
 /*                                invoice:create                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -163,7 +163,7 @@ export const invoiceFields: INodeProperties[] = [
 						description: 'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 					},
 					{
-						displayName: 'Item Code',
+						displayName: 'Item Code Name or ID',
 						name: 'itemCode',
 						type: 'options',
 						typeOptions: {
@@ -175,7 +175,7 @@ export const invoiceFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Account Code',
+						displayName: 'Account Code Name or ID',
 						name: 'accountCode',
 						type: 'options',
 						typeOptions: {
@@ -299,7 +299,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Theme ID',
+				displayName: 'Branding Theme Name or ID',
 				name: 'brandingThemeId',
 				type: 'options',
 				typeOptions: {
@@ -311,7 +311,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currency',
 				type: 'options',
 				typeOptions: {
@@ -433,7 +433,7 @@ export const invoiceFields: INodeProperties[] = [
 /*                                invoice:update                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -487,7 +487,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Theme ID',
+				displayName: 'Branding Theme Name or ID',
 				name: 'brandingThemeId',
 				type: 'options',
 				typeOptions: {
@@ -505,7 +505,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currency',
 				type: 'options',
 				typeOptions: {
@@ -620,7 +620,7 @@ export const invoiceFields: INodeProperties[] = [
 								description: 'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 							},
 							{
-								displayName: 'Item Code',
+								displayName: 'Item Code Name or ID',
 								name: 'itemCode',
 								type: 'options',
 								typeOptions: {
@@ -632,7 +632,7 @@ export const invoiceFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Account Code',
+								displayName: 'Account Code Name or ID',
 								name: 'accountCode',
 								type: 'options',
 								typeOptions: {
@@ -792,7 +792,7 @@ export const invoiceFields: INodeProperties[] = [
 /*                                 invoice:get                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -832,7 +832,7 @@ export const invoiceFields: INodeProperties[] = [
 /*                                   invoice:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {

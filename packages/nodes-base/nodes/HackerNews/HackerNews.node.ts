@@ -219,7 +219,7 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include comments',
+						displayName: 'Include Comments',
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,

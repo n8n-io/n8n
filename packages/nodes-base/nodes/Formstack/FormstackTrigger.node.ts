@@ -82,7 +82,7 @@ export class FormstackTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form Name/ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -90,7 +90,7 @@ export class FormstackTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The Formstack form to monitor for new submissions',
+				description: 'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Simplify',

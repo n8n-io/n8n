@@ -84,12 +84,12 @@ export class Wise implements INodeType {
 						value: 'profile',
 					},
 					{
-						name: 'Recipient',
-						value: 'recipient',
-					},
-					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Recipient',
+						value: 'recipient',
 					},
 					{
 						name: 'Transfer',

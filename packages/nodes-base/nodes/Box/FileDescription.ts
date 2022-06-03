@@ -436,7 +436,7 @@ export const fileFields: INodeProperties[] = [
 					},
 				],
 				default: 'relevance',
-				description: 'returns the results ordered in descending order by date at which the item was last modified',
+				description: 'Returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
 				displayName: 'Trash Content',
