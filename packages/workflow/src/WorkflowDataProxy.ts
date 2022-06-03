@@ -596,13 +596,8 @@ export class WorkflowDataProxy {
 								const itemInput = item.input || 0;
 								if (itemInput >= taskData.source.length) {
 									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
-									throw createExpressionError('Can’t get data for expression', {
-										messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
-										description: `Item points to a node input which does not exist`,
-										causeDetailed: `The pairedItem data points to a node input ‘${itemInput}‘ which does not exist on node ‘${
-											sourceData!.previousNode
-										}‘ (node did probably supply a wrong one)`,
-									});
+									// Actual error does not matter as it gets caught below and `null` will be returned
+									throw new Error('Not found');
 								}
 
 								return getPairedItem(destinationNodeName, taskData.source[itemInput], item);
