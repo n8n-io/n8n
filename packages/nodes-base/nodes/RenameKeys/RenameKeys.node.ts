@@ -88,6 +88,9 @@ export class RenameKeys implements INodeType {
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
 				json: JSON.parse(JSON.stringify(item.json)),
+				pairedItem: {
+					item: itemIndex,
+				},
 			};
 
 			if (item.binary !== undefined) {

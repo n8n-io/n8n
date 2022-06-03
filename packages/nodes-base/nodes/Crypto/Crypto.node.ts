@@ -493,11 +493,17 @@ export class Crypto implements INodeType {
 					// Uses dot notation so copy all data
 					newItem = {
 						json: JSON.parse(JSON.stringify(item.json)),
+						pairedItem: {
+							item: i,
+						},
 					};
 				} else {
 					// Does not use dot notation so shallow copy is enough
 					newItem = {
 						json: { ...item.json },
+						pairedItem: {
+							item: i,
+						},
 					};
 				}
 
@@ -511,7 +517,14 @@ export class Crypto implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: (error as JsonObject).message } });
+					returnData.push({
+						json: {
+							error: (error as JsonObject).message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;
