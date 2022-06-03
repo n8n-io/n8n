@@ -12,7 +12,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'Database to operate on',
+		description: 'Database to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getDatabaseIds',
 		},
@@ -23,7 +23,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'Table to operate on',
+		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'databaseId',
@@ -79,7 +79,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -259,7 +259,7 @@ export const operationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								default: '',
-								description: 'Field to compare',
+								description: 'Field to compare. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								typeOptions: {
 									loadOptionsDependsOn: [
 										'tableId',
@@ -438,7 +438,7 @@ export const operationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								default: '',
-								description: 'Field name to sort by',
+								description: 'Field name to sort by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								typeOptions: {
 									loadOptionsDependsOn: [
 										'tableId',

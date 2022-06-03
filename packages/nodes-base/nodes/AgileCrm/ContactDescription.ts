@@ -149,7 +149,7 @@ export const contactFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Any filter',
+				name: 'Any Filter',
 				value: 'anyFilter',
 			},
 			{
@@ -614,7 +614,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Phone properties',
+						displayName: 'Phone Properties',
 						name: 'phoneProperties',
 						values: [
 							{
@@ -696,7 +696,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -1075,7 +1075,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Phone properties',
+						displayName: 'Phone Properties',
 						name: 'phoneProperties',
 						values: [
 							{
@@ -1157,7 +1157,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{

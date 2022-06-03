@@ -186,7 +186,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the user being mentioned',
+		description: 'The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Page ID',
@@ -217,7 +217,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the database being mentioned',
+		description: 'The ID of the database being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Range',

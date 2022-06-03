@@ -87,7 +87,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The user ID in Wekan',
+		description: 'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -154,14 +154,14 @@ export const boardFields: INodeProperties[] = [
 				description: 'The color of the board',
 			},
 			{
-				displayName: 'Comment only',
+				displayName: 'Comment Only',
 				name: 'isCommentOnly',
 				type: 'boolean',
 				default: false,
 				description: 'Only enable comments',
 			},
 			{
-				displayName: 'No comments',
+				displayName: 'No Comments',
 				name: 'isNoComments',
 				type: 'boolean',
 				default: false,
@@ -260,7 +260,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the user that boards are attached',
+		description: 'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

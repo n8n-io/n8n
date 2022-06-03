@@ -287,7 +287,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order',
+				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -414,7 +414,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice',
+				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -528,7 +528,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order',
+				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',

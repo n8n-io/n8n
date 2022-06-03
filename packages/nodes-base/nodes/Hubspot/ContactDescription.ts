@@ -124,7 +124,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: '',
-				description: 'Companies associated with the ticket',
+				description: 'Companies associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -193,7 +193,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -299,7 +299,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactLeadStatuses',
 				},
 				default: '',
-				description: 'The contact\'s sales, prospecting or outreach status',
+				description: 'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Legal Basic For Processing Contact Data Name or ID',
@@ -309,7 +309,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactLealBasics',
 				},
 				default: '',
-				description: 'Legal basis for processing contact\'s data; \'Not applicable\' will exempt the contact from GDPR protections',
+				description: 'Legal basis for processing contact\'s data; \'Not applicable\' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -319,7 +319,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactLifeCycleStages',
 				},
 				default: '',
-				description: 'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis.',
+				description: 'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Marital Status',
@@ -364,7 +364,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactNumberOfEmployees',
 				},
 				default: '',
-				description: 'The number of company employees',
+				description: 'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Original Source Name or ID',
@@ -374,7 +374,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactOriginalSources',
 				},
 				default: '',
-				description: 'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually.',
+				description: 'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
@@ -415,7 +415,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactPrefferedLanguages',
 				},
 				default: '',
-				description: 'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration.',
+				description: 'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Relationship Status',
@@ -467,7 +467,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				default: '',
-				description: 'The status of the contact\'s content membership',
+				description: 'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Street Address',

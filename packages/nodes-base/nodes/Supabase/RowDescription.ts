@@ -105,7 +105,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -260,7 +260,7 @@ export const rowFields: INodeProperties[] = [
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
-						description: '',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					},
 					{
 						displayName: 'Value',

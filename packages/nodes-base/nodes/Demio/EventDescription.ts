@@ -329,7 +329,7 @@ export const eventFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Event Session ID',
+				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website',

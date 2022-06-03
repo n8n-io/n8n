@@ -496,7 +496,7 @@ export const couponFields: INodeProperties[] = [
 	/*                                 coupon:update	                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update by',
+		displayName: 'Update By',
 		name: 'updateBy',
 		type: 'options',
 		displayOptions: {

@@ -547,7 +547,7 @@ export class GoogleDrive implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: '3rd party shortcut',
+										name: '3rd Party Shortcut',
 										value: 'application/vnd.google-apps.drive-sdk',
 									},
 									{
@@ -571,11 +571,11 @@ export class GoogleDrive implements INodeType {
 										value: 'application/vnd.google-apps.drawing',
 									},
 									{
-										name: 'Google Drive file',
+										name: 'Google Drive File',
 										value: 'application/vnd.google-apps.file',
 									},
 									{
-										name: 'Google Drive folder',
+										name: 'Google Drive Folder',
 										value: 'application/vnd.google-apps.folder',
 									},
 									{
@@ -976,11 +976,11 @@ export class GoogleDrive implements INodeType {
 								value: 'id',
 							},
 							{
-								name: 'kind',
+								name: 'Kind',
 								value: 'kind',
 							},
 							{
-								name: 'name',
+								name: 'Name',
 								value: 'name',
 							},
 							{
@@ -988,19 +988,19 @@ export class GoogleDrive implements INodeType {
 								value: 'mimeType',
 							},
 							{
-								name: 'permissions',
+								name: 'Permissions',
 								value: 'permissions',
 							},
 							{
-								name: 'shared',
+								name: 'Shared',
 								value: 'shared',
 							},
 							{
-								name: 'spaces',
+								name: 'Spaces',
 								value: 'spaces',
 							},
 							{
-								name: 'starred',
+								name: 'Starred',
 								value: 'starred',
 							},
 							{
@@ -1008,11 +1008,11 @@ export class GoogleDrive implements INodeType {
 								value: 'thumbnailLink',
 							},
 							{
-								name: 'trashed',
+								name: 'Trashed',
 								value: 'trashed',
 							},
 							{
-								name: 'version',
+								name: 'Version',
 								value: 'version',
 							},
 							{
@@ -1209,11 +1209,11 @@ export class GoogleDrive implements INodeType {
 								value: 'id',
 							},
 							{
-								name: 'kind',
+								name: 'Kind',
 								value: 'kind',
 							},
 							{
-								name: 'name',
+								name: 'Name',
 								value: 'name',
 							},
 							{
@@ -1221,19 +1221,19 @@ export class GoogleDrive implements INodeType {
 								value: 'mimeType',
 							},
 							{
-								name: 'permissions',
+								name: 'Permissions',
 								value: 'permissions',
 							},
 							{
-								name: 'shared',
+								name: 'Shared',
 								value: 'shared',
 							},
 							{
-								name: 'spaces',
+								name: 'Spaces',
 								value: 'spaces',
 							},
 							{
-								name: 'starred',
+								name: 'Starred',
 								value: 'starred',
 							},
 							{
@@ -1241,11 +1241,11 @@ export class GoogleDrive implements INodeType {
 								value: 'thumbnailLink',
 							},
 							{
-								name: 'trashed',
+								name: 'Trashed',
 								value: 'trashed',
 							},
 							{
-								name: 'version',
+								name: 'Version',
 								value: 'version',
 							},
 							{
@@ -1413,11 +1413,11 @@ export class GoogleDrive implements INodeType {
 								value: 'appDataFolder',
 							},
 							{
-								name: 'drive',
+								name: 'Drive',
 								value: 'drive',
 							},
 							{
-								name: 'photos',
+								name: 'Photos',
 								value: 'photos',
 							},
 						],
@@ -1441,17 +1441,17 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: 'user',
+								name: 'User',
 								value: 'user',
 								description: 'All files in "My Drive" and "Shared with me"',
 							},
 							{
-								name: 'domain',
+								name: 'Domain',
 								value: 'domain',
 								description: 'All files shared to the user\'s domain that are searchable',
 							},
 							{
-								name: 'drive',
+								name: 'Drive',
 								value: 'drive',
 								description: 'All files contained in a single shared drive',
 							},

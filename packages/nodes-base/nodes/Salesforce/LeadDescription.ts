@@ -94,7 +94,7 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The field to check to see if the lead already exists',
+		description: 'The field to check to see if the lead already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Value to Match',
@@ -217,7 +217,7 @@ export const leadFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -283,7 +283,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained',
+				description: 'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Mobile Phone',
@@ -307,7 +307,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
-				description: 'The owner of the lead',
+				description: 'The owner of the lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -361,7 +361,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadStatuses',
 				},
 				default: '',
-				description: 'Status code for this converted lead',
+				description: 'Status code for this converted lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Street',
@@ -479,7 +479,7 @@ export const leadFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -552,7 +552,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained',
+				description: 'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Mobile Phone',
@@ -576,7 +576,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
-				description: 'The owner of the lead',
+				description: 'The owner of the lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Postal Code',
@@ -630,7 +630,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadStatuses',
 				},
 				default: '',
-				description: 'Status code for this converted lead',
+				description: 'Status code for this converted lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Street',
@@ -784,7 +784,7 @@ export const leadFields: INodeProperties[] = [
 									loadOptionsMethod: 'getLeadFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
@@ -875,7 +875,7 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the campaign that needs to be fetched',
+		description: 'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -985,7 +985,7 @@ export const leadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note',
+				description: 'ID of the user who owns the note. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

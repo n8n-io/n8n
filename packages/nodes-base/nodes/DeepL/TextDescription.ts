@@ -29,7 +29,7 @@ export const textOperations: INodeProperties[] = [
 			loadOptionsMethod: 'getLanguages',
 		},
 		default: '',
-		description: 'Language to translate to',
+		description: 'Language to translate to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 		displayOptions: {
 			show: {
@@ -51,7 +51,7 @@ export const textOperations: INodeProperties[] = [
 				name: 'sourceLang',
 				type: 'options',
 				default: '',
-				description: 'Language to translate from',
+				description: 'Language to translate from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
@@ -88,12 +88,12 @@ export const textOperations: INodeProperties[] = [
 				description: 'Whether the translation engine should respect the original formatting, even if it would usually correct some aspects',
 				options: [
 					{
-						name: 'Apply corrections',
+						name: 'Apply Corrections',
 						value: '0',
 						description: 'Fix punctuation at the beginning and end of sentences and fixes lower/upper caseing at the beginning',
 					},
 					{
-						name: 'Do not correct',
+						name: 'Do Not Correct',
 						value: '1',
 						description: 'Keep text as similar as possible to the original',
 					},

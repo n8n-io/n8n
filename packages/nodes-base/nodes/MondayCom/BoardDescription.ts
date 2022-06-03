@@ -65,7 +65,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers',
+		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 board:create                               */
@@ -171,7 +171,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers',
+		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  board:getAll                              */

@@ -526,7 +526,7 @@ export const documentFields: INodeProperties[] = [
 				description: 'Set the value for each destination column',
 			},
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -700,7 +700,7 @@ export const documentFields: INodeProperties[] = [
 				description: 'Set the value for each destination column',
 			},
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},

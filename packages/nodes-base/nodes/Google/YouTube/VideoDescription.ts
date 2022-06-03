@@ -156,7 +156,7 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -516,7 +516,7 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCountriesCodes',
 				},
 				default: '',
-				description: 'The regionCode parameter instructs the API to select a video chart available in the specified region',
+				description: 'The regionCode parameter instructs the API to select a video chart available in the specified region. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Related To Video ID',
@@ -606,7 +606,7 @@ export const videoFields: INodeProperties[] = [
 						description: 'YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale',
 					},
 					{
-						name: 'none',
+						name: 'None',
 						value: 'none',
 						description: 'YouTube will not filter the search result set',
 					},
@@ -777,7 +777,7 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',

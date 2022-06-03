@@ -54,7 +54,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to',
+		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -78,7 +78,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to',
+		description: 'The slug of the project the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Full',
@@ -161,7 +161,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to',
+		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -182,7 +182,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to',
+		description: 'The slug of the project the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Event ID',

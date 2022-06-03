@@ -110,7 +110,7 @@ export class ShopifyTrigger implements INodeType {
 						value: 'customers/delete',
 					},
 					{
-						name: 'Customer disabled',
+						name: 'Customer Disabled',
 						value: 'customers/disable',
 					},
 					{
@@ -142,11 +142,11 @@ export class ShopifyTrigger implements INodeType {
 						value: 'draft_orders/delete',
 					},
 					{
-						name: 'Draft orders Updated',
+						name: 'Draft Orders Updated',
 						value: 'draft_orders/update',
 					},
 					{
-						name: 'Fulfillment created',
+						name: 'Fulfillment Created',
 						value: 'fulfillments/create',
 					},
 					{
@@ -206,7 +206,7 @@ export class ShopifyTrigger implements INodeType {
 						value: 'locations/update',
 					},
 					{
-						name: 'Order cancelled',
+						name: 'Order Cancelled',
 						value: 'orders/cancelled',
 					},
 					{
@@ -226,7 +226,7 @@ export class ShopifyTrigger implements INodeType {
 						value: 'orders/partially_fulfilled',
 					},
 					{
-						name: 'Order transactions Created',
+						name: 'Order Transactions Created',
 						value: 'order_transactions/create',
 					},
 					{

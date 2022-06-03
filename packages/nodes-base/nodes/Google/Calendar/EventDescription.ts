@@ -176,7 +176,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColors',
 				},
 				default: '',
-				description: 'The color of the event',
+				description: 'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Conference Data',
@@ -561,7 +561,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -710,7 +710,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Updated Min',
@@ -811,7 +811,7 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColors',
 				},
 				default: '',
-				description: 'The color of the event',
+				description: 'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',

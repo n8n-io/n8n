@@ -64,7 +64,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox',
+		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Subject',
@@ -143,11 +143,11 @@ export const taskFields: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Not started',
+						name: 'Not Started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In progress',
+						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
@@ -194,7 +194,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox',
+		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Task ID',
@@ -321,11 +321,11 @@ export const taskFields: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Not started',
+						name: 'Not Started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In progress',
+						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{

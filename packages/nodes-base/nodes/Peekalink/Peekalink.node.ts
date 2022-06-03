@@ -41,7 +41,7 @@ export class Peekalink implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Is available',
+						name: 'Is Available',
 						value: 'isAvailable',
 						description: 'Check whether preview for a given link is available',
 					},

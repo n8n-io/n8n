@@ -123,7 +123,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'MIME type',
+		displayName: 'MIME Type',
 		name: 'contentType',
 		type: 'options',
 		default: 'text/plain',

@@ -145,7 +145,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: 'The user\'s locale',
+				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -166,7 +166,7 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: 'true if the user can only create private comments',
+				description: 'True if the user can only create private comments',
 			},
 			{
 				displayName: 'Organization Name or ID',
@@ -176,7 +176,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization.',
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -299,7 +299,7 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on',
+								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -402,7 +402,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: 'The user\'s locale',
+				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -430,7 +430,7 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: 'true if the user can only create private comments',
+				description: 'True if the user can only create private comments',
 			},
 			{
 				displayName: 'Organization Name or ID',
@@ -440,7 +440,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization.',
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -563,7 +563,7 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on',
+								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',

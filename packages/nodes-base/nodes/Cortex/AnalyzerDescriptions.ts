@@ -51,7 +51,7 @@ export const analyzerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Choose the analyzer',
+		description: 'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 	},
 	{
@@ -81,7 +81,7 @@ export const analyzerFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Choose the observable type',
+		description: 'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	// Observable type != file
@@ -199,7 +199,7 @@ export const analyzerFields: INodeProperties[] = [
 				description: 'To force bypassing the cache, set this parameter to true',
 			},
 			{
-				displayName: 'Timeout (seconds)',
+				displayName: 'Timeout (Seconds)',
 				name: 'timeout',
 				type: 'number',
 				default: 3,

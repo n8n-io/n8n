@@ -60,7 +60,7 @@ export const reportFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'ID of the session',
+		description: 'ID of the session. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

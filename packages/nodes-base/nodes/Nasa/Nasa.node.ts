@@ -681,14 +681,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -720,14 +720,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',

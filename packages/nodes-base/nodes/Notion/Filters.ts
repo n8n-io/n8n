@@ -12,7 +12,7 @@ export const filters = (conditions: any) => [{
 		],
 	},
 	default: '',
-	description: 'The name of the property to filter by',
+	description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
 	displayName: 'Type',
@@ -182,7 +182,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
 	displayName: 'User Name or ID',
@@ -205,7 +205,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
 	displayName: 'User Name or ID',
@@ -228,7 +228,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
 	displayName: 'Relation ID',

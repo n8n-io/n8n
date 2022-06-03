@@ -111,7 +111,7 @@ export const issueFields: INodeProperties[] = [
 				'project',
 			],
 		},
-		description: 'Issue Types',
+		description: 'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Summary',
@@ -198,7 +198,7 @@ export const issueFields: INodeProperties[] = [
 										'project',
 									],
 								},
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -354,7 +354,7 @@ export const issueFields: INodeProperties[] = [
 										'issueKey',
 									],
 								},
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -445,7 +445,7 @@ export const issueFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTransitions',
 				},
 				default: '',
-				description: 'The ID of the issue status',
+				description: 'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

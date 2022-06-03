@@ -123,7 +123,7 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Multi ACK',
 								value: 'multi_ack',
-								description: 'in case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
+								description: 'In case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
 							},
 						],
 						default: 'single_ack',

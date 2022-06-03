@@ -48,7 +48,7 @@ export const itemFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableName',
-		description: 'Table to operate on',
+		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
 		displayOptions: {
@@ -73,7 +73,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -657,11 +657,11 @@ export const itemFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Strongly consistent read',
+						name: 'Strongly Consistent Read',
 						value: 'stronglyConsistentRead',
 					},
 					{
-						name: 'Eventually consistent read',
+						name: 'Eventually Consistent Read',
 						value: 'eventuallyConsistentRead',
 					},
 				],
