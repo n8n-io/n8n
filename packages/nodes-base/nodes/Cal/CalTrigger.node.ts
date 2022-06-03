@@ -83,7 +83,6 @@ export class CalTrigger implements INodeType {
 				// one that is supposed to get created.
 				const endpoint = '/hooks';
 				const data = await calApiRequest.call(this, 'GET', endpoint, {});
-				console.log("DATA=>", data);
 				for (const webhook of data) {
 					if (webhook.subscriberUrl === webhookUrl) {
 						for (const event of events) {
