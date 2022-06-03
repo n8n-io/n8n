@@ -240,7 +240,7 @@ export const webinarFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Send Cancellation E-mails',
+				displayName: 'Send Cancellation E-Mails',
 				name: 'sendCancellationEmails',
 				type: 'boolean',
 				default: false,

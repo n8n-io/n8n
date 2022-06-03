@@ -169,7 +169,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The ID of a card to copy into the new card',
 			},
 			{
-				displayName: 'Keep from source',
+				displayName: 'Keep From Source',
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'all',

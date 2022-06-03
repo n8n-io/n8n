@@ -720,7 +720,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				description: 'Ignore aspect ratio and resize exactly to specified values',
 			},
 			{
-				name: 'Maximum area',
+				name: 'Maximum Area',
 				value: 'maximumArea',
 				description: 'Specified values are maximum area',
 			},
@@ -730,12 +730,12 @@ const nodeOperationOptions: INodeProperties[] = [
 				description: 'Specified values are minimum area',
 			},
 			{
-				name: 'Only if larger',
+				name: 'Only if Larger',
 				value: 'onlyIfLarger',
 				description: 'Resize only if image is larger than width or height',
 			},
 			{
-				name: 'Only if smaller',
+				name: 'Only if Smaller',
 				value: 'onlyIfSmaller',
 				description: 'Resize only if image is smaller than width or height',
 			},

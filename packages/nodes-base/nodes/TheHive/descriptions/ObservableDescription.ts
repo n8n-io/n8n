@@ -552,23 +552,23 @@ export const observableFields: INodeProperties[] = [
 				description: 'Type of the observable',
 			},
 			{
-				displayName: 'Date range',
+				displayName: 'Date Range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add date range inputs',
+						displayName: 'Add Date Range Inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From date',
+								displayName: 'From Date',
 								name: 'fromDate',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'To date',
+								displayName: 'To Date',
 								name: 'toDate',
 								type: 'dateTime',
 								default: '',

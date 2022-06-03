@@ -278,11 +278,13 @@ export const fileFields: INodeProperties[] = [
 						value: 'spaces',
 					},
 					{
-						name: 'pdfs',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'PDFs',
 						value: 'pdfs',
 					},
 					{
-						name: 'Zips',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'zips',
 						value: 'zips',
 					},
 				],

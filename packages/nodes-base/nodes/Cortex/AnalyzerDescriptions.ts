@@ -199,7 +199,7 @@ export const analyzerFields: INodeProperties[] = [
 				description: 'To force bypassing the cache, set this parameter to true',
 			},
 			{
-				displayName: 'Timeout (seconds)',
+				displayName: 'Timeout (Seconds)',
 				name: 'timeout',
 				type: 'number',
 				default: 3,

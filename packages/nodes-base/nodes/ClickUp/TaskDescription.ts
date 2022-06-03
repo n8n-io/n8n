@@ -1045,7 +1045,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the field to add custom field to',
 	},
 	{
-		displayName: 'Value is JSON',
+		displayName: 'Value Is JSON',
 		name: 'jsonParse',
 		type: 'boolean',
 		displayOptions: {

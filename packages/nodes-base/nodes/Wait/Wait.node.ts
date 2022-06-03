@@ -98,7 +98,7 @@ export class Wait implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Webhook authentication',
+				displayName: 'Webhook Authentication',
 				name: 'incomingAuthentication',
 				type: 'options',
 				displayOptions: {
@@ -131,17 +131,17 @@ export class Wait implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'After time interval',
+						name: 'After Time Interval',
 						value: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
-						name: 'At specified time',
+						name: 'At Specified Time',
 						value: 'specificTime',
 						description: 'Waits until a specific date and time to continue',
 					},
 					{
-						name: 'On webhook call',
+						name: 'On Webhook Call',
 						value: 'webhook',
 						description: 'Waits for a webhook call before continuing',
 					},
@@ -315,12 +315,12 @@ export class Wait implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'When last node finishes',
+						name: 'When Last Node Finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' node',
+						name: 'Using \'Respond to Webhook\' Node',
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
@@ -381,7 +381,7 @@ export class Wait implements INodeType {
 				description: 'Name of the binary property to return',
 			},
 			{
-				displayName: 'Limit wait time',
+				displayName: 'Limit Wait Time',
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
@@ -395,7 +395,7 @@ export class Wait implements INodeType {
 				},
 			},
 			{
-				displayName: 'Limit type',
+				displayName: 'Limit Type',
 				name: 'limitType',
 				type: 'options',
 				default: 'afterTimeInterval',
@@ -412,12 +412,12 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
-						name: 'After time interval',
+						name: 'After Time Interval',
 						description: 'Waits for a certain amount of time',
 						value: 'afterTimeInterval',
 					},
 					{
-						name: 'At specified time',
+						name: 'At Specified Time',
 						description: 'Waits until the set date and time to continue',
 						value: 'atSpecifiedTime',
 					},

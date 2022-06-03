@@ -196,7 +196,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'One off charge',
+				displayName: 'One Off Charge',
 				name: 'isOneOffCharge',
 				type: 'boolean',
 				default: false,

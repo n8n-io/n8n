@@ -308,7 +308,7 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'shipping Address',
+						displayName: 'Shipping Address',
 						values: [
 							{
 								displayName: 'First Name',
@@ -864,7 +864,7 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'shipping Address',
+						displayName: 'Shipping Address',
 						values: [
 							{
 								displayName: 'First Name',

@@ -84,7 +84,7 @@ export class Amqp implements INodeType {
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Send property',
+						displayName: 'Send Property',
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',
