@@ -70,7 +70,7 @@ export class BitbucketTrigger implements INodeType {
 				default: 'workspace',
 			},
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				displayOptions: {
@@ -108,7 +108,7 @@ export class BitbucketTrigger implements INodeType {
 				description: 'The events to listen to',
 			},
 			{
-				displayName: 'Repository',
+				displayName: 'Repository Name or ID',
 				name: 'repository',
 				type: 'options',
 				displayOptions: {

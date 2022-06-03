@@ -61,7 +61,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -158,7 +158,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -253,7 +253,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -373,7 +373,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -565,7 +565,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -663,7 +663,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:query                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',

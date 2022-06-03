@@ -67,7 +67,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project',
+		displayName: 'Project Name or ID',
 		name: 'project',
 		type: 'options',
 		default: '',
@@ -90,7 +90,7 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Type',
+		displayName: 'Issue Type Name or ID',
 		name: 'issueType',
 		type: 'options',
 		default: '',
@@ -148,7 +148,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {
@@ -189,7 +189,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -251,7 +251,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -260,7 +260,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reporter',
+				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
 				typeOptions: {
@@ -316,7 +316,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {
@@ -345,7 +345,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -414,7 +414,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -423,7 +423,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reporter',
+				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
 				typeOptions: {
@@ -438,7 +438,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				typeOptions: {

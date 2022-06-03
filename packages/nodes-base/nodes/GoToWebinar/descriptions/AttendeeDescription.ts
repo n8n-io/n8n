@@ -38,7 +38,7 @@ export const attendeeFields: INodeProperties[] = [
 	//     attendee: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -56,7 +56,7 @@ export const attendeeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Session Key',
+		displayName: 'Session Key Name or ID',
 		name: 'sessionKey',
 		type: 'options',
 		required: true,

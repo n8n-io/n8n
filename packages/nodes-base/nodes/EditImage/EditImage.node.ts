@@ -933,7 +933,7 @@ export class EditImage implements INodeType {
 							},
 							...nodeOperationOptions,
 							{
-								displayName: 'Font',
+								displayName: 'Font Name or ID',
 								name: 'font',
 								type: 'options',
 								displayOptions: {
@@ -977,7 +977,7 @@ export class EditImage implements INodeType {
 						description: 'File name to set in binary data',
 					},
 					{
-						displayName: 'Font',
+						displayName: 'Font Name or ID',
 						name: 'font',
 						type: 'options',
 						displayOptions: {

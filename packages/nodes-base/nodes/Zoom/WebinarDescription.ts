@@ -225,7 +225,7 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -612,7 +612,7 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {

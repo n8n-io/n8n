@@ -47,7 +47,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -311,7 +311,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code',
+				displayName: 'Purchase Default Account Code Name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -321,7 +321,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The default purchases account code for contacts',
 			},
 			{
-				displayName: 'Sales Default Account Code',
+				displayName: 'Sales Default Account Code Name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -357,7 +357,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -397,7 +397,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                   contact:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -522,7 +522,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -792,7 +792,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code',
+				displayName: 'Purchase Default Account Code Name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -802,7 +802,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The default purchases account code for contacts',
 			},
 			{
-				displayName: 'Sales Default Account Code',
+				displayName: 'Sales Default Account Code Name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {

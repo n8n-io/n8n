@@ -72,6 +72,7 @@ export const leadFields: INodeProperties[] = [
 	/*                                lead:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
@@ -209,7 +210,7 @@ export const leadFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -275,7 +276,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'References the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead Source Name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -299,7 +300,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Number of employees at the lead’s company. Label is Employees.',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -323,7 +324,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Postal code for the address of the lead. Label is Zip/Postal Code.',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -353,7 +354,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'State for the address of the lead',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -471,7 +472,7 @@ export const leadFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -544,7 +545,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Required. Last name of the lead. Limited to 80 characters.',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead Source Name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -568,7 +569,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Number of employees at the lead’s company. Label is Employees.',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -592,7 +593,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Phone number for the lead',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -622,7 +623,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'State for the address of the lead',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -776,7 +777,7 @@ export const leadFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -856,7 +857,7 @@ export const leadFields: INodeProperties[] = [
 		description: 'ID of contact that needs to be fetched',
 	},
 	{
-		displayName: 'Campaign',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -977,7 +978,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {

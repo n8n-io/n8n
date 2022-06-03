@@ -63,7 +63,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Department',
+			displayName: 'Department Name or ID',
 			name: 'department',
 			type: 'options',
 			typeOptions: {
@@ -72,7 +72,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Division',
+			displayName: 'Division Name or ID',
 			name: 'division',
 			type: 'options',
 			typeOptions: {
@@ -151,7 +151,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Location',
+			displayName: 'Location Name or ID',
 			name: 'location',
 			type: 'options',
 			typeOptions: {

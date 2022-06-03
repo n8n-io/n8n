@@ -88,7 +88,7 @@ export class TypeformTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {

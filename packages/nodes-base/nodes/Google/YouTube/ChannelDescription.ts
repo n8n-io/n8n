@@ -211,6 +211,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Language Code',
 				name: 'h1',
 				type: 'options',

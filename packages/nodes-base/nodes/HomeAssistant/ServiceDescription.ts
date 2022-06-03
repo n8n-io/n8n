@@ -81,7 +81,7 @@ export const serviceFields: INodeProperties[] = [
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Domain',
+		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
 		typeOptions: {
@@ -101,7 +101,7 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service',
+		displayName: 'Service Name or ID',
 		name: 'service',
 		type: 'options',
 		typeOptions: {

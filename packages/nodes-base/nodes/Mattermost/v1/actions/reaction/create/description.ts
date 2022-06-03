@@ -4,7 +4,7 @@ import {
 
 export const reactionCreateDescription: ReactionProperties = [
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {

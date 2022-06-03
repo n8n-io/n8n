@@ -38,7 +38,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                 document: create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Drive',
+		displayName: 'Drive Name or ID',
 		name: 'driveId',
 		type: 'options',
 		typeOptions: {
@@ -58,7 +58,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder Name or ID',
 		name: 'folderId',
 		type: 'options',
 		typeOptions: {

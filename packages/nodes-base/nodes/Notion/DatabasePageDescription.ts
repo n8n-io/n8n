@@ -180,7 +180,7 @@ export const databasePageFields = [
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key',
+						displayName: 'Key Name or ID',
 						name: 'key',
 						type: 'options',
 						typeOptions: {
@@ -281,7 +281,7 @@ export const databasePageFields = [
 						description: 'Name of the options you want to set. Multiples can be defined separated by comma.',
 					},
 					{
-						displayName: 'Option',
+						displayName: 'Option Name or ID',
 						name: 'selectValue',
 						type: 'options',
 						typeOptions: {
@@ -467,7 +467,7 @@ export const databasePageFields = [
 						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone',
+						displayName: 'Timezone Name or ID',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
@@ -593,7 +593,7 @@ export const databasePageFields = [
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key',
+						displayName: 'Key Name or ID',
 						name: 'key',
 						type: 'options',
 						typeOptions: {
@@ -693,7 +693,7 @@ export const databasePageFields = [
 						default: [],
 					},
 					{
-						displayName: 'Option',
+						displayName: 'Option Name or ID',
 						name: 'selectValue',
 						type: 'options',
 						typeOptions: {
@@ -877,7 +877,7 @@ export const databasePageFields = [
 						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone',
+						displayName: 'Timezone Name or ID',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
@@ -1182,7 +1182,7 @@ export const databasePageFields = [
 								description: 'Whether or not to use the record\'s timestamp to sort the response',
 							},
 							{
-								displayName: 'Property Name',
+								displayName: 'Property Name or ID',
 								name: 'key',
 								type: 'options',
 								displayOptions: {

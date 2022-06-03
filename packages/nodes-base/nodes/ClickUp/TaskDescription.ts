@@ -62,7 +62,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -82,7 +82,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -122,7 +122,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -148,7 +148,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -174,7 +174,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -320,7 +320,7 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -515,7 +515,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -535,7 +535,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -575,7 +575,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -601,7 +601,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -627,7 +627,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -745,7 +745,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {

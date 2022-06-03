@@ -37,7 +37,7 @@ export const collectionOperations: INodeProperties[] = [
 
 export const collectionFields: INodeProperties[] = [
 	{
-		displayName: 'Collection',
+		displayName: 'Collection Name or ID',
 		name: 'collection',
 		type: 'options',
 		default: '',

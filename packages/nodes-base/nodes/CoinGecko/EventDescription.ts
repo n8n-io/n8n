@@ -86,6 +86,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Country Code',
 				name: 'country_code',
 				type: 'options',
@@ -110,7 +111,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Lists events before this date',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {

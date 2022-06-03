@@ -93,7 +93,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'Search by coin ID or contract address',
 	},
 	{
-		displayName: 'Coin ID',
+		displayName: 'Coin Name or ID',
 		name: 'coinId',
 		required: true,
 		type: 'options',
@@ -114,7 +114,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currency',
+		displayName: 'Base Currency Name or ID',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -136,7 +136,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
-		displayName: 'Base Currency',
+		displayName: 'Base Currency Name or ID',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -158,7 +158,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
-		displayName: 'Coin ID',
+		displayName: 'Coin Name or ID',
 		name: 'coinId',
 		required: true,
 		type: 'options',
@@ -277,7 +277,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The contract address of tokens, comma-separated',
 	},
 	{
-		displayName: 'Base Currency',
+		displayName: 'Base Currency Name or ID',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -306,7 +306,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
-		displayName: 'Quote Currency',
+		displayName: 'Quote Currency Name or ID',
 		name: 'quoteCurrency',
 		required: true,
 		type: 'options',

@@ -96,7 +96,7 @@ export class FileMaker implements INodeType {
 			//         shared
 			// ----------------------------------
 			{
-				displayName: 'Layout',
+				displayName: 'Layout Name or ID',
 				name: 'layout',
 				type: 'options',
 				typeOptions: {
@@ -134,7 +134,7 @@ export class FileMaker implements INodeType {
 				placeholder: '0',
 				description: 'The record number of the first record in the range of records',
 				type: 'number',
-				default: '1',
+				default: 1,
 				displayOptions: {
 					show: {
 						action: [
@@ -153,7 +153,7 @@ export class FileMaker implements INodeType {
 				typeOptions: {
 					minValue: 1,
 				},
-				default: '100',
+				default: 100,
 				displayOptions: {
 					show: {
 						action: [
@@ -180,7 +180,7 @@ export class FileMaker implements INodeType {
 				},
 			},
 			{
-				displayName: 'Portals',
+				displayName: 'Portals Name or ID',
 				name: 'portals',
 				type: 'options',
 				typeOptions: {
@@ -209,7 +209,7 @@ export class FileMaker implements INodeType {
 			//         find/records
 			// ----------------------------------
 			{
-				displayName: 'Response Layout',
+				displayName: 'Response Layout Name or ID',
 				name: 'responseLayout',
 				type: 'options',
 				typeOptions: {
@@ -260,7 +260,7 @@ export class FileMaker implements INodeType {
 									displayName: 'Field',
 									values: [
 										{
-											displayName: 'Field',
+											displayName: 'Field Name or ID',
 											name: 'name',
 											type: 'options',
 											default: '',
@@ -335,7 +335,7 @@ export class FileMaker implements INodeType {
 						displayName: 'Rules',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								default: '',
@@ -383,7 +383,7 @@ export class FileMaker implements INodeType {
 				},
 			},
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'scriptBefore',
 				type: 'options',
 				typeOptions: {
@@ -444,7 +444,7 @@ export class FileMaker implements INodeType {
 				},
 			},
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'scriptSort',
 				type: 'options',
 				typeOptions: {
@@ -505,7 +505,7 @@ export class FileMaker implements INodeType {
 				},
 			},
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'scriptAfter',
 				type: 'options',
 				typeOptions: {
@@ -606,7 +606,7 @@ export class FileMaker implements INodeType {
 						displayName: 'Fields',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								default: '',
@@ -630,7 +630,7 @@ export class FileMaker implements INodeType {
 			//         performscript
 			// ----------------------------------
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'script',
 				type: 'options',
 				typeOptions: {

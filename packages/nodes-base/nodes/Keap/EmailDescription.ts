@@ -306,7 +306,7 @@ export const emailFields: INodeProperties[] = [
 /*                                 email:send                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		required: true,

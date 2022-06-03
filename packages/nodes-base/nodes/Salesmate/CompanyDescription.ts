@@ -67,7 +67,7 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
 		default: '',
@@ -285,7 +285,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				default: '',

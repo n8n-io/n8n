@@ -67,7 +67,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal Stage',
+		displayName: 'Deal Stage Name or ID',
 		name: 'stage',
 		type: 'options',
 		required: true,
@@ -150,7 +150,7 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -183,7 +183,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Type',
+				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
 				typeOptions: {
@@ -265,7 +265,7 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -298,7 +298,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Stage',
+				displayName: 'Deal Stage Name or ID',
 				name: 'stage',
 				type: 'options',
 				required: true,
@@ -309,7 +309,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
 			},
 			{
-				displayName: 'Deal Type',
+				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
 				typeOptions: {
@@ -652,7 +652,7 @@ export const dealFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
 										typeOptions: {
@@ -784,6 +784,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Perform a text search against all property values for an object type',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',

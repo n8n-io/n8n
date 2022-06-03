@@ -32,7 +32,7 @@ export const mediaFields: INodeProperties[] = [
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {

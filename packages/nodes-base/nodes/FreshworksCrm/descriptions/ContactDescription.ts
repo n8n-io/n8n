@@ -129,7 +129,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Address of the contact',
 			},
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -146,7 +146,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'City that the contact belongs to',
 			},
 			{
-				displayName: 'Contact Status ID',
+				displayName: 'Contact Status Name or ID',
 				name: 'contact_status_id',
 				type: 'options',
 				default: '',
@@ -198,7 +198,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the source where contact came from',
 			},
 			{
-				displayName: 'Lifecycle Stage ID',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifecycle_stage_id',
 				type: 'options',
 				default: '',
@@ -229,7 +229,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Mobile phone number of the contact',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -270,7 +270,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Type of subscription that the contact is in',
 			},
 			{
-				displayName: 'Territory ID',
+				displayName: 'Territory Name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -358,7 +358,7 @@ export const contactFields: INodeProperties[] = [
 	//             contact: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'view',
 		type: 'options',
 		displayOptions: {
@@ -463,7 +463,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Address of the contact',
 			},
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -480,7 +480,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'City that the contact belongs to',
 			},
 			{
-				displayName: 'Contact Status ID',
+				displayName: 'Contact Status Name or ID',
 				name: 'contact_status_id',
 				type: 'options',
 				default: '',
@@ -539,7 +539,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Last name of the contact',
 			},
 			{
-				displayName: 'Lead Source ID',
+				displayName: 'Lead Source Name or ID',
 				name: 'lead_source_id',
 				type: 'options',
 				default: '',
@@ -549,7 +549,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the source where contact came from',
 			},
 			{
-				displayName: 'Lifecycle Stage ID',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifecycle_stage_id',
 				type: 'options',
 				default: '',
@@ -580,7 +580,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Mobile phone number of the contact',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -607,7 +607,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'State that the contact belongs to',
 			},
 			{
-				displayName: 'Subscription Status',
+				displayName: 'Subscription Status Name or ID',
 				name: 'subscription_status',
 				type: 'options',
 				default: '',
@@ -617,7 +617,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Status of subscription that the contact is in',
 			},
 			{
-				displayName: 'Subscription Types',
+				displayName: 'Subscription Types Name or ID',
 				name: 'subscription_types',
 				type: 'options',
 				default: '',
@@ -627,7 +627,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Type of subscription that the contact is in',
 			},
 			{
-				displayName: 'Territory ID',
+				displayName: 'Territory Name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',

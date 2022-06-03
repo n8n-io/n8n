@@ -128,7 +128,7 @@ export const ticketFields: INodeProperties[] = [
 						name: 'customFieldsValues',
 						values: [
 							{
-								displayName: 'ID',
+								displayName: 'Name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
@@ -156,7 +156,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -351,7 +351,7 @@ export const ticketFields: INodeProperties[] = [
 						name: 'customFieldsValues',
 						values: [
 							{
-								displayName: 'ID',
+								displayName: 'Name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
@@ -379,7 +379,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -644,7 +644,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {

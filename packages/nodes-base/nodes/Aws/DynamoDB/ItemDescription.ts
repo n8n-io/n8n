@@ -46,7 +46,7 @@ export const itemFields: INodeProperties[] = [
 	//              all
 	// ----------------------------------
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		description: 'Table to operate on',
 		type: 'options',
