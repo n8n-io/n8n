@@ -4,7 +4,11 @@
 import ClientOAuth2 from 'client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
-import { get, omit, set, split, unset } from 'lodash';
+import get from 'lodash.get';
+import omit from 'lodash.omit';
+import set from 'lodash.set';
+import split from 'lodash.split';
+import unset from 'lodash.unset';
 import { Credentials, UserSettings } from 'n8n-core';
 import {
 	LoggerProxy,
