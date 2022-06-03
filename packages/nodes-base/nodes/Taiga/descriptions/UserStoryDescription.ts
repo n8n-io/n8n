@@ -51,7 +51,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: create
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		description: 'ID of the project to which the user story belongs',
 		type: 'options',
@@ -106,7 +106,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -159,7 +159,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the kanban',
 			},
 			{
-				displayName: 'Milestone (Sprint)',
+				displayName: 'Milestone (Sprint) Name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -182,7 +182,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the milestone',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -207,7 +207,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -269,7 +269,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		description: 'ID of the project to which the user story belongs',
 		type: 'options',
@@ -347,7 +347,7 @@ export const userStoryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
 				description: 'ID of the user whom the user story is assigned to',
 				type: 'options',
@@ -360,7 +360,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Epic',
+				displayName: 'Epic Name or ID',
 				name: 'epic',
 				description: 'ID of the epic to which the user story belongs',
 				type: 'options',
@@ -387,7 +387,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Milestone (Sprint)',
+				displayName: 'Milestone (Sprint) Name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -400,7 +400,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'ID of the milestone of the user story',
 			},
 			{
-				displayName: 'Role',
+				displayName: 'Role Name or ID',
 				name: 'role',
 				type: 'options',
 				typeOptions: {
@@ -412,7 +412,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				description: 'ID of the status of the user story',
 				type: 'options',
@@ -443,7 +443,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: update
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -498,7 +498,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -551,7 +551,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the kanban',
 			},
 			{
-				displayName: 'Milestone (Sprint)',
+				displayName: 'Milestone (Sprint) Name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -580,7 +580,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the milestone',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -605,7 +605,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {

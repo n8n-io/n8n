@@ -1176,7 +1176,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Limit response to resources published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				default: '',
@@ -1345,7 +1345,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag',
+				displayName: 'Tag Name or ID',
 				name: 'tag',
 				type: 'options',
 				default: [],

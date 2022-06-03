@@ -65,7 +65,7 @@ export const incidentFields: INodeProperties[] = [
 		description: 'A succinct description of the nature, symptoms, cause, or effect of the incident',
 	},
 	{
-		displayName: 'Service ID',
+		displayName: 'Service Name or ID',
 		name: 'serviceId',
 		type: 'options',
 		typeOptions: {
@@ -121,7 +121,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Escalation Policy ID',
+				displayName: 'Escalation Policy Name or ID',
 				name: 'escalationPolicyId',
 				type: 'options',
 				typeOptions: {
@@ -145,7 +145,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key',
 			},
 			{
-				displayName: 'Priority ID',
+				displayName: 'Priority Name or ID',
 				name: 'priorityId',
 				type: 'options',
 				typeOptions: {
@@ -416,7 +416,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Team IDs. Only results related to these teams will be returned. Account must have the teams ability to use this parameter. (multiples IDs can be added separated by comma)',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -525,7 +525,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Escalate the incident to this level in the escalation policy',
 			},
 			{
-				displayName: 'Escalation Policy ID',
+				displayName: 'Escalation Policy Name or ID',
 				name: 'escalationPolicyId',
 				type: 'options',
 				typeOptions: {
@@ -535,7 +535,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given.',
 			},
 			{
-				displayName: 'Priority ID',
+				displayName: 'Priority Name or ID',
 				name: 'priorityId',
 				type: 'options',
 				typeOptions: {

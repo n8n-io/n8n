@@ -62,7 +62,7 @@ export class AwsSqs implements INodeType {
 				default: 'sendMessage',
 			},
 			{
-				displayName: 'Queue',
+				displayName: 'Queue Name or ID',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {

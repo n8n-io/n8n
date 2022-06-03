@@ -47,7 +47,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -124,7 +124,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -165,7 +165,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -206,7 +206,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',

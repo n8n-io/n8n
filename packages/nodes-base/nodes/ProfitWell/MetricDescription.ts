@@ -118,7 +118,7 @@ export const metricFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan Name or ID',
 				name: 'plan_id',
 				type: 'options',
 				typeOptions: {

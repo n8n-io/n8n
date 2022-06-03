@@ -46,7 +46,7 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                       linkedResource:ALL                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List ID',
+		displayName: 'Task List Name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {

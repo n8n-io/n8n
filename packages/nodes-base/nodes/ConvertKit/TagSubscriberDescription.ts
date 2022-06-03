@@ -38,7 +38,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 
 export const tagSubscriberFields: INodeProperties[] = [
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
 		typeOptions: {

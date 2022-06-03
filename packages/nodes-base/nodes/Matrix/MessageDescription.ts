@@ -37,7 +37,7 @@ export const messageFields: INodeProperties[] = [
 	/*                              message:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -171,7 +171,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:getAll                           */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		default: '',

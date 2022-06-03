@@ -50,7 +50,7 @@ export class EmeliaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Campaign',
+				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
 				typeOptions: {

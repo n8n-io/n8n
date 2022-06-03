@@ -47,7 +47,7 @@ export const contactListFields: INodeProperties[] = [
 	/*                                 contactList:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		required: true,
 		typeOptions: {

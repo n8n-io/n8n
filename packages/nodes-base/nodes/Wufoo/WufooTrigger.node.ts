@@ -55,7 +55,7 @@ export class WufooTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Forms',
+				displayName: 'Forms Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,

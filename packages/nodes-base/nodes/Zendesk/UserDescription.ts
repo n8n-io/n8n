@@ -137,7 +137,8 @@ export const userFields: INodeProperties[] = [
 				description: 'A unique identifier from another system',
 			},
 			{
-				displayName: 'Locale ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Locale',
 				name: 'locale',
 				type: 'options',
 				typeOptions: {
@@ -168,7 +169,7 @@ export const userFields: INodeProperties[] = [
 				description: 'True if the user can only create private comments',
 			},
 			{
-				displayName: 'Organization ID',
+				displayName: 'Organization Name or ID',
 				name: 'organization_id',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations',
@@ -291,7 +292,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -393,7 +394,8 @@ export const userFields: INodeProperties[] = [
 				description: 'A unique identifier from another system',
 			},
 			{
-				displayName: 'Locale ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Locale',
 				name: 'locale',
 				type: 'options',
 				typeOptions: {
@@ -431,7 +433,7 @@ export const userFields: INodeProperties[] = [
 				description: 'True if the user can only create private comments',
 			},
 			{
-				displayName: 'Organization ID',
+				displayName: 'Organization Name or ID',
 				name: 'organization_id',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations',
@@ -554,7 +556,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

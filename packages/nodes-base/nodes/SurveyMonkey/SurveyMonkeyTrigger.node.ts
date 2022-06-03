@@ -274,7 +274,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey ID',
+				displayName: 'Survey Name or ID',
 				name: 'surveyId',
 				type: 'options',
 				displayOptions: {

@@ -149,7 +149,7 @@ export const appointmentFields: INodeProperties[] = [
 						default: 'contact',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'userId',
 						type: 'options',
 						displayOptions: {
@@ -199,7 +199,7 @@ export const appointmentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -237,7 +237,7 @@ export const appointmentFields: INodeProperties[] = [
 				description: 'Longitude of the location when you check in for an appointment',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
@@ -496,7 +496,7 @@ export const appointmentFields: INodeProperties[] = [
 								default: 'contact',
 							},
 							{
-								displayName: 'User ID',
+								displayName: 'User Name or ID',
 								name: 'userId',
 								type: 'options',
 								displayOptions: {
@@ -529,7 +529,7 @@ export const appointmentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: [],
@@ -574,7 +574,7 @@ export const appointmentFields: INodeProperties[] = [
 				description: 'Longitude of the location when you check in for an appointment',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',

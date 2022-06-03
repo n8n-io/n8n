@@ -111,7 +111,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Value of the deal in base currency',
 			},
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -121,7 +121,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the campaign that landed this deal',
 			},
 			{
-				displayName: 'Currency ID',
+				displayName: 'Currency Name or ID',
 				name: 'currency_id',
 				type: 'options',
 				default: '',
@@ -131,7 +131,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the currency that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Payment Status ID',
+				displayName: 'Deal Payment Status Name or ID',
 				name: 'deal_payment_status_id',
 				type: 'options',
 				default: '',
@@ -141,7 +141,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the mode of payment for the deal',
 			},
 			{
-				displayName: 'Deal Pipeline ID',
+				displayName: 'Deal Pipeline Name or ID',
 				name: 'deal_pipeline_id',
 				type: 'options',
 				default: '',
@@ -151,7 +151,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the deal pipeline that it belongs to',
 			},
 			{
-				displayName: 'Deal Product ID',
+				displayName: 'Deal Product Name or ID',
 				name: 'deal_product_id',
 				type: 'options',
 				default: '',
@@ -161,7 +161,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the product that the deal belongs to (in a multi-product company)',
 			},
 			{
-				displayName: 'Deal Reason ID',
+				displayName: 'Deal Reason Name or ID',
 				name: 'deal_reason_id',
 				type: 'options',
 				default: '',
@@ -171,7 +171,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage.',
 			},
 			{
-				displayName: 'Deal Stage ID',
+				displayName: 'Deal Stage Name or ID',
 				name: 'deal_stage_id',
 				type: 'options',
 				default: '',
@@ -181,7 +181,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the deal stage that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Type ID',
+				displayName: 'Deal Type Name or ID',
 				name: 'deal_type_id',
 				type: 'options',
 				default: '',
@@ -198,7 +198,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the source where deal came from',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -219,7 +219,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of winning the deal as a number between 0 and 100',
 			},
 			{
-				displayName: 'Sales Account ID',
+				displayName: 'Sales Account Name or ID',
 				name: 'sales_account_id',
 				type: 'options',
 				default: '',
@@ -229,7 +229,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the account that the deal belongs to',
 			},
 			{
-				displayName: 'Territory ID',
+				displayName: 'Territory Name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -289,7 +289,7 @@ export const dealFields: INodeProperties[] = [
 	//               deal: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'view',
 		type: 'options',
 		displayOptions: {
@@ -407,7 +407,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Value of the deal in base currency',
 			},
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -417,7 +417,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the campaign that landed this deal',
 			},
 			{
-				displayName: 'Currency ID',
+				displayName: 'Currency Name or ID',
 				name: 'currency_id',
 				type: 'options',
 				default: '',
@@ -427,7 +427,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the currency that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Payment Status ID',
+				displayName: 'Deal Payment Status Name or ID',
 				name: 'deal_payment_status_id',
 				type: 'options',
 				default: '',
@@ -437,7 +437,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the mode of payment for the deal',
 			},
 			{
-				displayName: 'Deal Pipeline ID',
+				displayName: 'Deal Pipeline Name or ID',
 				name: 'deal_pipeline_id',
 				type: 'options',
 				default: '',
@@ -447,7 +447,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the deal pipeline that it belongs to',
 			},
 			{
-				displayName: 'Deal Product ID',
+				displayName: 'Deal Product Name or ID',
 				name: 'deal_product_id',
 				type: 'options',
 				default: '',
@@ -457,7 +457,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the product that the deal belongs to (in a multi-product company)',
 			},
 			{
-				displayName: 'Deal Reason ID',
+				displayName: 'Deal Reason Name or ID',
 				name: 'deal_reason_id',
 				type: 'options',
 				default: '',
@@ -467,7 +467,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage.',
 			},
 			{
-				displayName: 'Deal Stage ID',
+				displayName: 'Deal Stage Name or ID',
 				name: 'deal_stage_id',
 				type: 'options',
 				default: '',
@@ -477,7 +477,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the deal stage that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Type ID',
+				displayName: 'Deal Type Name or ID',
 				name: 'deal_type_id',
 				type: 'options',
 				default: '',
@@ -501,7 +501,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Name of the deal',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -522,7 +522,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of winning the deal as a number between 0 and 100',
 			},
 			{
-				displayName: 'Sales Account ID',
+				displayName: 'Sales Account Name or ID',
 				name: 'sales_account_id',
 				type: 'options',
 				default: '',
@@ -532,7 +532,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the account that the deal belongs to',
 			},
 			{
-				displayName: 'Territory ID',
+				displayName: 'Territory Name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',

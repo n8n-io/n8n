@@ -51,7 +51,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:create/get                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -73,7 +73,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The slug of the organization the events belong to',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -97,7 +97,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The slug of the project to retrieve',
 	},
 	{
-		displayName: 'Team Slug',
+		displayName: 'Team Slug Name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {
@@ -214,7 +214,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -235,7 +235,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The slug of the organization the project belong to',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -331,7 +331,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -352,7 +352,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The slug of the organization the project belong to',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {

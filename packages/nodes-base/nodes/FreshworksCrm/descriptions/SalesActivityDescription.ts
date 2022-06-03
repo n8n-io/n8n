@@ -51,7 +51,7 @@ export const salesActivityFields: INodeProperties[] = [
 	//          salesActivity: create
 	// ----------------------------------------
 	{
-		displayName: 'Sales Activity Type ID',
+		displayName: 'Sales Activity Type Name or ID',
 		name: 'sales_activity_type_id',
 		type: 'options',
 		default: '',
@@ -89,7 +89,7 @@ export const salesActivityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Owner ID',
+		displayName: 'Owner Name or ID',
 		name: 'ownerId',
 		description: 'ID of the user who owns the sales activity',
 		type: 'options',
@@ -213,7 +213,7 @@ export const salesActivityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -251,7 +251,7 @@ export const salesActivityFields: INodeProperties[] = [
 				description: 'Description about the sales activity',
 			},
 			{
-				displayName: 'Sales Activity Outcome ID',
+				displayName: 'Sales Activity Outcome Name or ID',
 				name: 'sales_activity_outcome_id',
 				type: 'options',
 				default: '',
@@ -390,7 +390,7 @@ export const salesActivityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -435,7 +435,7 @@ export const salesActivityFields: INodeProperties[] = [
 				description: 'Description about the sales activity',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -445,7 +445,7 @@ export const salesActivityFields: INodeProperties[] = [
 				description: 'ID of the user who owns the sales activity',
 			},
 			{
-				displayName: 'Sales Activity Outcome ID',
+				displayName: 'Sales Activity Outcome Name or ID',
 				name: 'sales_activity_outcome_id',
 				type: 'options',
 				default: '',
@@ -455,7 +455,7 @@ export const salesActivityFields: INodeProperties[] = [
 				description: 'ID of a sales activity\'s outcome',
 			},
 			{
-				displayName: 'Sales Activity Type ID',
+				displayName: 'Sales Activity Type Name or ID',
 				name: 'sales_activity_type_id',
 				type: 'options',
 				default: '',
