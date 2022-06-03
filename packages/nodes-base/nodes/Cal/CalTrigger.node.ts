@@ -68,6 +68,39 @@ export class CalTrigger implements INodeType {
 					default: [],
 					required: true,
 				},
+				{
+					displayName: 'Advanced Fields',
+					name: 'advanced',
+					type: 'collection',
+					placeholder: 'Add Field',
+					default: {},
+					options: [
+						{
+							displayName: 'EventType Id',
+							name: 'eventTypeId',
+							type: 'number',
+							default: '',
+							required: false,
+						},
+						{
+							displayName: 'App Id',
+							name: 'appId',
+							type: 'string' || null,
+							default: null,
+							required: false,
+						},
+						{
+							displayName: 'Payload Template',
+							name: 'payloadTemplate',
+							type: 'string' || null,
+							default: null,
+							required: false,
+							typeOptions: {
+								rows: 4,
+							}
+						}
+					],
+				},
 			],
 	};
 	
@@ -101,6 +134,7 @@ export class CalTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const subscriberUrl = this.getNodeWebhookUrl('default');
 				const eventTriggers = this.getNodeParameter('events') as string;
+				const advanced = this.getNodeParameter('advanced');
 				const active = true;
 
 				const endpoint = '/hooks';
@@ -109,6 +143,7 @@ export class CalTrigger implements INodeType {
 					subscriberUrl,
 					eventTriggers,
 					active,
+					...advanced as object
 				};
 
 				const responseData = await calApiRequest.call(this, 'POST', endpoint, body);
@@ -123,7 +158,6 @@ export class CalTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				console.log("webhookData=> ", webhookData);
 				if (webhookData.webhookId !== undefined) {
 
 					const endpoint = `/hooks/${webhookData.webhookId}`;
