@@ -616,6 +616,7 @@ export const itemFields: INodeProperties[] = [
 				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id, name',
 				default: '',
 			},
@@ -709,6 +710,7 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
 		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id = :id',
 		default: '',
 		type: 'string',
