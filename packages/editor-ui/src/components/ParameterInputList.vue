@@ -88,6 +88,8 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	INodeTypeDescription,
+	NodeHelpers,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -101,7 +103,6 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -130,10 +131,23 @@ export default mixins(
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
 			},
+			nodeType () : INodeTypeDescription {
+				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
+				let index = 0;
+				const paramDependencies = NodeHelpers.getParamterDependencies(this.nodeType.properties);
+				const paramOrder = NodeHelpers.getParamterResolveOrder(this.nodeType.properties, paramDependencies);
 
-				return 0;
+				// Make sure credentials slot always appears below the last authentication field
+				this.filteredParameters.forEach((prop, propIndex) => {
+					if (prop.name.toLowerCase().endsWith('authentication')) {
+						index = paramOrder[propIndex] + 1;
+					}
+				});
+
+				return index < this.filteredParameters.length ?
+					index : this.filteredParameters.length - 1;
 			},
 		},
 		methods: {
