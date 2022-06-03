@@ -163,7 +163,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download estimate as PDF file',
+		description: 'Whether to download estimate as PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -243,7 +243,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

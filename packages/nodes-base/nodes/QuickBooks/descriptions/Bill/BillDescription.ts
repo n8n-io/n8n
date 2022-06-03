@@ -92,6 +92,29 @@ export const billFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Amount',
+				name: 'Amount',
+				description: 'Monetary amount of the line item',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Description',
+				name: 'Description',
+				description: 'Textual description of the line item',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
 				displayName: 'Detail Type',
 				name: 'DetailType',
 				type: 'options',
@@ -114,29 +137,6 @@ export const billFields: INodeProperties[] = [
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
-				displayName: 'Account ID',
-				name: 'accountId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'Amount',
-				description: 'Monetary amount of the line item',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Description',
-				name: 'Description',
-				description: 'Textual description of the line item',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
 				},
 			},
 			{
@@ -235,7 +235,7 @@ export const billFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
