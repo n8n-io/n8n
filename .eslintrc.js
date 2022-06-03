@@ -436,6 +436,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 				'n8n-nodes-base/node-param-description-line-break-html-tag': 'error',
+				'n8n-nodes-base/node-param-description-missing-from-dynamic-multi-options': 'error',
 			},
 		},
 	],
