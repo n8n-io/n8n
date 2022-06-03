@@ -550,7 +550,16 @@ export const activityFields: INodeProperties[] = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
+											{
+												name: 'Equals',
+												value: 'EQUALS',
+											},
+											{
+												name: 'Not Equals',
+												value: 'NOT_EQUALS',
+											},
 											{
 												name: 'CONTAINS',
 												value: 'Contains',
@@ -564,24 +573,16 @@ export const activityFields: INodeProperties[] = [
 												value: 'EMPTY',
 											},
 											{
-												name: 'Ends With',
-												value: 'ENDS_WITH',
-											},
-											{
-												name: 'Equals',
-												value: 'EQUALS',
-											},
-											{
 												name: 'Not Empty',
 												value: 'NOT_EMPTY',
 											},
 											{
-												name: 'Not Equals',
-												value: 'NOT_EQUALS',
-											},
-											{
 												name: 'Starts With',
 												value: 'STARTS_WITH',
+											},
+											{
+												name: 'Ends With',
+												value: 'ENDS_WITH',
 											},
 										],
 										default: 'EQUALS',

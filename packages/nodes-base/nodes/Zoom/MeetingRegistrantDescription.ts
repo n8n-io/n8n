@@ -177,7 +177,12 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
+					{
+						name: 'Within a month',
+						value: 'Within a month',
+					},
 					{
 						name: '1-3 months',
 						value: '1-3 months',
@@ -193,10 +198,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 					{
 						name: 'No timeframe',
 						value: 'No timeframe',
-					},
-					{
-						name: 'Within a month',
-						value: 'Within a month',
 					},
 				],
 				default: '',
