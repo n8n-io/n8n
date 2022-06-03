@@ -52,7 +52,6 @@ export const ticketFieldFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'TicketField ID',
 	},
 
 /* -------------------------------------------------------------------------- */
