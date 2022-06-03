@@ -54,7 +54,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:create
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -75,7 +75,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the board that list belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -118,7 +118,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The title of the card',
 	},
 	{
-		displayName: 'Swimlane ID',
+		displayName: 'Swimlane Name or ID',
 		name: 'swimlaneId',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +142,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The swimlane ID of the new card',
 	},
 	{
-		displayName: 'Author ID',
+		displayName: 'Author Name or ID',
 		name: 'authorId',
 		type: 'options',
 		typeOptions: {
@@ -212,7 +212,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:delete
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -233,7 +233,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the board that list belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -257,7 +257,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the list that card belongs to',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -286,7 +286,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:get
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -307,7 +307,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the board that list belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -353,7 +353,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -401,7 +401,7 @@ export const cardFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -428,7 +428,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the list that card belongs to',
 	},
 	{
-		displayName: 'Swimlane ID',
+		displayName: 'Swimlane Name or ID',
 		name: 'swimlaneId',
 		type: 'options',
 		typeOptions: {
@@ -499,7 +499,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:update
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -520,7 +520,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the board that list belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -544,7 +544,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The ID of the list that card belongs to',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -586,7 +586,7 @@ export const cardFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
@@ -743,7 +743,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The label IDs attached to the card',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'listId',
 				type: 'options',
 				typeOptions: {
@@ -773,7 +773,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new over time field of the card',
 			},
 			{
-				displayName: 'Parent ID',
+				displayName: 'Parent Name or ID',
 				name: 'parentId',
 				type: 'options',
 				typeOptions: {
@@ -818,7 +818,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new start at field of the card',
 			},
 			{
-				displayName: 'Swimlane ID',
+				displayName: 'Swimlane Name or ID',
 				name: 'swimlaneId',
 				type: 'options',
 				typeOptions: {

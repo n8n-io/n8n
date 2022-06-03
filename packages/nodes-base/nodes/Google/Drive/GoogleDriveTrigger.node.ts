@@ -208,6 +208,7 @@ export class GoogleDriveTrigger implements INodeType {
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Drive To Watch',
 				name: 'driveToWatch',
 				type: 'options',

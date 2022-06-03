@@ -48,7 +48,7 @@ export class AwsSns implements INodeType {
 				default: 'publish',
 			},
 			{
-				displayName: 'Topic',
+				displayName: 'Topic Name or ID',
 				name: 'topic',
 				type: 'options',
 				typeOptions: {

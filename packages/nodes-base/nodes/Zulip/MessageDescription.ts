@@ -99,7 +99,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:sendStream                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Stream',
+		displayName: 'Stream Name or ID',
 		name: 'stream',
 		type: 'options',
 		typeOptions: {
@@ -120,7 +120,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
 	},
 	{
-		displayName: 'Topic',
+		displayName: 'Topic Name or ID',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {

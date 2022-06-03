@@ -238,7 +238,7 @@ export class GoogleSheets implements INodeType {
 						name: 'columns',
 						values: [
 							{
-								displayName: 'Sheet',
+								displayName: 'Sheet Name or ID',
 								name: 'sheetId',
 								type: 'options',
 								typeOptions: {
@@ -276,7 +276,7 @@ export class GoogleSheets implements INodeType {
 						name: 'rows',
 						values: [
 							{
-								displayName: 'Sheet',
+								displayName: 'Sheet Name or ID',
 								name: 'sheetId',
 								type: 'options',
 								typeOptions: {

@@ -52,7 +52,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent',
+		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +142,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:getOutput                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent',
+		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
 		typeOptions: {
@@ -249,7 +249,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:launch                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent',
+		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
 		typeOptions: {

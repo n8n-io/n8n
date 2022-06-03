@@ -53,7 +53,7 @@ export class JotFormTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,

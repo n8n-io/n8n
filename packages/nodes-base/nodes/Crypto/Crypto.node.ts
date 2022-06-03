@@ -289,7 +289,7 @@ export class Crypto implements INodeType {
 				description: 'Name of the property to which to write the signed value',
 			},
 			{
-				displayName: 'Algorithm',
+				displayName: 'Algorithm Name or ID',
 				name: 'algorithm',
 				displayOptions: {
 					show: {

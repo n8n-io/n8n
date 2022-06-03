@@ -39,7 +39,7 @@ export const fileUpdateDescription: FileProperties = [
 		},
 		options: [
 			{
-				displayName: 'Category Name/ID',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {

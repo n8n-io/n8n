@@ -54,7 +54,7 @@ export const eventFields: INodeProperties[] = [
 	//              event: create
 	// ----------------------------------------
 	{
-		displayName: 'Organization Name/ID',
+		displayName: 'Organization Name or ID',
 		name: 'org_id',
 		type: 'options',
 		default: '',
@@ -164,7 +164,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sharing Group Name/ID',
+				displayName: 'Sharing Group Name or ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
@@ -428,7 +428,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Information on the event - max 65535 characters',
 			},
 			{
-				displayName: 'Sharing Group Name/ID',
+				displayName: 'Sharing Group Name or ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',

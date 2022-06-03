@@ -43,7 +43,7 @@ export const deployOperations: INodeProperties[] = [
 
 export const deployFields: INodeProperties[] = [
 	{
-		displayName: 'Site ID',
+		displayName: 'Site Name or ID',
 		name: 'siteId',
 		required: true,
 		type: 'options',

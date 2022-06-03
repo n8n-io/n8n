@@ -69,7 +69,7 @@ export const boardFields: INodeProperties[] = [
 		description: 'The title of the board',
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
 		typeOptions: {
@@ -242,7 +242,7 @@ export const boardFields: INodeProperties[] = [
 	//         board:getAll
 	// ----------------------------------
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'IdUser',
 		type: 'options',
 		typeOptions: {

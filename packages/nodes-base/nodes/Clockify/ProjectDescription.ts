@@ -99,7 +99,7 @@ export const projectFields: INodeProperties[] = [
 				default: '#0000FF',
 			},
 			{
-				displayName: 'Client ID',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				typeOptions: {
@@ -371,7 +371,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User IDs',
+				displayName: 'User Name or ID',
 				name: 'users',
 				type: 'options',
 				typeOptions: {
@@ -452,7 +452,7 @@ export const projectFields: INodeProperties[] = [
 				default: '#0000FF',
 			},
 			{
-				displayName: 'Client ID',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				typeOptions: {

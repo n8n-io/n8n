@@ -46,7 +46,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: create
 	// ----------------------------------
 	{
-		displayName: 'Collection ID',
+		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
 		displayOptions: {
@@ -185,7 +185,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: getAll
 	// ----------------------------------
 	{
-		displayName: 'Collection ID',
+		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
 		typeOptions: {
@@ -286,7 +286,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
 				typeOptions: {

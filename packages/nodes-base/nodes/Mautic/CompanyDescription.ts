@@ -184,7 +184,7 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -217,7 +217,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Industry',
+				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
@@ -402,7 +402,7 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -435,7 +435,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Industry',
+				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
@@ -612,7 +612,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Sort direction: asc or desc',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order By Name or ID',
 				name: 'orderBy',
 				type: 'options',
 				typeOptions: {

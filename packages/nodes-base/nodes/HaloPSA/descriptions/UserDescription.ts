@@ -61,7 +61,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Site Name/ID',
+		displayName: 'Site Name or ID',
 		name: 'siteId',
 		type: 'options',
 		default: '',
@@ -296,7 +296,7 @@ export const userFields: INodeProperties[] = [
 					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
 			},
 			{
-				displayName: 'Site ID',
+				displayName: 'Site Name or ID',
 				name: 'site_id',
 				type: 'options',
 				default: '',
