@@ -226,28 +226,28 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.firstName) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'first_name',
+									name: 'First_name',
 									value: additionalFields.firstName as string,
 								} as IDataObject);
 							}
 							if (additionalFields.lastName) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'last_name',
+									name: 'Last_name',
 									value: additionalFields.lastName as string,
 								} as IDataObject);
 							}
 							if (additionalFields.company) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'company',
+									name: 'Company',
 									value: additionalFields.company as string,
 								} as IDataObject);
 							}
 							if (additionalFields.title) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'title',
+									name: 'Title',
 									value: additionalFields.title as string,
 								} as IDataObject);
 							}
@@ -257,7 +257,7 @@ export class AgileCrm implements INodeType {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
-										name: 'email',
+										name: 'Email',
 										value: property.email as string,
 									} as IDataObject);
 								});
@@ -268,7 +268,7 @@ export class AgileCrm implements INodeType {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
-										name: 'address',
+										name: 'Address',
 										value: property.address as string,
 									} as IDataObject);
 								});
@@ -280,7 +280,7 @@ export class AgileCrm implements INodeType {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
-										name: 'phone',
+										name: 'Phone',
 										value: property.number as string,
 									} as IDataObject);
 								});
@@ -289,7 +289,7 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.email) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'email',
+									name: 'Email',
 									value: additionalFields.email as string,
 								} as IDataObject);
 							}
@@ -297,7 +297,7 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.address) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'address',
+									name: 'Address',
 									value: additionalFields.address as string,
 								} as IDataObject);
 							}
@@ -305,7 +305,7 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.phone) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'phone',
+									name: 'Phone',
 									value: additionalFields.phone as string,
 								} as IDataObject);
 							}
@@ -318,7 +318,7 @@ export class AgileCrm implements INodeType {
 								properties.push({
 									type: 'SYSTEM',
 									subtype: property.subtype as string,
-									name: 'webiste',
+									name: 'Webiste',
 									value: property.url as string,
 								} as IDataObject);
 							});
@@ -381,28 +381,28 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.firstName) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'first_name',
+									name: 'First Name',
 									value: additionalFields.firstName as string,
 								} as IDataObject);
 							}
 							if (additionalFields.lastName) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'last_name',
+									name: 'Last Name',
 									value: additionalFields.lastName as string,
 								} as IDataObject);
 							}
 							if (additionalFields.company) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'company',
+									name: 'Company',
 									value: additionalFields.company as string,
 								} as IDataObject);
 							}
 							if (additionalFields.title) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'title',
+									name: 'Title',
 									value: additionalFields.title as string,
 								} as IDataObject);
 							}
@@ -412,7 +412,7 @@ export class AgileCrm implements INodeType {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
-										name: 'email',
+										name: 'Email',
 										value: property.email as string,
 									} as IDataObject);
 								});
@@ -423,7 +423,7 @@ export class AgileCrm implements INodeType {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
-										name: 'address',
+										name: 'Address',
 										value: property.address as string,
 									} as IDataObject);
 								});
@@ -435,7 +435,7 @@ export class AgileCrm implements INodeType {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
-										name: 'phone',
+										name: 'Phone',
 										value: property.number as string,
 									} as IDataObject);
 								});
@@ -444,7 +444,7 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.email) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'email',
+									name: 'Email',
 									value: additionalFields.email as string,
 								} as IDataObject);
 							}
@@ -452,7 +452,7 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.address) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'address',
+									name: 'Address',
 									value: additionalFields.address as string,
 								} as IDataObject);
 							}
@@ -460,7 +460,7 @@ export class AgileCrm implements INodeType {
 							if (additionalFields.phone) {
 								properties.push({
 									type: 'SYSTEM',
-									name: 'phone',
+									name: 'Phone',
 									value: additionalFields.phone as string,
 								} as IDataObject);
 							}
@@ -473,7 +473,7 @@ export class AgileCrm implements INodeType {
 								properties.push({
 									type: 'SYSTEM',
 									subtype: property.subtype as string,
-									name: 'webiste',
+									name: 'Webiste',
 									value: property.url as string,
 								} as IDataObject);
 							});

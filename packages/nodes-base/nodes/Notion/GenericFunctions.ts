@@ -825,7 +825,7 @@ export function getSearchFilters(resource: string) {
 			type: 'options',
 			options: [
 				{
-					name: 'Any filter',
+					name: 'Any Filter',
 					value: 'anyFilter',
 				},
 				{

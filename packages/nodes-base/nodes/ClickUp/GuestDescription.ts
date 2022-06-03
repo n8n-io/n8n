@@ -112,7 +112,7 @@ export const guestFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Can See Time estimated',
+				displayName: 'Can See Time Estimated',
 				name: 'can_see_time_estimated',
 				type: 'boolean',
 				default: false,
@@ -272,7 +272,7 @@ export const guestFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Can See Time estimated',
+				displayName: 'Can See Time Estimated',
 				name: 'can_see_time_estimated',
 				type: 'boolean',
 				default: false,

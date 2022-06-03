@@ -1423,204 +1423,204 @@ export class Hubspot implements INodeType {
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 							const body: IDataObject[] = [];
 							body.push({
-								name: 'name',
+								name: 'Name',
 								value: name,
 							});
 							if (additionalFields.aboutUs) {
 								body.push({
-									name: 'about_us',
+									name: 'About Us',
 									value: additionalFields.aboutUs,
 								});
 							}
 							if (additionalFields.annualRevenue) {
 								body.push({
-									name: 'annualrevenue',
+									name: 'Annual Revenue',
 									value: (additionalFields.annualRevenue as number).toString(),
 								});
 							}
 							if (additionalFields.city) {
 								body.push({
-									name: 'city',
+									name: 'City',
 									value: additionalFields.city,
 								});
 							}
 							if (additionalFields.closeDate) {
 								body.push({
-									name: 'closedate',
+									name: 'Close Date',
 									value: new Date(additionalFields.closeDate as string).getTime(),
 								});
 							}
 							if (additionalFields.companyDomainName) {
 								body.push({
-									name: 'domain',
+									name: 'Domain',
 									value: additionalFields.companyDomainName,
 								});
 							}
 							if (additionalFields.companyOwner) {
 								body.push({
-									name: 'hubspot_owner_id',
+									name: 'Hubspot Owner ID',
 									value: additionalFields.companyOwner,
 								});
 							}
 							if (additionalFields.countryRegion) {
 								body.push({
-									name: 'country',
+									name: 'Country',
 									value: additionalFields.countryRegion,
 								});
 							}
 							if (additionalFields.description) {
 								body.push({
-									name: 'description',
+									name: 'Description',
 									value: additionalFields.description,
 								});
 							}
 							if (additionalFields.facebookFans) {
 								body.push({
-									name: 'facebookfans',
+									name: 'Facebook Fans',
 									value: additionalFields.facebookFans,
 								});
 							}
 							if (additionalFields.googlePlusPage) {
 								body.push({
-									name: 'googleplus_page',
+									name: 'Googleplus Page',
 									value: additionalFields.googlePlusPage,
 								});
 							}
 							if (additionalFields.industry) {
 								body.push({
-									name: 'industry',
+									name: 'Industry',
 									value: additionalFields.industry,
 								});
 							}
 							if (additionalFields.isPublic) {
 								body.push({
-									name: 'is_public',
+									name: 'Is Public',
 									value: additionalFields.isPublic,
 								});
 							}
 							if (additionalFields.leadStatus) {
 								body.push({
-									name: 'hs_lead_status',
+									name: 'Hubspot Lead Status',
 									value: additionalFields.leadStatus,
 								});
 							}
 							if (additionalFields.lifecycleStatus) {
 								body.push({
-									name: 'lifecyclestage',
+									name: 'Lifecycle Stage',
 									value: additionalFields.lifecycleStatus,
 								});
 							}
 							if (additionalFields.linkedinBio) {
 								body.push({
-									name: 'linkedinbio',
+									name: 'Linkedinbio',
 									value: additionalFields.linkedinBio,
 								});
 							}
 							if (additionalFields.linkedInCompanyPage) {
 								body.push({
-									name: 'linkedin_company_page',
+									name: 'Linkedin Company Page',
 									value: additionalFields.linkedInCompanyPage,
 								});
 							}
 							if (additionalFields.numberOfEmployees) {
 								body.push({
-									name: 'numberofemployees',
+									name: 'Number of Employees',
 									value: additionalFields.numberOfEmployees,
 								});
 							}
 							if (additionalFields.originalSourceType) {
 								body.push({
-									name: 'hs_analytics_source',
+									name: 'Hubspot Analytics Source',
 									value: additionalFields.originalSourceType,
 								});
 							}
 							if (additionalFields.phoneNumber) {
 								body.push({
-									name: 'phone',
+									name: 'Phone',
 									value: additionalFields.phoneNumber,
 								});
 							}
 							if (additionalFields.postalCode) {
 								body.push({
-									name: 'zip',
+									name: 'Zip',
 									value: additionalFields.postalCode,
 								});
 							}
 							if (additionalFields.stateRegion) {
 								body.push({
-									name: 'state',
+									name: 'State',
 									value: additionalFields.stateRegion,
 								});
 							}
 							if (additionalFields.streetAddress) {
 								body.push({
-									name: 'address',
+									name: 'Address',
 									value: additionalFields.streetAddress,
 								});
 							}
 							if (additionalFields.streetAddress2) {
 								body.push({
-									name: 'address2',
+									name: 'Address2',
 									value: additionalFields.streetAddress2,
 								});
 							}
 							if (additionalFields.targetAccount) {
 								body.push({
-									name: 'hs_target_account',
+									name: 'Hubspot Target Account',
 									value: additionalFields.targetAccount,
 								});
 							}
 							if (additionalFields.timezone) {
 								body.push({
-									name: 'timezone',
+									name: 'Timezone',
 									value: additionalFields.timezone,
 								});
 							}
 							if (additionalFields.totalMoneyRaised) {
 								body.push({
-									name: 'total_money_raised',
+									name: 'Total Money Raised',
 									value: additionalFields.totalMoneyRaised,
 								});
 							}
 							if (additionalFields.twitterBio) {
 								body.push({
-									name: 'twitterbio',
+									name: 'Twitterbio',
 									value: additionalFields.twitterBio,
 								});
 							}
 							if (additionalFields.twitterFollowers) {
 								body.push({
-									name: 'twitterfollowers',
+									name: 'Twitter Followers',
 									value: additionalFields.twitterFollowers,
 								});
 							}
 							if (additionalFields.twitterHandle) {
 								body.push({
-									name: 'twitterhandle',
+									name: 'Twitter Handle',
 									value: additionalFields.twitterHandle,
 								});
 							}
 							if (additionalFields.type) {
 								body.push({
-									name: 'type',
+									name: 'Type',
 									value: additionalFields.type,
 								});
 							}
 							if (additionalFields.websiteUrl) {
 								body.push({
-									name: 'website',
+									name: 'Website',
 									value: additionalFields.websiteUrl,
 								});
 							}
 							if (additionalFields.webTechnologies) {
 								body.push({
-									name: 'web_technologies',
+									name: 'Web Technologies',
 									value: additionalFields.webTechnologies,
 								});
 							}
 							if (additionalFields.yearFounded) {
 								body.push({
-									name: 'founded_year',
+									name: 'Founded Year',
 									value: additionalFields.yearFounded,
 								});
 							}
@@ -1646,205 +1646,205 @@ export class Hubspot implements INodeType {
 							const body: IDataObject[] = [];
 							if (updateFields.name) {
 								body.push({
-									name: 'name',
+									name: 'Name',
 									value: updateFields.name,
 								});
 							}
 							if (updateFields.aboutUs) {
 								body.push({
-									name: 'about_us',
+									name: 'About Us',
 									value: updateFields.aboutUs,
 								});
 							}
 							if (updateFields.annualRevenue) {
 								body.push({
-									name: 'annualrevenue',
+									name: 'Annual Revenue',
 									value: (updateFields.annualRevenue as number).toString(),
 								});
 							}
 							if (updateFields.city) {
 								body.push({
-									name: 'city',
+									name: 'City',
 									value: updateFields.city,
 								});
 							}
 							if (updateFields.closeDate) {
 								body.push({
-									name: 'closedate',
+									name: 'Close Date',
 									value: new Date(updateFields.closeDate as string).getTime(),
 								});
 							}
 							if (updateFields.companyDomainName) {
 								body.push({
-									name: 'domain',
+									name: 'Domain',
 									value: updateFields.companyDomainName,
 								});
 							}
 							if (updateFields.companyOwner) {
 								body.push({
-									name: 'hubspot_owner_id',
+									name: 'Hubspot Owner ID',
 									value: updateFields.companyOwner,
 								});
 							}
 							if (updateFields.countryRegion) {
 								body.push({
-									name: 'country',
+									name: 'Country',
 									value: updateFields.countryRegion,
 								});
 							}
 							if (updateFields.description) {
 								body.push({
-									name: 'description',
+									name: 'Description',
 									value: updateFields.description,
 								});
 							}
 							if (updateFields.facebookFans) {
 								body.push({
-									name: 'facebookfans',
+									name: 'Facebook Fans',
 									value: updateFields.facebookFans,
 								});
 							}
 							if (updateFields.googlePlusPage) {
 								body.push({
-									name: 'googleplus_page',
+									name: 'Googleplus Page',
 									value: updateFields.googlePlusPage,
 								});
 							}
 							if (updateFields.industry) {
 								body.push({
-									name: 'industry',
+									name: 'Industry',
 									value: updateFields.industry,
 								});
 							}
 							if (updateFields.isPublic) {
 								body.push({
-									name: 'is_public',
+									name: 'Is Public',
 									value: updateFields.isPublic,
 								});
 							}
 							if (updateFields.leadStatus) {
 								body.push({
-									name: 'hs_lead_status',
+									name: 'Hubspot Lead Status',
 									value: updateFields.leadStatus,
 								});
 							}
 							if (updateFields.lifecycleStatus) {
 								body.push({
-									name: 'lifecyclestage',
+									name: 'Life Cycle Stage',
 									value: updateFields.lifecycleStatus,
 								});
 							}
 							if (updateFields.linkedinBio) {
 								body.push({
-									name: 'linkedinbio',
+									name: 'Linkedinbio',
 									value: updateFields.linkedinBio,
 								});
 							}
 							if (updateFields.linkedInCompanyPage) {
 								body.push({
-									name: 'linkedin_company_page',
+									name: 'Linkedin Company Page',
 									value: updateFields.linkedInCompanyPage,
 								});
 							}
 							if (updateFields.numberOfEmployees) {
 								body.push({
-									name: 'numberofemployees',
+									name: 'Number of Employees',
 									value: updateFields.numberOfEmployees,
 								});
 							}
 							if (updateFields.originalSourceType) {
 								body.push({
-									name: 'hs_analytics_source',
+									name: 'Hubspot Analytics Source',
 									value: updateFields.originalSourceType,
 								});
 							}
 							if (updateFields.phoneNumber) {
 								body.push({
-									name: 'phone',
+									name: 'Phone',
 									value: updateFields.phoneNumber,
 								});
 							}
 							if (updateFields.postalCode) {
 								body.push({
-									name: 'zip',
+									name: 'Zip',
 									value: updateFields.postalCode,
 								});
 							}
 							if (updateFields.stateRegion) {
 								body.push({
-									name: 'state',
+									name: 'State',
 									value: updateFields.stateRegion,
 								});
 							}
 							if (updateFields.streetAddress) {
 								body.push({
-									name: 'address',
+									name: 'Address',
 									value: updateFields.streetAddress,
 								});
 							}
 							if (updateFields.streetAddress2) {
 								body.push({
-									name: 'address2',
+									name: 'Address2',
 									value: updateFields.streetAddress2,
 								});
 							}
 							if (updateFields.targetAccount) {
 								body.push({
-									name: 'hs_target_account',
+									name: 'Hubspot Target Account',
 									value: updateFields.targetAccount,
 								});
 							}
 							if (updateFields.timezone) {
 								body.push({
-									name: 'timezone',
+									name: 'Timezone',
 									value: updateFields.timezone,
 								});
 							}
 							if (updateFields.totalMoneyRaised) {
 								body.push({
-									name: 'total_money_raised',
+									name: 'Total Money Raised',
 									value: updateFields.totalMoneyRaised,
 								});
 							}
 							if (updateFields.twitterBio) {
 								body.push({
-									name: 'twitterbio',
+									name: 'Twitterbio',
 									value: updateFields.twitterBio,
 								});
 							}
 							if (updateFields.twitterFollowers) {
 								body.push({
-									name: 'twitterfollowers',
+									name: 'Twitter Followers',
 									value: updateFields.twitterFollowers,
 								});
 							}
 							if (updateFields.twitterHandle) {
 								body.push({
-									name: 'twitterhandle',
+									name: 'Twitter Handle',
 									value: updateFields.twitterHandle,
 								});
 							}
 							if (updateFields.type) {
 								body.push({
-									name: 'type',
+									name: 'Type',
 									value: updateFields.type,
 								});
 							}
 							if (updateFields.websiteUrl) {
 								body.push({
-									name: 'website',
+									name: 'Website',
 									value: updateFields.websiteUrl,
 								});
 							}
 							if (updateFields.webTechnologies) {
 								body.push({
-									name: 'web_technologies',
+									name: 'Web Technologies',
 									value: updateFields.webTechnologies,
 								});
 							}
 							if (updateFields.yearFounded) {
 								body.push({
-									name: 'founded_year',
+									name: 'Founded Year',
 									value: updateFields.yearFounded,
 								});
 							}
@@ -1953,7 +1953,7 @@ export class Hubspot implements INodeType {
 							const stage = this.getNodeParameter('stage', i) as string;
 							if (stage) {
 								body.properties.push({
-									name: 'dealstage',
+									name: 'Deal Stage',
 									value: stage,
 								});
 							}
@@ -1965,37 +1965,37 @@ export class Hubspot implements INodeType {
 							}
 							if (additionalFields.dealName) {
 								body.properties.push({
-									name: 'dealname',
+									name: 'Deal Name',
 									value: additionalFields.dealName as string,
 								});
 							}
 							if (additionalFields.closeDate) {
 								body.properties.push({
-									name: 'closedate',
+									name: 'Close Date',
 									value: new Date(additionalFields.closeDate as string).getTime(),
 								});
 							}
 							if (additionalFields.amount) {
 								body.properties.push({
-									name: 'amount',
+									name: 'Amount',
 									value: additionalFields.amount as string,
 								});
 							}
 							if (additionalFields.dealType) {
 								body.properties.push({
-									name: 'dealtype',
+									name: 'Deal Type',
 									value: additionalFields.dealType as string,
 								});
 							}
 							if (additionalFields.pipeline) {
 								body.properties.push({
-									name: 'pipeline',
+									name: 'Pipeline',
 									value: additionalFields.pipeline as string,
 								});
 							}
 							if (additionalFields.description) {
 								body.properties.push({
-									name: 'description',
+									name: 'Description',
 									value: additionalFields.description as string,
 								});
 							}
@@ -2021,43 +2021,43 @@ export class Hubspot implements INodeType {
 							const dealId = this.getNodeParameter('dealId', i) as string;
 							if (updateFields.stage) {
 								body.properties.push({
-									name: 'dealstage',
+									name: 'Deal Stage',
 									value: updateFields.stage as string,
 								});
 							}
 							if (updateFields.dealName) {
 								body.properties.push({
-									name: 'dealname',
+									name: 'Deal Name',
 									value: updateFields.dealName as string,
 								});
 							}
 							if (updateFields.closeDate) {
 								body.properties.push({
-									name: 'closedate',
+									name: 'Close Date',
 									value: new Date(updateFields.closeDate as string).getTime(),
 								});
 							}
 							if (updateFields.amount) {
 								body.properties.push({
-									name: 'amount',
+									name: 'Amount',
 									value: updateFields.amount as string,
 								});
 							}
 							if (updateFields.dealType) {
 								body.properties.push({
-									name: 'dealtype',
+									name: 'Deal Type',
 									value: updateFields.dealType as string,
 								});
 							}
 							if (updateFields.pipeline) {
 								body.properties.push({
-									name: 'pipeline',
+									name: 'Pipeline',
 									value: updateFields.pipeline as string,
 								});
 							}
 							if (updateFields.description) {
 								body.properties.push({
-									name: 'description',
+									name: 'Description',
 									value: updateFields.description as string,
 								});
 							}
@@ -2322,63 +2322,63 @@ export class Hubspot implements INodeType {
 							const ticketName = this.getNodeParameter('ticketName', i) as string;
 							const body: IDataObject[] = [
 								{
-									name: 'hs_pipeline',
+									name: 'Hubspot Pipeline',
 									value: pipelineId,
 								},
 								{
-									name: 'hs_pipeline_stage',
+									name: 'Hubspot Pipeline Stage',
 									value: stageId,
 								},
 								{
-									name: 'subject',
+									name: 'Subject',
 									value: ticketName,
 								},
 							];
 							if (additionalFields.category) {
 								body.push({
-									name: 'hs_ticket_category',
+									name: 'Hubspot Ticket Category',
 									value: additionalFields.category as string,
 								});
 							}
 							if (additionalFields.closeDate) {
 								body.push({
-									name: 'closed_date',
+									name: 'Closed Date',
 									value: new Date(additionalFields.closeDate as string).getTime(),
 								});
 							}
 							if (additionalFields.createDate) {
 								body.push({
-									name: 'createdate',
+									name: 'Create Date',
 									value: new Date(additionalFields.createDate as string).getTime(),
 								});
 							}
 							if (additionalFields.description) {
 								body.push({
-									name: 'content',
+									name: 'Content',
 									value: additionalFields.description as string,
 								});
 							}
 							if (additionalFields.priority) {
 								body.push({
-									name: 'hs_ticket_priority',
+									name: 'Hubspot Ticket Priority',
 									value: additionalFields.priority as string,
 								});
 							}
 							if (additionalFields.resolution) {
 								body.push({
-									name: 'hs_resolution',
+									name: 'Hubspot Resolution',
 									value: additionalFields.resolution as string,
 								});
 							}
 							if (additionalFields.source) {
 								body.push({
-									name: 'source_type',
+									name: 'Source Type',
 									value: additionalFields.source as string,
 								});
 							}
 							if (additionalFields.ticketOwnerId) {
 								body.push({
-									name: 'hubspot_owner_id',
+									name: 'Hubspot Owner ID',
 									value: additionalFields.ticketOwnerId as string,
 								});
 							}
@@ -2460,61 +2460,61 @@ export class Hubspot implements INodeType {
 							const body: IDataObject[] = [];
 							if (updateFields.pipelineId) {
 								body.push({
-									name: 'hs_pipeline',
+									name: 'Hubspot Pipeline',
 									value: updateFields.pipelineId as string,
 								});
 							}
 							if (updateFields.ticketName) {
 								body.push({
-									name: 'subject',
+									name: 'Subject',
 									value: updateFields.ticketName as string,
 								});
 							}
 							if (updateFields.category) {
 								body.push({
-									name: 'hs_ticket_category',
+									name: 'Hubspot Ticket Category',
 									value: updateFields.category as string,
 								});
 							}
 							if (updateFields.closeDate) {
 								body.push({
-									name: 'closed_date',
+									name: 'Closed Date',
 									value: new Date(updateFields.createDate as string).getTime(),
 								});
 							}
 							if (updateFields.createDate) {
 								body.push({
-									name: 'createdate',
+									name: 'Create Date',
 									value: new Date(updateFields.createDate as string).getTime(),
 								});
 							}
 							if (updateFields.description) {
 								body.push({
-									name: 'content',
+									name: 'Content',
 									value: updateFields.description as string,
 								});
 							}
 							if (updateFields.priority) {
 								body.push({
-									name: 'hs_ticket_priority',
+									name: 'Hubspot Ticket Priority',
 									value: updateFields.priority as string,
 								});
 							}
 							if (updateFields.resolution) {
 								body.push({
-									name: 'hs_resolution',
+									name: 'Hubspot Resolution',
 									value: updateFields.resolution as string,
 								});
 							}
 							if (updateFields.source) {
 								body.push({
-									name: 'source_type',
+									name: 'Source Type',
 									value: updateFields.source as string,
 								});
 							}
 							if (updateFields.ticketOwnerId) {
 								body.push({
-									name: 'hubspot_owner_id',
+									name: 'Hubspot Owner ID',
 									value: updateFields.ticketOwnerId as string,
 								});
 							}

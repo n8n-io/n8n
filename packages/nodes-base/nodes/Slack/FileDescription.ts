@@ -278,7 +278,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'spaces',
 					},
 					{
-						name: 'pdfs',
+						name: 'Pdfs',
 						value: 'pdfs',
 					},
 					{

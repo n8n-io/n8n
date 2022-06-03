@@ -149,7 +149,7 @@ export const companyFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Any filter',
+				name: 'Any Filter',
 				value: 'anyFilter',
 			},
 			{
@@ -528,7 +528,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -643,7 +643,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                  company:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'company ID',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		required: true,
@@ -824,7 +824,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{

@@ -122,15 +122,15 @@ export const orderFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -138,19 +138,19 @@ export const orderFields: INodeProperties[] = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
@@ -824,15 +824,15 @@ export const orderFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -840,19 +840,19 @@ export const orderFields: INodeProperties[] = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
@@ -1623,15 +1623,15 @@ export const orderFields: INodeProperties[] = [
 						value: 'any',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -1639,19 +1639,19 @@ export const orderFields: INodeProperties[] = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],

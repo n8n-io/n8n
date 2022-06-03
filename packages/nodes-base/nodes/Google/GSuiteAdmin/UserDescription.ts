@@ -236,7 +236,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										name: 'isdn',
+										name: 'Isdn',
 										value: 'isdn',
 									},
 									{
@@ -268,7 +268,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										name: 'tty tdd',
+										name: 'Tty Tdd',
 										value: 'tty_tdd',
 									},
 									{
@@ -810,7 +810,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										name: 'isdn',
+										name: 'Isdn',
 										value: 'isdn',
 									},
 									{
@@ -842,7 +842,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										name: 'tty tdd',
+										name: 'Tty Tdd',
 										value: 'tty_tdd',
 									},
 									{

@@ -177,7 +177,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'The email address of the user',
 			},
 			{
-				displayName: 'Created at',
+				displayName: 'Created At',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',

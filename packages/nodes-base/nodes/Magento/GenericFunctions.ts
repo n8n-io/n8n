@@ -240,7 +240,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			type: 'options',
 			options: [
 				{
-					name: 'Any filter',
+					name: 'Any Filter',
 					value: 'anyFilter',
 				},
 				{
@@ -424,11 +424,11 @@ function getConditionTypeFields(): INodeProperties {
 				value: 'eq',
 			},
 			{
-				name: 'Greater than',
+				name: 'Greater Than',
 				value: 'gt',
 			},
 			{
-				name: 'Greater than or equal',
+				name: 'Greater than or Equal',
 				value: 'gteq',
 			},
 			{

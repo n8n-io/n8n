@@ -452,11 +452,11 @@ export const channelFields: INodeProperties[] = [
 						value: 'private_channel',
 					},
 					{
-						name: 'mpim',
+						name: 'MPIM',
 						value: 'mpim',
 					},
 					{
-						name: 'im',
+						name: 'IM',
 						value: 'im',
 					},
 				],

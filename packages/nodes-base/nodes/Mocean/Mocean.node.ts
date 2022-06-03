@@ -49,7 +49,7 @@ export class Mocean implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'SMS',
+						name: 'SM',
 						value: 'sms',
 					},
 					{

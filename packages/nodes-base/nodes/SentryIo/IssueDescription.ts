@@ -197,7 +197,7 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Short ID lookup',
+				displayName: 'Short ID Lookup',
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
@@ -246,7 +246,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned to',
+				displayName: 'Assigned To',
 				name: 'assignedTo',
 				type: 'string',
 				default: '',

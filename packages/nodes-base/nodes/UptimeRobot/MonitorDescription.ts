@@ -464,7 +464,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'Select monitor statuses',
 			},
 			{
-				displayName: 'Sub type',
+				displayName: 'Sub Type',
 				name: 'sub_type',
 				type: 'options',
 				default: '',

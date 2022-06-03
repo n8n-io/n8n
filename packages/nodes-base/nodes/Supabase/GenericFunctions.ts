@@ -213,19 +213,19 @@ export function getFilters(
 							},
 							options: [
 								{
-									name: 'to_tsquery',
+									name: 'To TS Query',
 									value: 'fts',
 								},
 								{
-									name: 'plainto_tsquery',
+									name: 'Plain to TS Query',
 									value: 'plfts',
 								},
 								{
-									name: 'phraseto_tsquery',
+									name: 'Phrase to TS Query',
 									value: 'phfts',
 								},
 								{
-									name: 'websearch_to_tsquery',
+									name: 'Websearch to TS Query',
 									value: 'wfts',
 								},
 							],

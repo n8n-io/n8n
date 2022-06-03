@@ -320,7 +320,7 @@ export class Rocketchat implements INodeType {
 						description: 'Audio file to play, only supports what html audio does',
 					},
 					{
-						displayName: 'video URL',
+						displayName: 'Video URL',
 						name: 'videoUrl',
 						type: 'string',
 						default: '',

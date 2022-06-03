@@ -156,6 +156,7 @@ export const taskFields: INodeProperties[] = [
 				default: 'text/plain',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/plain',
 						value: 'text/plain',
 					},
@@ -164,6 +165,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'text/x-markdown',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/html',
 						value: 'text/html',
 					},
@@ -343,6 +345,7 @@ export const taskFields: INodeProperties[] = [
 				default: 'text/plain',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/plain',
 						value: 'text/plain',
 					},
@@ -351,6 +354,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'text/x-markdown',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/html',
 						value: 'text/html',
 					},
@@ -445,15 +449,15 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 				options: [
 					{
-						name: 'schedule',
+						name: 'Schedule',
 						value: 'schedule',
 					},
 					{
-						name: 'files',
+						name: 'Files',
 						value: 'files',
 					},
 					{
-						name: 'file Associations',
+						name: 'File Associations',
 						value: 'file_associations',
 					},
 					{
@@ -532,15 +536,15 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 				options: [
 					{
-						name: 'schedule',
+						name: 'Schedule',
 						value: 'schedule',
 					},
 					{
-						name: 'files',
+						name: 'Files',
 						value: 'files',
 					},
 					{
-						name: 'file Associations',
+						name: 'File Associations',
 						value: 'file_associations',
 					},
 					{

@@ -146,7 +146,7 @@ export class Mandrill implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send template',
+						name: 'Send Template',
 						value: 'sendTemplate',
 						description: 'Send message based on template',
 					},
@@ -270,7 +270,7 @@ export class Mandrill implements INodeType {
 						description: 'An optional address to receive an exact copy of each recipient\'s email',
 					},
 					{
-						displayName: 'From name',
+						displayName: 'From Name',
 						name: 'fromName',
 						type: 'string',
 						default: '',

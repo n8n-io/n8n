@@ -276,7 +276,7 @@ export function getAccountFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'FTP site URL',
+			displayName: 'FTP Site URL',
 			name: 'ftpsiteurl',
 			type: 'string',
 			default: '',

@@ -573,11 +573,11 @@ export class Dropbox implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'Audio (mp3, wav, mid, etc.)',
+								name: 'Audio (Mp3, Wav, Mid, etc.)',
 								value: 'audio',
 							},
 							{
-								name: 'Document (doc, docx, txt, etc.)',
+								name: 'Document (Doc, Docx, Txt, etc.)',
 								value: 'document',
 							},
 							{
@@ -585,7 +585,7 @@ export class Dropbox implements INodeType {
 								value: 'folder',
 							},
 							{
-								name: 'Image (jpg, png, gif, etc.)',
+								name: 'Image (Jpg, Png, Gif, etc.)',
 								value: 'image',
 							},
 							{
@@ -601,15 +601,15 @@ export class Dropbox implements INodeType {
 								value: 'pdf',
 							},
 							{
-								name: 'Presentation (ppt, pptx, key, etc.)',
+								name: 'Presentation (Ppt, Pptx, Key, etc.)',
 								value: 'presentation',
 							},
 							{
-								name: 'Spreadsheet (xlsx, xls, csv, etc.)',
+								name: 'Spreadsheet (Xlsx, Xls, Csv, etc.)',
 								value: 'spreadsheet',
 							},
 							{
-								name: 'Video (avi, wmv, mp4, etc.)',
+								name: 'Video (Avi, Wmv, Mp4, etc.)',
 								value: 'video',
 							},
 						],

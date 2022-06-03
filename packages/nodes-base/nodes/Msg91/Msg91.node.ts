@@ -40,7 +40,7 @@ export class Msg91 implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'SMS',
+						name: 'SM',
 						value: 'sms',
 					},
 				],

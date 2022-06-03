@@ -115,7 +115,7 @@ export const formFields: INodeProperties[] = [
 				name: 'contextValue',
 				values: [
 					{
-						displayName: 'HubSpot usertoken',
+						displayName: 'HubSpot Usertoken',
 						name: 'hutk',
 						type: 'string',
 						default: '',
@@ -150,7 +150,7 @@ export const formFields: INodeProperties[] = [
 						description: 'The ID of a page created on the HubSpot CMS',
 					},
 					{
-						displayName: 'SFDC campaign ID',
+						displayName: 'SFDC Campaign ID',
 						name: 'sfdcCampaignId',
 						type: 'string',
 						default: '',
