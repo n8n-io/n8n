@@ -49,7 +49,7 @@ export const listFields: INodeProperties[] = [
 	//         list:create
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -93,7 +93,7 @@ export const listFields: INodeProperties[] = [
 	//         list:delete
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -114,7 +114,7 @@ export const listFields: INodeProperties[] = [
 		description: 'The ID of the board that list belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +142,7 @@ export const listFields: INodeProperties[] = [
 	//         list:get
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -185,7 +185,7 @@ export const listFields: INodeProperties[] = [
 	//         list:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {

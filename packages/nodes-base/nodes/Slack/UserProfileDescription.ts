@@ -69,7 +69,7 @@ export const userProfileFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {

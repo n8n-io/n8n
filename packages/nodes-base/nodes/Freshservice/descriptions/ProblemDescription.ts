@@ -68,7 +68,7 @@ export const problemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Requester Name/ID',
+		displayName: 'Requester Name or ID',
 		name: 'requesterId',
 		description: 'ID of the initiator of the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
@@ -123,7 +123,7 @@ export const problemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
+				displayName: 'Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -133,7 +133,7 @@ export const problemFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -150,7 +150,7 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name/ID',
+				displayName: 'Group Name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -353,7 +353,7 @@ export const problemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
+				displayName: 'Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -363,7 +363,7 @@ export const problemFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -387,7 +387,7 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name/ID',
+				displayName: 'Group Name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -441,7 +441,7 @@ export const problemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Requester Name/ID',
+				displayName: 'Requester Name or ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',

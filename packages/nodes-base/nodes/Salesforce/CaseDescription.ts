@@ -60,7 +60,7 @@ export const caseFields: INodeProperties[] = [
 	/*                                case:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Type',
+		displayName: 'Type Name or ID',
 		name: 'type',
 		type: 'options',
 		required: true,
@@ -127,7 +127,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -162,7 +162,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Whether indicates whether the case has been escalated (true) or not',
 			},
 			{
-				displayName: 'Origin',
+				displayName: 'Origin Name or ID',
 				name: 'origin',
 				type: 'options',
 				typeOptions: {
@@ -172,7 +172,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin.',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -189,7 +189,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The ID of the parent case in the hierarchy. The label is Parent Case.',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -199,7 +199,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The importance or urgency of the case, such as High, Medium, or Low',
 			},
 			{
-				displayName: 'Reason',
+				displayName: 'Reason Name or ID',
 				name: 'reason',
 				type: 'options',
 				typeOptions: {
@@ -209,7 +209,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -218,7 +218,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -333,7 +333,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -368,7 +368,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Whether the case has been escalated (true) or not',
 			},
 			{
-				displayName: 'Origin',
+				displayName: 'Origin Name or ID',
 				name: 'origin',
 				type: 'options',
 				typeOptions: {
@@ -378,7 +378,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin.',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -395,7 +395,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The ID of the parent case in the hierarchy. The label is Parent Case.',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -405,7 +405,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The importance or urgency of the case, such as High, Medium, or Low',
 			},
 			{
-				displayName: 'Reason',
+				displayName: 'Reason Name or ID',
 				name: 'reason',
 				type: 'options',
 				typeOptions: {
@@ -415,7 +415,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -424,7 +424,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -469,7 +469,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -602,7 +602,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

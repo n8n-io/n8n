@@ -202,7 +202,7 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage',
+				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
@@ -396,7 +396,7 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage',
+				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],

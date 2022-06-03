@@ -93,7 +93,7 @@ export const productFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attribute Set Name/ID',
+		displayName: 'Attribute Set Name or ID',
 		name: 'attributeSetId',
 		type: 'options',
 		displayOptions: {

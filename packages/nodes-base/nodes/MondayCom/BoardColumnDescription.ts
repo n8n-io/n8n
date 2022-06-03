@@ -36,7 +36,7 @@ export const boardColumnFields: INodeProperties[] = [
 /*                                 boardColumn:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -208,7 +208,7 @@ export const boardColumnFields: INodeProperties[] = [
 /*                                 boardColumn:getAll                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',

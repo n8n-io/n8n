@@ -57,7 +57,7 @@ export const rowFields: INodeProperties[] = [
 	/*                                row:create                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
@@ -180,7 +180,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -250,7 +250,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'conditions',
 				values: [
 					{
-						displayName: 'Name',
+						displayName: 'Name or ID',
 						name: 'keyName',
 						type: 'options',
 						typeOptions: {

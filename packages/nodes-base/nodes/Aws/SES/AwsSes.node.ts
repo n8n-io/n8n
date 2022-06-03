@@ -522,7 +522,7 @@ export class AwsSes implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template Name or ID',
 				name: 'templateName',
 				type: 'options',
 				typeOptions: {

@@ -82,7 +82,7 @@ export class EventbriteTrigger implements INodeType {
 				default: 'privateKey',
 			},
 			{
-				displayName: 'Organization',
+				displayName: 'Organization Name or ID',
 				name: 'organization',
 				type: 'options',
 				required: true,
@@ -93,7 +93,7 @@ export class EventbriteTrigger implements INodeType {
 				description: 'The Eventbrite Organization to work on',
 			},
 			{
-				displayName: 'Event',
+				displayName: 'Event Name or ID',
 				name: 'event',
 				type: 'options',
 				required: true,

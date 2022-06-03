@@ -55,7 +55,7 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		},
 		options: [
 			{
-				displayName: 'Employee Document Category Name/ID',
+				displayName: 'Employee Document Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {

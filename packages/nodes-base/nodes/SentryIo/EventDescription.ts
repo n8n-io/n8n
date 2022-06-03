@@ -36,7 +36,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -57,7 +57,7 @@ export const eventFields: INodeProperties[] = [
 		description: 'The slug of the organization the events belong to',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -143,7 +143,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -164,7 +164,7 @@ export const eventFields: INodeProperties[] = [
 		description: 'The slug of the organization the events belong to',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {

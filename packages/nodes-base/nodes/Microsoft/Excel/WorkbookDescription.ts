@@ -35,7 +35,7 @@ export const workbookFields: INodeProperties[] = [
 /*                                 workbook:addWorksheet                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		required: true,

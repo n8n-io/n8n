@@ -348,6 +348,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to send emails to host and invitees',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -603,6 +604,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Email of a person that must be a meeting participant',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -940,6 +942,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',

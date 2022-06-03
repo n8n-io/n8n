@@ -34,7 +34,7 @@ export const analyzersOperations: INodeProperties[] = [
 
 export const analyzerFields: INodeProperties[] = [
 	{
-		displayName: 'Analyzer Type',
+		displayName: 'Analyzer Type Name or ID',
 		name: 'analyzer',
 		type: 'options',
 		required: true,
@@ -55,7 +55,7 @@ export const analyzerFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Observable Type',
+		displayName: 'Observable Type Name or ID',
 		name: 'observableType',
 		type: 'options',
 		required: true,

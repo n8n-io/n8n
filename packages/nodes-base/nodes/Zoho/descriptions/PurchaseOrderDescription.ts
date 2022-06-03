@@ -109,7 +109,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//      purchaseOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Vendor ID',
+		displayName: 'Vendor Name or ID',
 		name: 'vendorId',
 		type: 'options',
 		default: [],
@@ -309,7 +309,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
@@ -536,7 +536,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],

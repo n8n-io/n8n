@@ -180,7 +180,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:register                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event ID',
+		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
 		typeOptions: {
@@ -319,7 +319,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The value for the predefined Phone Number field',
 			},
 			{
-				displayName: 'Session ID',
+				displayName: 'Session Name or ID',
 				name: 'date_id',
 				type: 'options',
 				typeOptions: {

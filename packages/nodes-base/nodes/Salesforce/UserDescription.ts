@@ -132,7 +132,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

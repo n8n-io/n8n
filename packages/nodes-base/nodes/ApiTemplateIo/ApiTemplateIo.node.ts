@@ -105,7 +105,7 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'imageTemplateId',
 				type: 'options',
 				required: true,
@@ -126,7 +126,7 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'pdfTemplateId',
 				type: 'options',
 				required: true,

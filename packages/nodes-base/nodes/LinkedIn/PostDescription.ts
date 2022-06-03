@@ -46,7 +46,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Person',
+		displayName: 'Person Name or ID',
 		name: 'person',
 		type: 'options',
 		typeOptions: {

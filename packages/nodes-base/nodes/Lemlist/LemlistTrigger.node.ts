@@ -63,7 +63,7 @@ export class LemlistTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Campaing ID',
+						displayName: 'Campaing Name or ID',
 						name: 'campaignId',
 						type: 'options',
 						typeOptions: {

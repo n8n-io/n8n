@@ -92,7 +92,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Name',
+				displayName: 'Goal Name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {

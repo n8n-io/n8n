@@ -44,7 +44,7 @@ export const paymentFields: INodeProperties[] = [
 /*                                 payment:create                             */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice',
+		displayName: 'Invoice Name or ID',
 		name: 'invoice',
 		type: 'options',
 		typeOptions: {
