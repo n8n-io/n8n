@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 
@@ -261,6 +262,10 @@ export class Merge implements INodeType {
 
 				newItem = {
 					json: {},
+					pairedItem: [
+						dataInput1[i].pairedItem as IPairedItemData,
+						dataInput2[i].pairedItem as IPairedItemData,
+					],
 				};
 
 				if (dataInput1[i].binary !== undefined) {
@@ -305,7 +310,15 @@ export class Merge implements INodeType {
 
 			for (entry1 of dataInput1) {
 				for (entry2 of dataInput2) {
-					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
+					returnData.push({
+						json: {
+							...(entry1.json), ...(entry2.json),
+						},
+						pairedItem: [
+							entry1.pairedItem as IPairedItemData,
+							entry2.pairedItem as IPairedItemData,
+						],
+					});
 				}
 			}
 			return [returnData];

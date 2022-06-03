@@ -257,6 +257,9 @@ export class Compression implements INodeType {
 					returnData.push({
 						json: items[i].json,
 						binary: binaryObject,
+						pairedItem: {
+							item: i,
+						},
 					});
 				}
 
@@ -314,6 +317,9 @@ export class Compression implements INodeType {
 							binary: {
 								[binaryPropertyOutput]: data,
 							},
+							pairedItem: {
+								item: i,
+							},
 						});
 					}
 
@@ -321,13 +327,23 @@ export class Compression implements INodeType {
 						returnData.push({
 							json: items[i].json,
 							binary: binaryObject,
+							pairedItem: {
+								item: i,
+							},
 						});
 					}
 				}
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;
