@@ -423,6 +423,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
+				'n8n-nodes-base/node-param-min-value-wrong-for-limit': 'error',
 				'n8n-nodes-base/node-param-placeholder-miscased-id': 'error',
 				'n8n-nodes-base/node-param-description-miscased-url': 'error',
 				'n8n-nodes-base/node-param-option-name-wrong-for-upsert': 'error',
