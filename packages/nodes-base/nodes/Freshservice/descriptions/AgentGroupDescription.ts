@@ -128,36 +128,36 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '30m',
 				options: [
 					{
-						name: '30 Minutes',
-						value: '30m',
+						name: '1 Day',
+						value: '1d',
 					},
 					{
 						name: '1 Hour',
 						value: '1h',
 					},
 					{
-						name: '2 Hours',
-						value: '2h',
-					},
-					{
-						name: '8 Hours',
-						value: '8h',
-					},
-					{
 						name: '12 Hours',
 						value: '12h',
-					},
-					{
-						name: '1 Day',
-						value: '1d',
 					},
 					{
 						name: '2 Days',
 						value: '2d',
 					},
 					{
+						name: '2 Hours',
+						value: '2h',
+					},
+					{
 						name: '3 Days',
 						value: '3d',
+					},
+					{
+						name: '30 Minutes',
+						value: '30m',
+					},
+					{
+						name: '8 Hours',
+						value: '8h',
 					},
 				],
 			},
@@ -340,36 +340,36 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '30m',
 				options: [
 					{
-						name: '30 Minutes',
-						value: '30m',
+						name: '1 Day',
+						value: '1d',
 					},
 					{
 						name: '1 Hour',
 						value: '1h',
 					},
 					{
-						name: '2 Hours',
-						value: '2h',
-					},
-					{
-						name: '8 Hours',
-						value: '8h',
-					},
-					{
 						name: '12 Hours',
 						value: '12h',
-					},
-					{
-						name: '1 Day',
-						value: '1d',
 					},
 					{
 						name: '2 Days',
 						value: '2d',
 					},
 					{
+						name: '2 Hours',
+						value: '2h',
+					},
+					{
 						name: '3 Days',
 						value: '3d',
+					},
+					{
+						name: '30 Minutes',
+						value: '30m',
+					},
+					{
+						name: '8 Hours',
+						value: '8h',
 					},
 				],
 			},

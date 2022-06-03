@@ -176,12 +176,16 @@ export const documentFields: INodeProperties[] = [
 								default: 'is',
 								options: [
 									{
-										name: 'IS',
-										value: 'is',
+										name: 'EQUALS, or GREATER',
+										value: 'equalsGreater',
 									},
 									{
-										name: 'IS NOT',
-										value: 'isNot',
+										name: 'EQUALS, or LESS',
+										value: 'equalsLess',
+									},
+									{
+										name: 'IS',
+										value: 'is',
 									},
 									{
 										name: 'IS GREATER',
@@ -192,12 +196,8 @@ export const documentFields: INodeProperties[] = [
 										value: 'less',
 									},
 									{
-										name: 'EQUALS, or GREATER',
-										value: 'equalsGreater',
-									},
-									{
-										name: 'EQUALS, or LESS',
-										value: 'equalsLess',
+										name: 'IS NOT',
+										value: 'isNot',
 									},
 								],
 							},

@@ -223,6 +223,10 @@ export const reportFields: INodeProperties[] = [
 										value: 'ENDS_WITH',
 									},
 									{
+										name: 'Equal (Number)',
+										value: 'NUMERIC_EQUAL',
+									},
+									{
 										name: 'Exact',
 										value: 'EXACT',
 									},
@@ -231,20 +235,16 @@ export const reportFields: INodeProperties[] = [
 										value: 'NUMERIC_GREATER_THAN',
 									},
 									{
+										name: 'Less Than (Number)',
+										value: 'NUMERIC_LESS_THAN',
+									},
+									{
 										name: 'Partial',
 										value: 'PARTIAL',
 									},
 									{
 										name: 'Regular Expression',
 										value: 'REGEXP',
-									},
-									{
-										name: 'Equal (Number)',
-										value: 'NUMERIC_EQUAL',
-									},
-									{
-										name: 'Less Than (Number)',
-										value: 'NUMERIC_LESS_THAN',
 									},
 								],
 							},

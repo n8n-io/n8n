@@ -159,29 +159,16 @@ export function getFilters(
 									value: 'eq',
 								},
 								{
+									name: 'Full-Text',
+									value: 'fullText',
+								},
+								{
 									name: 'Greater Than',
 									value: 'gt',
 								},
 								{
 									name: 'Greater Than or Equal',
 									value: 'gte',
-								},
-								{
-									name: 'Less Than',
-									value: 'lt',
-								},
-								{
-									name: 'Less Than or Equal',
-									value: 'lte',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-								{
-									name: 'LIKE operator',
-									value: 'like',
-									description: 'Use * in place of %',
 								},
 								{
 									name: 'ILIKE operator',
@@ -194,8 +181,21 @@ export function getFilters(
 									description: 'Checking for exact equality (null,true,false,unknown)',
 								},
 								{
-									name: 'Full-Text',
-									value: 'fullText',
+									name: 'Less Than',
+									value: 'lt',
+								},
+								{
+									name: 'Less Than or Equal',
+									value: 'lte',
+								},
+								{
+									name: 'LIKE operator',
+									value: 'like',
+									description: 'Use * in place of %',
+								},
+								{
+									name: 'Not Equals',
+									value: 'neq',
 								},
 							],
 							default: '',

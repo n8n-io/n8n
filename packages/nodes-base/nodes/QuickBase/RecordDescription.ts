@@ -22,6 +22,11 @@ export const recordOperations: INodeProperties[] = [
 				description: 'Create a record',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a record',
@@ -35,11 +40,6 @@ export const recordOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a record',
-			},
-			{
-				name: 'Create or Update',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'create',

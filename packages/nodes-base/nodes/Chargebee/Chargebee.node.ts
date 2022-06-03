@@ -322,6 +322,14 @@ export class Chargebee implements INodeType {
 								noDataExpression: true,
 								options: [
 									{
+										name: 'Greater Equal Than',
+										value: 'gte',
+									},
+									{
+										name: 'Greater Than',
+										value: 'gt',
+									},
+									{
 										name: 'Is',
 										value: 'is',
 									},
@@ -330,20 +338,12 @@ export class Chargebee implements INodeType {
 										value: 'is_not',
 									},
 									{
-										name: 'Greater Than',
-										value: 'gt',
-									},
-									{
-										name: 'Greater Equal Than',
-										value: 'gte',
+										name: 'Less Equal Than',
+										value: 'lte',
 									},
 									{
 										name: 'Less Than',
 										value: 'lt',
-									},
-									{
-										name: 'Less Equal Than',
-										value: 'lte',
 									},
 								],
 								default: 'gt',

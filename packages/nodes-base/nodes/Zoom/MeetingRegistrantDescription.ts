@@ -177,6 +177,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Within a Month',

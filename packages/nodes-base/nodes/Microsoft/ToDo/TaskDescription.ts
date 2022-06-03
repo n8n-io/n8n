@@ -140,6 +140,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Not Started',
@@ -317,6 +318,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Not Started',

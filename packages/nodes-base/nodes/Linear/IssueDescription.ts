@@ -127,6 +127,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name/ID',
 				name: 'priorityId',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Urgent',
@@ -286,6 +287,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name/ID',
 				name: 'priorityId',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Urgent',

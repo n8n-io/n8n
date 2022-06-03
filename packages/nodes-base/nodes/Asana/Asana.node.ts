@@ -112,12 +112,12 @@ export class Asana implements INodeType {
 						value: 'taskComment',
 					},
 					{
-						name: 'Task Tag',
-						value: 'taskTag',
-					},
-					{
 						name: 'Task Project',
 						value: 'taskProject',
+					},
+					{
+						name: 'Task Tag',
+						value: 'taskTag',
 					},
 					{
 						name: 'User',

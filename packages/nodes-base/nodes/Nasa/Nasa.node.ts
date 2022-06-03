@@ -48,8 +48,8 @@ export class Nasa implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Astronomy Picture of the Day',
-						value: 'astronomyPictureOfTheDay',
+						name: 'Asteroid Neo-Browse',
+						value: 'asteroidNeoBrowse',
 					},
 					{
 						name: 'Asteroid Neo-Feed',
@@ -60,12 +60,16 @@ export class Nasa implements INodeType {
 						value: 'asteroidNeoLookup',
 					},
 					{
-						name: 'Asteroid Neo-Browse',
-						value: 'asteroidNeoBrowse',
+						name: 'Astronomy Picture of the Day',
+						value: 'astronomyPictureOfTheDay',
 					},
 					{
 						name: 'DONKI Coronal Mass Ejection',
 						value: 'donkiCoronalMassEjection',
+					},
+					{
+						name: 'DONKI High Speed Stream',
+						value: 'donkiHighSpeedStream',
 					},
 					// {
 					// 	name: 'DONKI Geomagnetic Storm',
@@ -76,40 +80,36 @@ export class Nasa implements INodeType {
 						value: 'donkiInterplanetaryShock',
 					},
 					{
-						name: 'DONKI Solar Flare',
-						value: 'donkiSolarFlare',
-					},
-					{
-						name: 'DONKI Solar Energetic Particle',
-						value: 'donkiSolarEnergeticParticle',
-					},
-					{
 						name: 'DONKI Magnetopause Crossing',
 						value: 'donkiMagnetopauseCrossing',
-					},
-					{
-						name: 'DONKI Radiation Belt Enhancement',
-						value: 'donkiRadiationBeltEnhancement',
-					},
-					{
-						name: 'DONKI High Speed Stream',
-						value: 'donkiHighSpeedStream',
-					},
-					{
-						name: 'DONKI WSA+EnlilSimulation',
-						value: 'donkiWsaEnlilSimulation',
 					},
 					{
 						name: 'DONKI Notification',
 						value: 'donkiNotifications',
 					},
 					{
-						name: 'Earth Imagery',
-						value: 'earthImagery',
+						name: 'DONKI Radiation Belt Enhancement',
+						value: 'donkiRadiationBeltEnhancement',
+					},
+					{
+						name: 'DONKI Solar Energetic Particle',
+						value: 'donkiSolarEnergeticParticle',
+					},
+					{
+						name: 'DONKI Solar Flare',
+						value: 'donkiSolarFlare',
+					},
+					{
+						name: 'DONKI WSA+EnlilSimulation',
+						value: 'donkiWsaEnlilSimulation',
 					},
 					{
 						name: 'Earth Asset',
 						value: 'earthAssets',
+					},
+					{
+						name: 'Earth Imagery',
+						value: 'earthImagery',
 					},
 				],
 				default: 'astronomyPictureOfTheDay',

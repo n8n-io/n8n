@@ -130,6 +130,10 @@ export const boardFields: INodeProperties[] = [
 						value: 'belize',
 					},
 					{
+						name: 'Midnight',
+						value: 'midnight',
+					},
+					{
 						name: 'Nephritis',
 						value: 'nephritis',
 					},
@@ -144,10 +148,6 @@ export const boardFields: INodeProperties[] = [
 					{
 						name: 'Wisteria',
 						value: 'wisteria',
-					},
-					{
-						name: 'Midnight',
-						value: 'midnight',
 					},
 				],
 				default: '',

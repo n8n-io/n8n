@@ -265,6 +265,7 @@ export const agentFields: INodeProperties[] = [
 				type: 'options',
 				description: 'ID of the level of the agent in the Arcade',
 				default: 1,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Beginner',
@@ -620,6 +621,7 @@ export const agentFields: INodeProperties[] = [
 				type: 'options',
 				description: 'ID of the level of the agent in the Arcade',
 				default: 1,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Beginner',

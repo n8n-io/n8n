@@ -17,6 +17,11 @@ export const memberOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new member, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a member',
@@ -40,11 +45,6 @@ export const memberOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a member',
-			},
-			{
-				name: 'Create or Update',
-				value: 'upsert',
-				description: 'Create a new member, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'get',

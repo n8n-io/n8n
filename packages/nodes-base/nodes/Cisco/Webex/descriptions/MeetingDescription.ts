@@ -624,32 +624,32 @@ export const meetingFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Scheduled',
-						value: 'scheduled',
+						name: 'Ended',
+						value: 'ended',
 					},
 					{
-						name: 'Ready',
-						value: 'ready',
-					},
-					{
-						name: 'Lobby',
-						value: 'lobby',
+						name: 'Expired',
+						value: 'expired',
 					},
 					{
 						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
-						name: 'Ended',
-						value: 'ended',
+						name: 'Lobby',
+						value: 'lobby',
 					},
 					{
 						name: 'Missed',
 						value: 'missed',
 					},
 					{
-						name: 'Expired',
-						value: 'expired',
+						name: 'Ready',
+						value: 'ready',
+					},
+					{
+						name: 'Scheduled',
+						value: 'scheduled',
 					},
 				],
 				default: '',

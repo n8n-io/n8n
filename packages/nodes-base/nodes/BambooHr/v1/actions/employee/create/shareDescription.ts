@@ -163,6 +163,8 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 			displayName: 'Pay Per',
 			name: 'paidPer',
 			type: 'options',
+
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Hour',
@@ -229,32 +231,8 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 			type: 'options',
 			options: [
 				{
-					name: 'Hourly',
-					value: 'hourly',
-				},
-				{
-					name: 'Salary',
-					value: 'salary',
-				},
-				{
 					name: 'Commission',
 					value: 'commission',
-				},
-				{
-					name: 'Exception Hourly',
-					value: 'exceptionHourly',
-				},
-				{
-					name: 'Monthly',
-					value: 'monthly',
-				},
-				{
-					name: 'Weekly',
-					value: 'weekly',
-				},
-				{
-					name: 'Piece Rate',
-					value: 'pieceRate',
 				},
 				{
 					name: 'Contract',
@@ -265,8 +243,32 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'daily',
 				},
 				{
+					name: 'Exception Hourly',
+					value: 'exceptionHourly',
+				},
+				{
+					name: 'Hourly',
+					value: 'hourly',
+				},
+				{
+					name: 'Monthly',
+					value: 'monthly',
+				},
+				{
+					name: 'Piece Rate',
+					value: 'pieceRate',
+				},
+				{
 					name: 'Pro Rata',
 					value: 'proRata',
+				},
+				{
+					name: 'Salary',
+					value: 'salary',
+				},
+				{
+					name: 'Weekly',
+					value: 'weekly',
 				},
 			],
 			default: '',

@@ -661,14 +661,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Show only refunded orders',
 					},
 					{
-						name: 'Voided',
-						value: 'voided',
-						description: 'Show only voided orders',
-					},
-					{
 						name: 'Unpaid',
 						value: 'unpaid',
 						description: 'Show authorized and partially paid orders',
+					},
+					{
+						name: 'Voided',
+						value: 'voided',
+						description: 'Show only voided orders',
 					},
 				],
 				default: 'any',
@@ -695,14 +695,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Show orders that have been shipped. Returns orders with fulfillment_status of fulfilled.',
 					},
 					{
-						name: 'Unshipped',
-						value: 'unshipped',
-						description: 'Show orders that have not yet been shipped. Returns orders with fulfillment_status of null.',
-					},
-					{
 						name: 'Unfulfilled',
 						value: 'unfulfilled',
 						description: 'Returns orders with fulfillment_status of null or partial',
+					},
+					{
+						name: 'Unshipped',
+						value: 'unshipped',
+						description: 'Show orders that have not yet been shipped. Returns orders with fulfillment_status of null.',
 					},
 				],
 				default: 'any',

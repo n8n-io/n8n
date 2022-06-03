@@ -1300,6 +1300,10 @@ export const productFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Any',
+						value: 'any',
+					},
+					{
 						name: 'Draft',
 						value: 'draft',
 					},
@@ -1314,10 +1318,6 @@ export const productFields: INodeProperties[] = [
 					{
 						name: 'Publish',
 						value: 'publish',
-					},
-					{
-						name: 'Any',
-						value: 'any',
 					},
 				],
 				default: 'any',

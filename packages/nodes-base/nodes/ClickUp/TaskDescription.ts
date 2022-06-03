@@ -760,8 +760,8 @@ export const taskFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Equal',
-										value: 'equal',
+										name: '!=',
+										value: '!=',
 									},
 									{
 										name: '<',
@@ -780,16 +780,16 @@ export const taskFields: INodeProperties[] = [
 										value: '>=',
 									},
 									{
-										name: '!=',
-										value: '!=',
-									},
-									{
-										name: 'Is Null',
-										value: 'IS NULL',
+										name: 'Equal',
+										value: 'equal',
 									},
 									{
 										name: 'Is Not Null',
 										value: 'IS NOT NULL',
+									},
+									{
+										name: 'Is Null',
+										value: 'IS NULL',
 									},
 								],
 								default: 'equal',

@@ -353,6 +353,7 @@ export const coinFields: INodeProperties[] = [
 		name: 'days',
 		required: true,
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: '1',
@@ -508,28 +509,12 @@ export const coinFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Market Cap Desc',
-						value: 'market_cap_desc',
-					},
-					{
-						name: 'Gecko Desc',
-						value: 'gecko_desc',
-					},
-					{
 						name: 'Gecko Asc',
 						value: 'gecko_asc',
 					},
 					{
-						name: 'Market Cap Asc',
-						value: 'market_cap_asc',
-					},
-					{
-						name: 'Volume Asc',
-						value: 'volume_asc',
-					},
-					{
-						name: 'Volume Desc',
-						value: 'volume_desc',
+						name: 'Gecko Desc',
+						value: 'gecko_desc',
 					},
 					{
 						name: 'ID Asc',
@@ -538,6 +523,22 @@ export const coinFields: INodeProperties[] = [
 					{
 						name: 'ID Desc',
 						value: 'id_desc',
+					},
+					{
+						name: 'Market Cap Asc',
+						value: 'market_cap_asc',
+					},
+					{
+						name: 'Market Cap Desc',
+						value: 'market_cap_desc',
+					},
+					{
+						name: 'Volume Asc',
+						value: 'volume_asc',
+					},
+					{
+						name: 'Volume Desc',
+						value: 'volume_desc',
 					},
 				],
 				default: '',

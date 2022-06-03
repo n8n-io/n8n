@@ -138,28 +138,28 @@ export const eventFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'Your Organization Only',
-						value: 0,
-					},
-					{
-						name: 'This Community Only',
-						value: 1,
+						name: 'All Communities',
+						value: 3,
 					},
 					{
 						name: 'Connected Communities',
 						value: 2,
 					},
 					{
-						name: 'All Communities',
-						value: 3,
+						name: 'Inherit Event',
+						value: 5,
 					},
 					{
 						name: 'Sharing Group',
 						value: 4,
 					},
 					{
-						name: 'Inherit Event',
-						value: 5,
+						name: 'This Community Only',
+						value: 1,
+					},
+					{
+						name: 'Your Organization Only',
+						value: 0,
 					},
 				],
 			},
@@ -395,28 +395,28 @@ export const eventFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'Your Organization Only',
-						value: 0,
-					},
-					{
-						name: 'This Community Only',
-						value: 1,
+						name: 'All Communities',
+						value: 3,
 					},
 					{
 						name: 'Connected Communities',
 						value: 2,
 					},
 					{
-						name: 'All Communities',
-						value: 3,
+						name: 'Inherit Event',
+						value: 5,
 					},
 					{
 						name: 'Sharing Group',
 						value: 4,
 					},
 					{
-						name: 'Inherit Event',
-						value: 5,
+						name: 'This Community Only',
+						value: 1,
+					},
+					{
+						name: 'Your Organization Only',
+						value: 0,
 					},
 				],
 			},

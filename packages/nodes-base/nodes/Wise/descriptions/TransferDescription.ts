@@ -419,10 +419,6 @@ export const transferFields: INodeProperties[] = [
 						value: 'charged_back',
 					},
 					{
-						name: 'Outgoing Payment Sent',
-						value: 'outgoing_payment_sent',
-					},
-					{
 						name: 'Funds Converted',
 						value: 'funds_converted',
 					},
@@ -433,6 +429,10 @@ export const transferFields: INodeProperties[] = [
 					{
 						name: 'Incoming Payment Waiting',
 						value: 'incoming_payment_waiting',
+					},
+					{
+						name: 'Outgoing Payment Sent',
+						value: 'outgoing_payment_sent',
 					},
 					{
 						name: 'Processing',
