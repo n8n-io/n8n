@@ -423,6 +423,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
+				'n8n-nodes-base/node-param-description-miscased-url': 'error',
 			},
 		},
 	],
