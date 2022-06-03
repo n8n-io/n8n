@@ -52,7 +52,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -140,6 +140,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Monday',
@@ -330,7 +331,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The ID of the maintenance window',
 	},
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -414,6 +415,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Monday',

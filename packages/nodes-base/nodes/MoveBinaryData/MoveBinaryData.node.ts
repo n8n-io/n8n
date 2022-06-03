@@ -82,7 +82,7 @@ export class MoveBinaryData implements INodeType {
 			//         binaryToJson
 			// ----------------------------------
 			{
-				displayName: 'Set all Data',
+				displayName: 'Set All Data',
 				name: 'setAllData',
 				type: 'boolean',
 				displayOptions: {
@@ -135,7 +135,7 @@ export class MoveBinaryData implements INodeType {
 			//         jsonToBinary
 			// ----------------------------------
 			{
-				displayName: 'Convert all Data',
+				displayName: 'Convert All Data',
 				name: 'convertAllData',
 				type: 'boolean',
 				displayOptions: {

@@ -38,7 +38,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                 document: create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Drive',
+		displayName: 'Drive Name or ID',
 		name: 'driveId',
 		type: 'options',
 		typeOptions: {
@@ -58,7 +58,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder Name or ID',
 		name: 'folderId',
 		type: 'options',
 		typeOptions: {
@@ -267,7 +267,7 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Find and replace text',
+								name: 'Find and Replace Text',
 								value: 'replaceAll',
 							},
 							{
@@ -584,7 +584,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// delete named range
 					{
-						displayName: 'Specify range by',
+						displayName: 'Specify Range By',
 						name: 'namedRangeReference',
 						type: 'options',
 						options: [
@@ -740,12 +740,12 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
@@ -792,12 +792,12 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
@@ -878,12 +878,12 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
@@ -1086,11 +1086,11 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Before content at index',
+								name: 'Before Content at Index',
 								value: false,
 							},
 							{
-								name: 'After content at index',
+								name: 'After Content at Index',
 								value: true,
 							},
 						],
@@ -1181,7 +1181,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'writeControlObject',
 				values: [
 					{
-						displayName: 'Revision mode',
+						displayName: 'Revision Mode',
 						name: 'control',
 						type: 'options',
 						options: [

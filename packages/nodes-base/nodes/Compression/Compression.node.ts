@@ -106,11 +106,11 @@ export class Compression implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'gzip',
+						name: 'Gzip',
 						value: 'gzip',
 					},
 					{
-						name: 'zip',
+						name: 'Zip',
 						value: 'zip',
 					},
 				],

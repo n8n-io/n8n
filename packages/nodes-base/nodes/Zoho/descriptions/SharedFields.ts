@@ -256,7 +256,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Product ID',
+		displayName: 'Product Name or ID',
 		name: 'id',
 		type: 'options',
 		default: [],

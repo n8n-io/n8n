@@ -58,11 +58,11 @@ export const invoiceFields: INodeProperties[] = [
 	//         invoice: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the invoice is for',
+		description: 'The ID of the customer who the invoice is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -112,7 +112,7 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item',
+				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
 				default: [],

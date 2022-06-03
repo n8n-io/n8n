@@ -4,7 +4,7 @@ import {
 
 export const customResourceOperations: INodeProperties[] = [
 	{
-		displayName: 'Custom Resource',
+		displayName: 'Custom Resource Name or ID',
 		name: 'customResource',
 		type: 'options',
 		default: '',
@@ -92,7 +92,7 @@ export const customResourceDescription: INodeProperties[] = [
 				name: 'fields',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
 						default: '',
@@ -236,7 +236,7 @@ export const customResourceDescription: INodeProperties[] = [
 				displayName: 'Filter',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
 						default: '',
@@ -263,12 +263,12 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'lesserThen',
 							},
 							{
-								name: '=',
-								value: 'equal',
-							},
-							{
 								name: '<=',
 								value: 'lesserOrEqual',
+							},
+							{
+								name: '=',
+								value: 'equal',
 							},
 							{
 								name: '>',
@@ -279,7 +279,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'greaterOrEqual',
 							},
 							{
-								name: 'Child of',
+								name: 'Child Of',
 								value: 'childOf',
 							},
 							{
@@ -354,7 +354,7 @@ export const customResourceDescription: INodeProperties[] = [
 				name: 'fields',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
 						default: '',

@@ -88,7 +88,7 @@ export class TypeformTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -97,7 +97,7 @@ export class TypeformTrigger implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Form which should trigger workflow on submission',
+				description: 'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
