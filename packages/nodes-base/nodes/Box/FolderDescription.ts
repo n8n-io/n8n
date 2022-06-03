@@ -388,7 +388,7 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: 'relevance',
-				description: 'returns the results ordered in descending order by date at which the item was last modified',
+				description: 'Returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
 				displayName: 'Trash Content',
@@ -792,7 +792,7 @@ export const folderFields: INodeProperties[] = [
 							{
 								name: 'Company',
 								value: 'company',
-								description: 'only people within the company',
+								description: 'Only people within the company',
 							},
 							{
 								name: 'Open',

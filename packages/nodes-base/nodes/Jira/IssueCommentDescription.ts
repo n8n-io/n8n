@@ -67,7 +67,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'issueComment Key',
+		description: 'IssueComment Key',
 	},
 	{
 		displayName: 'JSON Parameters',

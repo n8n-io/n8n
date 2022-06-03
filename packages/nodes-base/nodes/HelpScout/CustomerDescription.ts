@@ -191,14 +191,14 @@ export const customerFields: INodeProperties[] = [
 						name: 'line1',
 						type: 'string',
 						default: '',
-						description: 'line1',
+						description: 'Line1',
 					},
 					{
 						displayName: 'Line 2',
 						name: 'line2',
 						type: 'string',
 						default: '',
-						description: 'line2',
+						description: 'Line2',
 					},
 					{
 						displayName: 'City',
