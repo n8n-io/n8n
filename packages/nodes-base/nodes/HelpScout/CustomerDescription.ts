@@ -517,7 +517,7 @@ export const customerFields: INodeProperties[] = [
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Social Profile handle (url for example)',
+						description: 'Social Profile handle (URL for example)',
 					},
 				],
 			},
