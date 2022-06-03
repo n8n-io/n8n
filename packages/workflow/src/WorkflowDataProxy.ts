@@ -616,7 +616,7 @@ export class WorkflowDataProxy {
 					if (results.length !== 1) {
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
-							description: `The expression uses data in node ‘${sourceData.previousNode}’ but there is more than one matching item in that node`,
+							description: `The expression uses data in node ‘${destinationNodeName}’ but there is more than one matching item in that node`,
 						});
 					}
 
