@@ -423,7 +423,7 @@
 	"nodeSettings.notes.description": "Optional note to save with the node",
 	"nodeSettings.notes.displayName": "Notes",
 	"nodeSettings.notesInFlow.description": "If active, the note above will display in the flow as a subtitle",
-	"nodeSettings.notesInFlow.displayName": "Display note in flow?",
+	"nodeSettings.notesInFlow.displayName": "Display Note in Flow?",
 	"nodeSettings.parameters": "Parameters",
 	"nodeSettings.retryOnFail.description": "If active, the node tries to execute again when it fails",
 	"nodeSettings.retryOnFail.displayName": "Retry On Fail",
