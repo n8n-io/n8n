@@ -17,7 +17,8 @@ const distDir = path.resolve(rootDir, 'dist');
  * Build
  */
 
-const tsFiles = await glob([path.resolve(rootDir, '{credentials,nodes,src}/**/*.ts'), '!*.d.ts']);
+const tsFiles = (await glob([path.resolve(rootDir, '{credentials,nodes,src}/**/*.ts')]))
+	.filter((file) => !file.endsWith('.d.ts'));
 
 esbuild.build({
 	entryPoints: tsFiles,
