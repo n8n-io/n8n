@@ -15,7 +15,7 @@ export const customerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new customer, or update the current one if it already exists (upsert)',
 			},
