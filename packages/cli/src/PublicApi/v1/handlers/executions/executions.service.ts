@@ -36,15 +36,15 @@ export async function getExecutions(data: {
 	lastId?: number;
 	workflowIds?: number[];
 	status?: ExecutionStatus;
-	excludedWorkflowIds?: number[];
+	excludedExecutionsIds?: number[];
 }): Promise<IExecutionFlattedDb[]> {
 	const executions = await Db.collections.Execution.find({
 		select: getExecutionSelectableProperties(),
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),
 			...(data.status && { ...getStatusCondition(data.status) }),
-			...(data.workflowIds && { workflowId: In(data.workflowIds) }),
-			...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
+			...(data.workflowIds && { workflowId: In(data.workflowIds.map(String)) }),
+			...(data.excludedExecutionsIds && { id: Not(In(data.excludedExecutionsIds)) }),
 		},
 		order: { id: 'DESC' },
 		take: data.limit,

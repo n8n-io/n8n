@@ -103,7 +103,7 @@ export = {
 			}
 
 			// get running workflows so we exclude them from the result
-			const runningWorkflowsIds = ActiveExecutions.getInstance()
+			const runningExecutionsIds = ActiveExecutions.getInstance()
 				.getActiveExecutions()
 				.map(({ id }) => Number(id));
 
@@ -112,7 +112,7 @@ export = {
 				limit,
 				lastId,
 				...(workflowId && { workflowIds: [workflowId] }),
-				excludedWorkflowIds: runningWorkflowsIds,
+				excludedExecutionsIds: runningExecutionsIds,
 			};
 
 			const executions = await getExecutions(filters);
