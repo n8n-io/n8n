@@ -154,7 +154,7 @@ export const logEntryFields: INodeProperties[] = [
 				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {

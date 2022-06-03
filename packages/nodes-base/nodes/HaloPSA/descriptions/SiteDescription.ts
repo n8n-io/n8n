@@ -88,7 +88,7 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Client Name',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		default: '',

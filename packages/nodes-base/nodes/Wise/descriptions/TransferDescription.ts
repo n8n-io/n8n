@@ -46,7 +46,7 @@ export const transferFields: INodeProperties[] = [
 	//         transfer: create
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -88,7 +88,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Account ID',
+		displayName: 'Target Account Name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
@@ -161,7 +161,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: execute
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -287,7 +287,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,

@@ -8,7 +8,7 @@ import {
 
 export const caseOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
@@ -269,7 +269,7 @@ export const caseFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		default: '',
@@ -353,7 +353,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -456,7 +456,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -737,7 +737,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

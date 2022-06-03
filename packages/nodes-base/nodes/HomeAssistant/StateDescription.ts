@@ -41,7 +41,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {
@@ -110,7 +110,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {

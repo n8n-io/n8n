@@ -45,7 +45,7 @@ export const checklistItemFields: INodeProperties[] = [
 	//         checklistItem:delete
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -66,7 +66,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the board that card belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -90,7 +90,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the list that card belongs to',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -115,7 +115,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the card that checklistItem belongs to',
 	},
 	{
-		displayName: 'Checklist ID',
+		displayName: 'Checklist Name or ID',
 		name: 'checklistId',
 		type: 'options',
 		typeOptions: {
@@ -140,7 +140,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the checklistItem that card belongs to',
 	},
 	{
-		displayName: 'Checklist Item ID',
+		displayName: 'Checklist Item Name or ID',
 		name: 'checklistItemId',
 		type: 'options',
 		typeOptions: {
@@ -170,7 +170,7 @@ export const checklistItemFields: INodeProperties[] = [
 	//         checklistItem:get
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -191,7 +191,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the board that card belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -215,7 +215,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the list that card belongs to',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -258,7 +258,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the checklistItem that card belongs to',
 	},
 	{
-		displayName: 'Checklist Item ID',
+		displayName: 'Checklist Item Name or ID',
 		name: 'checklistItemId',
 		type: 'options',
 		typeOptions: {
@@ -288,7 +288,7 @@ export const checklistItemFields: INodeProperties[] = [
 	//         checklistItem:update
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -309,7 +309,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the board that card belongs to',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -333,7 +333,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the list that card belongs to',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -358,7 +358,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the card that checklistItem belongs to',
 	},
 	{
-		displayName: 'CheckList ID',
+		displayName: 'CheckList Name or ID',
 		name: 'checklistId',
 		type: 'options',
 		typeOptions: {
@@ -383,7 +383,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the checklistItem that card belongs to',
 	},
 	{
-		displayName: 'Checklist Item ID',
+		displayName: 'Checklist Item Name or ID',
 		name: 'checklistItemId',
 		type: 'options',
 		typeOptions: {

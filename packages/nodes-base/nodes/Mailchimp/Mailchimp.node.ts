@@ -276,7 +276,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:create                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -533,7 +533,7 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -633,7 +633,7 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Category ID',
+								displayName: 'Category Name or ID',
 								name: 'categoryId',
 								type: 'options',
 								typeOptions: {
@@ -686,7 +686,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:delete                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -729,7 +729,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:get                                 */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -805,7 +805,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:getAll                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -971,7 +971,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:update                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1091,7 +1091,7 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Category ID',
+										displayName: 'Category Name or ID',
 										name: 'categoryId',
 										type: 'options',
 										typeOptions: {
@@ -1157,7 +1157,7 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field Name',
+										displayName: 'Field Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -1371,7 +1371,7 @@ export class Mailchimp implements INodeType {
 /*                                 memberTag:create                           */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1464,7 +1464,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:getAll                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1486,7 +1486,7 @@ export class Mailchimp implements INodeType {
 				description: 'List of lists',
 			},
 			{
-				displayName: 'Group Category',
+				displayName: 'Group Category Name or ID',
 				name: 'groupCategory',
 				type: 'options',
 				typeOptions: {
@@ -1653,7 +1653,7 @@ export class Mailchimp implements INodeType {
 						description: 'A comma-separated list of fields to return',
 					},
 					{
-						displayName: 'List ID',
+						displayName: 'List Name or ID',
 						name: 'listId',
 						type: 'options',
 						typeOptions: {

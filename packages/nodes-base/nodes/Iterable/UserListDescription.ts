@@ -37,7 +37,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:add                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -107,7 +107,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:remove                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {

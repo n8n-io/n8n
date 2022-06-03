@@ -213,7 +213,7 @@ export const customerFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country',
 						type: 'options',
 						typeOptions: {

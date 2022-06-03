@@ -313,7 +313,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -362,7 +362,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -411,7 +411,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -515,7 +515,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:publish                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -600,7 +600,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:unpublish                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {

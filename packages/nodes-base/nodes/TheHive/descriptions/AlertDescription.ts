@@ -8,7 +8,7 @@ import {
 
 export const alertOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
@@ -384,7 +384,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactValues',
 				values: [
 					{
-						displayName: 'Data Type',
+						displayName: 'Data Type Name or ID',
 						name: 'dataType',
 						type: 'options',
 						default: '',
@@ -438,7 +438,7 @@ export const alertFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -530,7 +530,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -626,7 +626,7 @@ export const alertFields: INodeProperties[] = [
 						name: 'artifactValues',
 						values: [
 							{
-								displayName: 'Data Type',
+								displayName: 'Data Type Name or ID',
 								name: 'dataType',
 								type: 'options',
 								default: '',
@@ -699,7 +699,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -899,7 +899,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

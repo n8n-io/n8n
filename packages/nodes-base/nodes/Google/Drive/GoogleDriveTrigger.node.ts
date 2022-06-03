@@ -208,7 +208,7 @@ export class GoogleDriveTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Drive To Watch',
+				displayName: 'Drive To Watch, Name or ID',
 				name: 'driveToWatch',
 				type: 'options',
 				displayOptions: {

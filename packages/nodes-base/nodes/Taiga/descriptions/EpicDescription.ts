@@ -51,7 +51,7 @@ export const epicFields: INodeProperties[] = [
 	//               epic: create
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		description: 'ID of the project to which the epic belongs',
 		type: 'options',
@@ -106,7 +106,7 @@ export const epicFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -208,7 +208,7 @@ export const epicFields: INodeProperties[] = [
 	//               epic: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		description: 'ID of the project to which the epic belongs',
 		type: 'options',
@@ -286,6 +286,7 @@ export const epicFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assigned_to',
 				type: 'options',
@@ -312,7 +313,7 @@ export const epicFields: INodeProperties[] = [
 	//               epic: update
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -367,7 +368,7 @@ export const epicFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {

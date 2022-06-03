@@ -74,7 +74,7 @@ export class WorkableTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Job',
+						displayName: 'Job Name or ID',
 						name: 'job',
 						type: 'options',
 						typeOptions: {
@@ -84,7 +84,7 @@ export class WorkableTrigger implements INodeType {
 						description: 'Get notifications only for one job',
 					},
 					{
-						displayName: 'Stage',
+						displayName: 'Stage Name or ID',
 						name: 'stage',
 						type: 'options',
 						typeOptions: {

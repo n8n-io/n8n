@@ -36,7 +36,7 @@ export const recordFields: INodeProperties[] = [
 	//         record: create
 	// ----------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -57,7 +57,7 @@ export const recordFields: INodeProperties[] = [
 		description: 'ID of the project to create the record in',
 	},
 	{
-		displayName: 'Dataset ID',
+		displayName: 'Dataset Name or ID',
 		name: 'datasetId',
 		type: 'options',
 		typeOptions: {
@@ -81,7 +81,7 @@ export const recordFields: INodeProperties[] = [
 		description: 'ID of the dataset to create the record in',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
@@ -176,7 +176,7 @@ export const recordFields: INodeProperties[] = [
 	//         record: getAll
 	// ----------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -197,7 +197,7 @@ export const recordFields: INodeProperties[] = [
 		description: 'ID of the project to retrieve all rows from',
 	},
 	{
-		displayName: 'Dataset ID',
+		displayName: 'Dataset Name or ID',
 		name: 'datasetId',
 		type: 'options',
 		typeOptions: {
@@ -221,7 +221,7 @@ export const recordFields: INodeProperties[] = [
 		description: 'ID of the dataset to retrieve all rows from',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {

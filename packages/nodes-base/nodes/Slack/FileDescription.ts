@@ -222,7 +222,7 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Channel',
+				displayName: 'Channel Name or ID',
 				name: 'channelId',
 				type: 'options',
 				default: '',
@@ -290,7 +290,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'Filter files by type',
 			},
 			{
-				displayName: 'User',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				default: '',

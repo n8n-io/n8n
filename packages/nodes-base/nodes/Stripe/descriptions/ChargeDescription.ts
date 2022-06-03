@@ -86,7 +86,7 @@ export const chargeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency',
+		displayName: 'Currency Name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {

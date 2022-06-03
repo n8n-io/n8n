@@ -49,7 +49,7 @@ export class AwsLambda implements INodeType {
 				default: 'invoke',
 			},
 			{
-				displayName: 'Function',
+				displayName: 'Function Name or ID',
 				name: 'function',
 				type: 'options',
 				typeOptions: {

@@ -4,7 +4,7 @@ import {
 
 export const channelAddUserDescription: ChannelProperties = [
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -26,7 +26,7 @@ export const channelAddUserDescription: ChannelProperties = [
 		description: 'The ID of the channel to invite user to',
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {

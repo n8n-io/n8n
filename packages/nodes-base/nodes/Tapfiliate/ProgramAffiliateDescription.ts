@@ -51,7 +51,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:add                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		required: true,
@@ -127,7 +127,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:approve                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -168,7 +168,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:disapprove                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -209,7 +209,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 affiliate:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		required: true,
@@ -252,7 +252,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                          programAffiliate:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {

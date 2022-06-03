@@ -104,7 +104,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Inviter Email/ID',
+				displayName: 'Inviter Email/ID Name or ID',
 				name: 'invited_by',
 				type: 'options',
 				default: '',
@@ -114,7 +114,7 @@ export const userFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization Name/ID',
+				displayName: 'Organization Name or ID',
 				name: 'org_id',
 				type: 'options',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
@@ -261,7 +261,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Inviter Name/ID',
+				displayName: 'Inviter Name or ID',
 				name: 'invited_by',
 				type: 'options',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
@@ -271,7 +271,7 @@ export const userFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization Name/ID',
+				displayName: 'Organization Name or ID',
 				name: 'org_id',
 				type: 'options',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',

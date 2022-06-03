@@ -68,7 +68,7 @@ export const assetFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Asset Type Name/ID',
+		displayName: 'Asset Type Name or ID',
 		name: 'assetTypeId',
 		type: 'options',
 		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
@@ -113,7 +113,7 @@ export const assetFields: INodeProperties[] = [
 				displayName: 'Asset Field',
 				values: [
 					{
-						displayName: 'Name/ID',
+						displayName: 'Name or ID',
 						name: 'name',
 						type: 'options',
 						typeOptions: {
@@ -241,7 +241,7 @@ export const assetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
+				displayName: 'Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -258,7 +258,7 @@ export const assetFields: INodeProperties[] = [
 				description: 'Status of the asset to filter by. For example, "In use".',
 			},
 			{
-				displayName: 'Asset Type Name/ID',
+				displayName: 'Asset Type Name or ID',
 				name: 'asset_type_id',
 				type: 'options',
 				default: '',
@@ -268,7 +268,7 @@ export const assetFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -278,7 +278,7 @@ export const assetFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Location Name/ID',
+				displayName: 'Location Name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -343,7 +343,7 @@ export const assetFields: INodeProperties[] = [
 				displayName: 'Asset Field',
 				values: [
 					{
-						displayName: 'Name/ID',
+						displayName: 'Name or ID',
 						name: 'name',
 						type: 'options',
 						typeOptions: {

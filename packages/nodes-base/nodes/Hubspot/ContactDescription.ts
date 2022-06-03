@@ -117,7 +117,7 @@ export const contactFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Associated Company ID',
+				displayName: 'Associated Company Name or ID',
 				name: 'associatedCompanyId',
 				type: 'options',
 				typeOptions: {
@@ -157,7 +157,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Contact Owner',
+				displayName: 'Contact Owner Name or ID',
 				name: 'contactOwner',
 				type: 'options',
 				typeOptions: {
@@ -186,7 +186,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -292,7 +292,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'A contact\'s last name',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead Status Name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -302,7 +302,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The contact\'s sales, prospecting or outreach status',
 			},
 			{
-				displayName: 'Legal Basic For Processing Contact Data',
+				displayName: 'Legal Basic For Processing Contact Data Name or ID',
 				name: 'processingContactData',
 				type: 'options',
 				typeOptions: {
@@ -312,7 +312,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Legal basis for processing contact\'s data; \'Not applicable\' will exempt the contact from GDPR protections',
 			},
 			{
-				displayName: 'Lifecycle Stage',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
@@ -356,7 +356,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'A contact\'s mobile phone number',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number Of Employees Name or ID',
 				name: 'numberOfEmployees',
 				type: 'options',
 				typeOptions: {
@@ -366,7 +366,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The number of company employees',
 			},
 			{
-				displayName: 'Original Source',
+				displayName: 'Original Source Name or ID',
 				name: 'originalSource',
 				type: 'options',
 				typeOptions: {
@@ -407,7 +407,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The contact\'s zip code. This might be set via import, form, or integration.',
 			},
 			{
-				displayName: 'Preffered Language',
+				displayName: 'Preffered Language Name or ID',
 				name: 'prefferedLanguage',
 				type: 'options',
 				typeOptions: {
@@ -459,7 +459,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The contact\'s state of residence. This might be set via import, form, or integration.',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -950,7 +950,7 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
 										typeOptions: {
@@ -1086,6 +1086,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Perform a text search against all property values for an object type',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',

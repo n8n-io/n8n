@@ -141,7 +141,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Primary Company',
+		displayName: 'Primary Company Name or ID',
 		name: 'company',
 		type: 'options',
 		typeOptions: {
@@ -329,7 +329,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -417,7 +417,7 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Stage',
+				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
 				typeOptions: {
@@ -676,7 +676,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -845,7 +845,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Primary Company',
+				displayName: 'Primary Company Name or ID',
 				name: 'company',
 				type: 'options',
 				typeOptions: {
@@ -897,7 +897,7 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Stage',
+				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
 				displayOptions: {
@@ -1428,7 +1428,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:sendEmail                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Campaign Email ID',
+		displayName: 'Campaign Email Name or ID',
 		name: 'campaignEmailId',
 		type: 'options',
 		required: true,

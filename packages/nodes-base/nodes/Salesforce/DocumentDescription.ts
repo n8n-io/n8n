@@ -101,7 +101,7 @@ export const documentFields: INodeProperties[] = [
 				description: 'ID of the object you want to link this document to',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'ownerId',
 				type: 'options',
 				typeOptions: {

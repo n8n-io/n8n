@@ -138,7 +138,7 @@ export function getFilters(
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Field Name',
+							displayName: 'Field Name or ID',
 							name: 'keyName',
 							type: 'options',
 							typeOptions: {

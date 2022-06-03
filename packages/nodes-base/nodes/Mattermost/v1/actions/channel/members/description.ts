@@ -4,7 +4,7 @@ import {
 
 export const channelMembersDescription: ChannelProperties = [
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -26,7 +26,7 @@ export const channelMembersDescription: ChannelProperties = [
 		description: 'The Mattermost Team',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

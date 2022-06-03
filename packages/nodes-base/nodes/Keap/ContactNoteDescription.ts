@@ -52,7 +52,7 @@ export const contactNoteFields: INodeProperties[] = [
 /*                                 contactNote:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -264,7 +264,7 @@ export const contactNoteFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
@@ -368,7 +368,7 @@ export const contactNoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
