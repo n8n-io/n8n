@@ -22,7 +22,7 @@ export const textOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Language',
+		displayName: 'Target Language Name or ID',
 		name: 'translateTo',
 		type: 'options',
 		typeOptions: {
@@ -47,7 +47,7 @@ export const textOperations: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Source Language',
+				displayName: 'Source Language Name or ID',
 				name: 'sourceLang',
 				type: 'options',
 				default: '',

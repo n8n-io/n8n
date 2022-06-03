@@ -46,7 +46,7 @@ export const rowFields: INodeProperties[] = [
 	// ----------------------------------
 
 	{
-		displayName: 'Table Name/ID',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -65,7 +65,7 @@ export const rowFields: INodeProperties[] = [
 		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Table Name/ID',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -165,7 +165,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'columnValues',
 				values: [
 					{
-						displayName: 'Column Name',
+						displayName: 'Column Name or ID',
 						name: 'columnName',
 						type: 'options',
 						typeOptions: {
@@ -286,7 +286,7 @@ export const rowFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'View Name',
+				displayName: 'View Name or ID',
 				name: 'view_name',
 				type: 'options',
 				typeOptions: {
@@ -335,6 +335,7 @@ export const rowFields: INodeProperties[] = [
 				description: 'The direction of the sort, ascending (asc) or descending (desc)',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Order By',
 				name: 'order_by',
 				type: 'options',

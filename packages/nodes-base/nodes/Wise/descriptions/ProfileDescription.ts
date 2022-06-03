@@ -34,7 +34,7 @@ export const profileFields: INodeProperties[] = [
 	//         profile: get
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,

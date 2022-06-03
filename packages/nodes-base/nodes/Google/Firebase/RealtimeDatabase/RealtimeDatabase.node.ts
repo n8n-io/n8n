@@ -40,7 +40,7 @@ export class RealtimeDatabase implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				default: '',

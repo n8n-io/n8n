@@ -121,7 +121,7 @@ export const playlistFields: INodeProperties[] = [
 				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
@@ -508,7 +508,7 @@ export const playlistFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {

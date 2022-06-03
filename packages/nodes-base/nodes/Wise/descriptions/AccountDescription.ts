@@ -41,7 +41,7 @@ export const accountFields: INodeProperties[] = [
 	//      account: getBalances
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -66,7 +66,7 @@ export const accountFields: INodeProperties[] = [
 	//      account: getStatement
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		default: [],
@@ -86,7 +86,7 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Borderless Account ID',
+		displayName: 'Borderless Account Name or ID',
 		name: 'borderlessAccountId',
 		type: 'options',
 		default: [],

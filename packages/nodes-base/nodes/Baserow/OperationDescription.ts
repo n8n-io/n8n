@@ -7,7 +7,7 @@ export const operationFields: INodeProperties[] = [
 	//             shared
 	// ----------------------------------
 	{
-		displayName: 'Database',
+		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
 		default: '',
@@ -18,7 +18,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		default: '',
@@ -146,7 +146,7 @@ export const operationFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -255,7 +255,7 @@ export const operationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								default: '',
@@ -434,7 +434,7 @@ export const operationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								default: '',

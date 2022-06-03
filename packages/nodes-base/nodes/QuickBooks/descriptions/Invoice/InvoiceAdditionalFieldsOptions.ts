@@ -90,7 +90,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 				name: 'Field',
 				values: [
 					{
-						displayName: 'Field Definition ID',
+						displayName: 'Field Definition Name or ID',
 						name: 'DefinitionId',
 						type: 'options',
 						typeOptions: {

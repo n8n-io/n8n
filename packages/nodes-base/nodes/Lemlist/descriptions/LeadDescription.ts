@@ -42,7 +42,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: create
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -143,14 +143,14 @@ export const leadFields: INodeProperties[] = [
 				name: 'picture',
 				type: 'string',
 				default: '',
-				description: 'Picture url of the lead to create',
+				description: 'Picture URL of the lead to create',
 			},
 			{
 				displayName: 'LinkedIn URL',
 				name: 'linkedinUrl',
 				type: 'string',
 				default: '',
-				description: 'LinkedIn url of the lead to create',
+				description: 'LinkedIn URL of the lead to create',
 			},
 		],
 	},
@@ -159,7 +159,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: delete
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -222,7 +222,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: unsubscribe
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,

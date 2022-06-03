@@ -57,7 +57,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                customObject:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -79,6 +79,7 @@ export const customObjectFields: INodeProperties[] = [
 		description: 'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
@@ -147,7 +148,7 @@ export const customObjectFields: INodeProperties[] = [
 				displayName: 'Custom Field',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -175,7 +176,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                 customObject:update                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -239,7 +240,7 @@ export const customObjectFields: INodeProperties[] = [
 				displayName: 'Custom Field',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -267,7 +268,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                  customObject:get                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -310,7 +311,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                  customObject:delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -353,7 +354,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                                 customObject:getAll                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Object',
+		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
 		typeOptions: {
@@ -447,7 +448,7 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -532,7 +533,7 @@ export const customObjectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -563,7 +564,7 @@ export const customObjectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {

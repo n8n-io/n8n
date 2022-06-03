@@ -58,7 +58,7 @@ export const paymentFields: INodeProperties[] = [
 	//         payment: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer ID',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,

@@ -54,7 +54,7 @@ export const estimateFields: INodeProperties[] = [
 	//         estimate: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
@@ -108,7 +108,7 @@ export const estimateFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item',
+				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
 				default: [],

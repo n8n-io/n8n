@@ -162,7 +162,7 @@ export class OneSimpleApi implements INodeType {
 					{
 						name: 'Expand URL',
 						value: 'expandURL',
-						description: 'Expand a shortened url',
+						description: 'Expand a shortened URL',
 					},
 					{
 						name: 'Generate QR Code',

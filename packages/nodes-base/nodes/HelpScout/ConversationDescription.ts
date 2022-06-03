@@ -44,7 +44,7 @@ export const conversationFields: INodeProperties[] = [
 /*                                conversation:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Mailbox',
+		displayName: 'Mailbox Name or ID',
 		name: 'mailboxId',
 		type: 'options',
 		typeOptions: {

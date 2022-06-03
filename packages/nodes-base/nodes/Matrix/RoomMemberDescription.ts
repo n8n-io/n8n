@@ -32,7 +32,7 @@ export const roomMemberFields: INodeProperties[] = [
 	/*                             roomMember:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {

@@ -150,7 +150,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
@@ -340,7 +340,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],

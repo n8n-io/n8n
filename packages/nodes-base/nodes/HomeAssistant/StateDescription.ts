@@ -17,7 +17,7 @@ export const stateOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
@@ -41,7 +41,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {
@@ -110,7 +110,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {

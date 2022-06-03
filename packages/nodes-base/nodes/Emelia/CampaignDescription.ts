@@ -54,7 +54,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: addContact
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -331,7 +331,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: duplicate
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		default: '',

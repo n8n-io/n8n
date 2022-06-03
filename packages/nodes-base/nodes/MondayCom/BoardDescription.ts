@@ -47,7 +47,7 @@ export const boardFields: INodeProperties[] = [
 /*                                 board:archive                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -153,7 +153,7 @@ export const boardFields: INodeProperties[] = [
 /*                                  board:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',

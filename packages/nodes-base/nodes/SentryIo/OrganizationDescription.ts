@@ -124,7 +124,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -214,7 +214,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:update                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Slug',
+		displayName: 'Slug Name or ID',
 		name: 'organization_slug',
 		type: 'options',
 		typeOptions: {

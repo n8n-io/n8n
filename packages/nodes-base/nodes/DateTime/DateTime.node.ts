@@ -191,7 +191,7 @@ export class DateTime implements INodeType {
 						description: 'In case the input format is not recognized you can provide the format',
 					},
 					{
-						displayName: 'From Timezone',
+						displayName: 'From Timezone Name or ID',
 						name: 'fromTimezone',
 						type: 'options',
 						typeOptions: {
@@ -201,7 +201,7 @@ export class DateTime implements INodeType {
 						description: 'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'To Timezone',
+						displayName: 'To Timezone Name or ID',
 						name: 'toTimezone',
 						type: 'options',
 						typeOptions: {

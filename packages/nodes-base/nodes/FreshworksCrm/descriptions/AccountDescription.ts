@@ -100,7 +100,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Annual revenue of the account',
 			},
 			{
-				displayName: 'Business Type ID',
+				displayName: 'Business Type Name or ID',
 				name: 'business_type_id',
 				type: 'options',
 				default: '',
@@ -131,7 +131,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Facebook username of the account',
 			},
 			{
-				displayName: 'Industry Type ID',
+				displayName: 'Industry Type Name or ID',
 				name: 'industry_type_id',
 				type: 'options',
 				default: '',
@@ -155,7 +155,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Number of employees in the account',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -186,7 +186,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'State that the account belongs to',
 			},
 			{
-				displayName: 'Territory ID',
+				displayName: 'Territory Name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -267,7 +267,7 @@ export const accountFields: INodeProperties[] = [
 	//             account: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'view',
 		type: 'options',
 		required: true,
@@ -380,7 +380,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Annual revenue of the account',
 			},
 			{
-				displayName: 'Business Type ID',
+				displayName: 'Business Type Name or ID',
 				name: 'business_type_id',
 				type: 'options',
 				default: '',
@@ -411,7 +411,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Facebook username of the account',
 			},
 			{
-				displayName: 'Industry Type ID',
+				displayName: 'Industry Type Name or ID',
 				name: 'industry_type_id',
 				type: 'options',
 				default: '',
@@ -442,7 +442,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Number of employees in the account',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -473,7 +473,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'State that the account belongs to',
 			},
 			{
-				displayName: 'Territory ID',
+				displayName: 'Territory Name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',

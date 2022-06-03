@@ -52,7 +52,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Pipeline ID',
+		displayName: 'Pipeline Name or ID',
 		name: 'pipelineId',
 		type: 'options',
 		required: true,
@@ -73,7 +73,7 @@ export const ticketFields: INodeProperties[] = [
 		description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Stage ID',
+		displayName: 'Stage Name or ID',
 		name: 'stageId',
 		type: 'options',
 		required: true,
@@ -152,7 +152,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Contacts associated with the ticket',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -186,7 +186,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Description of the ticket',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -196,7 +196,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Resolution',
+				displayName: 'Resolution Name or ID',
 				name: 'resolution',
 				type: 'options',
 				typeOptions: {
@@ -206,7 +206,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Source',
+				displayName: 'Source Name or ID',
 				name: 'source',
 				type: 'options',
 				typeOptions: {
@@ -216,7 +216,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Ticket Owner ID',
+				displayName: 'Ticket Owner Name or ID',
 				name: 'ticketOwnerId',
 				type: 'options',
 				typeOptions: {
@@ -286,7 +286,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Contact associated with the ticket',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -320,7 +320,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Description of the ticket',
 			},
 			{
-				displayName: 'Pipeline ID',
+				displayName: 'Pipeline Name or ID',
 				name: 'pipelineId',
 				type: 'options',
 				typeOptions: {
@@ -330,7 +330,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -340,7 +340,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Resolution',
+				displayName: 'Resolution Name or ID',
 				name: 'resolution',
 				type: 'options',
 				typeOptions: {
@@ -350,7 +350,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Source',
+				displayName: 'Source Name or ID',
 				name: 'source',
 				type: 'options',
 				typeOptions: {
@@ -367,7 +367,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
-				displayName: 'Ticket Owner ID',
+				displayName: 'Ticket Owner Name or ID',
 				name: 'ticketOwnerId',
 				type: 'options',
 				typeOptions: {

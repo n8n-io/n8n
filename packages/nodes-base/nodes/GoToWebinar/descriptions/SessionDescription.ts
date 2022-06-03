@@ -126,7 +126,7 @@ export const sessionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Webinar Key',
+				displayName: 'Webinar Key Name or ID',
 				name: 'webinarKey',
 				type: 'options',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const sessionFields: INodeProperties[] = [
 	//      session: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {

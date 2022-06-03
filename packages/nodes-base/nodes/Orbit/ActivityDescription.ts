@@ -37,7 +37,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -108,7 +108,7 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activityType',
 				type: 'options',
 				typeOptions: {
@@ -159,7 +159,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {

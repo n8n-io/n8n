@@ -164,7 +164,7 @@ export const webinarFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
 				required: true,
@@ -504,7 +504,7 @@ export const webinarFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
 				required: true,

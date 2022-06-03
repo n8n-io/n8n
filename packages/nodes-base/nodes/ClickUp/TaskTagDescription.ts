@@ -97,7 +97,7 @@ export const taskTagFields: INodeProperties[] = [
 				description: 'If you want to reference a task by it\'s custom task ID, this value must be true',
 			},
 			{
-				displayName: 'Team ID',
+				displayName: 'Team Name or ID',
 				name: 'team_id',
 				type: 'options',
 				typeOptions: {

@@ -111,7 +111,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:changeColumnValue                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -150,7 +150,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: 'The unique identifier of the item to to change column of',
 	},
 	{
-		displayName: 'Column ID',
+		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
 		typeOptions: {
@@ -195,7 +195,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:changeMultipleColumnValues       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -258,7 +258,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -278,7 +278,7 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
 		default: '',
@@ -393,7 +393,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -413,7 +413,7 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		default: '',
 		type: 'options',
@@ -480,7 +480,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:getByColumnValue                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -501,7 +501,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Column ID',
+		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
 		typeOptions: {
@@ -587,7 +587,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:move                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -625,7 +625,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: 'The item\'s ID',
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
 		default: '',

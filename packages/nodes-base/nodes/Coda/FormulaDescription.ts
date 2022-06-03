@@ -35,7 +35,7 @@ export const formulaFields: INodeProperties[] = [
 /*                                   formula:get                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -77,7 +77,7 @@ export const formulaFields: INodeProperties[] = [
 /*                                   formula:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,

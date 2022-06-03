@@ -47,7 +47,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                listEntry:create                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		required: true,
@@ -115,7 +115,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                 listEntry:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		required: true,
@@ -157,7 +157,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                 listEntry:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -221,7 +221,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                 listEntry:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {

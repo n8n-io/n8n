@@ -17,7 +17,7 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
@@ -103,7 +103,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key',
+								displayName: 'Key Name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
@@ -160,7 +160,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'autopilotList',
 				type: 'options',
 				typeOptions: {

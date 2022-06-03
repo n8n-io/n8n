@@ -42,7 +42,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: create
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -205,7 +205,7 @@ export const registrantFields: INodeProperties[] = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Question Key',
+								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
 								typeOptions: {
@@ -289,7 +289,7 @@ export const registrantFields: INodeProperties[] = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Question Key',
+								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
 								typeOptions: {
@@ -325,7 +325,7 @@ export const registrantFields: INodeProperties[] = [
 	//        registrant: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -391,7 +391,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -434,7 +434,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: get
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {

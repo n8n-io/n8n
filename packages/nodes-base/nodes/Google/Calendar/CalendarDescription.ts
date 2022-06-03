@@ -31,7 +31,7 @@ export const calendarFields: INodeProperties[] = [
 	/*                                 calendar:availability                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar ID',
+		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
@@ -125,7 +125,7 @@ export const calendarFields: INodeProperties[] = [
 				description: 'The format to return the data in',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
 				typeOptions: {

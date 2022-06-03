@@ -51,7 +51,7 @@ export const epicFields: INodeProperties[] = [
 	//               epic: create
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		description: 'ID of the project to which the epic belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
@@ -106,7 +106,7 @@ export const epicFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -208,7 +208,7 @@ export const epicFields: INodeProperties[] = [
 	//               epic: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		description: 'ID of the project to which the epic belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
@@ -286,7 +286,7 @@ export const epicFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -312,7 +312,7 @@ export const epicFields: INodeProperties[] = [
 	//               epic: update
 	// ----------------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -367,7 +367,7 @@ export const epicFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {

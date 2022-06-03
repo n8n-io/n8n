@@ -60,7 +60,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		typeOptions: {
@@ -81,7 +81,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Status ID',
+		displayName: 'Status Name or ID',
 		name: 'statusId',
 		type: 'options',
 		typeOptions: {
@@ -220,7 +220,7 @@ export const workItemFields: INodeProperties[] = [
 	//         workItem: getAll
 	// ----------------------------------
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		typeOptions: {
@@ -373,7 +373,7 @@ export const workItemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				typeOptions: {

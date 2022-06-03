@@ -257,7 +257,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -698,7 +698,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {

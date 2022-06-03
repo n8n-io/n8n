@@ -73,6 +73,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
@@ -92,7 +93,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Category ID',
+		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
 		typeOptions: {
@@ -148,7 +149,7 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
@@ -507,6 +508,7 @@ export const videoFields: INodeProperties[] = [
 				description: 'The q parameter specifies the query term to search for',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Region Code',
 				name: 'regionCode',
 				type: 'options',
@@ -709,6 +711,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
@@ -728,7 +731,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Category ID',
+		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
 		typeOptions: {
@@ -767,7 +770,7 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {

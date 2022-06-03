@@ -42,7 +42,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//         coorganizer: create
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -145,7 +145,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//         coorganizer: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -205,7 +205,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//        coorganizer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {

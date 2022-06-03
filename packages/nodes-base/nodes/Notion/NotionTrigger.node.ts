@@ -59,7 +59,7 @@ export class NotionTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Database',
+				displayName: 'Database Name or ID',
 				name: 'databaseId',
 				type: 'options',
 				typeOptions: {

@@ -63,7 +63,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                 member:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name/ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		required: true,

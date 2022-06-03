@@ -52,7 +52,7 @@ export const submissionFields: INodeProperties[] = [
 	/*                                submission:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -132,7 +132,7 @@ export const submissionFields: INodeProperties[] = [
 	/*                                submission:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name/ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {

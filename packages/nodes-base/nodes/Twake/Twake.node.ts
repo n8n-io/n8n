@@ -107,7 +107,7 @@ export class Twake implements INodeType {
 				default: 'send',
 			},
 			{
-				displayName: 'Channel ID',
+				displayName: 'Channel Name or ID',
 				name: 'channelId',
 				type: 'options',
 				typeOptions: {

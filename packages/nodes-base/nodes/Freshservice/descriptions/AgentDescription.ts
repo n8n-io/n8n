@@ -115,7 +115,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'roleProperties',
 				values: [
 					{
-						displayName: 'Role Name/ID',
+						displayName: 'Role Name or ID',
 						name: 'role',
 						description: 'Name of the role to assign to the agent. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 						type: 'options',
@@ -224,7 +224,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Location Name/ID',
+				displayName: 'Location Name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -422,7 +422,7 @@ export const agentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -463,7 +463,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Location Name/ID',
+				displayName: 'Location Name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -579,7 +579,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Location Name/ID',
+				displayName: 'Location Name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',

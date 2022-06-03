@@ -51,7 +51,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar ID',
+		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
@@ -169,7 +169,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Color',
+				displayName: 'Color Name or ID',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
@@ -193,7 +193,7 @@ export const eventFields: INodeProperties[] = [
 						name: 'conferenceDataValues',
 						values: [
 							{
-								displayName: 'Type',
+								displayName: 'Type Name or ID',
 								name: 'conferenceSolution',
 								type: 'options',
 								typeOptions: {
@@ -554,7 +554,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -703,7 +703,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Lower bound (exclusive) for an event\'s end time to filter by',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -804,7 +804,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Color',
+				displayName: 'Color Name or ID',
 				name: 'color',
 				type: 'options',
 				typeOptions: {

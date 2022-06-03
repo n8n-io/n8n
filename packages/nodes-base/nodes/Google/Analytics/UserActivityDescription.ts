@@ -28,7 +28,7 @@ export const userActivityOperations: INodeProperties[] = [
 
 export const userActivityFields: INodeProperties[] = [
 	{
-		displayName: 'View ID',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {

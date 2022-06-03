@@ -159,7 +159,7 @@ export class Mandrill implements INodeType {
 				default: 'sendTemplate',
 			},
 			{
-				displayName: 'Template',
+				displayName: 'Template Name or ID',
 				name: 'template',
 				type: 'options',
 				typeOptions: {

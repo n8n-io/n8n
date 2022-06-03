@@ -49,7 +49,7 @@ export class SeaTableTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Table',
+				displayName: 'Table Name or ID',
 				name: 'tableName',
 				type: 'options',
 				required: true,

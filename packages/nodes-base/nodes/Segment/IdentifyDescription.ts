@@ -137,7 +137,7 @@ export const identifyFields: INodeProperties[] = [
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',

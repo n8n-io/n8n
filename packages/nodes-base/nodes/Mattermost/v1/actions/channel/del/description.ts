@@ -4,7 +4,7 @@ import {
 
 export const channelDeleteDescription: ChannelProperties = [
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

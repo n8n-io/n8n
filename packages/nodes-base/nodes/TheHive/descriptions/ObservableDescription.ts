@@ -8,7 +8,7 @@ import {
 
 export const observableOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
@@ -116,7 +116,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'ID of the observable',
 	},
 	{
-		displayName: 'Data Type',
+		displayName: 'Data Type Name or ID',
 		name: 'dataType',
 		type: 'options',
 		required: true,
@@ -349,7 +349,7 @@ export const observableFields: INodeProperties[] = [
 
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,

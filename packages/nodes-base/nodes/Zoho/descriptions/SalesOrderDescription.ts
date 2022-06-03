@@ -65,7 +65,7 @@ export const salesOrderFields: INodeProperties[] = [
 	//       salesOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Account ID',
+		displayName: 'Account Name or ID',
 		name: 'accountId',
 		required: true,
 		type: 'options',
@@ -193,7 +193,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact ID',
+				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
 				default: [],
@@ -211,7 +211,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: [],
@@ -280,7 +280,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
@@ -407,7 +407,7 @@ export const salesOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
@@ -435,7 +435,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact ID',
+				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
 				default: [],
@@ -453,7 +453,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: [],
@@ -521,7 +521,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],

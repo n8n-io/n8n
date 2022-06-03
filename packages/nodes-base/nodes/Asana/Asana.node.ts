@@ -213,7 +213,7 @@ export class Asana implements INodeType {
 				placeholder: 'Add Field',
 				options: [
 					{
-						displayName: 'Assignee',
+						displayName: 'Assignee Name or ID',
 						name: 'assignee',
 						type: 'options',
 						typeOptions: {
@@ -280,7 +280,7 @@ export class Asana implements INodeType {
 						description: 'The task notes',
 					},
 					{
-						displayName: 'Workspace',
+						displayName: 'Workspace Name or ID',
 						name: 'workspace',
 						type: 'options',
 						typeOptions: {
@@ -452,7 +452,7 @@ export class Asana implements INodeType {
 			//         task:create
 			// ----------------------------------
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -598,7 +598,7 @@ export class Asana implements INodeType {
 				placeholder: 'Add Filter',
 				options: [
 					{
-						displayName: 'Assignee',
+						displayName: 'Assignee Name or ID',
 						name: 'assignee',
 						type: 'options',
 						typeOptions: {
@@ -629,7 +629,7 @@ export class Asana implements INodeType {
 						description: 'Provides “pretty” output',
 					},
 					{
-						displayName: 'Project',
+						displayName: 'Project Name or ID',
 						name: 'project',
 						type: 'options',
 						typeOptions: {
@@ -639,7 +639,7 @@ export class Asana implements INodeType {
 						description: 'The project to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Section',
+						displayName: 'Section Name or ID',
 						name: 'section',
 						type: 'options',
 						typeOptions: {
@@ -649,7 +649,7 @@ export class Asana implements INodeType {
 						description: 'The section to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Workspace',
+						displayName: 'Workspace Name or ID',
 						name: 'workspace',
 						type: 'options',
 						typeOptions: {
@@ -698,7 +698,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to be moved',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {
@@ -720,7 +720,7 @@ export class Asana implements INodeType {
 				description: 'Project to show the sections of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Section',
+				displayName: 'Section Name or ID',
 				name: 'section',
 				type: 'options',
 				typeOptions: {
@@ -771,7 +771,7 @@ export class Asana implements INodeType {
 			//         task:search
 			// ----------------------------------
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -853,7 +853,7 @@ export class Asana implements INodeType {
 				placeholder: 'Add Field',
 				options: [
 					{
-						displayName: 'Assignee',
+						displayName: 'Assignee Name or ID',
 						name: 'assignee',
 						type: 'options',
 						typeOptions: {
@@ -1166,7 +1166,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the project to',
 			},
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'project',
 				type: 'options',
 				typeOptions: {
@@ -1250,7 +1250,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the project to',
 			},
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'project',
 				type: 'options',
 				typeOptions: {
@@ -1324,7 +1324,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the tag to',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
@@ -1371,7 +1371,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the tag to',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
@@ -1451,7 +1451,7 @@ export class Asana implements INodeType {
 			//         user:getAll
 			// ----------------------------------
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1541,7 +1541,7 @@ export class Asana implements INodeType {
 				description: 'The name of the project to create',
 			},
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1562,7 +1562,7 @@ export class Asana implements INodeType {
 				description: 'The workspace to create the project in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Team',
+				displayName: 'Team Name or ID',
 				name: 'team',
 				type: 'options',
 				typeOptions: {
@@ -1671,7 +1671,7 @@ export class Asana implements INodeType {
 			//         project:getAll
 			// ----------------------------------
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1759,7 +1759,7 @@ export class Asana implements INodeType {
 						description: 'Only return projects whose archived field takes on the value of this parameter',
 					},
 					{
-						displayName: 'Teams',
+						displayName: 'Teams Name or ID',
 						name: 'team',
 						type: 'options',
 						typeOptions: {
@@ -1777,7 +1777,7 @@ export class Asana implements INodeType {
 			//         project:update
 			// ----------------------------------
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1871,7 +1871,7 @@ export class Asana implements INodeType {
 						description: 'The new assignee/cardinal for this project',
 					},
 					{
-						displayName: 'Team',
+						displayName: 'Team Name or ID',
 						name: 'team',
 						type: 'options',
 						typeOptions: {

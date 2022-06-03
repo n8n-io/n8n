@@ -32,7 +32,7 @@ export const contactJourneyFields: INodeProperties[] = [
 	/*                                 contactJourney:add                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Trigger ID',
+		displayName: 'Trigger Name or ID',
 		name: 'triggerId',
 		required: true,
 		typeOptions: {

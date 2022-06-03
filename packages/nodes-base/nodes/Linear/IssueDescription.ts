@@ -52,7 +52,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                 issue:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name/ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
 		required: true,
@@ -106,7 +106,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name/ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigneeId',
 				type: 'options',
 				typeOptions: {
@@ -152,7 +152,7 @@ export const issueFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'State Name/ID',
+				displayName: 'State Name or ID',
 				name: 'stateId',
 				type: 'options',
 				typeOptions: {
@@ -265,7 +265,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name/ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigneeId',
 				type: 'options',
 				typeOptions: {
@@ -311,7 +311,7 @@ export const issueFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'State Name/ID',
+				displayName: 'State Name or ID',
 				name: 'stateId',
 				type: 'options',
 				typeOptions: {
@@ -320,7 +320,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Team Name/ID',
+				displayName: 'Team Name or ID',
 				name: 'teamId',
 				type: 'options',
 				typeOptions: {

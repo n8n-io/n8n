@@ -31,7 +31,7 @@ export const collectionFields: INodeProperties[] = [
 	/*                               collection:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',

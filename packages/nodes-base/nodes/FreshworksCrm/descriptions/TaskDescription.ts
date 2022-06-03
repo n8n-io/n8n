@@ -87,7 +87,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Owner ID',
+		displayName: 'Owner Name or ID',
 		name: 'ownerId',
 		description: 'ID of the user to whom the task is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
@@ -175,7 +175,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -185,7 +185,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'ID of the user who created the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
@@ -398,7 +398,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -415,7 +415,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
@@ -425,7 +425,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'ID of the outcome of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',

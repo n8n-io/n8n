@@ -34,7 +34,7 @@ export const quoteFields: INodeProperties[] = [
 	//         quote: create
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -55,7 +55,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Account ID',
+		displayName: 'Target Account Name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,

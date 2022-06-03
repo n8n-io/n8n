@@ -112,7 +112,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:archive                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -137,7 +137,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:close                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -211,7 +211,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:invite                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -304,7 +304,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:kick                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -326,7 +326,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'User',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -349,7 +349,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:join                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -470,7 +470,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:history                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -577,7 +577,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:leave                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -602,7 +602,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:member                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -731,7 +731,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:rename                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -774,7 +774,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:replies                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -899,7 +899,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:setPurpose                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -942,7 +942,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:setTopic                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -985,7 +985,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:unarchive                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

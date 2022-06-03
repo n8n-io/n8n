@@ -88,7 +88,7 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
 				required: true,

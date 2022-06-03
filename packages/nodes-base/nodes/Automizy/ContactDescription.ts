@@ -70,7 +70,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'The email address of the contact',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		required: true,
 		type: 'options',
@@ -122,7 +122,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key',
+								displayName: 'Key Name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
@@ -233,7 +233,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		required: true,
 		type: 'options',
@@ -406,7 +406,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key',
+								displayName: 'Key Name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {

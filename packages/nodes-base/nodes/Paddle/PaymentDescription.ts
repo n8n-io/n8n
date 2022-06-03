@@ -207,7 +207,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:reschedule                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payment ID',
+		displayName: 'Payment Name or ID',
 		name: 'paymentId',
 		type: 'options',
 		typeOptions: {

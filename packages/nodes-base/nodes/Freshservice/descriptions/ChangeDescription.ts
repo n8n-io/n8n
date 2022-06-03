@@ -51,7 +51,7 @@ export const changeFields: INodeProperties[] = [
 	//              change: create
 	// ----------------------------------------
 	{
-		displayName: 'Requester Name/ID',
+		displayName: 'Requester Name or ID',
 		name: 'requesterId',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'ID of the requester of the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
@@ -141,7 +141,7 @@ export const changeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
+				displayName: 'Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -175,7 +175,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -192,7 +192,7 @@ export const changeFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group Name/ID',
+				displayName: 'Group Name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -506,7 +506,7 @@ export const changeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
+				displayName: 'Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -540,7 +540,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -557,7 +557,7 @@ export const changeFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group Name/ID',
+				displayName: 'Group Name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -612,7 +612,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Requester Name/ID',
+				displayName: 'Requester Name or ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',

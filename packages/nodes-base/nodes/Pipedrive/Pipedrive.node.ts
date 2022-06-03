@@ -683,7 +683,7 @@ export class Pipedrive implements INodeType {
 						description: 'Note of the activity (HTML format)',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -700,7 +700,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the person this activity will be associated with',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
@@ -871,7 +871,7 @@ export class Pipedrive implements INodeType {
 						description: 'Note of the activity (HTML format)',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -903,7 +903,7 @@ export class Pipedrive implements INodeType {
 						description: 'Type of the activity like "call", "meeting", etc',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
@@ -1084,7 +1084,7 @@ export class Pipedrive implements INodeType {
 								displayName: 'Property',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -1105,7 +1105,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 					{
-						displayName: 'Label',
+						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						typeOptions: {
@@ -1161,7 +1161,7 @@ export class Pipedrive implements INodeType {
 						description: 'Deal success probability percentage',
 					},
 					{
-						displayName: 'Stage ID',
+						displayName: 'Stage Name or ID',
 						name: 'stage_id',
 						type: 'options',
 						typeOptions: {
@@ -1196,7 +1196,7 @@ export class Pipedrive implements INodeType {
 						description: 'The status of the deal. If not provided it will automatically be set to "open".',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
@@ -1359,7 +1359,7 @@ export class Pipedrive implements INodeType {
 								displayName: 'Property',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -1380,7 +1380,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
@@ -1390,7 +1390,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Label',
+						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						typeOptions: {
@@ -1406,7 +1406,7 @@ export class Pipedrive implements INodeType {
 						description: 'Reason why the deal was lost',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -1434,7 +1434,7 @@ export class Pipedrive implements INodeType {
 						description: 'Deal success probability percentage',
 					},
 					{
-						displayName: 'Stage ID',
+						displayName: 'Stage Name or ID',
 						name: 'stage_id',
 						type: 'options',
 						typeOptions: {
@@ -1505,7 +1505,7 @@ export class Pipedrive implements INodeType {
 			//         dealProduct:add
 			// ----------------------------------
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: '',
@@ -1526,7 +1526,7 @@ export class Pipedrive implements INodeType {
 				description: 'The ID of the deal to add a product to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Product ID',
+				displayName: 'Product Name or ID',
 				name: 'productId',
 				type: 'options',
 				default: '',
@@ -1639,7 +1639,7 @@ export class Pipedrive implements INodeType {
 			//        dealProduct:update
 			// ----------------------------------
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: '',
@@ -1660,7 +1660,7 @@ export class Pipedrive implements INodeType {
 				description: 'The ID of the deal whose product to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Product Attachment ID',
+				displayName: 'Product Attachment Name or ID',
 				name: 'productAttachmentId',
 				type: 'options',
 				default: '',
@@ -1756,7 +1756,7 @@ export class Pipedrive implements INodeType {
 			//        dealProduct:remove
 			// ----------------------------------
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: '',
@@ -1777,7 +1777,7 @@ export class Pipedrive implements INodeType {
 				description: 'The ID of the deal whose product to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Product Attachment ID',
+				displayName: 'Product Attachment Name or ID',
 				name: 'productAttachmentId',
 				type: 'options',
 				default: '',
@@ -1804,7 +1804,7 @@ export class Pipedrive implements INodeType {
 			//        dealProduct:getAll
 			// ----------------------------------
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: '',
@@ -2045,7 +2045,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this file will be associated with',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -2295,7 +2295,7 @@ export class Pipedrive implements INodeType {
 						},
 					},
 					{
-						displayName: 'Owner ID',
+						displayName: 'Owner Name or ID',
 						name: 'owner_id',
 						type: 'options',
 						typeOptions: {
@@ -2439,7 +2439,7 @@ export class Pipedrive implements INodeType {
 						description: 'Name of the lead to update',
 					},
 					{
-						displayName: 'Owner ID',
+						displayName: 'Owner Name or ID',
 						name: 'owner_id',
 						type: 'options',
 						typeOptions: {
@@ -2459,7 +2459,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the labels to attach to the lead to update',
 					},
 					{
-						displayName: 'Person ID',
+						displayName: 'Person Name or ID',
 						name: 'person_id',
 						type: 'options',
 						typeOptions: {
@@ -2688,7 +2688,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the lead this note will be associated with',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -2785,7 +2785,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 					{
-						displayName: 'Label',
+						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						typeOptions: {
@@ -3008,7 +3008,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 					{
-						displayName: 'Label',
+						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						typeOptions: {
@@ -3110,7 +3110,7 @@ export class Pipedrive implements INodeType {
 								displayName: 'Property',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -3141,7 +3141,7 @@ export class Pipedrive implements INodeType {
 						description: 'Email of the person',
 					},
 					{
-						displayName: 'Label',
+						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						typeOptions: {
@@ -3175,7 +3175,7 @@ export class Pipedrive implements INodeType {
 						description: 'Please be aware that it is only allowed once to change the marketing status from an old status to a new one',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -3212,7 +3212,7 @@ export class Pipedrive implements INodeType {
 						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'owner_id',
 						type: 'options',
 						typeOptions: {
@@ -3323,7 +3323,7 @@ export class Pipedrive implements INodeType {
 								displayName: 'Property',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -3354,7 +3354,7 @@ export class Pipedrive implements INodeType {
 						description: 'Email of the person',
 					},
 					{
-						displayName: 'Label',
+						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						typeOptions: {
@@ -3395,7 +3395,7 @@ export class Pipedrive implements INodeType {
 						description: 'The name of the person',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -3415,7 +3415,7 @@ export class Pipedrive implements INodeType {
 						description: 'Phone number of the person',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'owner_id',
 						type: 'options',
 						typeOptions: {
@@ -3533,7 +3533,7 @@ export class Pipedrive implements INodeType {
 			//        dealActivities:getAll
 			// ----------------------------------
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: '',
@@ -3658,7 +3658,7 @@ export class Pipedrive implements INodeType {
 						description: 'If supplied, only organizations whose name starts with the specified letter will be returned',
 					},
 					{
-						displayName: 'Predefined Filter',
+						displayName: 'Predefined Filter Name or ID',
 						name: 'filterId',
 						type: 'options',
 						typeOptions: {
@@ -3691,7 +3691,7 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Predefined Filter',
+						displayName: 'Predefined Filter Name or ID',
 						name: 'filterId',
 						type: 'options',
 						typeOptions: {
@@ -3822,7 +3822,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the lead this note will be associated with',
 					},
 					{
-						displayName: 'Organization ID',
+						displayName: 'Organization Name or ID',
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
@@ -3875,7 +3875,7 @@ export class Pipedrive implements INodeType {
 						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
-						displayName: 'Predefined Filter',
+						displayName: 'Predefined Filter Name or ID',
 						name: 'filterId',
 						type: 'options',
 						typeOptions: {
@@ -3902,7 +3902,7 @@ export class Pipedrive implements INodeType {
 						description: 'Type of the Activity',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
@@ -3934,7 +3934,7 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Predefined Filter',
+						displayName: 'Predefined Filter Name or ID',
 						name: 'filter_id',
 						type: 'options',
 						typeOptions: {
@@ -3944,7 +3944,7 @@ export class Pipedrive implements INodeType {
 						description: 'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Stage ID',
+						displayName: 'Stage Name or ID',
 						name: 'stage_id',
 						type: 'options',
 						typeOptions: {
@@ -3983,7 +3983,7 @@ export class Pipedrive implements INodeType {
 						description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {

@@ -79,7 +79,7 @@ export class WebflowTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Site',
+				displayName: 'Site Name or ID',
 				name: 'site',
 				type: 'options',
 				required: true,

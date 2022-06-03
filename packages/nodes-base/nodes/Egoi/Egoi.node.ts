@@ -90,7 +90,7 @@ export class Egoi implements INodeType {
 				default: 'create',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -204,7 +204,7 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field ID',
+										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
 										typeOptions: {
@@ -332,7 +332,7 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field ID',
+										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
 										typeOptions: {

@@ -74,7 +74,7 @@ export class WorkableTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Job',
+						displayName: 'Job Name or ID',
 						name: 'job',
 						type: 'options',
 						typeOptions: {
@@ -84,7 +84,7 @@ export class WorkableTrigger implements INodeType {
 						description: 'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Stage',
+						displayName: 'Stage Name or ID',
 						name: 'stage',
 						type: 'options',
 						typeOptions: {

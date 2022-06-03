@@ -26,7 +26,7 @@ export const singletonOperations: INodeProperties[] = [
 
 export const singletonFields: INodeProperties[] = [
 	{
-		displayName: 'Singleton',
+		displayName: 'Singleton Name or ID',
 		name: 'singleton',
 		type: 'options',
 		default: '',

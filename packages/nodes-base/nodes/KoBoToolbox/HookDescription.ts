@@ -52,7 +52,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -100,7 +100,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {

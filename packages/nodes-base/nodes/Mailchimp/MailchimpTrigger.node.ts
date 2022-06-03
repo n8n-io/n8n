@@ -86,7 +86,7 @@ export class MailchimpTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				required: true,

@@ -103,7 +103,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Category ID',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {

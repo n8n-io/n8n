@@ -142,7 +142,7 @@ export const attachmentFields: INodeProperties[] = [
 				description: 'Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -222,7 +222,7 @@ export const attachmentFields: INodeProperties[] = [
 				description: 'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -355,7 +355,7 @@ export const attachmentFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

@@ -34,7 +34,7 @@ export const personTagFields: INodeProperties[] = [
 	//             personTag: add
 	// ----------------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		description: 'ID of the tag to add. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
@@ -77,7 +77,7 @@ export const personTagFields: INodeProperties[] = [
 	//             personTag: remove
 	// ----------------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		description: 'ID of the tag whose tagging to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
@@ -98,7 +98,7 @@ export const personTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tagging ID',
+		displayName: 'Tagging Name or ID',
 		name: 'taggingId',
 		description: 'ID of the tagging to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',

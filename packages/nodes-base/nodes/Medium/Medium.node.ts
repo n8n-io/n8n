@@ -131,7 +131,7 @@ export class Medium implements INodeType {
 				description: 'Are you posting for a publication?',
 			},
 			{
-				displayName: 'Publication ID',
+				displayName: 'Publication Name or ID',
 				name: 'publicationId',
 				type: 'options',
 				displayOptions: {

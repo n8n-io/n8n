@@ -128,6 +128,7 @@ export class GoogleTranslate implements INodeType {
 				},
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Translate To',
 				name: 'translateTo',
 				type: 'options',
