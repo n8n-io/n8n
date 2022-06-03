@@ -129,6 +129,7 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'MM/DD/YYYY',
@@ -284,6 +285,7 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Quarters',

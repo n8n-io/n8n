@@ -263,6 +263,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Recurrence Month Of Year',
 				name: 'recurrenceMonthOfYear',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'January',
@@ -612,6 +613,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Recurrence Month Of Year',
 				name: 'recurrenceMonthOfYear',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'January',
@@ -881,6 +883,14 @@ export const taskFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+									{
 										name: '=',
 										value: 'equal',
 									},
@@ -889,16 +899,8 @@ export const taskFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

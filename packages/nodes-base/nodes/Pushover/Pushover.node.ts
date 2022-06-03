@@ -123,6 +123,7 @@ export class Pushover implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Lowest Priority',

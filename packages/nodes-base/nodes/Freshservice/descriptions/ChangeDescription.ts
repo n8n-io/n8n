@@ -273,6 +273,7 @@ export const changeFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				default: 1,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Open',
@@ -649,6 +650,7 @@ export const changeFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				default: 1,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Open',
