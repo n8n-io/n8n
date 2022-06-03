@@ -20,7 +20,7 @@ import {
 	Address,
 	Filter,
 	FilterGroup,
-	ProductAttribute,
+	ProductAttribute, Region,
 	Search,
 } from './Types';
 
@@ -188,7 +188,7 @@ export function getAddressesUi(): INodeProperties {
 }
 
 // tslint:disable-next-line: no-any
-export function adjustAddresses(addresses: [{ street: string, [key: string]: string }]): Address[] {
+export function adjustAddresses(addresses: Array<{ street: string, region?: Region }>): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
 		if (addresses[i]?.region === '') {

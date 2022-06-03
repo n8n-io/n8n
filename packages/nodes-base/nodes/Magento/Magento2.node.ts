@@ -326,7 +326,7 @@ export class Magento2 implements INodeType {
 
 						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
-						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
+						body.customer!.custom_attributes = customAttributes?.customAttribute || [];
 
 						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
 							// tslint:disable-next-line: no-any
@@ -443,7 +443,7 @@ export class Magento2 implements INodeType {
 
 						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
-						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
+						body.customer!.custom_attributes = customAttributes?.customAttribute || [];
 
 						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
 							// tslint:disable-next-line: no-any
@@ -575,7 +575,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.product!.custom_attributes = customAttributes?.customAttribute || {};
+						body.product!.custom_attributes = customAttributes?.customAttribute || [];
 
 						Object.assign(body.product, rest);
 
@@ -662,7 +662,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.product!.custom_attributes = customAttributes?.customAttribute || {};
+						body.product!.custom_attributes = customAttributes?.customAttribute || [];
 
 						Object.assign(body.product, rest);
 

@@ -21,7 +21,7 @@
     "build:esbuild": "node scripts/build.mjs",
     "build:gulp": "gulp build:assets build:translations",
     "build:dts": "tsc --project tsconfig.dts.json",
-    "build:typecheck": "tsc --noEmit",
+    "build:typecheck": "tsc nodes/**/*.ts credentials/*.ts src/*.ts --module esnext --noEmit --skipLibCheck --moduleResolution node --allowSyntheticDefaultImports --downlevelIteration --lib dom,es2019",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
