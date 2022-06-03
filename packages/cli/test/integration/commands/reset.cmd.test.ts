@@ -26,15 +26,7 @@ afterAll(async () => {
 });
 
 test('user-management:reset should reset DB to default user state', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-	await authOwnerAgent.post('/owner').send({
-		email: randomEmail(),
-		firstName: randomName(),
-		lastName: randomName(),
-		password: randomValidPassword(),
-	});
+	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const command = [path.join('bin', 'n8n'), 'user-management:reset'].join(' ');
 
