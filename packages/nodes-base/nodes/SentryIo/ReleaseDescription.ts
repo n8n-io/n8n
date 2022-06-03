@@ -613,7 +613,7 @@ export const releaseFields: INodeProperties[] = [
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
-				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed.',
+				description: 'An optional date that indicates when the release went live. If not provided the current time is assumed.',
 			},
 			{
 				displayName: 'Ref',
