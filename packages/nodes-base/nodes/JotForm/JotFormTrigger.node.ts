@@ -53,7 +53,7 @@ export class JotFormTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -61,7 +61,7 @@ export class JotFormTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				default: '',
-				description: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
 				displayName: 'Resolve Data',

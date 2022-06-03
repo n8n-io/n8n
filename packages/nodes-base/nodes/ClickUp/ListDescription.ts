@@ -62,7 +62,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -82,7 +82,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -122,7 +122,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -220,7 +220,7 @@ export const listFields: INodeProperties[] = [
 				default: 3,
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -300,7 +300,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:customFields                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -320,7 +320,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -360,7 +360,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -386,7 +386,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -412,7 +412,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -442,7 +442,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -462,7 +462,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -502,7 +502,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -549,7 +549,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -569,7 +569,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -609,7 +609,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -656,7 +656,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -676,7 +676,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -716,7 +716,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -792,7 +792,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -812,7 +812,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -852,7 +852,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -912,7 +912,7 @@ export const listFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {

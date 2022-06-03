@@ -59,48 +59,48 @@ export class TelegramTrigger implements INodeType {
 						description: 'All updates',
 					},
 					{
-						name: 'message',
+						name: 'Message',
 						value: 'message',
 						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc',
 					},
 					{
-						name: 'edited_message',
+						name: 'Edited Message',
 						value: 'edited_message',
 						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
-						name: 'channel_post',
+						name: 'Channel Post',
 						value: 'channel_post',
 						description: 'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
 					},
 					{
-						name: 'edited_channel_post',
+						name: 'Edited Channel Post',
 						value: 'edited_channel_post',
 						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
-						name: 'inline_query',
+						name: 'Inline Query',
 						value: 'inline_query',
 						description: 'Trigger on new incoming inline query',
 					},
 					{
-						name: 'callback_query',
+						name: 'Callback Query',
 						value: 'callback_query',
 						description: 'Trigger on new incoming callback query',
 					},
 
 					{
-						name: 'shipping_query',
+						name: 'Shipping Query',
 						value: 'shipping_query',
 						description: 'Trigger on new incoming shipping query. Only for invoices with flexible price.',
 					},
 					{
-						name: 'pre_checkout_query',
+						name: 'Pre-Checkout Query',
 						value: 'pre_checkout_query',
 						description: 'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
 					},
 					{
-						name: 'poll',
+						name: 'Poll',
 						value: 'poll',
 						description: 'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},

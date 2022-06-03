@@ -191,14 +191,12 @@ export const customerFields: INodeProperties[] = [
 						name: 'line1',
 						type: 'string',
 						default: '',
-						description: 'line1',
 					},
 					{
 						displayName: 'Line 2',
 						name: 'line2',
 						type: 'string',
 						default: '',
-						description: 'line2',
 					},
 					{
 						displayName: 'City',
@@ -213,7 +211,7 @@ export const customerFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country',
 						type: 'options',
 						typeOptions: {
@@ -517,7 +515,7 @@ export const customerFields: INodeProperties[] = [
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Social Profile handle (url for example)',
+						description: 'Social Profile handle (URL for example)',
 					},
 				],
 			},
