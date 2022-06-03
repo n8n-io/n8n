@@ -21,6 +21,7 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 
 export * from 'n8n-design-system/src/types';
@@ -578,12 +579,19 @@ export interface IUserManagementConfig {
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
-	um?: boolean;
+}
+
+export interface IPermissionAllowGroup extends IPermissionGroup {
+	shouldAllow?: () => boolean;
+}
+
+export interface IPermissionDenyGroup extends IPermissionGroup {
+	shouldDeny?: () => boolean;
 }
 
 export interface IPermissions {
-	allow?: IPermissionGroup;
-	deny?: IPermissionGroup;
+	allow?: IPermissionAllowGroup;
+	deny?: IPermissionDenyGroup;
 }
 
 export interface IUserPermissions {
@@ -681,6 +689,8 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	executionMode: string;
+	communityNodesFeatureEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -928,6 +938,12 @@ export interface IUsersState {
 }
 
 export interface IWorkflowsState {
+}
+
+export interface ICommunityNodesState {
+	availablePackageCount: number;
+	loading: boolean;
+	installedPackages: PublicInstalledPackage[];
 }
 
 export interface IRestApiContext {

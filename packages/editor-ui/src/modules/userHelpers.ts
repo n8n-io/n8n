@@ -42,10 +42,19 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
-export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
+/**
+ * To be authorized, user must pass all deny rules and pass any of the allow rules.
+ *
+ * @param permissions
+ * @param currentUser
+ * @returns
+ */
+export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
+	// big AND block
+	// if any of these are false, block user
 	if (permissions.deny) {
-		if (permissions.deny.um === isUMEnabled) {
+		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
 			return false;
 		}
 
@@ -54,7 +63,7 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -64,8 +73,10 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 	}
 
+	// big OR block
+	// if any of these are true, allow user
 	if (permissions.allow) {
-		if (permissions.allow.um === isUMEnabled) {
+		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
 			return true;
 		}
 
@@ -74,7 +85,7 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}
