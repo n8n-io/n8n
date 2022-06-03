@@ -680,10 +680,6 @@ export const ticketFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Updated At',
-						value: 'updated_at',
-					},
-					{
 						name: 'Created At',
 						value: 'created_at',
 					},
@@ -698,6 +694,10 @@ export const ticketFields: INodeProperties[] = [
 					{
 						name: 'Ticket Type',
 						value: 'ticket_type',
+					},
+					{
+						name: 'Updated At',
+						value: 'updated_at',
 					},
 				],
 				default: 'updated_at',

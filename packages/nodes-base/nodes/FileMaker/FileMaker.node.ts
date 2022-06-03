@@ -58,6 +58,22 @@ export class FileMaker implements INodeType {
 						value: 'logout',
 					},*/
 					{
+						name: 'Create Record',
+						value: 'create',
+					},
+					{
+						name: 'Delete Record',
+						value: 'delete',
+					},
+					{
+						name: 'Duplicate Record',
+						value: 'duplicate',
+					},
+					{
+						name: 'Edit Record',
+						value: 'edit',
+					},
+					{
 						name: 'Find Records',
 						value: 'find',
 					},
@@ -72,22 +88,6 @@ export class FileMaker implements INodeType {
 					{
 						name: 'Perform Script',
 						value: 'performscript',
-					},
-					{
-						name: 'Create Record',
-						value: 'create',
-					},
-					{
-						name: 'Edit Record',
-						value: 'edit',
-					},
-					{
-						name: 'Duplicate Record',
-						value: 'duplicate',
-					},
-					{
-						name: 'Delete Record',
-						value: 'delete',
 					},
 				],
 			},

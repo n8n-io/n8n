@@ -425,6 +425,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
 				'n8n-nodes-base/node-param-placeholder-miscased-id': 'error',
 				'n8n-nodes-base/node-param-description-miscased-url': 'error',
+				'n8n-nodes-base/node-param-options-type-unsorted-items': 'error',
 			},
 		},
 	],

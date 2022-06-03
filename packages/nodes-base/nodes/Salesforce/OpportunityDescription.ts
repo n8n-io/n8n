@@ -687,6 +687,14 @@ export const opportunityFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+									{
 										name: '=',
 										value: 'equal',
 									},
@@ -695,16 +703,8 @@ export const opportunityFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

@@ -84,20 +84,20 @@ export const alertContactFields: INodeProperties[] = [
 				value: 2,
 			},
 			{
-				name: 'SMS',
-				value: 1,
-			},
-			{
-				name: 'Twitter DM',
-				value: 3,
-			},
-			{
 				name: 'Pushbullet',
 				value: 6,
 			},
 			{
 				name: 'Pushover',
 				value: 9,
+			},
+			{
+				name: 'SMS',
+				value: 1,
+			},
+			{
+				name: 'Twitter DM',
+				value: 3,
 			},
 			{
 				name: 'Webhook',
@@ -116,7 +116,6 @@ export const alertContactFields: INodeProperties[] = [
 			// 	name:'Zapier',
 			// 	value:7,
 			// },
-
 		],
 		displayOptions: {
 			show: {

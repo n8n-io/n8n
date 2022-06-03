@@ -666,20 +666,12 @@ export const dealFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
+												name: 'Contains Exactly',
+												value: 'CONSTAIN_TOKEN',
+											},
+											{
 												name: 'Equal',
 												value: 'EQ',
-											},
-											{
-												name: 'Not Equal',
-												value: 'NEQ',
-											},
-											{
-												name: 'Less Than',
-												value: 'LT',
-											},
-											{
-												name: 'Less Than Or Equal',
-												value: 'LTE',
 											},
 											{
 												name: 'Greater Than',
@@ -698,12 +690,16 @@ export const dealFields: INodeProperties[] = [
 												value: 'NOT_HAS_PROPERTY',
 											},
 											{
-												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
+												name: 'Less Than',
+												value: 'LT',
 											},
 											{
-												name: `Doesn't Contain Exactly`,
-												value: 'NOT_CONSTAIN_TOKEN',
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
 											},
 										],
 										default: 'EQ',

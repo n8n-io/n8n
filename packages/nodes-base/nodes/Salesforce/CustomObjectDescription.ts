@@ -466,6 +466,14 @@ export const customObjectFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+									{
 										name: '=',
 										value: 'equal',
 									},
@@ -474,16 +482,8 @@ export const customObjectFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

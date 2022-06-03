@@ -27,11 +27,6 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Add note to a contact',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a contact',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
@@ -42,19 +37,24 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
 			},
 			{
-				name: 'Get Summary',
-				value: 'getSummary',
-				description: 'Returns an overview of contact\'s metadata',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+			},
+			{
+				name: 'Get Summary',
+				value: 'getSummary',
+				description: 'Returns an overview of contact\'s metadata',
 			},
 			{
 				name: 'Update',
@@ -850,6 +850,14 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+									{
 										name: '=',
 										value: 'equal',
 									},
@@ -858,16 +866,8 @@ export const contactFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

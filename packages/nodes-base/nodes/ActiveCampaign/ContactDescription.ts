@@ -406,24 +406,24 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Active',
+						value: 1,
+					},
+					{
 						name: 'Any',
 						value: -1,
+					},
+					{
+						name: 'Bounced',
+						value: 3,
 					},
 					{
 						name: 'Unconfirmed',
 						value: 0,
 					},
 					{
-						name: 'Active',
-						value: 1,
-					},
-					{
 						name: 'Unsubscribed',
 						value: 2,
-					},
-					{
-						name: 'Bounced',
-						value: 3,
 					},
 				],
 				default: '',

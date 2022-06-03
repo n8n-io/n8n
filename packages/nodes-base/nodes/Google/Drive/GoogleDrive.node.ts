@@ -307,20 +307,20 @@ export class GoogleDrive implements INodeType {
 										type: 'options',
 										options: [
 											{
-												name: 'To MS Word',
-												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+												name: 'To HTML',
+												value: 'text/html',
 											},
 											{
-												name: 'To PDF',
-												value: 'application/pdf',
+												name: 'To MS Word',
+												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 											},
 											{
 												name: 'To OpenOffice Doc',
 												value: 'application/vnd.oasis.opendocument.text',
 											},
 											{
-												name: 'To HTML',
-												value: 'text/html',
+												name: 'To PDF',
+												value: 'application/pdf',
 											},
 											{
 												name: 'To Rich Text',
@@ -546,11 +546,6 @@ export class GoogleDrive implements INodeType {
 								name: 'mimeType',
 								type: 'options',
 								options: [
-
-									{
-										name: 'Custom Mime Type',
-										value: 'custom',
-									},
 									{
 										name: '3rd party shortcut',
 										value: 'application/vnd.google-apps.drive-sdk',
@@ -558,6 +553,10 @@ export class GoogleDrive implements INodeType {
 									{
 										name: 'Audio',
 										value: 'application/vnd.google-apps.audio',
+									},
+									{
+										name: 'Custom Mime Type',
+										value: 'custom',
 									},
 									{
 										name: 'Google Apps Scripts',
@@ -615,7 +614,6 @@ export class GoogleDrive implements INodeType {
 										name: 'Video',
 										value: 'application/vnd.google-apps.video',
 									},
-
 								],
 								default: 'application/vnd.google-apps.file',
 								description: 'The Mime-Type of the files to return',
@@ -692,28 +690,28 @@ export class GoogleDrive implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'Owner',
-										value: 'owner',
-									},
-									{
-										name: 'Organizer',
-										value: 'organizer',
+										name: 'Commenter',
+										value: 'commenter',
 									},
 									{
 										name: 'File Organizer',
 										value: 'fileOrganizer',
 									},
 									{
-										name: 'Writer',
-										value: 'writer',
+										name: 'Organizer',
+										value: 'organizer',
 									},
 									{
-										name: 'Commenter',
-										value: 'commenter',
+										name: 'Owner',
+										value: 'owner',
 									},
 									{
 										name: 'Reader',
 										value: 'reader',
+									},
+									{
+										name: 'Writer',
+										value: 'writer',
 									},
 								],
 								default: '',

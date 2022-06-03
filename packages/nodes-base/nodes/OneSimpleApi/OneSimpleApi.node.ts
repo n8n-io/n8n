@@ -286,12 +286,12 @@ export class OneSimpleApi implements INodeType {
 								value: 'A6',
 							},
 							{
-								name: 'Legal',
-								value: 'Legal',
-							},
-							{
 								name: 'Ledger',
 								value: 'Ledger',
+							},
+							{
+								name: 'Legal',
+								value: 'Legal',
 							},
 							{
 								name: 'Letter',

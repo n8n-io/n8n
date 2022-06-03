@@ -274,16 +274,6 @@ export const operationFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Equal',
-										value: 'equal',
-										description: 'Field is equal to value',
-									},
-									{
-										name: 'Not Equal',
-										value: 'not_equal',
-										description: 'Field is not equal to value',
-									},
-									{
 										name: 'Contains',
 										value: 'contains',
 										description: 'Field contains value',
@@ -294,29 +284,9 @@ export const operationFields: INodeProperties[] = [
 										description: 'Field does not contain value',
 									},
 									{
-										name: 'Date Equal',
-										value: 'date_equal',
-										description: 'Field is date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date Not Equal',
-										value: 'date_not_equal',
-										description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date Equals Today',
-										value: 'date_equals_today',
-										description: 'Field is today. Format: string.',
-									},
-									{
-										name: 'Date Equals Month',
-										value: 'date_equals_month',
-										description: 'Field in this month. Format: string.',
-									},
-									{
-										name: 'Date Equals Year',
-										value: 'date_equals_year',
-										description: 'Field in this year. Format: string.',
+										name: 'Date After Date',
+										value: 'date_after',
+										description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
 										name: 'Date Before Date',
@@ -324,9 +294,34 @@ export const operationFields: INodeProperties[] = [
 										description: 'Field before this date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
-										name: 'Date After Date',
-										value: 'date_after',
-										description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
+										name: 'Date Equal',
+										value: 'date_equal',
+										description: 'Field is date. Format: \'YYYY-MM-DD\'.',
+									},
+									{
+										name: 'Date Equals Month',
+										value: 'date_equals_month',
+										description: 'Field in this month. Format: string.',
+									},
+									{
+										name: 'Date Equals Today',
+										value: 'date_equals_today',
+										description: 'Field is today. Format: string.',
+									},
+									{
+										name: 'Date Equals Year',
+										value: 'date_equals_year',
+										description: 'Field in this year. Format: string.',
+									},
+									{
+										name: 'Date Not Equal',
+										value: 'date_not_equal',
+										description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
+									},
+									{
+										name: 'Equal',
+										value: 'equal',
+										description: 'Field is equal to value',
 									},
 									{
 										name: 'Filename Contains',
@@ -337,11 +332,6 @@ export const operationFields: INodeProperties[] = [
 										name: 'Higher Than',
 										value: 'higher_than',
 										description: 'Field is higher than value',
-									},
-									{
-										name: 'Lower Than',
-										value: 'lower_than',
-										description: 'Field is lower than value',
 									},
 									{
 										name: 'Is Empty',
@@ -359,14 +349,24 @@ export const operationFields: INodeProperties[] = [
 										description: 'Boolean field is true',
 									},
 									{
+										name: 'Link Row Does Not Have',
+										value: 'link_row_has_not',
+										description: 'Field does not have link ID',
+									},
+									{
 										name: 'Link Row Has',
 										value: 'link_row_has',
 										description: 'Field has link ID',
 									},
 									{
-										name: 'Link Row Does Not Have',
-										value: 'link_row_has_not',
-										description: 'Field does not have link ID',
+										name: 'Lower Than',
+										value: 'lower_than',
+										description: 'Field is lower than value',
+									},
+									{
+										name: 'Not Equal',
+										value: 'not_equal',
+										description: 'Field is not equal to value',
 									},
 									{
 										name: 'Single Select Equal',

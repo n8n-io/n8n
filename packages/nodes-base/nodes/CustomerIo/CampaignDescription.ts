@@ -164,12 +164,12 @@ export const campaignFields: INodeProperties[] = [
 				description: 'Specify metric type',
 				options: [
 					{
-						name: 'Empty',
-						value: 'empty',
-					},
-					{
 						name: 'Email',
 						value: 'email',
+					},
+					{
+						name: 'Empty',
+						value: 'empty',
 					},
 					{
 						name: 'Push',

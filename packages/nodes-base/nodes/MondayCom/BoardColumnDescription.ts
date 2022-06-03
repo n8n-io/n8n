@@ -79,12 +79,12 @@ export const boardColumnFields: INodeProperties[] = [
 		default: '',
 		options: [
 			{
-				name: 'Country',
-				value: 'country',
-			},
-			{
 				name: 'Checkbox',
 				value: 'checkbox',
+			},
+			{
+				name: 'Country',
+				value: 'country',
 			},
 			{
 				name: 'Date',

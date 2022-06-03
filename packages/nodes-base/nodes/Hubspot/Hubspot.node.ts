@@ -158,16 +158,16 @@ export class Hubspot implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Company',
+						value: 'company',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 					},
 					{
 						name: 'Contact List',
 						value: 'contactList',
-					},
-					{
-						name: 'Company',
-						value: 'company',
 					},
 					{
 						name: 'Deal',

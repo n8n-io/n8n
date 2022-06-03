@@ -800,6 +800,14 @@ export const accountFields: INodeProperties[] = [
 								noDataExpression: true,
 								options: [
 									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+									{
 										name: '=',
 										value: 'equal',
 									},
@@ -808,16 +816,8 @@ export const accountFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

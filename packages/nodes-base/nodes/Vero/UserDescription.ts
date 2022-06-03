@@ -15,9 +15,9 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
-				value: 'create',
-				description: 'Create or update a user profile',
+				name: 'Add Tags',
+				value: 'addTags',
+				description: 'Adds a tag to a users profile',
 			},
 			{
 				name: 'Alias',
@@ -25,14 +25,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Change a users identifier',
 			},
 			{
-				name: 'Unsubscribe',
-				value: 'unsubscribe',
-				description: 'Unsubscribe a user',
-			},
-			{
-				name: 'Re-subscribe',
-				value: 'resubscribe',
-				description: 'Resubscribe a user',
+				name: 'Create/Update',
+				value: 'create',
+				description: 'Create or update a user profile',
 			},
 			{
 				name: 'Delete',
@@ -40,14 +35,19 @@ export const userOperations: INodeProperties[] = [
 				description: 'Delete a user',
 			},
 			{
-				name: 'Add Tags',
-				value: 'addTags',
-				description: 'Adds a tag to a users profile',
+				name: 'Re-subscribe',
+				value: 'resubscribe',
+				description: 'Resubscribe a user',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
 				description: 'Removes a tag from a users profile',
+			},
+			{
+				name: 'Unsubscribe',
+				value: 'unsubscribe',
+				description: 'Unsubscribe a user',
 			},
 		],
 		default: 'create',

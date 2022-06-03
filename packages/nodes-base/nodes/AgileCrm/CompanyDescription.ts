@@ -230,32 +230,32 @@ export const companyFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Equals',
-								value: 'EQUALS',
-							},
-							{
-								name: 'Not Equal',
-								value: 'NOTEQUALS',
-							},
-							{
-								name: 'Last',
-								value: 'LAST',
-							},
-							{
-								name: 'Between',
-								value: 'BETWEEN',
-							},
-							{
-								name: 'On',
-								value: 'ON',
+								name: 'After',
+								value: 'AFTER',
 							},
 							{
 								name: 'Before',
 								value: 'BEFORE',
 							},
 							{
-								name: 'After',
-								value: 'AFTER',
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'On',
+								value: 'ON',
 							},
 						],
 						default: 'EQUALS',

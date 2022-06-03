@@ -17,6 +17,11 @@ export const organizationOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count organizations',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an organization',
@@ -25,11 +30,6 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an organization',
-			},
-			{
-				name: 'Count',
-				value: 'count',
-				description: 'Count organizations',
 			},
 			{
 				name: 'Get',

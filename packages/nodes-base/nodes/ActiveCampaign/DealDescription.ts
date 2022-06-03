@@ -30,6 +30,11 @@ export const dealOperations: INodeProperties[] = [
 				description: 'Create a deal',
 			},
 			{
+				name: 'Create Note',
+				value: 'createNote',
+				description: 'Create a deal note',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a deal',
@@ -48,11 +53,6 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a deal',
-			},
-			{
-				name: 'Create Note',
-				value: 'createNote',
-				description: 'Create a deal note',
 			},
 			{
 				name: 'Update deal note',

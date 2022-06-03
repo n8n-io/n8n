@@ -62,14 +62,14 @@ export class ItemLists implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Split Out Items',
-						value: 'splitOutItems',
-						description: 'Turn a list inside item(s) into separate items',
-					},
-					{
 						name: 'Aggregate Items',
 						value: 'aggregateItems',
 						description: 'Merge fields into a single new item',
+					},
+					{
+						name: 'Limit',
+						value: 'limit',
+						description: 'Remove items if there are too many',
 					},
 					{
 						name: 'Remove Duplicates',
@@ -82,9 +82,9 @@ export class ItemLists implements INodeType {
 						description: 'Change the item order',
 					},
 					{
-						name: 'Limit',
-						value: 'limit',
-						description: 'Remove items if there are too many',
+						name: 'Split Out Items',
+						value: 'splitOutItems',
+						description: 'Turn a list inside item(s) into separate items',
 					},
 				],
 				default: 'splitOutItems',
