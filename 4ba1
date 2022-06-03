@@ -1,10 +1,320 @@
  
-   1cac: +
-   
+   1cac: + 
+   name: Node CI
+
+on: [push]
+
+jobs: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install, build, and test
+      run: |RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm install
+        npm run bootstrap
+        npm run build --if-present
+        npm RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm run lint
+      env: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        CI: true
+
    df64: +
-   
+  name: Node CI
+
+on: [push]
+
+jobs: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install, build, and test
+      run: |RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm install
+        npm run bootstrap
+        npm run build --if-present
+        npm RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm run lint
+      env: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        CI: true
+ 
    1add: +
-   
+   name: Node CI
+
+on: [push]
+
+jobs: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install, build, and test
+      run: |RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm install
+        npm run bootstrap
+        npm run build --if-present
+        npm RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm run lint
+      env: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        CI: true
+
    e50f: +
-   
+  name: Node CI
+
+on: [push]
+
+jobs: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install, build, and test
+      run: |RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm install
+        npm run bootstrap
+        npm run build --if-present
+        npm RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm run lint
+      env: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        CI: true
+ 
    4ba1: +
+name: Node CI
+
+on: [push]
+
+jobs: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install, build, and test
+      run: |RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm install
+        npm run bootstrap
+        npm run build --if-present
+        npm RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        npm run lint
+      env: RUN  v0.9.3 /home/runner/work/ln_ui_n8n/ln_ui_n8n/packages/design-system
+
+ √ src/components/N8nBadge/__tests__/Badge.spec.ts  (3 tests) 119ms
+ √ src/components/N8nNotice/__tests__/Notice.spec.ts  (6 tests) 261ms
+
+Test Files  2 passed (2)
+     Tests  9 passed (9)
+      Time  5.30s (in thread 380ms, 1394.78%)
+
+        CI: true
