@@ -18,6 +18,12 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/v3/contacts',
+					},
+				}
 			},
 			{
 				name: 'Delete',
@@ -30,6 +36,18 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				routing: {
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'contacts',
+								},
+							},
+						],
+					},
+				}
 			},
 			{
 				name: 'Update',
@@ -57,25 +75,9 @@ const createOperations: Array<INodeProperties> = [
 		},
 		default: '',
 		routing: {
-			request: {
-				method: 'POST',
-				url: '/v3/contacts',
-			},
 			send: {
 				type: 'body',
-				property: '=email',
-				preSend: [
-					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
-						// if something special is required it is possible to write custom code and get from parameter
-						if(this.getNodeParameter('email') != '' && this.getNodeParameter('sms') == '') {
-							const value = requestOptions?.body?.valueOf();
-							delete (value as IDataObject).SMS;
-						};
-
-						return requestOptions;
-					},
-				]
+				property: 'email',
 			}
 		}
 	},
@@ -95,26 +97,9 @@ const createOperations: Array<INodeProperties> = [
 		},
 		default: '',
 		routing: {
-			request: {
-				method: 'POST',
-				url: '={{$credentials.domain}}/v3/contacts',
-			},
 			send: {
 				type: 'body',
-				property: '=SMS',
-				preSend: [
-					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
-						// if something special is required it is possible to write custom code and get from parameter
-						if(this.getNodeParameter('email') == '' && this.getNodeParameter('sms') != '') {
-							const value = requestOptions?.body?.valueOf();
-							delete (value as IDataObject).email;
-							requestOptions.body = { attributes: { ...requestOptions.body as IDataObject } };
-						};
-
-						return requestOptions;
-					},
-				]
+				property: 'sms',
 			}
 		}
 	},
@@ -226,22 +211,6 @@ const getAllOperations: Array<INodeProperties> = [
 			},
 			send: {
 				paginate: false,
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'rootProperty',
-						properties: {
-							property: 'contacts',
-						},
-					},
-					{
-						type: 'set',
-						properties: {
-							value: '={{ { "contacts": $response.body.contacts, "count": $response.body.count } }}', // Also possible to use the original response data
-						},
-					},
-				],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
