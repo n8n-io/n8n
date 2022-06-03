@@ -65,7 +65,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name/ID',
+		displayName: 'Group Name or ID',
 		name: 'group',
 		type: 'options',
 		typeOptions: {
@@ -87,7 +87,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Customer Email',
+		displayName: 'Customer Email Name or ID',
 		name: 'customer',
 		type: 'options',
 		typeOptions: {
@@ -268,7 +268,7 @@ export const ticketDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {

@@ -263,7 +263,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'The behaviour to use when updating inventory',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
@@ -422,7 +422,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'lineItemValues',
 				values: [
 					{
-						displayName: 'Product ID',
+						displayName: 'Product Name or ID',
 						name: 'productId',
 						type: 'options',
 						typeOptions: {
@@ -833,7 +833,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'The customer\'s email address',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {

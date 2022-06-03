@@ -256,7 +256,7 @@ export class Pushover implements INodeType {
 						description: 'Whether to enable messages formatting with HTML tags',
 					},
 					{
-						displayName: 'Sound',
+						displayName: 'Sound Name or ID',
 						name: 'sound',
 						type: 'options',
 						typeOptions: {

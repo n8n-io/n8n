@@ -51,7 +51,7 @@ export class NetlifyTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Site Name/ID',
+				displayName: 'Site Name or ID',
 				name: 'siteId',
 				required: true,
 				type: 'options',
@@ -87,7 +87,7 @@ export class NetlifyTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Form ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				required: true,

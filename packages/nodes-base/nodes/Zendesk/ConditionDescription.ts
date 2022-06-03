@@ -289,6 +289,7 @@ export const conditionFields: INodeProperties[] = [
 		default: 'low',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',
@@ -313,6 +314,7 @@ export const conditionFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',

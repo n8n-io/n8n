@@ -51,7 +51,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: getAll
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -158,7 +158,7 @@ export const documentFields: INodeProperties[] = [
 						name: 'customProperty',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -219,7 +219,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: create
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		default: '',
@@ -267,7 +267,7 @@ export const documentFields: INodeProperties[] = [
 				placeholder: 'Add Property',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
 						typeOptions: {
@@ -293,7 +293,7 @@ export const documentFields: INodeProperties[] = [
 	//          document: get
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -336,7 +336,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: delete
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -379,7 +379,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: update
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -443,7 +443,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'customProperty',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
 						typeOptions: {

@@ -42,7 +42,7 @@ export const boardGroupFields: INodeProperties[] = [
 /*                                 boardGroup:create                          */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -83,7 +83,7 @@ export const boardGroupFields: INodeProperties[] = [
 /*                                 boardGroup:delete                          */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -103,7 +103,7 @@ export const boardGroupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
 		default: '',
@@ -129,7 +129,7 @@ export const boardGroupFields: INodeProperties[] = [
 /*                                 boardGroup:getAll                          */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',

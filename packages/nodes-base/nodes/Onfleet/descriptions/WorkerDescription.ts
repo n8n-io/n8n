@@ -333,7 +333,7 @@ const scheduleDateField = {
 } as INodeProperties;
 
 const scheduleTimezoneField = {
-	displayName: 'Timezone',
+	displayName: 'Timezone Name or ID',
 	name: 'timezone',
 	type: 'options',
 	typeOptions: {

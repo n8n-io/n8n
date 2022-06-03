@@ -46,7 +46,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -173,7 +173,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:get/delete/update/getAll              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {

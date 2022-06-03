@@ -85,7 +85,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
@@ -298,7 +298,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {

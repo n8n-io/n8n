@@ -52,7 +52,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getPermalink
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -463,7 +463,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:update                          */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -1732,7 +1732,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

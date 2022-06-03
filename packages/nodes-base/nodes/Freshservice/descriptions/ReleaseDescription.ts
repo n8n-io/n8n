@@ -226,7 +226,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -243,7 +243,7 @@ export const releaseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name/ID',
+				displayName: 'Group Name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -382,7 +382,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name/ID',
+				displayName: 'Department Name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -399,7 +399,7 @@ export const releaseFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group Name/ID',
+				displayName: 'Group Name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',

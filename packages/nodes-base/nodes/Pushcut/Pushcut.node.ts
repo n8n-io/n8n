@@ -71,7 +71,7 @@ export class Pushcut implements INodeType {
 				default: 'send',
 			},
 			{
-				displayName: 'Notification Name',
+				displayName: 'Notification Name or ID',
 				name: 'notificationName',
 				type: 'options',
 				typeOptions: {

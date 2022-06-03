@@ -67,7 +67,7 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
 		default: '',
@@ -87,7 +87,7 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Primary Contact',
+		displayName: 'Primary Contact Name or ID',
 		name: 'primaryContact',
 		type: 'options',
 		default: '',
@@ -269,7 +269,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an deal',
 			},
 			{
-				displayName: 'Primary Company',
+				displayName: 'Primary Company Name or ID',
 				name: 'primaryCompany',
 				type: 'options',
 				typeOptions: {
@@ -399,7 +399,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				default: '',
@@ -408,7 +408,7 @@ export const dealFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Primary Contact',
+				displayName: 'Primary Contact Name or ID',
 				name: 'primaryContact',
 				type: 'options',
 				default: '',
@@ -500,7 +500,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an deal',
 			},
 			{
-				displayName: 'Primary Company',
+				displayName: 'Primary Company Name or ID',
 				name: 'primaryCompany',
 				type: 'options',
 				typeOptions: {

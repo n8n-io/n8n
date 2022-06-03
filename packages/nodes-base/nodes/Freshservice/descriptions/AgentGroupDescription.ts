@@ -91,7 +91,7 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Name/ID',
+				displayName: 'Escalate to Agent Name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
@@ -297,7 +297,7 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Names/IDs',
+				displayName: 'Escalate to Agent Name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',

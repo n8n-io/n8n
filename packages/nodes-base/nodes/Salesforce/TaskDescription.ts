@@ -57,7 +57,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Status',
+		displayName: 'Status Name or ID',
 		name: 'status',
 		type: 'options',
 		required: true,
@@ -129,7 +129,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
-				displayName: 'Call Type',
+				displayName: 'Call Type Name or ID',
 				name: 'callType',
 				type: 'options',
 				default: '',
@@ -154,7 +154,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -192,7 +192,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -202,7 +202,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'ID of the User who owns the record',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				default: '',
@@ -212,7 +212,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Indicates the importance or urgency of a task, such as high or low',
 			},
 			{
-				displayName: 'Recurrence Type',
+				displayName: 'Recurrence Type Name or ID',
 				name: 'recurrenceType',
 				type: 'options',
 				default: '',
@@ -222,7 +222,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Recurrence Type of the task',
 			},
 			{
-				displayName: 'Recurrence Instance',
+				displayName: 'Recurrence Instance Name or ID',
 				name: 'recurrenceInstance',
 				type: 'options',
 				typeOptions: {
@@ -360,7 +360,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
-				displayName: 'Subject',
+				displayName: 'Subject Name or ID',
 				name: 'subject',
 				type: 'options',
 				default: '',
@@ -370,7 +370,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
@@ -469,7 +469,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
-				displayName: 'Call Type',
+				displayName: 'Call Type Name or ID',
 				name: 'callType',
 				type: 'options',
 				default: '',
@@ -494,7 +494,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -532,7 +532,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -542,7 +542,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'ID of the User who owns the record',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				default: '',
@@ -552,7 +552,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Indicates the importance or urgency of a task, such as high or low',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				default: '',
@@ -562,7 +562,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'The current status of the task, such as In Progress or Completed',
 			},
 			{
-				displayName: 'Subject',
+				displayName: 'Subject Name or ID',
 				name: 'subject',
 				type: 'options',
 				default: '',
@@ -593,7 +593,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'The last date on which the task repeats. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
-				displayName: 'Recurrence Instance',
+				displayName: 'Recurrence Instance Name or ID',
 				name: 'recurrenceInstance',
 				type: 'options',
 				typeOptions: {
@@ -696,7 +696,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.',
 			},
 			{
-				displayName: 'Recurrence Type',
+				displayName: 'Recurrence Type Name or ID',
 				name: 'recurrenceType',
 				type: 'options',
 				default: '',
@@ -720,7 +720,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
@@ -867,7 +867,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

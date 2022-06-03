@@ -67,6 +67,7 @@ export const accountFields: INodeProperties[] = [
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
@@ -163,7 +164,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Estimated annual revenue of the account',
 			},
 			{
-				displayName: 'Account Source',
+				displayName: 'Account Source Name or ID',
 				name: 'accountSource',
 				type: 'options',
 				typeOptions: {
@@ -223,7 +224,7 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -281,7 +282,7 @@ export const accountFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
@@ -305,7 +306,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Phone number for the account',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -324,7 +325,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
@@ -424,7 +425,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Account Source',
+				displayName: 'Account Source Name or ID',
 				name: 'accountSource',
 				type: 'options',
 				typeOptions: {
@@ -494,7 +495,7 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -559,7 +560,7 @@ export const accountFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'ownerId',
 				type: 'options',
 				typeOptions: {
@@ -583,7 +584,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Phone number for the account',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -637,7 +638,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'The street address of the shipping address for this account. Maximum of 255 characters.',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
@@ -784,7 +785,7 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -909,7 +910,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'ownerId',
 				type: 'options',
 				typeOptions: {

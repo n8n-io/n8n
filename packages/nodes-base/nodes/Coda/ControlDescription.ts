@@ -35,7 +35,7 @@ export const controlFields: INodeProperties[] = [
 /*                                   control:get                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -77,7 +77,7 @@ export const controlFields: INodeProperties[] = [
 /*                                   control:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,

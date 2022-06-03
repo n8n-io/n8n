@@ -188,7 +188,7 @@ export const logFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,

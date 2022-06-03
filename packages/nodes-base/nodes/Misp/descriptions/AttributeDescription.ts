@@ -162,7 +162,7 @@ export const attributeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sharing Group Name/ID',
+				displayName: 'Sharing Group Name or ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
@@ -330,7 +330,7 @@ export const attributeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sharing Group Name/ID',
+				displayName: 'Sharing Group Name or ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',

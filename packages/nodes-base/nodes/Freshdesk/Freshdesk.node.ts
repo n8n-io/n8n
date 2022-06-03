@@ -379,7 +379,7 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent',
+						displayName: 'Agent Name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
@@ -396,7 +396,7 @@ export class Freshdesk implements INodeType {
 						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
-						displayName: 'Company',
+						displayName: 'Company Name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
@@ -438,7 +438,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group',
+						displayName: 'Group Name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
@@ -456,7 +456,7 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product',
+						displayName: 'Product Name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
@@ -620,7 +620,7 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent',
+						displayName: 'Agent Name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
@@ -637,7 +637,7 @@ export class Freshdesk implements INodeType {
 						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
-						displayName: 'Company',
+						displayName: 'Company Name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
@@ -668,7 +668,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group',
+						displayName: 'Group Name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
@@ -686,7 +686,7 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product',
+						displayName: 'Product Name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',

@@ -59,7 +59,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -101,7 +101,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:getAll                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -166,7 +166,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:getAllViewRows                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -187,7 +187,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'ID of the doc',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -336,7 +336,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:getAllViewColumns                   */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -357,7 +357,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'ID of the doc',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -425,7 +425,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:deleteViewRow                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -446,7 +446,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'ID of the doc',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		required: true,
@@ -470,7 +470,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'The view to get the row from',
 	},
 	{
-		displayName: 'Row',
+		displayName: 'Row Name or ID',
 		name: 'rowId',
 		type: 'options',
 		required: true,
@@ -497,7 +497,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:pushViewButton                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -518,7 +518,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'ID of the doc',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		required: true,
@@ -542,7 +542,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'The view to get the row from',
 	},
 	{
-		displayName: 'Row',
+		displayName: 'Row Name or ID',
 		name: 'rowId',
 		type: 'options',
 		required: true,
@@ -566,7 +566,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'The view to get the row from',
 	},
 	{
-		displayName: 'Column',
+		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
 		required: true,
@@ -593,7 +593,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:updateViewRow                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -614,7 +614,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'ID of the doc',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		required: true,
@@ -638,7 +638,7 @@ export const viewFields: INodeProperties[] = [
 		description: 'The view to get the row from',
 	},
 	{
-		displayName: 'Row',
+		displayName: 'Row Name or ID',
 		name: 'rowId',
 		type: 'options',
 		required: true,
