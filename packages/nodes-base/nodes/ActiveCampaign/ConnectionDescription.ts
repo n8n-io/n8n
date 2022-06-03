@@ -74,7 +74,7 @@ export const connectionFields: INodeProperties[] = [
 		description: 'The name of the service',
 	},
 	{
-		displayName: 'External accout ID',
+		displayName: 'External Accout ID',
 		name: 'externalid',
 		type: 'string',
 		default: '',
@@ -193,7 +193,7 @@ export const connectionFields: INodeProperties[] = [
 				description: 'The name of the service',
 			},
 			{
-				displayName: 'External accout ID',
+				displayName: 'External Accout ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',

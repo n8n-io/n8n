@@ -427,6 +427,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-placeholder-miscased-id': 'error',
 				'n8n-nodes-base/node-param-description-miscased-url': 'error',
 				'n8n-nodes-base/node-param-option-name-wrong-for-upsert': 'error',
+				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 			},
 		},
 	],

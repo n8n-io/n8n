@@ -279,7 +279,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'name',
+				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',

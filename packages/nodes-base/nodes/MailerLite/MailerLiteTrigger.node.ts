@@ -88,7 +88,7 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when subscriber marks a campaign as a spam',
 					},
 					{
-						name: 'Subscriber Removed from Group',
+						name: 'Subscriber Removed From Group',
 						value: 'subscriber.remove_from_group',
 						description: 'Fired when a subscriber is removed from a group',
 					},

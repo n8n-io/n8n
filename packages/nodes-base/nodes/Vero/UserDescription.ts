@@ -30,7 +30,7 @@ export const userOperations: INodeProperties[] = [
 				description: 'Unsubscribe a user',
 			},
 			{
-				name: 'Re-subscribe',
+				name: 'Re-Subscribe',
 				value: 'resubscribe',
 				description: 'Resubscribe a user',
 			},

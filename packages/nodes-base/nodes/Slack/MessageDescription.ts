@@ -155,7 +155,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The text to send',
 	},
 	{
-		displayName: 'JSON parameters',
+		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -519,7 +519,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Timestamp of the message to be updated',
 	},
 	{
-		displayName: 'JSON parameters',
+		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,

@@ -86,7 +86,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Country code',
+				displayName: 'Country Code',
 				name: 'country_code',
 				type: 'options',
 				typeOptions: {
@@ -96,14 +96,14 @@ export const eventFields: INodeProperties[] = [
 				description: 'Country code of event',
 			},
 			{
-				displayName: 'From date',
+				displayName: 'From Date',
 				name: 'from_date',
 				type: 'dateTime',
 				default: '',
 				description: 'Lists events after this date',
 			},
 			{
-				displayName: 'To date',
+				displayName: 'To Date',
 				name: 'to_date',
 				type: 'dateTime',
 				default: '',
@@ -120,7 +120,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Type of event',
 			},
 			{
-				displayName: 'Upcoming events only',
+				displayName: 'Upcoming Events Only',
 				name: 'upcoming_events_only',
 				type: 'boolean',
 				default: true,

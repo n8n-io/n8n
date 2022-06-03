@@ -92,7 +92,7 @@ export class Xml implements INodeType {
 						description: 'Prefix that is used to access the attributes',
 					},
 					{
-						displayName: 'cdata',
+						displayName: 'Cdata',
 						name: 'cdata',
 						type: 'boolean',
 						default: false,

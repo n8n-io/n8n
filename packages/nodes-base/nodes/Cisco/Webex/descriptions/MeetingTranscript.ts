@@ -92,11 +92,11 @@ export const meetingTranscriptFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'txt',
+						name: 'Txt',
 						value: 'txt',
 					},
 					{
-						name: 'vtt',
+						name: 'Vtt',
 						value: 'vtt',
 					},
 				],

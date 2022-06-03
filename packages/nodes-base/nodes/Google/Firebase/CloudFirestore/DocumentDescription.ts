@@ -118,7 +118,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Columns / attributes',
+		displayName: 'Columns / Attributes',
 		name: 'columns',
 		type: 'string',
 		default: '',

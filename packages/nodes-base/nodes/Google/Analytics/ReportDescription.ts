@@ -227,7 +227,7 @@ export const reportFields: INodeProperties[] = [
 										value: 'EXACT',
 									},
 									{
-										name: 'Greater Than (number)',
+										name: 'Greater Than (Number)',
 										value: 'NUMERIC_GREATER_THAN',
 									},
 									{
@@ -239,11 +239,11 @@ export const reportFields: INodeProperties[] = [
 										value: 'REGEXP',
 									},
 									{
-										name: 'Equal (number)',
+										name: 'Equal (Number)',
 										value: 'NUMERIC_EQUAL',
 									},
 									{
-										name: 'Less Than (number)',
+										name: 'Less Than (Number)',
 										value: 'NUMERIC_LESS_THAN',
 									},
 								],

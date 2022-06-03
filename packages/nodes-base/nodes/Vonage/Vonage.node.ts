@@ -404,7 +404,7 @@ export class Vonage implements INodeType {
 						description: 'Boolean indicating if you like to receive a Delivery Receipt',
 					},
 					{
-						displayName: 'TTL (in minutes)',
+						displayName: 'TTL (in Minutes)',
 						name: 'ttl',
 						type: 'number',
 						default: 4320,
