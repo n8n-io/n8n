@@ -1,6 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import ClientOAuth2 from 'client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
@@ -15,6 +13,7 @@ import {
 	WorkflowExecuteMode,
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
+	IDataObject,
 } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 import querystring from 'querystring';
@@ -75,7 +74,11 @@ oauth2CredentialController.get(
 		try {
 			encryptionKey = await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+			throw new ResponseHelper.ResponseError(
+				(error as IDataObject).message as string,
+				undefined,
+				500,
+			);
 		}
 
 		const mode: WorkflowExecuteMode = 'internal';
@@ -168,7 +171,6 @@ oauth2CredentialController.get(
 
 oauth2CredentialController.get(
 	'/callback',
-	// eslint-disable-next-line consistent-return
 	async (req: OAuthRequest.OAuth2Credential.Callback, res: express.Response) => {
 		try {
 			// realmId it's currently just use for the quickbook OAuth2 flow
@@ -187,7 +189,7 @@ oauth2CredentialController.get(
 
 			let state;
 			try {
-				state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString());
+				state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString()) as IDataObject;
 			} catch (error) {
 				const errorResponse = new ResponseHelper.ResponseError(
 					'Invalid state format returned',
@@ -197,7 +199,7 @@ oauth2CredentialController.get(
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			const credential = await getCredentialWithoutUser(state.cid);
+			const credential = await getCredentialWithoutUser(state.cid as string);
 
 			if (!credential) {
 				LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
@@ -216,7 +218,11 @@ oauth2CredentialController.get(
 			try {
 				encryptionKey = await UserSettings.getEncryptionKey();
 			} catch (error) {
-				throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+				throw new ResponseHelper.ResponseError(
+					(error as IDataObject).message as string,
+					undefined,
+					500,
+				);
 			}
 
 			const mode: WorkflowExecuteMode = 'internal';
@@ -239,7 +245,7 @@ oauth2CredentialController.get(
 			const token = new Csrf();
 			if (
 				decryptedDataOriginal.csrfSecret === undefined ||
-				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
+				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token as string)
 			) {
 				LoggerProxy.debug('OAuth2 callback state is invalid', {
 					userId: req.user?.id,
@@ -311,6 +317,7 @@ oauth2CredentialController.get(
 				decryptedDataOriginal.oauthTokenData = oauthToken.data;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			unset(decryptedDataOriginal, 'csrfSecret');
 
 			const credentials = new Credentials(
@@ -323,13 +330,13 @@ oauth2CredentialController.get(
 			// Add special database related data
 			newCredentialsData.updatedAt = new Date();
 			// Save the credentials in DB
-			await Db.collections.Credentials.update(state.cid, newCredentialsData);
+			await Db.collections.Credentials.update(state.cid as string, newCredentialsData);
 			LoggerProxy.verbose('OAuth2 callback successful for new credential', {
 				userId: req.user?.id,
 				credentialId: state.cid,
 			});
 
-			res.sendFile(pathResolve(__dirname, '../../../templates/oauth-callback.html'));
+			return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-callback.html'));
 		} catch (error) {
 			// Error response
 			return ResponseHelper.sendErrorResponse(res, error);
