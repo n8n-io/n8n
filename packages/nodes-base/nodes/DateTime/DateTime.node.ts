@@ -446,11 +446,17 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
+							pairedItem: {
+								item: i,
+							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
 						};
 					}
 
@@ -485,11 +491,17 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
+							pairedItem: {
+								item: i,
+							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
 						};
 					}
 
@@ -504,7 +516,14 @@ export class DateTime implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;
