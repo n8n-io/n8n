@@ -583,7 +583,7 @@ export class WorkflowDataProxy {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
 						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${sourceData.previousNode}’`,
-						causeDetailed: `Missing pairedItem (node did probably not supply it)`,
+						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ did probably not supply it)`,
 					});
 				}
 
@@ -601,7 +601,7 @@ export class WorkflowDataProxy {
 										description: `Item points to a node input which does not exist`,
 										causeDetailed: `The pairedItem data points to a node input ‘${itemInput}‘ which does not exist on node ‘${
 											sourceData!.previousNode
-										}‘ (output node did probably supply a wrong one)`,
+										}‘ (node did probably supply a wrong one)`,
 									});
 								}
 
@@ -638,7 +638,7 @@ export class WorkflowDataProxy {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
 						description: `Item points to a node input which does not exist`,
-						causeDetailed: `The pairedItem data points to a node input ‘${itemInput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
+						causeDetailed: `The pairedItem data points to a node input ‘${itemInput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (node did probably supply a wrong one)`,
 					});
 				}
 
@@ -710,8 +710,8 @@ export class WorkflowDataProxy {
 									if (pairedItem === undefined) {
 										throw new ExpressionError('Can’t get data for expression', {
 											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
-											description: `To fetch the data from other nodes that this expression needs, more information is needed from the current node`,
-											causeDetailed: `Missing pairedItem (node did probably not supply it)`,
+											description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${that.activeNodeName}‘`,
+											causeDetailed: `Missing pairedItem data (node ‘${that.activeNodeName}‘ did probably not supply it)`,
 											runIndex: that.runIndex,
 											itemIndex,
 											failExecution: true,

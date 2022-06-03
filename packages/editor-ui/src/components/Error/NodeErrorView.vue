@@ -3,19 +3,6 @@
 		<div class="error-header">
 			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
-			<div v-if="error.context && error.context.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
-				<span class="error-details__summary">Item Index:</span>
-				{{error.context.itemIndex}}
-				<span v-if="error.context.runIndex">
-					| <span class="error-details__summary">Run Index:</span>
-					{{error.context.runIndex}}
-				</span>
-				<span v-if="error.context.parameter">
-					| <span class="error-details__summary">In or underneath Parameter: </span>
-					{{ parameterDisplayName(error.context.parameter) }}
-				</span>
-			</div>
-
 		</div>
 		<details>
 			<summary class="error-details__summary">
@@ -39,6 +26,18 @@
 						</div>
 					</el-card>
 				</div>
+			<div v-if="error.context && error.context.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
+				<span class="error-details__summary">{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span>
+				{{error.context.itemIndex}}
+				<span v-if="error.context.runIndex">
+					| <span class="error-details__summary">{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span>
+					{{error.context.runIndex}}
+				</span>
+				<span v-if="error.context.parameter">
+					| <span class="error-details__summary">{{ $locale.baseText('nodeErrorView.inParameter') }}:</span>
+					{{ parameterDisplayName(error.context.parameter) }}
+				</span>
+			</div>
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
