@@ -4,7 +4,7 @@
 import ClientOAuth2 from 'client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
-import _ from 'lodash';
+import { get, omit, set, split, unset } from 'lodash';
 import { Credentials, UserSettings } from 'n8n-core';
 import {
 	LoggerProxy,
@@ -102,12 +102,12 @@ oauth2CredentialController.get(
 		const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
 		const oAuthOptions: ClientOAuth2.Options = {
-			clientId: _.get(oauthCredentials, 'clientId') as string,
-			clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-			accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-			authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+			clientId: get(oauthCredentials, 'clientId') as string,
+			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
+			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
+			authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
 			redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${restEndpoint}/oauth2-credential/callback`,
-			scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
+			scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			state: stateEncodedStr,
 		};
 
@@ -132,14 +132,14 @@ oauth2CredentialController.get(
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(req.query.id, newCredentialsData);
 
-		const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
+		const authQueryParameters = get(oauthCredentials, 'authQueryParameters', '') as string;
 		let returnUri = oAuthObj.code.getUri();
 
 		// if scope uses comma, change it as the library always return then with spaces
-		if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
+		if ((get(oauthCredentials, 'scope') as string).includes(',')) {
 			const data = querystring.parse(returnUri.split('?')[1]);
-			data.scope = _.get(oauthCredentials, 'scope') as string;
-			returnUri = `${_.get(oauthCredentials, 'authUrl', '') as string}?${querystring.stringify(
+			data.scope = get(oauthCredentials, 'scope') as string;
+			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${querystring.stringify(
 				data,
 			)}`;
 		}
@@ -252,19 +252,19 @@ oauth2CredentialController.get(
 			let options = {};
 
 			const oAuth2Parameters = {
-				clientId: _.get(oauthCredentials, 'clientId') as string,
-				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
-				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+				clientId: get(oauthCredentials, 'clientId') as string,
+				clientSecret: get(oauthCredentials, 'clientSecret', '') as string | undefined,
+				accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
+				authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
+				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
-			if ((_.get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
+			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
-						client_id: _.get(oauthCredentials, 'clientId') as string,
-						client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
+						client_id: get(oauthCredentials, 'clientId') as string,
+						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
 				delete oAuth2Parameters.clientSecret;
@@ -282,7 +282,7 @@ oauth2CredentialController.get(
 			);
 
 			if (Object.keys(req.query).length > 2) {
-				_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
+				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
 
 			if (oauthToken === undefined) {
@@ -307,7 +307,7 @@ oauth2CredentialController.get(
 				decryptedDataOriginal.oauthTokenData = oauthToken.data;
 			}
 
-			_.unset(decryptedDataOriginal, 'csrfSecret');
+			unset(decryptedDataOriginal, 'csrfSecret');
 
 			const credentials = new Credentials(
 				credential as INodeCredentialsDetails,
