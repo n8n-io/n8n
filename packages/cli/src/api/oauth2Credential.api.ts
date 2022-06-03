@@ -1,21 +1,19 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import ClientOAuth2 from 'client-oauth2';
+import Csrf from 'csrf';
 import express from 'express';
-import { Credentials, UserSettings } from 'n8n-core';
 import _ from 'lodash';
+import { Credentials, UserSettings } from 'n8n-core';
 import {
 	LoggerProxy,
 	WorkflowExecuteMode,
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
 } from 'n8n-workflow';
-import ClientOAuth2 from 'client-oauth2';
-import querystring from 'querystring';
-import Csrf from 'csrf';
 import { resolve as pathResolve } from 'path';
-
-import { externalHooks } from '../Server';
+import querystring from 'querystring';
 
 import { Db, ICredentialsDb, ResponseHelper, WebhookHelpers } from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
@@ -26,6 +24,7 @@ import {
 } from '../CredentialsHelper';
 import { getLogger } from '../Logger';
 import { OAuthRequest } from '../requests';
+import { externalHooks } from '../Server';
 import config from '../../config';
 
 export const oauth2CredentialController = express.Router();
@@ -80,7 +79,7 @@ oauth2CredentialController.get(
 		const credentialsHelper = new CredentialsHelper(encryptionKey);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 			credential as INodeCredentialsDetails,
-			(credential as ICredentialsEncrypted).type,
+			(credential as unknown as ICredentialsEncrypted).type,
 			mode,
 			timezone,
 			true,
@@ -88,7 +87,7 @@ oauth2CredentialController.get(
 
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 			decryptedDataOriginal,
-			(credential as ICredentialsEncrypted).type,
+			(credential as unknown as ICredentialsEncrypted).type,
 			mode,
 			timezone,
 		);
@@ -119,8 +118,8 @@ oauth2CredentialController.get(
 		// Encrypt the data
 		const credentials = new Credentials(
 			credential as INodeCredentialsDetails,
-			(credential as ICredentialsEncrypted).type,
-			(credential as ICredentialsEncrypted).nodesAccess,
+			(credential as unknown as ICredentialsEncrypted).type,
+			(credential as unknown as ICredentialsEncrypted).nodesAccess,
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 
@@ -221,14 +220,14 @@ oauth2CredentialController.get(
 			const credentialsHelper = new CredentialsHelper(encryptionKey);
 			const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 				credential as INodeCredentialsDetails,
-				(credential as ICredentialsEncrypted).type,
+				(credential as unknown as ICredentialsEncrypted).type,
 				mode,
 				timezone,
 				true,
 			);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 				decryptedDataOriginal,
-				(credential as ICredentialsEncrypted).type,
+				(credential as unknown as ICredentialsEncrypted).type,
 				mode,
 				timezone,
 			);
@@ -312,8 +311,8 @@ oauth2CredentialController.get(
 
 			const credentials = new Credentials(
 				credential as INodeCredentialsDetails,
-				(credential as ICredentialsEncrypted).type,
-				(credential as ICredentialsEncrypted).nodesAccess,
+				(credential as unknown as ICredentialsEncrypted).type,
+				(credential as unknown as ICredentialsEncrypted).nodesAccess,
 			);
 			credentials.setData(decryptedDataOriginal, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
