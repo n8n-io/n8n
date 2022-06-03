@@ -76,6 +76,7 @@ export class Clockify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Project',
@@ -95,7 +96,6 @@ export class Clockify implements INodeType {
 					},
 				],
 				default: 'project',
-				description: 'The resource to operate on.',
 			},
 			...projectOperations,
 			...tagOperations,

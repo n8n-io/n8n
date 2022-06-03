@@ -43,6 +43,7 @@ export class Yourls implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'URL',
@@ -50,7 +51,6 @@ export class Yourls implements INodeType {
 					},
 				],
 				default: 'url',
-				description: 'The resource to operate on.',
 			},
 			...urlOperations,
 			...urlFields,

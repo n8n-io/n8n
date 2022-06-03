@@ -7,6 +7,7 @@ export const roomOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const roomOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,6 @@ export const roomFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'My new room',
-		description: 'The operation to perform.',
 		required: true,
 	},
 	{
@@ -88,7 +87,6 @@ export const roomFields: INodeProperties[] = [
 			{
 				name: 'Private Chat',
 				value: 'private_chat',
-				description: 'Private chat',
 			},
 			{
 				name: 'Public Chat',
@@ -98,7 +96,6 @@ export const roomFields: INodeProperties[] = [
 		],
 		default: 'public_chat',
 		placeholder: 'My new room',
-		description: 'The operation to perform.',
 		required: true,
 	},
 	{
@@ -117,7 +114,6 @@ export const roomFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'coolest-room-around',
-		description: 'The operation to perform.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  room:join                                 */

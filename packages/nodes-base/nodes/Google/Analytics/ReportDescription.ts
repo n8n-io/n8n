@@ -7,6 +7,7 @@ export const reportOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const reportOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -91,7 +91,7 @@ export const reportFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -105,7 +105,7 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',

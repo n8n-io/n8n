@@ -1,6 +1,8 @@
 <template>
-	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -18,8 +20,6 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
-				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
 			/>
 
 			<div
@@ -101,6 +101,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -128,6 +129,11 @@ export default mixins(
 			},
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
+			},
+			indexToShowSlotAt (): number {
+				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
+
+				return 0;
 			},
 		},
 		methods: {
@@ -164,8 +170,24 @@ export default mixins(
 
 				this.$emit('valueChanged', parameterData);
 			},
+
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
+					return false;
+				}
+
+				if (
+					this.isCustomApiCallSelected(this.nodeValues) &&
+					this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+				) {
 					return false;
 				}
 
@@ -260,7 +282,7 @@ export default mixins(
 </script>
 
 <style lang="scss">
-.paramter-input-list-wrapper {
+.parameter-input-list-wrapper {
 	.delete-option {
 		display: none;
 		position: absolute;

@@ -7,6 +7,7 @@ export const issueOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -57,7 +58,6 @@ export const issueOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -509,7 +509,7 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		displayOptions: {
@@ -524,7 +524,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: 'Return a simplified output of the issues fields',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -715,7 +715,7 @@ export const issueFields: INodeProperties[] = [
 				description: 'Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
 			},
 			{
-				displayName: ' JQL',
+				displayName: 'JQL',
 				name: 'jql',
 				type: 'string',
 				default: '',

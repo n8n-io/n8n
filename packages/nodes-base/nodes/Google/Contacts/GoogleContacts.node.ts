@@ -51,6 +51,7 @@ export class GoogleContacts implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -58,7 +59,6 @@ export class GoogleContacts implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 			...contactOperations,
 			...contactFields,

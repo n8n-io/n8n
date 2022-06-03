@@ -7,6 +7,7 @@ export const opportunityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -57,7 +58,6 @@ export const opportunityOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -680,6 +680,7 @@ export const opportunityFields: INodeProperties[] = [
 								default: '',
 								description: 'For date, number, or boolean, please use expressions',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -799,7 +800,7 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner',

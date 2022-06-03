@@ -38,6 +38,7 @@ export class Peekalink implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Is available',
@@ -51,7 +52,6 @@ export class Peekalink implements INodeType {
 					},
 				],
 				default: 'preview',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'URL',

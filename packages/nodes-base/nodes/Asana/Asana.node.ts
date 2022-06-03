@@ -88,12 +88,12 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Project',
@@ -125,7 +125,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			// ----------------------------------
 			//         subtask
@@ -134,6 +133,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -154,7 +154,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -401,6 +400,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -446,7 +446,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -955,6 +954,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -975,7 +975,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -1123,6 +1122,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -1143,7 +1143,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         taskProject:add
@@ -1279,6 +1278,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -1299,7 +1299,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'add',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -1403,6 +1402,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -1423,7 +1423,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -1482,6 +1481,7 @@ export class Asana implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -1517,7 +1517,6 @@ export class Asana implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
