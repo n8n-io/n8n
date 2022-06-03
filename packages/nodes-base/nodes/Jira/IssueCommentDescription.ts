@@ -67,7 +67,8 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'IssueComment Key',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+		description: 'issueComment Key',
 	},
 	{
 		displayName: 'JSON Parameters',

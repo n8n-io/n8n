@@ -137,7 +137,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description: 'UserId that was passed into the updateUser call',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+				description: 'userId that was passed into the updateUser call',
 			},
 		],
 	},
