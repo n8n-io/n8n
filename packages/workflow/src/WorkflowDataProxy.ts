@@ -634,6 +634,13 @@ export class WorkflowDataProxy {
 
 				const itemInput = pairedItem.input || 0;
 				if (itemInput >= taskData.source.length) {
+					if (taskData.source.length === 0) {
+						// A trigger node got reached, so looks like that that item can not be resolved
+						throw createExpressionError('Invalid expression', {
+							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+							description: `The expression uses data in node ‘${destinationNodeName}’ but there is no path back to it. Please check this node is connected to node ‘${that.activeNodeName}’ (there can be other nodes in between).`,
+						});
+					}
 					// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData.previousNode}'.`
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
