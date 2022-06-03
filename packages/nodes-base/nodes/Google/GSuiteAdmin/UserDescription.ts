@@ -236,7 +236,8 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										name: 'Isdn',
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'isdn',
 										value: 'isdn',
 									},
 									{
@@ -268,7 +269,8 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										name: 'Tty Tdd',
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'tty tdd',
 										value: 'tty_tdd',
 									},
 									{

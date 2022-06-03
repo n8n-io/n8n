@@ -156,7 +156,8 @@ export const taskFields: INodeProperties[] = [
 				default: 'text/plain',
 				options: [
 					{
-						name: 'Text/plain',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'text/plain',
 						value: 'text/plain',
 					},
 					{
@@ -164,7 +165,8 @@ export const taskFields: INodeProperties[] = [
 						value: 'text/x-markdown',
 					},
 					{
-						name: 'Text/html',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'text/html',
 						value: 'text/html',
 					},
 				],

@@ -452,11 +452,13 @@ export const channelFields: INodeProperties[] = [
 						value: 'private_channel',
 					},
 					{
-						name: 'Mpim',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'mpim',
 						value: 'mpim',
 					},
 					{
-						name: 'Im',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'im',
 						value: 'im',
 					},
 				],

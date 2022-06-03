@@ -92,11 +92,13 @@ export const meetingTranscriptFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Txt',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'txt',
 						value: 'txt',
 					},
 					{
-						name: 'Vtt',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'vtt',
 						value: 'vtt',
 					},
 				],

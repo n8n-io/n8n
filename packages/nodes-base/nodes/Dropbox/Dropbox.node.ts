@@ -573,11 +573,13 @@ export class Dropbox implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'Audio (Mp3, Wav, Mid, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Audio (mp3, qav, mid, etc.)',
 								value: 'audio',
 							},
 							{
-								name: 'Document (Doc, Docx, Txt, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Document (doc, docx, txt, etc.)',
 								value: 'document',
 							},
 							{
@@ -585,7 +587,8 @@ export class Dropbox implements INodeType {
 								value: 'folder',
 							},
 							{
-								name: 'Image (Jpg, Png, Gif, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Image (jpg, png, gif, etc.)',
 								value: 'image',
 							},
 							{
@@ -601,15 +604,18 @@ export class Dropbox implements INodeType {
 								value: 'pdf',
 							},
 							{
-								name: 'Presentation (Ppt, Pptx, Key, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Presentation (ppt, pptx, key, etc.)',
 								value: 'presentation',
 							},
 							{
-								name: 'Spreadsheet (Xlsx, Xls, Csv, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Spreadsheet (xlsx, xls, csv, etc.)',
 								value: 'spreadsheet',
 							},
 							{
-								name: 'Video (Avi, Wmv, Mp4, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Video (avi, wmv, mp4, etc.)',
 								value: 'video',
 							},
 						],
