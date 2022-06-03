@@ -53,7 +53,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to which the task belongs',
+		description: 'ID of the project to which the task belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -116,7 +116,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user to whom the task is assigned',
+				description: 'ID of the user to whom the task is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Blocked Note',
@@ -149,7 +149,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the task',
+				description: 'ID of the milestone of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Status',
@@ -162,7 +162,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskStatuses',
 				},
 				default: '',
-				description: 'ID of the status of the task',
+				description: 'ID of the status of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Tags',
@@ -197,7 +197,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUserStories',
 				},
 				default: '',
-				description: 'ID of the user story of the task',
+				description: 'ID of the user story of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'User Story Order',
@@ -262,7 +262,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to which the task belongs',
+		description: 'ID of the project to which the task belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -348,7 +348,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user whom the task is assigned to',
+				description: 'ID of the user whom the task is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Is Closed',
@@ -368,12 +368,12 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the task',
+				description: 'ID of the milestone of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
-				description: 'ID of the owner of the task',
+				description: 'ID of the owner of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: [
@@ -398,7 +398,7 @@ export const taskFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				description: 'ID of the status of the task',
+				description: 'ID of the status of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: [
@@ -423,7 +423,7 @@ export const taskFields: INodeProperties[] = [
 			{
 				displayName: 'User Story',
 				name: 'userStory',
-				description: 'ID of the user story to which the task belongs',
+				description: 'ID of the user story to which the task belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: [
@@ -442,7 +442,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to set the task to',
+		description: 'ID of the project to set the task to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -505,7 +505,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTypes',
 				},
 				default: '',
-				description: 'ID of the user to assign the task to',
+				description: 'ID of the user to assign the task to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Blocked Note',
@@ -538,7 +538,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the task',
+				description: 'ID of the milestone of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Status',
@@ -551,7 +551,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskStatuses',
 				},
 				default: '',
-				description: 'ID of the status of the task',
+				description: 'ID of the status of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Subject',
@@ -570,7 +570,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUserStories',
 				},
 				default: '',
-				description: 'ID of the user story of the task',
+				description: 'ID of the user story of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'User Story Order',

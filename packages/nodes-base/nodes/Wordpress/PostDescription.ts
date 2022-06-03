@@ -92,7 +92,7 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -305,7 +305,7 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

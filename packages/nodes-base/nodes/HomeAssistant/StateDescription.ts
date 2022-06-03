@@ -128,7 +128,7 @@ export const stateFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which a state will be created',
+		description: 'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'State',

@@ -133,7 +133,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Base Currency',
@@ -155,7 +155,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Coin ID',
@@ -303,7 +303,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Quote Currency',
@@ -325,7 +325,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Quote Currencies',

@@ -334,7 +334,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -383,7 +383,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -432,7 +432,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -536,7 +536,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -621,7 +621,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',

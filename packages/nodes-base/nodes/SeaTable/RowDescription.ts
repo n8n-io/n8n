@@ -62,7 +62,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access',
+		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table Name/ID',
@@ -81,7 +81,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access',
+		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -342,7 +342,7 @@ export const rowFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
-				description: 'A column\'s name or ID, use this column to sort the rows',
+				description: 'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

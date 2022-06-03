@@ -116,7 +116,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -295,7 +295,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: 'Name of the option you want to set',
+						description: 'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Email',
@@ -481,7 +481,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used.',
+						description: 'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'File URLs',
@@ -891,7 +891,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used.',
+						description: 'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'File URLs',
@@ -1199,7 +1199,7 @@ export const databasePageFields = [
 									],
 								},
 								default: '',
-								description: 'The name of the property to filter by',
+								description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Property Name',

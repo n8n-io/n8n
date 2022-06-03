@@ -23,7 +23,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team',
+		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Channel ID',
@@ -48,7 +48,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team',
+		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Resolve Data',

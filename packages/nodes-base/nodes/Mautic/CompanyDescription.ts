@@ -191,7 +191,7 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -409,7 +409,7 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -619,7 +619,7 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyFields',
 				},
 				default: '',
-				description: 'Column to sort by. Can use any column listed in the response.',
+				description: 'Column to sort by. Can use any column listed in the response. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Search',

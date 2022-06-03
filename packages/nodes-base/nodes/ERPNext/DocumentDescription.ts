@@ -58,7 +58,7 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'DocType whose documents to retrieve',
+		description: 'DocType whose documents to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -227,7 +227,7 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		required: true,
-		description: 'DocType you would like to create',
+		description: 'DocType you would like to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -300,7 +300,7 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to get',
+		description: 'The type of document you would like to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -343,7 +343,7 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to delete',
+		description: 'The type of document you would like to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -386,7 +386,7 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to update',
+		description: 'The type of document you would like to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

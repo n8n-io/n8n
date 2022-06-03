@@ -293,7 +293,7 @@ export const recordFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTableFields',
 								},
 								default: '',
-								description: 'The unique identifier of a field in a table',
+								description: 'The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Order',
@@ -525,7 +525,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>',
+		description: '<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Simplify',

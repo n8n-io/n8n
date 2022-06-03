@@ -77,7 +77,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -101,7 +101,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to create the row in',
+		description: 'The table to create the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -158,7 +158,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -182,7 +182,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -278,7 +278,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -302,7 +302,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from',
+		description: 'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -455,7 +455,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -479,7 +479,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to delete the row in',
+		description: 'The table to delete the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -521,7 +521,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -545,7 +545,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -611,7 +611,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -635,7 +635,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Column ID',
@@ -677,7 +677,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table',
@@ -701,7 +701,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

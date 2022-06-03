@@ -175,7 +175,7 @@ export class Mandrill implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'The template you want to send',
+				description: 'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'From Email',

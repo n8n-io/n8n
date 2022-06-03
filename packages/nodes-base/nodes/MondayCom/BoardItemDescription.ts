@@ -129,7 +129,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -171,7 +171,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier',
+		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Value',
@@ -213,7 +213,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -498,7 +498,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Column ID',
@@ -522,7 +522,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier',
+		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Column Value',

@@ -64,7 +64,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to',
+		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'List ID',
@@ -88,7 +88,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Card ID',
@@ -113,7 +113,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card',
+		description: 'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Author ID',
@@ -134,7 +134,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The user who posted the comment',
+		description: 'The user who posted the comment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Comment',
@@ -177,7 +177,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to',
+		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'List ID',
@@ -201,7 +201,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Card ID',
@@ -226,7 +226,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card',
+		description: 'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Comment ID',
@@ -251,7 +251,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment to delete',
+		description: 'The ID of the comment to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -297,7 +297,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Card ID',
@@ -322,7 +322,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card',
+		description: 'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Comment ID',
@@ -365,7 +365,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to',
+		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'List ID',
@@ -389,7 +389,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Card ID',
@@ -414,7 +414,7 @@ export const cardCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card',
+		description: 'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

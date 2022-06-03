@@ -23,7 +23,7 @@ export const messagePostEphemeralDescription: MessageProperties = [
 				],
 			},
 		},
-		description: 'ID of the user to send the ephemeral message to',
+		description: 'ID of the user to send the ephemeral message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Channel ID',
@@ -44,7 +44,7 @@ export const messagePostEphemeralDescription: MessageProperties = [
 				],
 			},
 		},
-		description: 'ID of the channel to send the ephemeral message in',
+		description: 'ID of the channel to send the ephemeral message in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Message',
