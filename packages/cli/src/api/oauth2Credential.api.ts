@@ -39,6 +39,8 @@ oauth2CredentialController.use((req, res, next) => {
 
 /**
  * GET /oauth2-credential/auth
+ *
+ * Authorize OAuth Data
  */
 oauth2CredentialController.get(
 	'/auth',
