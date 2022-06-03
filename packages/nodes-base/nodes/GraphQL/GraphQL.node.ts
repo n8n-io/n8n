@@ -172,7 +172,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'GraphQL (raw)',
+						name: 'GraphQL (Raw)',
 						value: 'graphql',
 					},
 					{

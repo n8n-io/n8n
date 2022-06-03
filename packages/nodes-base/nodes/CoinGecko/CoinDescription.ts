@@ -73,7 +73,7 @@ export const coinFields: INodeProperties[] = [
 				value: 'coinId',
 			},
 			{
-				name: 'Contract address',
+				name: 'Contract Address',
 				value: 'contractAddress',
 			},
 		],
@@ -234,7 +234,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The ID of the platform issuing tokens',
 	},
 	{
-		displayName: 'Contract address',
+		displayName: 'Contract Address',
 		name: 'contractAddress',
 		required: true,
 		type: 'string',
@@ -256,7 +256,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'Token\'s contract address',
 	},
 	{
-		displayName: 'Contract addresses',
+		displayName: 'Contract Addresses',
 		name: 'contractAddresses',
 		required: true,
 		type: 'string',
@@ -349,7 +349,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
 	},
 	{
-		displayName: 'Range (days)',
+		displayName: 'Range (Days)',
 		name: 'days',
 		required: true,
 		type: 'options',
@@ -732,14 +732,14 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Community data',
+				displayName: 'Community Data',
 				name: 'community_data',
 				type: 'boolean',
 				default: false,
 				description: 'Include community data',
 			},
 			{
-				displayName: 'Developer data',
+				displayName: 'Developer Data',
 				name: 'developer_data',
 				type: 'boolean',
 				default: false,
@@ -753,7 +753,7 @@ export const coinFields: INodeProperties[] = [
 				description: 'Include all localized languages in response',
 			},
 			{
-				displayName: 'Market data',
+				displayName: 'Market Data',
 				name: 'market_data',
 				type: 'boolean',
 				default: false,

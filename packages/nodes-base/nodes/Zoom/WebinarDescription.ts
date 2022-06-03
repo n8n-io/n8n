@@ -202,14 +202,17 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
@@ -250,11 +253,11 @@ export const webinarFields: INodeProperties[] = [
 						value: 5,
 					},
 					{
-						name: 'Recurring webinar with no fixed time',
+						name: 'Recurring Webinar with No Fixed Time',
 						value: 6,
 					},
 					{
-						name: 'Recurring webinar with fixed time',
+						name: 'Recurring Webinar with Fixed Time',
 						value: 9,
 					},
 				],
@@ -589,15 +592,15 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees register once and can attend any of the occurrences',
+						name: 'Attendees Register Once and Can Attend Any of the Occurrences',
 						value: 1,
 					},
 					{
-						name: 'Attendees need to register for every occurrence',
+						name: 'Attendees Need to Register for Every Occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees register once and can choose one or more occurrences to attend',
+						name: 'Attendees Register Once and Can Choose One or More Occurrences to Attend',
 						value: 3,
 					},
 				],
@@ -637,11 +640,11 @@ export const webinarFields: INodeProperties[] = [
 						value: 5,
 					},
 					{
-						name: 'Recurring webinar with no fixed time',
+						name: 'Recurring Webinar with No Fixed Time',
 						value: 6,
 					},
 					{
-						name: 'Recurring webinar with fixed time',
+						name: 'Recurring Webinar with Fixed Time',
 						value: 9,
 					},
 				],

@@ -503,7 +503,7 @@ export const channelFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'watch Icon Image Url',
+										displayName: 'Watch Icon Image Url',
 										name: 'watchIconImageUrl',
 										type: 'string',
 										default: '',

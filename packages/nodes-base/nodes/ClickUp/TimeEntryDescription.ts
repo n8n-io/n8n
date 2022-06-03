@@ -374,7 +374,7 @@ export const timeEntryFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		displayOptions: {
@@ -826,7 +826,7 @@ export const timeEntryFields: INodeProperties[] = [
 				description: 'Description of the time entry',
 			},
 			{
-				displayName: 'Duration (minutes)',
+				displayName: 'Duration (Minutes)',
 				name: 'duration',
 				type: 'number',
 				default: 0,

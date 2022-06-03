@@ -142,11 +142,11 @@ export const taskFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Not started',
+						name: 'Not Started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In progress',
+						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
@@ -319,11 +319,11 @@ export const taskFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Not started',
+						name: 'Not Started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In progress',
+						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{

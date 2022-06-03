@@ -80,7 +80,7 @@ export const alertContactFields: INodeProperties[] = [
 				value: 4,
 			},
 			{
-				name: 'E-mail',
+				name: 'E-Mail',
 				value: 2,
 			},
 			{

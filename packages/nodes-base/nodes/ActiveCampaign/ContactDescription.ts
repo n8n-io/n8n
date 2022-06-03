@@ -73,7 +73,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'The email of the contact to create',
 	},
 	{
-		displayName: 'Update if exists',
+		displayName: 'Update if Exists',
 		name: 'updateIfExists',
 		type: 'boolean',
 		displayOptions: {

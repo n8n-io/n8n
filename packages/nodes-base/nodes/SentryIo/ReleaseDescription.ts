@@ -283,7 +283,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
@@ -609,7 +609,7 @@ export const releaseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',

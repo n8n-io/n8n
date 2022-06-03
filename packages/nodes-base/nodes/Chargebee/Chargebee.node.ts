@@ -230,7 +230,7 @@ export class Chargebee implements INodeType {
 			//         invoice:list
 			// ----------------------------------
 			{
-				displayName: 'Max results',
+				displayName: 'Max Results',
 				name: 'maxResults',
 				type: 'number',
 				typeOptions: {
@@ -330,19 +330,19 @@ export class Chargebee implements INodeType {
 										value: 'is_not',
 									},
 									{
-										name: 'Greater than',
+										name: 'Greater Than',
 										value: 'gt',
 									},
 									{
-										name: 'Greater equal than',
+										name: 'Greater Equal Than',
 										value: 'gte',
 									},
 									{
-										name: 'Less than',
+										name: 'Less Than',
 										value: 'lt',
 									},
 									{
-										name: 'Less equal than',
+										name: 'Less Equal Than',
 										value: 'lte',
 									},
 								],
@@ -440,7 +440,7 @@ export class Chargebee implements INodeType {
 				},
 			},
 			{
-				displayName: 'Schedule end of Term',
+				displayName: 'Schedule End of Term',
 				name: 'endOfTerm',
 				type: 'boolean',
 				default: false,
