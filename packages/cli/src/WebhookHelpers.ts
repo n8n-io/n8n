@@ -198,6 +198,7 @@ export async function executeWebhook(
 		executionMode,
 		additionalData.timezone,
 		additionalKeys,
+		undefined,
 		'onReceived',
 	);
 	const responseCode = workflow.expression.getSimpleParameterValue(
@@ -206,6 +207,7 @@ export async function executeWebhook(
 		executionMode,
 		additionalData.timezone,
 		additionalKeys,
+		undefined,
 		200,
 	) as number;
 
@@ -215,6 +217,7 @@ export async function executeWebhook(
 		executionMode,
 		additionalData.timezone,
 		additionalKeys,
+		undefined,
 		'firstEntryJson',
 	);
 
@@ -287,6 +290,7 @@ export async function executeWebhook(
 				executionMode,
 				additionalData.timezone,
 				additionalKeys,
+				undefined,
 				undefined,
 			) as {
 				entries?:
@@ -373,6 +377,7 @@ export async function executeWebhook(
 			data: {
 				main: webhookResultData.workflowData,
 			},
+			source: null,
 		});
 
 		runExecutionData =
@@ -546,6 +551,7 @@ export async function executeWebhook(
 							additionalData.timezone,
 							additionalKeys,
 							undefined,
+							undefined,
 						);
 
 						if (responsePropertyName !== undefined) {
@@ -558,6 +564,7 @@ export async function executeWebhook(
 							executionMode,
 							additionalData.timezone,
 							additionalKeys,
+							undefined,
 							undefined,
 						);
 
@@ -603,6 +610,7 @@ export async function executeWebhook(
 							executionMode,
 							additionalData.timezone,
 							additionalKeys,
+							undefined,
 							'data',
 						);
 

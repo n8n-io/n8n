@@ -397,6 +397,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 								contextData: {},
 								nodeExecutionStack: [],
 								waitingExecution: {},
+								waitingExecutionSource: {},
 							},
 						};
 					}
@@ -752,6 +753,7 @@ export async function getRunData(
 		data: {
 			main: [inputData],
 		},
+		source: null,
 	});
 
 	const runExecutionData: IRunExecutionData = {
@@ -763,6 +765,7 @@ export async function getRunData(
 			contextData: {},
 			nodeExecutionStack,
 			waitingExecution: {},
+			waitingExecutionSource: {},
 		},
 	};
 

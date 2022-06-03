@@ -190,6 +190,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			'internal',
 			defaultTimezone,
 			additionalKeys,
+			undefined,
 			'',
 		);
 
@@ -366,6 +367,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					mode,
 					timezone,
 					{},
+					undefined,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
@@ -397,6 +399,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mode,
 				defaultTimezone,
 				{},
+				undefined,
 				undefined,
 				decryptedData,
 			) as ICredentialDataDecryptedObject;
@@ -642,6 +645,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				inputData,
 				runIndex,
 				nodeTypeCopy,
+				{ node, data: {}, source: null },
 				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);

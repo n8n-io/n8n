@@ -262,13 +262,23 @@ export class Xml implements INodeType {
 						json: {
 							[dataPropertyName]: builder.buildObject(items[itemIndex].json),
 						},
+						pairedItem: {
+							item: itemIndex,
+						},
 					});
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					items[itemIndex] = ({json:{ error: error.message }});
+					items[itemIndex] = ({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;
