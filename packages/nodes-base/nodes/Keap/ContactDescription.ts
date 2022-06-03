@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create/update a contact',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -637,7 +637,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -661,7 +661,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

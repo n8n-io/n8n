@@ -323,22 +323,29 @@ export const workflowHelpers = mixins(
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
 
-					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
 					// Add the node credentials if there are some set and if they should be displayed
 					if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 						const saveCredenetials: INodeCredentials = {};
 						for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+							if (this.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+								saveCredenetials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+								continue;
+							}
+
 							const credentialTypeDescription = nodeType.credentials
-								.find((credentialTypeDescription) => credentialTypeDescription.name === nodeCredentialTypeName);
+								// filter out credentials with same name in different node versions
+								.filter((c) => this.displayParameter(node.parameters, c, '', node))
+								.find((c) => c.name === nodeCredentialTypeName);
 
 							if (credentialTypeDescription === undefined) {
 								// Credential type is not know so do not save
 								continue;
 							}
 
-							if (this.displayParameter(node.parameters, credentialTypeDescription, '') === false) {
+							if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) === false) {
 								// Credential should not be displayed so do also not save
 								continue;
 							}

@@ -162,13 +162,13 @@ export class Slack implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -204,7 +204,6 @@ export class Slack implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			...channelOperations,
@@ -340,7 +339,7 @@ export class Slack implements INodeType {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const userId = this.getNodeParameter('userId', i) as string;
 						const body: IDataObject = {
-							name: channel,
+							channel,
 							user: userId,
 						};
 						responseData = await slackApiRequest.call(this, 'POST', '/conversations.kick', body, qs);

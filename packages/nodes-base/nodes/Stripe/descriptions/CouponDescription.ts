@@ -7,8 +7,8 @@ export const couponOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -191,7 +191,7 @@ export const couponFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

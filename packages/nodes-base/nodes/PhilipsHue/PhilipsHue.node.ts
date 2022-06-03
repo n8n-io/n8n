@@ -46,6 +46,7 @@ export class PhilipsHue implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Light',
@@ -53,7 +54,6 @@ export class PhilipsHue implements INodeType {
 					},
 				],
 				default: 'light',
-				description: 'The resource to operate on.',
 			},
 			...lightOperations,
 			...lightFields,

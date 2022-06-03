@@ -7,6 +7,7 @@ export const checklistItemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const checklistItemOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -210,7 +210,7 @@ export const checklistItemFields: INodeProperties[] = [
 				name: 'parent',
 				type: 'string',
 				default: '',
-				description: 'Checklist item that you want to nest the target checklist item underneath.',
+				description: 'Checklist item that you want to nest the target checklist item underneath',
 			},
 			{
 				displayName: 'Resolved',

@@ -50,6 +50,7 @@ export class Phantombuster implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Agent',
@@ -57,7 +58,6 @@ export class Phantombuster implements INodeType {
 					},
 				],
 				default: 'agent',
-				description: 'The resource to operate on.',
 			},
 			...agentOperations,
 			...agentFields,

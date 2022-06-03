@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -54,7 +54,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The slug of the organization the events belong to',
 	},
 	{
 		displayName: 'Project Slug',
@@ -78,7 +78,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to.',
+		description: 'The slug of the project the events belong to',
 	},
 	{
 		displayName: 'Full',
@@ -95,7 +95,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace.',
+		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace',
 	},
 	{
 		displayName: 'Return All',
@@ -112,7 +112,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -136,7 +136,7 @@ export const eventFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -161,7 +161,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The slug of the organization the events belong to',
 	},
 	{
 		displayName: 'Project Slug',
@@ -182,7 +182,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to.',
+		description: 'The slug of the project the events belong to',
 	},
 	{
 		displayName: 'Event ID',
@@ -200,6 +200,6 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client).',
+		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client)',
 	},
 ];

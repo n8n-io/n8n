@@ -114,6 +114,13 @@ export interface ITagDb {
 	updatedAt: Date;
 }
 
+export interface ITagToImport {
+	id: string | number;
+	name: string;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
 export type UsageCount = {
 	usageCount: number;
 };
@@ -132,6 +139,10 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
 	tags: ITagDb[];
+}
+
+export interface IWorkflowToImport extends IWorkflowBase {
+	tags: ITagToImport[];
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
@@ -473,6 +484,10 @@ export interface IPersonalizationSurveyAnswers {
 	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
 	workArea: string[] | string | null;
+}
+
+export interface IUserSettings {
+	isOnboarded?: boolean;
 }
 
 export interface IUserManagementSettings {

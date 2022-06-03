@@ -45,16 +45,16 @@ export class RabbitMQ implements INodeType {
 					{
 						name: 'Queue',
 						value: 'queue',
-						description: 'Publish data to queue.',
+						description: 'Publish data to queue',
 					},
 					{
 						name: 'Exchange',
 						value: 'exchange',
-						description: 'Publish data to exchange.',
+						description: 'Publish data to exchange',
 					},
 				],
 				default: 'queue',
-				description: 'To where data should be moved.',
+				description: 'To where data should be moved',
 			},
 
 			// ----------------------------------
@@ -73,7 +73,7 @@ export class RabbitMQ implements INodeType {
 				},
 				default: '',
 				placeholder: 'queue-name',
-				description: 'Name of the queue to publish to.',
+				description: 'Name of the queue to publish to',
 			},
 
 			// ----------------------------------
@@ -93,7 +93,7 @@ export class RabbitMQ implements INodeType {
 				},
 				default: '',
 				placeholder: 'exchange-name',
-				description: 'Name of the exchange to publish to.',
+				description: 'Name of the exchange to publish to',
 			},
 			{
 				displayName: 'Type',
@@ -110,26 +110,26 @@ export class RabbitMQ implements INodeType {
 					{
 						name: 'Direct',
 						value: 'direct',
-						description: 'Direct exchange type.',
+						description: 'Direct exchange type',
 					},
 					{
 						name: 'Topic',
 						value: 'topic',
-						description: 'Topic exchange type.',
+						description: 'Topic exchange type',
 					},
 					{
 						name: 'Headers',
 						value: 'headers',
-						description: 'Headers exchange type.',
+						description: 'Headers exchange type',
 					},
 					{
 						name: 'Fanout',
 						value: 'fanout',
-						description: 'Fanout exchange type.',
+						description: 'Fanout exchange type',
 					},
 				],
 				default: 'fanout',
-				description: 'Type of exchange.',
+				description: 'Type of exchange',
 			},
 			{
 				displayName: 'Routing key',
@@ -144,7 +144,7 @@ export class RabbitMQ implements INodeType {
 				},
 				default: '',
 				placeholder: 'routing-key',
-				description: 'The routing key for the message.',
+				description: 'The routing key for the message',
 			},
 
 			// ----------------------------------
@@ -156,7 +156,7 @@ export class RabbitMQ implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON.',
+				description: 'Send the the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -170,7 +170,7 @@ export class RabbitMQ implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The message to be sent.',
+				description: 'The message to be sent',
 			},
 			{
 				displayName: 'Options',
@@ -197,7 +197,7 @@ export class RabbitMQ implements INodeType {
 						displayName: 'Arguments',
 						name: 'arguments',
 						placeholder: 'Add Argument',
-						description: 'Arguments to add.',
+						description: 'Arguments to add',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -225,18 +225,18 @@ export class RabbitMQ implements INodeType {
 						],
 					},
 					{
-						displayName: 'Auto Delete',
+						displayName: 'Auto Delete Queue',
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,
-						description: 'The queue will be deleted when the number of consumers drops to zero .',
+						description: 'The queue will be deleted when the number of consumers drops to zero',
 					},
 					{
 						displayName: 'Durable',
 						name: 'durable',
 						type: 'boolean',
 						default: true,
-						description: 'The queue will survive broker restarts.',
+						description: 'The queue will survive broker restarts',
 					},
 					{
 						displayName: 'Exclusive',
@@ -250,13 +250,13 @@ export class RabbitMQ implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Scopes the queue to the connection.',
+						description: 'Scopes the queue to the connection',
 					},
 					{
 						displayName: 'Headers',
 						name: 'headers',
 						placeholder: 'Add Header',
-						description: 'Headers to add.',
+						description: 'Headers to add',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,

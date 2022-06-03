@@ -40,6 +40,7 @@ export class Pushcut implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -47,12 +48,12 @@ export class Pushcut implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -68,7 +69,6 @@ export class Pushcut implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Notification Name',
@@ -121,21 +121,21 @@ export class Pushcut implements INodeType {
 						name: 'input',
 						type: 'string',
 						default: '',
-						description: 'Value that is passed as input to the notification action.',
+						description: 'Value that is passed as input to the notification action',
 					},
 					{
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
 						default: '',
-						description: 'Text that is used instead of the one defined in the app.',
+						description: 'Text that is used instead of the one defined in the app',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'Title that is used instead of the one defined in the app.',
+						description: 'Title that is used instead of the one defined in the app',
 					},
 				],
 			},

@@ -7,6 +7,7 @@ export const customObjectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +27,11 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a custom object record',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom object record',
@@ -36,18 +42,12 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Get all custom object records',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a custom object record',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a custom object record',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -76,7 +76,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the custom object.',
+		description: 'Name of the custom object',
 	},
 	{
 		displayName: 'Match Against',
@@ -100,7 +100,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The field to check to see if the object already exists`,
+		description: 'The field to check to see if the object already exists',
 	},
 	{
 		displayName: 'Value to Match',
@@ -139,7 +139,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Filter by custom fields.',
+		description: 'Filter by custom fields',
 		default: {},
 		options: [
 			{
@@ -157,14 +157,14 @@ export const customObjectFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The ID of the field.',
+						description: 'The ID of the field',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'The value to set on custom field.',
+						description: 'The value to set on custom field',
 					},
 				],
 			},
@@ -211,7 +211,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Record ID to be updated.',
+		description: 'Record ID to be updated',
 	},
 	{
 		displayName: 'Fields',
@@ -221,7 +221,7 @@ export const customObjectFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		description: 'Filter by custom fields ',
+		description: 'Filter by custom fields',
 		default: {},
 		displayOptions: {
 			show: {
@@ -249,14 +249,14 @@ export const customObjectFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The ID of the field.',
+						description: 'The ID of the field',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'The value to set on custom field.',
+						description: 'The value to set on custom field',
 					},
 				],
 			},
@@ -303,7 +303,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Record ID to be retrieved.',
+		description: 'Record ID to be retrieved',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -328,7 +328,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the custom object.',
+		description: 'Name of the custom object',
 	},
 	{
 		displayName: 'Record ID',
@@ -346,7 +346,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Record ID to be deleted.',
+		description: 'Record ID to be deleted',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -388,7 +388,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -412,7 +412,7 @@ export const customObjectFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -439,7 +439,7 @@ export const customObjectFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -457,8 +457,9 @@ export const customObjectFields: INodeProperties[] = [
 									],
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions.',
+								description: 'For date, number, or boolean, please use expressions',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
