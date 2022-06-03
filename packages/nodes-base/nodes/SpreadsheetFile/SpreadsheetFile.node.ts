@@ -69,12 +69,12 @@ export class SpreadsheetFile implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Read from file',
+						name: 'Read From File',
 						value: 'fromFile',
 						description: 'Reads data from a spreadsheet file',
 					},
 					{
-						name: 'Write to file',
+						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
 					},

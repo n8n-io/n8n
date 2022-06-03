@@ -42,7 +42,6 @@ export class Sms77 implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},

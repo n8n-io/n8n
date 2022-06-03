@@ -58,7 +58,7 @@ export class Merge implements INodeType {
 						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
 					},
 					{
-						name: 'Pass-through',
+						name: 'Pass-Through',
 						value: 'passThrough',
 						description: 'Passes through data of one input. The output will contain only items of the defined input.',
 					},

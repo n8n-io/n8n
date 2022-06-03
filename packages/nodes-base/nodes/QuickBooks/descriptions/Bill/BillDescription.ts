@@ -50,11 +50,11 @@ export const billFields: INodeProperties[] = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor',
+		displayName: 'For Vendor Name or ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the vendor who the bill is for',
+		description: 'The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -108,7 +108,7 @@ export const billFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item',
+				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
 				default: [],
