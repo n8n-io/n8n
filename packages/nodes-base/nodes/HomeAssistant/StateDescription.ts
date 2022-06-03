@@ -17,7 +17,7 @@ export const stateOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},

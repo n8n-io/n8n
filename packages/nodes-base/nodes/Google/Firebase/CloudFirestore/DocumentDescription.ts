@@ -22,7 +22,7 @@ export const documentOperations: INodeProperties[] = [
 				description: 'Create a document',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new document, or update the current one if it already exists (upsert)',
 			},
