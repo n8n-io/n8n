@@ -4,7 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -12,6 +13,7 @@ import {
 
 import {
 	calApiRequest,
+	sortOptionParameters,
 } from './GenericFunctions';
 
 export class CalTrigger implements INodeType {
@@ -21,7 +23,7 @@ export class CalTrigger implements INodeType {
 			icon: 'file:cal.svg',
 			group: ['trigger'],
 			version: 1,
-			subtitle: '={{$parameter["event"]}}',
+			subtitle: '=Events: {{$parameter["events"].join(", ")}}',
 			description: 'Handle Cal events via webhooks',
 			defaults: {
 					name: 'Cal Trigger',
@@ -69,32 +71,32 @@ export class CalTrigger implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Advanced Fields',
-					name: 'advanced',
+					displayName: 'Options',
+					name: 'options',
 					type: 'collection',
 					placeholder: 'Add Field',
 					default: {},
 					options: [
 						{
-							displayName: 'EventType Id',
-							name: 'eventTypeId',
-							type: 'number',
+							displayName: 'App ID',
+							name: 'appId',
+							type: 'string',
 							default: '',
-							required: false,
 						},
 						{
-							displayName: 'App Id',
-							name: 'appId',
-							type: 'string' || null,
-							default: null,
-							required: false,
+							displayName: 'EventType Name or ID',
+							name: 'eventTypeId',
+							type: 'options',
+							typeOptions: {
+								loadOptionsMethod: 'getEventTypes',
+							},
+							default: '',
 						},
 						{
 							displayName: 'Payload Template',
 							name: 'payloadTemplate',
-							type: 'string' || null,
-							default: null,
-							required: false,
+							type: 'string',
+							default: '',
 							typeOptions: {
 								rows: 4,
 							}
@@ -103,7 +105,25 @@ export class CalTrigger implements INodeType {
 				},
 			],
 	};
-	
+
+	methods = {
+		loadOptions: {
+			async getEventTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const data = await calApiRequest.call(this, 'GET', '/event-types', {});
+
+				for (const item of data.event_types) {
+					returnData.push({
+						name: item.title,
+						value: item.id,
+					});
+				}
+
+				return sortOptionParameters(returnData);
+			},
+		},
+	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -114,9 +134,9 @@ export class CalTrigger implements INodeType {
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/hooks';
-				const data = await calApiRequest.call(this, 'GET', endpoint, {});
-				for (const webhook of data) {
+				const data = await calApiRequest.call(this, 'GET', '/hooks', {});
+
+				for (const webhook of data.webhooks) {
 					if (webhook.subscriberUrl === webhookUrl) {
 						for (const event of events) {
 							if (!webhook.eventTriggers.includes(event)) {
@@ -134,26 +154,24 @@ export class CalTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const subscriberUrl = this.getNodeWebhookUrl('default');
 				const eventTriggers = this.getNodeParameter('events') as string;
-				const advanced = this.getNodeParameter('advanced');
+				const options = this.getNodeParameter('options');
 				const active = true;
-
-				const endpoint = '/hooks';
 
 				const body = {
 					subscriberUrl,
 					eventTriggers,
 					active,
-					...advanced as object
+					...options as object
 				};
 
-				const responseData = await calApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await calApiRequest.call(this, 'POST', '/hooks', body);
 
-				if (responseData.id === undefined) {
+				if (responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}
 
-				webhookData.webhookId = responseData.id as string;
+				webhookData.webhookId = responseData.webhook.id as string;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -178,11 +196,11 @@ export class CalTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-    const req = this.getRequestObject();
-    return {
-        workflowData: [
-            this.helpers.returnJsonArray(req.body),
-        ],
+		const req = this.getRequestObject();
+		return {
+				workflowData: [
+						this.helpers.returnJsonArray(req.body),
+				],
 		};
 	}
 }

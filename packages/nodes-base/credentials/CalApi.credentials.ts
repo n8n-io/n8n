@@ -1,4 +1,6 @@
 import {
+	IAuthenticateQueryAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -14,5 +16,26 @@ export class CalApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'Host',
+			name: 'host',
+			type: 'string',
+			default: 'https://api.cal.com',
+		},
 	];
+
+	authenticate = {
+		type: 'queryAuth',
+		properties: {
+			key: 'apiKey',
+			value: '={{$credentials.apiKey}}',
+		},
+	} as IAuthenticateQueryAuth;
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.host}}',
+			url: '=/v1/memberships',
+		},
+	};
 }

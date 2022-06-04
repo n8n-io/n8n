@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,42 +5,45 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
+	IHttpRequestMethods,
 	IHookFunctions,
 	IWebhookFunctions,
 	NodeApiError,
-	NodeOperationError,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
-export async function calApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function calApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('calApi');
 
-	const apiKeyParam = `?apiKey=${credentials.apiKey}`;
-
-	const endpoint = 'https://api.cal.com/v1';
-
-	let options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-			'X-TOKEN': credentials.apiKey,
-		},
+	let options: IHttpRequestOptions = {
+		baseURL: credentials.host as string,
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}${apiKeyParam}`,
-		json: true,
+		url: resource,
 	};
-	if (!Object.keys(body).length) {
-		delete options.form;
-	}
+
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
 	try {
-		const resp = await this.helpers.request!(options);
-		return method == "GET" ? resp.webhooks : resp.webhook;
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'calApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
+	optionParameters.sort((a, b) => {
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
+		if (aName < bName) { return -1; }
+		if (aName > bName) { return 1; }
+		return 0;
+	});
+
+	return optionParameters;
 }
