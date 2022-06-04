@@ -11,6 +11,7 @@ import {
 
 import {
 	twilioApiRequest,
+	escapeXml,
 } from './GenericFunctions';
 
 export class Twilio implements INodeType {
@@ -44,6 +45,11 @@ export class Twilio implements INodeType {
 						name: 'SMS',
 						value: 'sms',
 					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
+						name: 'Call',
+						value: 'call',
+					},
 				],
 				default: 'sms',
 			},
@@ -70,13 +76,35 @@ export class Twilio implements INodeType {
 				default: 'send',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'call',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Make Phone Call',
+						value: 'make',
+						description: 'Uses text-to-speech to say a message',
+					},
+				],
+				default: 'make',
+			},
+
 
 			// ----------------------------------
-			//         sms
+			//         sms / call
 			// ----------------------------------
 
 			// ----------------------------------
-			//         sms:send
+			//         sms:send / call:make
 			// ----------------------------------
 			{
 				displayName: 'From',
@@ -89,9 +117,11 @@ export class Twilio implements INodeType {
 					show: {
 						operation: [
 							'send',
+							'make',
 						],
 						resource: [
 							'sms',
+							'call',
 						],
 					},
 				},
@@ -108,9 +138,11 @@ export class Twilio implements INodeType {
 					show: {
 						operation: [
 							'send',
+							'make',
 						],
 						resource: [
 							'sms',
+							'call',
 						],
 					},
 				},
@@ -143,14 +175,17 @@ export class Twilio implements INodeType {
 					show: {
 						operation: [
 							'send',
+							'make',
 						],
 						resource: [
 							'sms',
+							'call',
 						],
 					},
 				},
 				description: 'The message to send',
 			},
+
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -215,6 +250,22 @@ export class Twilio implements INodeType {
 							body.From = `whatsapp:${body.From}`;
 							body.To = `whatsapp:${body.To}`;
 						}
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
+				} else if (resource === 'call') {
+					if (operation === 'make') {
+						// ----------------------------------
+						//         call:make
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/Calls.json';
+
+						body.From = this.getNodeParameter('from', i) as string;
+						body.To = this.getNodeParameter('to', i) as string;
+						body.Twiml = `<Response><Say>${escapeXml(this.getNodeParameter('message', i) as string)}</Say></Response>`;
+						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
