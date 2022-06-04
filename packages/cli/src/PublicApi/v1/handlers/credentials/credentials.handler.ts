@@ -78,7 +78,7 @@ export = {
 
 			if (!credentials) {
 				return res.status(404).json({
-					message: `Credential not found.`,
+					message: 'Not Found',
 				});
 			}
 
@@ -97,7 +97,9 @@ export = {
 			try {
 				CredentialTypes().getByName(id);
 			} catch (error) {
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			let schema = new CredentialsHelper('').getCredentialsProperties(id);

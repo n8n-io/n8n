@@ -61,7 +61,9 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
@@ -89,7 +91,9 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			const telemetryData = {
@@ -184,7 +188,9 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			// if the workflow does not have a start node, add it.
@@ -235,7 +241,9 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
@@ -271,7 +279,9 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();

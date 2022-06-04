@@ -27,7 +27,9 @@ export = {
 			// user does not have workflows hence no executions
 			// or the execution he is trying to access belongs to a workflow he does not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			// look for the execution on the workflow the user owns
@@ -35,7 +37,9 @@ export = {
 
 			// execution was not found
 			if (!execution) {
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			const binaryDataManager = BinaryDataManager.getInstance();
@@ -59,7 +63,9 @@ export = {
 			// user does not have workflows hence no executions
 			// or the execution he is trying to access belongs to a workflow he does not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			// look for the execution on the workflow the user owns
@@ -67,7 +73,9 @@ export = {
 
 			// execution was not found
 			if (!execution) {
-				return res.status(404).json();
+				return res.status(404).json({
+					message: 'Not Found',
+				});
 			}
 
 			const telemetryData = {
