@@ -1118,7 +1118,7 @@ export async function httpRequestWithAuthentication(
 		// delete requestOptions.headers['X-Metabase-Session'];
 		return await httpRequest(requestOptions);
 	} catch (error) {
-		// if there is a pre execute method defined and
+		// if there is a pre authorization method defined and
 		// the method failed due to unathorized request
 		if (
 			error.response?.status === 401 &&

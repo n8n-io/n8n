@@ -183,6 +183,7 @@
       "dist/credentials/MediumApi.credentials.js",
       "dist/credentials/MediumOAuth2Api.credentials.js",
       "dist/credentials/MessageBirdApi.credentials.js",
+      "dist/credentials/MetabaseApi.credentials.js",
       "dist/credentials/MicrosoftDynamicsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftExcelOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftGraphSecurityOAuth2Api.credentials.js",

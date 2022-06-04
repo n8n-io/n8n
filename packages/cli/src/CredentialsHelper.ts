@@ -52,6 +52,7 @@ import {
 } from '.';
 // eslint-disable-next-line import/no-cycle
 import { User } from './databases/entities/User';
+import { Console } from 'console';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -176,7 +177,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		node: INode,
-		forcedRefresh: boolean,
+		credentialsExpired: boolean,
 	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 
@@ -187,8 +188,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 				const output = await credentialType.preAuthentication.call(
 					helpers,
 					credentials,
-					forcedRefresh,
+					credentialsExpired,
 				);
+
 				// if output empty, no need to update anything
 				if (!Object.keys(output).length) {
 					return { updatedCredentials: false, data: {} };
@@ -197,7 +199,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 				// if there is data in the output, make sure the returned
 				// property exists in the credentials properties
 				// else the database will not get updated
-
 				if (!propertyNames.includes(Object.keys(output)[0])) {
 					return { updatedCredentials: false, data: {} };
 				}
@@ -208,8 +209,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 						credentialType.name,
 						Object.assign(credentials, output),
 					);
+
+					return { updatedCredentials: true, data: Object.assign(credentials, output) };
 				}
-				return { updatedCredentials: true, data: Object.assign(credentials, output) };
 			}
 		}
 		return { updatedCredentials: false, data: {} };
@@ -610,6 +612,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 				? nodeType.description.version.slice(-1)[0]
 				: nodeType.description.version,
 			position: [0, 0],
+			credentials: {
+				[credentialType]: {
+					id: credentialsDecrypted.id.toString(),
+					name: credentialsDecrypted.name,
+				},
+			},
 		};
 
 		const workflowData = {

@@ -171,7 +171,7 @@ export abstract class ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		node: INode,
-		forcedRefresh: boolean,
+		credentialsExpired: boolean,
 	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }>;
 
 	abstract getCredentials(
@@ -289,7 +289,7 @@ export interface ICredentialType {
 	preAuthentication?: (
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
-		forcedRefresh: boolean,
+		credentialsExpired: boolean,
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;

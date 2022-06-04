@@ -116,7 +116,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		node: INode,
-		forcedRefresh: boolean,
+		credentialsExpired: boolean,
 	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
 		return { updatedCredentials: false, data: {} }
 	};
