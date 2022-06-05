@@ -52,14 +52,14 @@ export class CalTrigger implements INodeType {
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Booking Created',
-							value: 'BOOKING_CREATED',
-							description: 'Receive notifications when a new Cal event is created',
-						},
-						{
 							name: 'Booking Cancelled',
 							value: 'BOOKING_CANCELLED',
 							description: 'Receive notifications when a Cal event is canceled',
+						},
+						{
+							name: 'Booking Created',
+							value: 'BOOKING_CREATED',
+							description: 'Receive notifications when a new Cal event is created',
 						},
 						{
 							name: 'Booking Rescheduled',
@@ -81,6 +81,7 @@ export class CalTrigger implements INodeType {
 							displayName: 'App ID',
 							name: 'appId',
 							type: 'string',
+							description: 'The ID of the App to monitor',
 							default: '',
 						},
 						{
@@ -90,14 +91,17 @@ export class CalTrigger implements INodeType {
 							typeOptions: {
 								loadOptionsMethod: 'getEventTypes',
 							},
+							description: 'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							default: '',
 						},
 						{
 							displayName: 'Payload Template',
 							name: 'payloadTemplate',
 							type: 'string',
+							description: 'Template to customize the webhook payload',
 							default: '',
 							typeOptions: {
+								alwaysOpenEditWindow: true,
 								rows: 4,
 							}
 						}
@@ -199,7 +203,11 @@ export class CalTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 				workflowData: [
-						this.helpers.returnJsonArray(req.body),
+						this.helpers.returnJsonArray({
+							triggerEvent: req.body.triggerEvent,
+							createdAt: req.body.createdAt,
+							...req.body.payload
+						}),
 				],
 		};
 	}
