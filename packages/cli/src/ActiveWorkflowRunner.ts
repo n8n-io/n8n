@@ -13,6 +13,7 @@
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import {
+	ExecutionError,
 	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
@@ -22,11 +23,13 @@ import {
 	INodeExecutionData,
 	IRun,
 	IRunExecutionData,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
 	NodeHelpers,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowActivateMode,
+	WorkflowActivationError,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
@@ -118,6 +121,7 @@ export class ActiveWorkflowRunner {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
 					});
+					this.executeErrorWorkflow(error, workflowData, 'internal');
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -715,9 +719,37 @@ export class ActiveWorkflowRunner {
 						message: error.message,
 					},
 				};
+				const activationError = new WorkflowActivationError(
+					'There was a problem with the trigger, for that reason did the workflow had to be deactivated',
+					error,
+					node,
+				);
+
+				this.executeErrorWorkflow(activationError, workflowData, mode);
 			};
 			return returnFunctions;
 		};
+	}
+
+	executeErrorWorkflow(
+		error: ExecutionError,
+		workflowData: IWorkflowBase,
+		mode: WorkflowExecuteMode,
+	): void {
+		const fullRunData: IRun = {
+			data: {
+				resultData: {
+					error,
+					runData: {},
+				},
+			},
+			finished: false,
+			mode,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+		};
+
+		WorkflowExecuteAdditionalData.executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
 	/**
