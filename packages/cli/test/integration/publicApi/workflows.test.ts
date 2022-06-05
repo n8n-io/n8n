@@ -7,6 +7,7 @@ import { randomApiKey } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import { TagEntity } from '../../../src/databases/entities/TagEntity';
 
 let app: express.Application;
 let testDbName = '';
@@ -137,6 +138,165 @@ test('GET /workflows should return all owned workflows', async () => {
 		expect(settings).toBeDefined();
 		expect(createdAt).toBeDefined();
 		expect(updatedAt).toBeDefined();
+	}
+});
+
+test('GET /workflows should return all owned workflows with pagination', async () => {
+	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+
+	const authAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: member,
+		version: 1,
+	});
+
+	await Promise.all([
+		testDb.createWorkflow({}, member),
+		testDb.createWorkflow({}, member),
+		testDb.createWorkflow({}, member),
+	]);
+
+	const response = await authAgent.get('/workflows?limit=1');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(1);
+	expect(response.body.nextCursor).not.toBeNull();
+
+	const response2 = await authAgent.get(`/workflows?limit=1&cursor=${response.body.nextCursor}`);
+
+	expect(response2.statusCode).toBe(200);
+	expect(response2.body.data.length).toBe(1);
+	expect(response2.body.nextCursor).not.toBeNull();
+	expect(response2.body.nextCursor).not.toBe(response.body.nextCursor);
+
+	const responses = [...response.body.data, ...response2.body.data];
+
+	for (const workflow of responses) {
+		const {
+			id,
+			connections,
+			active,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+			tags,
+		} = workflow;
+
+		expect(id).toBeDefined();
+		expect(name).toBeDefined();
+		expect(connections).toBeDefined();
+		expect(active).toBe(false);
+		expect(staticData).toBeDefined();
+		expect(nodes).toBeDefined();
+		expect(tags).toBeDefined();
+		expect(settings).toBeDefined();
+		expect(createdAt).toBeDefined();
+		expect(updatedAt).toBeDefined();
+	}
+
+	// check that we really received a different result
+	expect(response.body.data[0].id).toBeLessThan(response2.body.data[0].id);
+});
+
+test('GET /workflows should return all owned workflows filtered by tag', async () => {
+	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+
+	const authAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: member,
+		version: 1,
+	});
+
+	const tag = await testDb.createTag({});
+
+	const [workflow] = await Promise.all([
+		testDb.createWorkflow({ tags: [tag] }, member),
+		testDb.createWorkflow({}, member),
+	]);
+
+	const response = await authAgent.get(`/workflows?tags=${tag.name}`);
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(1);
+
+	const {
+		id,
+		connections,
+		active,
+		staticData,
+		nodes,
+		settings,
+		name,
+		createdAt,
+		updatedAt,
+		tags: wfTags,
+	} = response.body.data[0];
+
+	expect(id).toBe(workflow.id);
+	expect(name).toBeDefined();
+	expect(connections).toBeDefined();
+	expect(active).toBe(false);
+	expect(staticData).toBeDefined();
+	expect(nodes).toBeDefined();
+	expect(settings).toBeDefined();
+	expect(createdAt).toBeDefined();
+	expect(updatedAt).toBeDefined();
+
+	expect(wfTags.length).toBe(1);
+	expect(wfTags[0].id).toBe(tag.id);
+});
+
+test('GET /workflows should return all owned workflows filtered by tags', async () => {
+	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+
+	const authAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: member,
+		version: 1,
+	});
+
+	const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({})]);
+	const tagNames = tags.map((tag) => tag.name).join(',');
+
+	const [workflow1, workflow2] = await Promise.all([
+		testDb.createWorkflow({ tags }, member),
+		testDb.createWorkflow({ tags }, member),
+		testDb.createWorkflow({}, member),
+		testDb.createWorkflow({ tags: [tags[0]] }, member),
+		testDb.createWorkflow({ tags: [tags[1]] }, member),
+	]);
+
+	const response = await authAgent.get(`/workflows?tags=${tagNames}`);
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(2);
+
+	for (const workflow of response.body.data) {
+		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
+			workflow;
+
+		expect(id).toBeDefined();
+		expect([workflow1.id, workflow2.id].includes(id)).toBe(true);
+
+		expect(name).toBeDefined();
+		expect(connections).toBeDefined();
+		expect(active).toBe(false);
+		expect(staticData).toBeDefined();
+		expect(nodes).toBeDefined();
+		expect(settings).toBeDefined();
+		expect(createdAt).toBeDefined();
+		expect(updatedAt).toBeDefined();
+
+		expect(workflow.tags.length).toBe(2);
+		workflow.tags.forEach((tag: TagEntity) => {
+			expect(tags.some((savedTag) => savedTag.id === tag.id)).toBe(true);
+		});
 	}
 });
 

@@ -21,6 +21,7 @@ import { User } from '../../../src/databases/entities/User';
 import type { CollectionName, CredentialPayload } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
+import { TagEntity } from '../../../src/databases/entities/TagEntity';
 
 const exec = promisify(callbackExec);
 
@@ -378,6 +379,20 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 	);
 	return execution;
 }
+
+// ----------------------------------
+//          Tags
+// ----------------------------------
+
+export async function createTag(attributes: Partial<TagEntity> = {}) {
+	const { name } = attributes;
+
+	return await Db.collections.Tag.save({
+		name: name ?? randomName(),
+		...attributes,
+	});
+}
+
 // ----------------------------------
 //          Workflow helpers
 // ----------------------------------
@@ -402,6 +417,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 			},
 		],
 		connections: connections ?? {},
+		...attributes,
 	});
 
 	if (user) {
