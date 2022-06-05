@@ -5,12 +5,12 @@ import {
 
 import {
 	IDataObject,
-	IHttpRequestOptions,
-	IHttpRequestMethods,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	INodePropertyOptions,
 	IWebhookFunctions,
 	NodeApiError,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 export async function calApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
