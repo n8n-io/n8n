@@ -1,10 +1,9 @@
 import express = require('express');
-import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowRunner, Db } from '../../../src';
+import { ActiveWorkflowRunner } from '../../../src';
 import config = require('../../../config');
 import { Role } from '../../../src/databases/entities/Role';
-import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../shared/random';
+import { randomApiKey } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';

@@ -1,10 +1,9 @@
 import express = require('express');
-import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowRunner, Db } from '../../../src';
 import config = require('../../../config');
 import { Role } from '../../../src/databases/entities/Role';
-import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../shared/random';
+import { randomApiKey } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
@@ -273,7 +272,7 @@ test('GET /workflows/:workflowId should retrieve workflow', async () => {
 	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 });
 
-test('GET /workflows/:workflowId should retrieve any workflow for owner', async () => {
+test('GET /workflows/:workflowId should retrieve non-owned workflow for owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -390,7 +389,7 @@ test('DELETE /workflows/:workflowId should delete the workflow', async () => {
 	expect(sharedWorkflow).toBeUndefined();
 });
 
-test('DELETE /workflows/:workflowId should delete any workflow when owner', async () => {
+test('DELETE /workflows/:workflowId should delete non-owned workflow when owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -537,6 +536,60 @@ test('POST /workflows/:workflowId/activate should set workflow as active', async
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
 });
 
+test('POST /workflows/:workflowId/activate should set non-owned workflow as active when owner', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+	const authAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
+
+	const workflow = await testDb.createWorkflowWithTrigger({}, member);
+
+	const response = await authAgent.post(`/workflows/${workflow.id}/activate`);
+
+	expect(response.statusCode).toBe(200);
+
+	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
+		response.body;
+
+	expect(id).toEqual(workflow.id);
+	expect(name).toEqual(workflow.name);
+	expect(connections).toEqual(workflow.connections);
+	expect(active).toBe(true);
+	expect(staticData).toEqual(workflow.staticData);
+	expect(nodes).toEqual(workflow.nodes);
+	expect(settings).toEqual(workflow.settings);
+	expect(createdAt).toEqual(workflow.createdAt.toISOString());
+	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+
+	// check whether the workflow is on the database
+	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
+		where: {
+			user: owner,
+			workflow,
+		},
+	});
+
+	expect(sharedOwnerWorkflow).toBeUndefined();
+
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		where: {
+			user: member,
+			workflow,
+		},
+		relations: ['workflow'],
+	});
+
+	expect(sharedWorkflow?.workflow.active).toBe(true);
+
+	// check whether the workflow is on the active workflow runner
+	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
+});
+
 test('POST /workflows/:workflowId/deactivate should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -594,7 +647,7 @@ test('POST /workflows/:workflowId/deactivate should deactive workflow', async ()
 		version: 1,
 	});
 
-	const workflow = await testDb.createWorkflowWithTrigger({ active: true }, member);
+	const workflow = await testDb.createWorkflowWithTrigger({}, member);
 
 	await authAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -610,8 +663,8 @@ test('POST /workflows/:workflowId/deactivate should deactive workflow', async ()
 	expect(staticData).toEqual(workflow.staticData);
 	expect(nodes).toEqual(workflow.nodes);
 	expect(settings).toEqual(workflow.settings);
-	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(createdAt).toBeDefined();
+	expect(updatedAt).toBeDefined();
 
 	// get the workflow after it was deactivated
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -622,7 +675,60 @@ test('POST /workflows/:workflowId/deactivate should deactive workflow', async ()
 		relations: ['workflow'],
 	});
 
-	// check wheather the workflow is deactivated in the database
+	// check whether the workflow is deactivated in the database
+	expect(sharedWorkflow?.workflow.active).toBe(false);
+
+	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(false);
+});
+
+test('POST /workflows/:workflowId/deactivate should deactive non-owned workflow when owner', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+	const authAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
+
+	const workflow = await testDb.createWorkflowWithTrigger({}, member);
+
+	await authAgent.post(`/workflows/${workflow.id}/activate`);
+
+	const workflowDeactivationResponse = await authAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
+		workflowDeactivationResponse.body;
+
+	expect(id).toEqual(workflow.id);
+	expect(name).toEqual(workflow.name);
+	expect(connections).toEqual(workflow.connections);
+	expect(active).toBe(false);
+	expect(staticData).toEqual(workflow.staticData);
+	expect(nodes).toEqual(workflow.nodes);
+	expect(settings).toEqual(workflow.settings);
+	expect(createdAt).toBeDefined();
+	expect(updatedAt).toBeDefined();
+
+	// check whether the workflow is deactivated in the database
+	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
+		where: {
+			user: owner,
+			workflow,
+		},
+	});
+
+	expect(sharedOwnerWorkflow).toBeUndefined();
+
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+		where: {
+			user: member,
+			workflow,
+		},
+		relations: ['workflow'],
+	});
+
 	expect(sharedWorkflow?.workflow.active).toBe(false);
 
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(false);
