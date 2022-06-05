@@ -51,6 +51,7 @@ export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
+export const CALENDLY_V2_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyV2Trigger';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';

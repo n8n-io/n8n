@@ -3,13 +3,13 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class CalendlyApi implements ICredentialType {
-	name = 'calendlyApi';
-	displayName = 'Calendly API (Legacy)';
+export class CalendlyV2Api implements ICredentialType {
+	name = 'calendlyV2Api';
+	displayName = 'Calendly API';
 	documentationUrl = 'calendly';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
+			displayName: 'Personal Access Token',
 			name: 'apiKey',
 			type: 'string',
 			default: '',

@@ -4,6 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -15,12 +17,12 @@ import {
 
 export class CalendlyTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Calendly Trigger (Legacy)',
-		name: 'calendlyTrigger',
+		displayName: 'Calendly Trigger',
+		name: 'calendlyV2Trigger',
 		icon: 'file:calendly.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Calendly events occur',
+		description: 'Starts the workflow when Calendly events occur.',
 		defaults: {
 			name: 'Calendly Trigger',
 		},
@@ -28,7 +30,7 @@ export class CalendlyTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'calendlyApi',
+				name: 'calendlyV2Api',
 				required: true,
 			},
 		],
@@ -60,8 +62,46 @@ export class CalendlyTrigger implements INodeType {
 				default: [],
 				required: true,
 			},
+			{
+				displayName: 'Scope Name or ID',
+				name: 'scope',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getScopeOptions',
+				},
+				required: true,
+			},
 		],
 
+	};
+
+	methods = {
+		loadOptions: {
+			async getScopeOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const organizationScopeRoles = ['owner', 'admin'];
+				const resultData: INodePropertyOptions[] = [{
+					name: 'User',
+					value: 'user',
+					description: 'Receive notifications for your scheduled / canceled events',
+				}];
+				const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me', {});
+
+				const { collection: [membership] } = await calendlyApiRequest.call(this, 'GET', '/organization_memberships', {}, {
+					user: resource.uri,
+				});
+
+				if (organizationScopeRoles.includes(membership.role)) {
+					resultData.push({
+						name: 'Organization',
+						value: 'organization',
+						description: 'Receive notifications for all scheduled / canceled events in your organization',
+					});
+				}
+
+				return resultData;
+			},
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -71,22 +111,36 @@ export class CalendlyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string;
+				const scope = this.getNodeParameter('scope') as string;
+
+				const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me', {});
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/hooks';
-				const { data } = await calendlyApiRequest.call(this, 'GET', endpoint, {});
+				const endpoint = '/webhook_subscriptions';
+				const query = {
+					scope,
+					organization: resource.current_organization,
+					count: 100,
+					user: resource.uri,
+				};
+				
+				if (scope !== 'user') {
+					delete query.user;
+				}
 
-				for (const webhook of data) {
-					if (webhook.attributes.url === webhookUrl) {
+				const { collection } = await calendlyApiRequest.call(this, 'GET', endpoint, {}, query);
+
+				for (const webhook of collection) {
+					if (webhook.callback_url === webhookUrl && webhook.state === 'active') {
 						for (const event of events) {
-							if (!webhook.attributes.events.includes(event)) {
+							if (!webhook.events.includes(event)) {
 								return false;
 							}
 						}
 					}
 					// Set webhook-id to be sure that it can be deleted
-					webhookData.webhookId = webhook.id as string;
+					webhookData.webhookId = webhook.uri.slice(webhook.uri.lastIndexOf('/') + 1);
 					return true;
 				}
 				return false;
@@ -95,29 +149,39 @@ export class CalendlyTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string;
+				const scope = this.getNodeParameter('scope') as string;
 
-				const endpoint = '/hooks';
+				const { resource: { uri, current_organization} } = await calendlyApiRequest.call(this, 'GET', '/users/me', {});
+
+				const endpoint = '/webhook_subscriptions';
 
 				const body = {
 					url: webhookUrl,
+					organization: current_organization,
 					events,
+					scope,
+					user: uri,
 				};
 
-				const responseData = await calendlyApiRequest.call(this, 'POST', endpoint, body);
+				if (scope !== 'user') {
+					delete body.user;
+				}
 
-				if (responseData.id === undefined) {
+				const { resource } = await calendlyApiRequest.call(this, 'POST', endpoint, body);
+
+				if (resource === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}
 
-				webhookData.webhookId = responseData.id as string;
+				webhookData.webhookId = resource.uri.slice(resource.uri.lastIndexOf('/') + 1) as string;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
 
-					const endpoint = `/hooks/${webhookData.webhookId}`;
+					const endpoint = `/webhook_subscriptions/${webhookData.webhookId}`;
 
 					try {
 						await calendlyApiRequest.call(this, 'DELETE', endpoint);
@@ -126,7 +190,7 @@ export class CalendlyTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
