@@ -103,8 +103,8 @@ export class CalTrigger implements INodeType {
 							typeOptions: {
 								alwaysOpenEditWindow: true,
 								rows: 4,
-							}
-						}
+							},
+						},
 					],
 				},
 			],
@@ -165,7 +165,7 @@ export class CalTrigger implements INodeType {
 					subscriberUrl,
 					eventTriggers,
 					active,
-					...options as object
+					...options as object,
 				};
 
 				const responseData = await calApiRequest.call(this, 'POST', '/hooks', body);
@@ -206,7 +206,7 @@ export class CalTrigger implements INodeType {
 						this.helpers.returnJsonArray({
 							triggerEvent: req.body.triggerEvent,
 							createdAt: req.body.createdAt,
-							...req.body.payload
+							...req.body.payload,
 						}),
 				],
 		};
