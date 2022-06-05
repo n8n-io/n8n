@@ -5,6 +5,96 @@ import {
 
 export const regions = [
 	{
+		name: 'af-south-1',
+		displayName: 'Africa',
+		location: 'Cape Town',
+	},
+	{
+		name: 'ap-east-1',
+		displayName: 'Asia Pacific',
+		location: 'Hong Kong',
+	},
+	{
+		name: 'ap-south-1',
+		displayName: 'Asia Pacific',
+		location: 'Mumbai',
+	},
+	{
+		name: 'ap-southeast-1',
+		displayName: 'Asia Pacific',
+		location: 'Singapore',
+	},
+	{
+		name: 'ap-southeast-2',
+		displayName: 'Asia Pacific',
+		location: 'Sydney',
+	},
+	{
+		name: 'ap-southeast-3',
+		displayName: 'Asia Pacific',
+		location: 'Jakarta',
+	},
+	{
+		name: 'ap-northeast-1',
+		displayName: 'Asia Pacific',
+		location: 'Tokyo',
+	},
+	{
+		name: 'ap-northeast-2',
+		displayName: 'Asia Pacific',
+		location: 'Seoul',
+	},
+	{
+		name: 'ap-northeast-3',
+		displayName: 'Asia Pacific',
+		location: 'Osaka',
+	},
+	{
+		name: 'ca-central-1',
+		displayName: 'Canada',
+		location: 'Central',
+	},
+	{
+		name: 'eu-central-1',
+		displayName: 'Europe',
+		location: 'Frankfurt',
+	},
+	{
+		name: 'eu-north-1',
+		displayName: 'Europe',
+		location: 'Stockholm',
+	},
+	{
+		name: 'eu-south-1',
+		displayName: 'Europe',
+		location: 'Milan',
+	},
+	{
+		name: 'eu-west-1',
+		displayName: 'Europe',
+		location: 'Ireland',
+	},
+	{
+		name: 'eu-west-2',
+		displayName: 'Europe',
+		location: 'London',
+	},
+	{
+		name: 'eu-west-3',
+		displayName: 'Europe',
+		location: 'Paris',
+	},
+	{
+		name: 'me-south-1',
+		displayName: 'Middle East',
+		location: 'Bahrain',
+	},
+	{
+		name: 'sa-east-1',
+		displayName: 'South America',
+		location: 'São Paulo',
+	},
+	{
 		name: 'us-east-1',
 		displayName: 'US East',
 		location: 'N. Virginia',
@@ -24,96 +114,6 @@ export const regions = [
 		displayName: 'US West',
 		location: 'Oregon',
 	},
-	{
-		name: 'af-south-1',
-		displayName: 'Africa',
-		location: 'Cape Town',
-	},
-	{
-		name: 'ap-east-1',
-		displayName: 'Asia Pacific',
-		location: 'Hong Kong',
-	},
-	{
-		name: 'ap-southeast-3',
-		displayName: 'Asia Pacific',
-		location: 'Jakarta',
-	},
-	{
-		name: 'ap-south-1',
-		displayName: 'Asia Pacific',
-		location: 'Mumbai',
-	},
-	{
-		name: 'ap-northeast-3',
-		displayName: 'Asia Pacific',
-		location: 'Osaka',
-	},
-	{
-		name: 'ap-northeast-2',
-		displayName: 'Asia Pacific',
-		location: 'Seoul',
-	},
-	{
-		name: 'ap-southeast-1',
-		displayName: 'Asia Pacific',
-		location: 'Singapore',
-	},
-	{
-		name: 'ap-southeast-2',
-		displayName: 'Asia Pacific',
-		location: 'Sydney',
-	},
-	{
-		name: 'ap-northeast-1',
-		displayName: 'Asia Pacific',
-		location: 'Tokyo',
-	},
-	{
-		name: 'ca-central-1',
-		displayName: 'Canada',
-		location: 'Central',
-	},
-	{
-		name: 'eu-central-1',
-		displayName: 'Europe',
-		location: 'Frankfurt',
-	},
-	{
-		name: 'eu-west-1',
-		displayName: 'Europe',
-		location: 'Ireland',
-	},
-	{
-		name: 'eu-west-2',
-		displayName: 'Europe',
-		location: 'London',
-	},
-	{
-		name: 'eu-south-1',
-		displayName: 'Europe',
-		location: 'Milan',
-	},
-	{
-		name: 'eu-west-3',
-		displayName: 'Europe',
-		location: 'Paris',
-	},
-	{
-		name: 'eu-north-1',
-		displayName: 'Europe',
-		location: 'Stockholm',
-	},
-	{
-		name: 'me-south-1',
-		displayName: 'Middle East',
-		location: 'Bahrain',
-	},
-	{
-		name: 'sa-east-1',
-		displayName: 'South America',
-		location: 'São Paulo',
-	},
 ] as const
 
 export type AWSRegion = typeof regions[number]['name']
@@ -129,7 +129,7 @@ export class Aws implements ICredentialType {
 			name: 'region',
 			type: 'options',
 			options: regions.map(r => ({
-				name: `${r.displayName} (${r.location})`,
+				name: `${r.displayName} (${r.location}) - ${r.name}`,
 				value: r.name,
 			})),
 			default: 'us-east-1',
