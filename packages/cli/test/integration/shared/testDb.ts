@@ -56,7 +56,7 @@ export async function init() {
 				`host: ${pgOptions.host} | port: ${pgOptions.port} | schema: ${pgOptions.schema} | username: ${pgOptions.username} | password: ${pgOptions.password}`,
 				'Fix by setting correct values via environment variables:',
 				`${pgConfig.host.env} | ${pgConfig.port.env} | ${pgConfig.schema.env} | ${pgConfig.user.env} | ${pgConfig.password.env}`,
-				'Otherwise, make sure your Postgres server is running.'
+				'Otherwise, make sure your Postgres server is running.',
 			].join('\n');
 
 			console.error(message);
@@ -72,7 +72,9 @@ export async function init() {
 			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('command not found')) {
-				console.error('psql command not found. Make sure psql is installed and added to your PATH.');
+				console.error(
+					'psql command not found. Make sure psql is installed and added to your PATH.',
+				);
 			}
 			process.exit(1);
 		}
@@ -416,7 +418,10 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
  * Store a workflow in the DB (with a trigger) and optionally assigns it to a user.
  * @param user user to assign the workflow to
  */
-export async function createWorkflowWithTrigger(user?: User) {
+export async function createWorkflowWithTrigger(
+	attributes: Partial<WorkflowEntity> = {},
+	user?: User,
+) {
 	const workflow = await createWorkflow(
 		{
 			nodes: [
@@ -443,6 +448,7 @@ export async function createWorkflowWithTrigger(user?: User) {
 				},
 			],
 			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+			...attributes,
 		},
 		user,
 	);

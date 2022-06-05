@@ -12,9 +12,7 @@ import * as testDb from '../shared/testDb';
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
-let globalMemberRole: Role;
-let workflowOwnerRole: Role;
-let credentialOwnerRole: Role;
+
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 
 jest.mock('../../../src/telemetry');
@@ -24,17 +22,7 @@ beforeAll(async () => {
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	const [
-		fetchedGlobalOwnerRole,
-		fetchedGlobalMemberRole,
-		fetchedWorkflowOwnerRole,
-		fetchedCredentialOwnerRole,
-	] = await testDb.getAllRoles();
-
-	globalOwnerRole = fetchedGlobalOwnerRole;
-	globalMemberRole = fetchedGlobalMemberRole;
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
-	credentialOwnerRole = fetchedCredentialOwnerRole;
+	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
@@ -50,16 +38,6 @@ beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
 	await testDb.truncate(['User', 'Workflow', 'Credentials', 'Execution', 'Settings'], testDbName);
 
-	await testDb.createUser({
-		id: INITIAL_TEST_USER.id,
-		email: INITIAL_TEST_USER.email,
-		password: INITIAL_TEST_USER.password,
-		firstName: INITIAL_TEST_USER.firstName,
-		lastName: INITIAL_TEST_USER.lastName,
-		globalRole: globalOwnerRole,
-		apiKey: INITIAL_TEST_USER.apiKey,
-	});
-
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', 'smtp');
@@ -74,9 +52,7 @@ afterAll(async () => {
 });
 
 test('GET /executions/:executionId should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	owner.apiKey = null;
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -91,9 +67,8 @@ test('GET /executions/:executionId should fail due to missing API Key', async ()
 });
 
 test('GET /executions/:executionId should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	owner.apiKey = null;
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+	owner.apiKey = 'abcXYZ';
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -102,13 +77,13 @@ test('GET /executions/:executionId should fail due to invalid API Key', async ()
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.get('/executions/2');
+	const response = await authOwnerAgent.get('/executions/1');
 
 	expect(response.statusCode).toBe(401);
 });
 
 test('GET /executions/:executionId should get an execution', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -139,27 +114,19 @@ test('GET /executions/:executionId should get an execution', async () => {
 	} = response.body;
 
 	expect(id).toBeDefined();
-	expect(data).toBeDefined();
 	expect(data).toEqual(execution.data);
-	expect(finished).toBeDefined();
 	expect(finished).toBe(true);
-	expect(mode).toBeDefined();
 	expect(mode).toEqual(execution.mode);
-	expect(retrySuccessId).toBeDefined();
 	expect(retrySuccessId).toBeNull();
-	expect(retryOf).toBeDefined();
 	expect(retryOf).toBeNull();
-	expect(startedAt).toBeDefined();
-	expect(stoppedAt).toBeDefined();
-	expect(workflowId).toBeDefined();
+	expect(startedAt).not.toBeNull();
+	expect(stoppedAt).not.toBeNull();
 	expect(workflowId).toBe(execution.workflowId);
-	expect(waitTill).toBeDefined();
+	expect(waitTill).toBeNull();
 });
 
 test('DELETE /executions/:executionId should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	owner.apiKey = null;
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -174,9 +141,8 @@ test('DELETE /executions/:executionId should fail due to missing API Key', async
 });
 
 test('DELETE /executions/:executionId should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	owner.apiKey = null;
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+	owner.apiKey = 'abcXYZ';
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -185,13 +151,13 @@ test('DELETE /executions/:executionId should fail due to invalid API Key', async
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.delete('/executions/2');
+	const response = await authOwnerAgent.delete('/executions/1');
 
 	expect(response.statusCode).toBe(401);
 });
 
 test('DELETE /executions/:executionId should delete an execution', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -222,27 +188,19 @@ test('DELETE /executions/:executionId should delete an execution', async () => {
 	} = response.body;
 
 	expect(id).toBeDefined();
-	expect(data).toBeDefined();
 	expect(data).toEqual(execution.data);
-	expect(finished).toBeDefined();
 	expect(finished).toBe(true);
-	expect(mode).toBeDefined();
 	expect(mode).toEqual(execution.mode);
-	expect(retrySuccessId).toBeDefined();
 	expect(retrySuccessId).toBeNull();
-	expect(retryOf).toBeDefined();
 	expect(retryOf).toBeNull();
-	expect(startedAt).toBeDefined();
-	expect(stoppedAt).toBeDefined();
-	expect(workflowId).toBeDefined();
+	expect(startedAt).not.toBeNull();
+	expect(stoppedAt).not.toBeNull();
 	expect(workflowId).toBe(execution.workflowId);
-	expect(waitTill).toBeDefined();
+	expect(waitTill).toBeNull();
 });
 
 test('GET /executions should fail due to missing API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	owner.apiKey = null;
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -257,9 +215,8 @@ test('GET /executions should fail due to missing API Key', async () => {
 });
 
 test('GET /executions should fail due to invalid API Key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-
-	owner.apiKey = null;
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+	owner.apiKey = 'abcXYZ';
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -274,7 +231,7 @@ test('GET /executions should fail due to invalid API Key', async () => {
 });
 
 test('GET /executions should retrieve all successfull executions', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -311,25 +268,19 @@ test('GET /executions should retrieve all successfull executions', async () => {
 	} = response.body.data[0];
 
 	expect(id).toBeDefined();
-	expect(data).toBeDefined();
 	expect(data).toEqual(successfullExecution.data);
-	expect(finished).toBeDefined();
 	expect(finished).toBe(true);
-	expect(mode).toBeDefined();
 	expect(mode).toEqual(successfullExecution.mode);
-	expect(retrySuccessId).toBeDefined();
 	expect(retrySuccessId).toBeNull();
-	expect(retryOf).toBeDefined();
 	expect(retryOf).toBeNull();
-	expect(startedAt).toBeDefined();
-	expect(stoppedAt).toBeDefined();
-	expect(workflowId).toBeDefined();
+	expect(startedAt).not.toBeNull();
+	expect(stoppedAt).not.toBeNull();
 	expect(workflowId).toBe(successfullExecution.workflowId);
-	expect(waitTill).toBeDefined();
+	expect(waitTill).toBeNull();
 });
 
 test('GET /executions should retrieve all error executions', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -366,25 +317,19 @@ test('GET /executions should retrieve all error executions', async () => {
 	} = response.body.data[0];
 
 	expect(id).toBeDefined();
-	expect(data).toBeDefined();
 	expect(data).toEqual(errorExecution.data);
-	expect(finished).toBeDefined();
 	expect(finished).toBe(false);
-	expect(mode).toBeDefined();
 	expect(mode).toEqual(errorExecution.mode);
-	expect(retrySuccessId).toBeDefined();
 	expect(retrySuccessId).toBeNull();
-	expect(retryOf).toBeDefined();
 	expect(retryOf).toBeNull();
-	expect(startedAt).toBeDefined();
-	expect(stoppedAt).toBeDefined();
-	expect(workflowId).toBeDefined();
+	expect(startedAt).not.toBeNull();
+	expect(stoppedAt).not.toBeNull();
 	expect(workflowId).toBe(errorExecution.workflowId);
-	expect(waitTill).toBeDefined();
+	expect(waitTill).toBeNull();
 });
 
 test('GET /executions should return all waiting executions', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -423,28 +368,13 @@ test('GET /executions should return all waiting executions', async () => {
 	} = response.body.data[0];
 
 	expect(id).toBeDefined();
-	expect(data).toBeDefined();
 	expect(data).toEqual(waitingExecution.data);
-	expect(finished).toBeDefined();
 	expect(finished).toBe(false);
-	expect(mode).toBeDefined();
 	expect(mode).toEqual(waitingExecution.mode);
-	expect(retrySuccessId).toBeDefined();
 	expect(retrySuccessId).toBeNull();
-	expect(retryOf).toBeDefined();
 	expect(retryOf).toBeNull();
-	expect(startedAt).toBeDefined();
-	expect(stoppedAt).toBeDefined();
-	expect(workflowId).toBeDefined();
+	expect(startedAt).not.toBeNull();
+	expect(stoppedAt).not.toBeNull();
 	expect(workflowId).toBe(waitingExecution.workflowId);
-	expect(waitTill).toBeDefined();
+	expect(new Date(waitTill).getTime()).toBeGreaterThan(Date.now() - 1000);
 });
-
-const INITIAL_TEST_USER = {
-	id: uuid(),
-	email: randomEmail(),
-	firstName: randomName(),
-	lastName: randomName(),
-	password: randomValidPassword(),
-	apiKey: randomApiKey(),
-};

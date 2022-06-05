@@ -8,7 +8,6 @@ import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import * as testDb from '../shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
-import { INodeProperties } from 'n8n-workflow/dist/src/Interfaces';
 
 jest.mock('../../../src/telemetry');
 
@@ -16,6 +15,9 @@ let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
+let workflowOwnerRole: Role;
+let credentialOwnerRole: Role;
+
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
@@ -25,9 +27,18 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
-	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
+	const [
+		fetchedGlobalOwnerRole,
+		fetchedGlobalMemberRole,
+		fetchedWorkflowOwnerRole,
+		fetchedCredentialOwnerRole,
+	] = await testDb.getAllRoles();
+
+	globalOwnerRole = fetchedGlobalOwnerRole;
+	globalMemberRole = fetchedGlobalMemberRole;
+	workflowOwnerRole = fetchedWorkflowOwnerRole;
+	credentialOwnerRole = fetchedCredentialOwnerRole;
+
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	utils.initTestLogger();
@@ -79,11 +90,11 @@ test('POST /credentials should create credentials', async () => {
 	expect(credential.data).not.toBe(payload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
-		relations: ['user', 'credentials'],
-		where: { credentials: credential },
+		relations: ['user', 'credentials', 'role'],
+		where: { credentials: credential, user: ownerShell },
 	});
 
-	expect(sharedCredential.user.id).toBe(ownerShell.id);
+	expect(sharedCredential.role).toEqual(credentialOwnerRole);
 	expect(sharedCredential.credentials.name).toBe(payload.name);
 });
 
@@ -216,6 +227,59 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
 
+test('DELETE /credentials/:id should delete owned cred for member but leave others untouched', async () => {
+	const member1 = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	const member2 = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+
+	const savedCredential = await saveCredential(dbCredential(), { user: member1 });
+	const notToBeChangedCredential = await saveCredential(dbCredential(), { user: member1 });
+	const notToBeChangedCredential2 = await saveCredential(dbCredential(), { user: member2 });
+
+	const authMemberAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		version: 1,
+		auth: true,
+		user: member1,
+	});
+
+	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
+
+	expect(response.statusCode).toBe(200);
+
+	const { name, type } = response.body;
+
+	expect(name).toBe(savedCredential.name);
+	expect(type).toBe(savedCredential.type);
+
+	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
+
+	expect(deletedCredential).toBeUndefined(); // deleted
+
+	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne({
+		where: {
+			credentials: savedCredential,
+		},
+	});
+
+	expect(deletedSharedCredential).toBeUndefined(); // deleted
+
+	await Promise.all(
+		[notToBeChangedCredential, notToBeChangedCredential2].map(async (credential) => {
+			const untouchedCredential = await Db.collections.Credentials!.findOne(credential.id);
+
+			expect(untouchedCredential).toEqual(credential); // not deleted
+
+			const untouchedSharedCredential = await Db.collections.SharedCredentials!.findOne({
+				where: {
+					credentials: credential,
+				},
+			});
+
+			expect(untouchedSharedCredential).toBeDefined(); // not deleted
+		}),
+	);
+});
+
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
@@ -319,18 +383,15 @@ const dbCredential = () => {
 const INVALID_PAYLOADS = [
 	{
 		type: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
 		type: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 	},
 	{
 		name: randomName(),
