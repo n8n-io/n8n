@@ -6,7 +6,12 @@
 import express from 'express';
 import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import {
+	INodeCredentialsDetails,
+	INodeCredentialTestResult,
+	LoggerProxy,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
 import {
@@ -17,6 +22,7 @@ import {
 	ICredentialsResponse,
 	whereClause,
 	ResponseHelper,
+	CredentialTypes,
 } from '..';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
@@ -127,6 +133,27 @@ credentialsController.post(
 				500,
 			);
 		}
+
+		// data in the client does not include the expirable property from the first test run
+		// so get the latest data from the database
+
+		// the other options would be retrieve the credentials after every test run,
+		// so in case they were updated by the preAuthentication hook, the client can
+		// have the source of truth.
+
+		const mode: WorkflowExecuteMode = 'internal';
+		const timezone = config.getEnv('generic.timezone');
+		const credentialsHelper = new CredentialsHelper(encryptionKey);
+
+		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+			{ id: credentials.id.toString(), name: credentials.name },
+			credentials.type,
+			mode,
+			timezone,
+			true,
+		);
+
+		credentials.data = decryptedDataOriginal;
 
 		const helper = new CredentialsHelper(encryptionKey);
 

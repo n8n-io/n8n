@@ -4,7 +4,6 @@ import {
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestHelper,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -45,24 +44,22 @@ export class MetabaseApi implements ICredentialType {
 					},
 	];
 
+	// method will only be called if "sessionToken" (the expirable property)
+	// is empty or is expired
 	async preAuthentication(
 			this: IHttpRequestHelper,
-			credentials: ICredentialDataDecryptedObject,
-			credentialsExpired: boolean) {
-					if (!credentialsExpired && credentials.sessionToken) {
-							return {};
-					}
-					//make reques to get session token
-					const { id } = await this.helpers.httpRequest({
-							method: 'POST',
-							url: `${credentials.url}/api/session`,
-							body: {
-									username: credentials.username,
-									password: credentials.password,
-							}
-					}) as { id: string }
-
-					return { sessionToken: id };
+			credentials: ICredentialDataDecryptedObject) {
+				//make reques to get session token
+				const { id } = await this.helpers.httpRequest({
+						method: 'POST',
+						url: `${credentials.url}/api/session`,
+						body: {
+								username: credentials.username,
+								password: credentials.password,
+						}
+				}) as { id: string }
+				console.log(`SESSION TOKEN: ${id}`)
+				return { sessionToken: id };
 	}
 	authenticate: IAuthenticateHeaderAuth = {
 		type: 'headerAuth',

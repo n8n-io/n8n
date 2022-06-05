@@ -52,7 +52,6 @@ import {
 } from '.';
 // eslint-disable-next-line import/no-cycle
 import { User } from './databases/entities/User';
-import { Console } from 'console';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -181,36 +180,36 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 
-		const propertyNames = credentialType.properties.map((property) => property.name);
+		const experiableProperty = credentialType.properties.find(
+			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
+		);
+
+		if (experiableProperty === undefined || experiableProperty.name === undefined) {
+			return { updatedCredentials: false, data: {} };
+		}
 
 		if (credentialType.preAuthentication) {
 			if (typeof credentialType.preAuthentication === 'function') {
-				const output = await credentialType.preAuthentication.call(
-					helpers,
-					credentials,
-					credentialsExpired,
-				);
+				// if the expirable property is empty in the credentials
+				// or are expired, call pre authentication method
+				if (credentials[experiableProperty?.name] === '' || credentialsExpired) {
+					const output = await credentialType.preAuthentication.call(helpers, credentials);
 
-				// if output empty, no need to update anything
-				if (!Object.keys(output).length) {
-					return { updatedCredentials: false, data: {} };
-				}
+					// if there is data in the output, make sure the returned
+					// property is the expirable property
+					// else the database will not get updated
+					if (output[experiableProperty.name] === undefined) {
+						return { updatedCredentials: false, data: {} };
+					}
 
-				// if there is data in the output, make sure the returned
-				// property exists in the credentials properties
-				// else the database will not get updated
-				if (!propertyNames.includes(Object.keys(output)[0])) {
-					return { updatedCredentials: false, data: {} };
-				}
-
-				if (node.credentials) {
-					await this.updateCredentials(
-						node.credentials[credentialType.name],
-						credentialType.name,
-						Object.assign(credentials, output),
-					);
-
-					return { updatedCredentials: true, data: Object.assign(credentials, output) };
+					if (node.credentials) {
+						await this.updateCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+							Object.assign(credentials, output),
+						);
+						return { updatedCredentials: true, data: Object.assign(credentials, output) };
+					}
 				}
 			}
 		}

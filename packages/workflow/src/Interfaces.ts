@@ -289,7 +289,6 @@ export interface ICredentialType {
 	preAuthentication?: (
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
-		credentialsExpired: boolean,
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
@@ -884,6 +883,7 @@ export interface INodePropertyTypeOptions {
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
+	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	[key: string]: any;
 }
 
