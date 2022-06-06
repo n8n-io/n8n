@@ -10,6 +10,7 @@ import { CredentialsEntity } from '../../../../databases/entities/CredentialsEnt
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 import { User } from '../../../../databases/entities/User';
 import { externalHooks } from '../../../../Server';
+import { IDependency, IJsonSchema } from '../../../types';
 
 export async function getCredentials(
 	credentialId: number | string,
@@ -133,25 +134,15 @@ export function sanitizeCredentials(
 	return argIsArray ? sanitizedCredentials : sanitizedCredentials[0];
 }
 
+/**
+ * toJsonSchema
+ * Take an array of crendentials parameter and map it
+ * to a JSON Schema (see https://json-schema.org/). With
+ * the JSON Schema defintion we can validate the credential's shape
+ * @param properties - Credentials properties
+ * @returns The credentials schema definition.
+ */
 export function toJsonSchema(properties: INodeProperties[]): IDataObject {
-	interface IRequired {
-		required?: string[];
-		not?: { required?: string[] };
-	}
-	interface IDependency {
-		if?: { properties: {} };
-		then?: { oneOf: IRequired[] };
-		else?: { allOf: IRequired[] };
-	}
-
-	interface IJsonSchema {
-		additionalProperties: boolean;
-		type: 'object';
-		properties: { [key: string]: { type: string } };
-		allOf?: IDependency[];
-		required: string[];
-	}
-
 	const jsonSchema: IJsonSchema = {
 		additionalProperties: false,
 		type: 'object',
@@ -159,9 +150,12 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		allOf: [],
 		required: [],
 	};
+
 	const optionsValues: { [key: string]: string[] } = {};
 	const resolveProperties: string[] = [];
 
+	// get all posible values of properties type "options"
+	// so we can later resolve the displayOptions dependencies
 	properties
 		.filter((property) => property.type === 'options')
 		.forEach((property) => {
@@ -174,9 +168,15 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 
 	const propertyRequiredDependencies: { [key: string]: IDependency } = {};
 
+	// add all credential's properties to the properties
+	// object in the JSON Schema definition. This allows us
+	// to later validate that only this properties are set in
+	// the credentials sent in the API call.
 	properties.forEach((property) => {
 		requiredFields.push(property.name);
 		if (property.type === 'options') {
+			// if the property is type options,
+			// include all possible values in the anum property.
 			Object.assign(jsonSchema.properties, {
 				[property.name]: {
 					type: 'string',
@@ -191,7 +191,10 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			});
 		}
 
-		// has dependency
+		// if the credential property has a dependency
+		// then add a JSON Schema condition that satisfy each property value
+		// e.x: If A has value X then required B, else required C
+		// see https://json-schema.org/understanding-json-schema/reference/conditionals.html#if-then-else
 		if (property.displayOptions?.show) {
 			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
 			const displayOptionsValues = property.displayOptions.show[dependantName];

@@ -145,3 +145,20 @@ type PaginationCursorDecoded = PaginationBase & { lastId: number };
 type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
 
 type CursorPagination = PaginationBase & { lastId: number; numberOfNextRecords: number };
+export interface IRequired {
+	required?: string[];
+	not?: { required?: string[] };
+}
+export interface IDependency {
+	if?: { properties: {} };
+	then?: { oneOf: IRequired[] };
+	else?: { allOf: IRequired[] };
+}
+
+export interface IJsonSchema {
+	additionalProperties: boolean;
+	type: 'object';
+	properties: { [key: string]: { type: string } };
+	allOf?: IDependency[];
+	required: string[];
+}
