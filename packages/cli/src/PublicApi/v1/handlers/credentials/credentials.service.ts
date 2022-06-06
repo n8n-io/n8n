@@ -9,7 +9,6 @@ import { Db, ICredentialsDb } from '../../../..';
 import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 import { User } from '../../../../databases/entities/User';
-import { CredentialsHelper } from '../../../../CredentialsHelper';
 import { externalHooks } from '../../../../Server';
 
 export async function getCredentials(

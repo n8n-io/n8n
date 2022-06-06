@@ -24,7 +24,7 @@ const encodeOffSetPagination = (pagination: OffsetPagination): string | null => 
 	return null;
 };
 
-const encodeCursoPagination = (pagination: CursorPagination): string | null => {
+const encodeCursorPagination = (pagination: CursorPagination): string | null => {
 	if (pagination.numberOfNextRecords) {
 		return Buffer.from(
 			JSON.stringify({
@@ -42,5 +42,5 @@ export const encodeNextCursor = (
 	if ('offset' in pagination) {
 		return encodeOffSetPagination(pagination);
 	}
-	return encodeCursoPagination(pagination);
+	return encodeCursorPagination(pagination);
 };

@@ -32,7 +32,7 @@ export const validCursor: RequestHandler = (req: PaginatatedRequest, res, next) 
 			}
 		} catch (error) {
 			return res.status(400).json({
-				message: 'An invalid cursor was used',
+				message: 'An invalid cursor was provided',
 			});
 		}
 	}

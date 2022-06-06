@@ -1,5 +1,1 @@
 description: Unauthorized
-content:
-  application/json:
-    schema:
-      $ref: '../schemas/error.yml'

@@ -28,7 +28,7 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
-  /credentials/schema/{id}:
+  /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'

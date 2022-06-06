@@ -1,5 +1,1 @@
 description: The specified resource was not found.
-content:
-  application/json:
-    schema:
-      $ref: '../schemas/error.yml'

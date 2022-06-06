@@ -1,12 +1,10 @@
-  required:
-  - code
-  - description
+required:
   - message
-  type: object
-  properties:
-    code:
-      type: string
-    message:
-      type: string
-    description:
-      type: string
+type: object
+properties:
+  code:
+    type: string
+  message:
+    type: string
+  description:
+    type: string

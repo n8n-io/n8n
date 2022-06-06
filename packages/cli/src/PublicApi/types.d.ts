@@ -61,7 +61,7 @@ export declare namespace ExecutionRequest {
 }
 
 export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
 }
 
 export declare namespace WorkflowRequest {

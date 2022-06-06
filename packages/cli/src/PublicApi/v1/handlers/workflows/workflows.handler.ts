@@ -13,8 +13,8 @@ import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
-	activeWorkflow,
-	desactiveWorkflow,
+	setWorkflowAsActive,
+	setWorkflowAsInactive,
 	updateWorkflow,
 	hasStartNode,
 	getStartNode,
@@ -22,7 +22,7 @@ import {
 	getSharedWorkflows,
 	getWorkflowsCount,
 	createWorkflow,
-	getWorkflowIdsWithTags,
+	getWorkflowIdsViaTags,
 	parseTagNames,
 } from './workflows.service';
 
@@ -126,7 +126,7 @@ export = {
 
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
-					const workflowIds = await getWorkflowIdsWithTags(parseTagNames(tags));
+					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					Object.assign(query.where, { id: In(workflowIds) });
 				}
 
@@ -137,7 +137,7 @@ export = {
 				const options: { workflowIds?: number[] } = {};
 
 				if (tags) {
-					options.workflowIds = await getWorkflowIdsWithTags(parseTagNames(tags));
+					options.workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 				}
 
 				const sharedWorkflows = await getSharedWorkflows(req.user, options);
@@ -258,12 +258,13 @@ export = {
 				}
 
 				// change the status to active in the DB
-				await activeWorkflow(sharedWorkflow.workflow);
+				await setWorkflowAsActive(sharedWorkflow.workflow);
 
 				sharedWorkflow.workflow.active = true;
 
 				return res.json(sharedWorkflow.workflow);
 			}
+
 			// nothing to do as the wokflow is already active
 			return res.json(sharedWorkflow.workflow);
 		},
@@ -288,7 +289,7 @@ export = {
 			if (sharedWorkflow.workflow.active) {
 				await workflowRunner.remove(sharedWorkflow.workflowId.toString());
 
-				await desactiveWorkflow(sharedWorkflow.workflow);
+				await setWorkflowAsInactive(sharedWorkflow.workflow);
 
 				sharedWorkflow.workflow.active = false;
 

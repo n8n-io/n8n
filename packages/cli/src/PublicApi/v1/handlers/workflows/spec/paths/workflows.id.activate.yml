@@ -16,3 +16,5 @@ post:
             $ref: '../schemas/workflow.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

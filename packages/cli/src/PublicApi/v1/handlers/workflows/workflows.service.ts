@@ -1,6 +1,6 @@
 import { intersection } from 'lodash';
 import type { INode } from 'n8n-workflow';
-import { FindManyOptions, In } from 'typeorm';
+import { FindManyOptions, In, UpdateResult } from 'typeorm';
 import { User } from '../../../../databases/entities/User';
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { Db } from '../../../..';
@@ -57,7 +57,11 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
 	return workflow;
 }
 
-export async function getWorkflowIdsWithTags(tags: string[]): Promise<number[]> {
+/**
+ * Returns the workflow IDs that have certain tags.
+ * Intersection! e.g. workflow needs to have all provided tags.
+ */
+export async function getWorkflowIdsViaTags(tags: string[]): Promise<number[]> {
 	const dbTags = await Db.collections.Tag.find({
 		where: {
 			name: In(tags),
@@ -76,9 +80,9 @@ export async function createWorkflow(
 	role: Role,
 ): Promise<WorkflowEntity> {
 	let savedWorkflow: unknown;
+	const newWorkflow = new WorkflowEntity();
+	Object.assign(newWorkflow, workflow);
 	await Db.transaction(async (transactionManager) => {
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, workflow);
 		savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 		const newSharedWorkflow = new SharedWorkflow();
 		Object.assign(newSharedWorkflow, {
@@ -91,16 +95,16 @@ export async function createWorkflow(
 	return savedWorkflow as WorkflowEntity;
 }
 
-export async function activeWorkflow(workflow: WorkflowEntity): Promise<void> {
-	await Db.collections.Workflow.update(workflow.id, { active: true, updatedAt: new Date() });
+export async function setWorkflowAsActive(workflow: WorkflowEntity): Promise<UpdateResult> {
+	return Db.collections.Workflow.update(workflow.id, { active: true, updatedAt: new Date() });
 }
 
-export async function desactiveWorkflow(workflow: WorkflowEntity): Promise<void> {
-	await Db.collections.Workflow.update(workflow.id, { active: false, updatedAt: new Date() });
+export async function setWorkflowAsInactive(workflow: WorkflowEntity): Promise<UpdateResult> {
+	return Db.collections.Workflow.update(workflow.id, { active: false, updatedAt: new Date() });
 }
 
-export async function deleteWorkflow(workflow: WorkflowEntity): Promise<void> {
-	await Db.collections.Workflow.remove(workflow);
+export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
+	return Db.collections.Workflow.remove(workflow);
 }
 
 export async function getWorkflows(
@@ -118,8 +122,8 @@ export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>
 export async function updateWorkflow(
 	workflowId: number,
 	updateData: WorkflowEntity,
-): Promise<void> {
-	await Db.collections.Workflow.update(workflowId, updateData);
+): Promise<UpdateResult> {
+	return Db.collections.Workflow.update(workflowId, updateData);
 }
 
 export function hasStartNode(workflow: WorkflowEntity): boolean {
