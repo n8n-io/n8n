@@ -27,7 +27,6 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
-	IWorkflowCredentials,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
@@ -57,7 +56,6 @@ import {
 	Push,
 	ResponseHelper,
 	WebhookHelpers,
-	WorkflowCredentials,
 	WorkflowHelpers,
 } from '.';
 import {
@@ -66,7 +64,6 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -79,7 +76,7 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
  * @param {WorkflowExecuteMode} mode The mode in which the workflow got started in
  * @param {string} [executionId] The id the execution got saved as
  */
-function executeErrorWorkflow(
+export function executeErrorWorkflow(
 	workflowData: IWorkflowBase,
 	fullRunData: IRun,
 	mode: WorkflowExecuteMode,
@@ -1028,7 +1025,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
  * Returns the base additional data without webhooks
  *
  * @export
- * @param {IWorkflowCredentials} credentials
+ * @param {userId} string
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
