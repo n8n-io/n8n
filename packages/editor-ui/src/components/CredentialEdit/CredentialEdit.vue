@@ -302,7 +302,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeName) ||
 				this.parentTypes.includes('oAuth1Api') ||
 				this.parentTypes.includes('oAuth2Api')
-			);
+			) && (this.credentialData.grantType === 'authorizationCode');
 		},
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;

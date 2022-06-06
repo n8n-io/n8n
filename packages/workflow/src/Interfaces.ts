@@ -1535,3 +1535,8 @@ export interface IConnectedNode {
 	indicies: number[];
 	depth: number;
 }
+
+export enum OAuth2GranType {
+	authorizationCode = 'authorizationCode',
+	clientCredentials = 'clientCredentials',
+}

@@ -57,6 +57,7 @@ import {
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
 	IExecuteData,
+	OAuth2GranType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -893,7 +894,32 @@ export async function requestOAuth2(
 		accessTokenUri: credentials.accessTokenUrl as string,
 	});
 
-	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+
+	// if it's the first time using the credentials, get the access token and save it into the DB.
+	if (credentials.grantType === OAuth2GranType.clientCredentials && oauthTokenData === undefined) {
+		const { data } = await oAuthClient.credentials.getToken();
+
+		credentials.oauthTokenData = data;
+
+		// Find the credentials
+		if (!node.credentials || !node.credentials[credentialsType]) {
+			throw new Error(
+				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+			);
+		}
+
+		const nodeCredentials = node.credentials[credentialsType];
+
+		// Save the refreshed token
+		await additionalData.credentialsHelper.updateCredentials(
+			nodeCredentials,
+			credentialsType,
+			credentials,
+		);
+
+		oauthTokenData = data;
+	}
 
 	const token = oAuthClient.createToken(
 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
