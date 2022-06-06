@@ -239,7 +239,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 .secondary {
 	--button-color: var(--color-primary);
 	--button-border-color: var(--color-primary);
-	--button-background-color: var(--color-white);
+	--button-background-color: var(--color-background-xlight);
 
 	--button-active-background-color: var(--color-primary-tint-2);
 	--button-active-color: var(--color-primary);
@@ -255,7 +255,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 .tertiary {
 	font-weight: var(--font-weight-regular) !important;
 
-	--button-background-color: var(--color-white);
+	--button-background-color: var(--color-background-xlight);
 	--button-color: var(--color-text-dark);
 	--button-border-color: var(--color-neutral-850);
 

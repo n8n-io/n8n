@@ -390,16 +390,9 @@
 				  var(--color-sticky-default-border-l)
   );
 
-  --color-white-h: 0;
-  --color-white-s: 0%;
-  --color-white-l: 100%;
-  --color-white: hsl(
-				  var(--color-white-h),
-				  var(--color-white-s),
-				  var(--color-white-l)
-  );
-
-  @each $color in ('primary', 'neutral', 'secondary', 'success', 'warning', 'danger') {
+  // Generated Color Shades from 50 to 950
+  // Not yet used in design system
+  @each $color in ('neutral', 'success', 'warning', 'danger') {
 	@each $shade in (50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950) {
 	  --color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
 	  --color-#{$color}-#{$shade}: hsl(var(--color-#{$color}-h), var(--color-#{$color}-s), var(--color-#{$color}-#{$shade}-l));
