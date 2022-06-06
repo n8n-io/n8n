@@ -112,9 +112,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-@import '../../../theme/src/mixins/mixins';
 @import '../../../theme/src/mixins/utils';
-@import '../../../theme/src/mixins/function';
 @import '../../../theme/src/common/var';
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
