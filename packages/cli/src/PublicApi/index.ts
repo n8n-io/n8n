@@ -109,7 +109,7 @@ function createApiRouter(
 
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
-): Promise<express.Router[]> => {
+): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
 	const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 	const folders = await fs.readdir(__dirname);
 	const css = (await fs.readFile(swaggerThemePath)).toString();
@@ -119,5 +119,8 @@ export const loadPublicApiVersions = async (
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');
 		apiRouters.push(createApiRouter(version, openApiPath, __dirname, css, publicApiEndpoint));
 	}
-	return apiRouters;
+	return {
+		apiRouters,
+		apiLatestVersion: Number(versions.pop()?.charAt(1)) ?? 1,
+	};
 };

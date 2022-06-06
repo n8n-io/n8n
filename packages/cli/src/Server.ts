@@ -563,7 +563,9 @@ class App {
 		// ----------------------------------------
 
 		if (!config.getEnv('publicApi.disabled')) {
-			this.app.use(...(await loadPublicApiVersions(this.publicApiEndpoint)));
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(this.publicApiEndpoint);
+			this.app.use(...apiRouters);
+			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());

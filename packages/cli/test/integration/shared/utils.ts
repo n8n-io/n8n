@@ -93,9 +93,10 @@ export async function initTestServer({
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
+		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
 		const map: Record<string, express.Router | express.Router[]> = {
 			credentials: credentialsController,
-			publicApi: await loadPublicApiVersions(testServer.publicApiEndpoint),
+			publicApi: apiRouters
 		};
 
 		for (const group of routerEndpoints) {
