@@ -114,9 +114,9 @@ export const regions = [
 		displayName: 'US West',
 		location: 'Oregon',
 	},
-] as const
+] as const;
 
-export type AWSRegion = typeof regions[number]['name']
+export type AWSRegion = typeof regions[number]['name'];
 
 export class Aws implements ICredentialType {
 	name = 'aws';
