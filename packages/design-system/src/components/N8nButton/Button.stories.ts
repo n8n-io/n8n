@@ -7,12 +7,6 @@ export default {
 	title: 'Atoms/Button',
 	component: N8nButton,
 	argTypes: {
-		label: {
-			control: 'text',
-		},
-		title: {
-			control: 'text',
-		},
 		type: {
 			control: 'select',
 			options: ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'],
@@ -22,29 +16,6 @@ export default {
 				type: 'select',
 				options: ['mini', 'small', 'medium', 'large', 'xlarge'],
 			},
-		},
-		outline: {
-			control: {
-				type: 'boolean',
-			},
-		},
-		text: {
-			control: {
-				type: 'boolean',
-			},
-		},
-		loading: {
-			control: {
-				type: 'boolean',
-			},
-		},
-		icon: {
-			control: {
-				type: 'text',
-			},
-		},
-		fullWidth: {
-			type: 'boolean',
 		},
 		float: {
 			type: 'select',

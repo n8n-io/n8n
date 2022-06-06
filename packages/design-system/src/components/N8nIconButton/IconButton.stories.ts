@@ -17,19 +17,6 @@ export default {
 				options: ['mini', 'small', 'medium', 'large', 'xlarge'],
 			},
 		},
-		title: {
-			control: 'text',
-		},
-		loading: {
-			control: {
-				type: 'boolean',
-			},
-		},
-		icon: {
-			control: {
-				type: 'text',
-			},
-		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -76,7 +63,8 @@ export const Outline = ManyTemplate.bind({});
 Outline.args = {
 	icon: 'plus',
 	title: 'my title',
-	type: 'outline',
+	type: 'primary',
+	outline: true
 };
 
 export const Light = ManyTemplate.bind({});
