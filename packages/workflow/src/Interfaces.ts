@@ -1540,3 +1540,13 @@ export enum OAuth2GranType {
 	authorizationCode = 'authorizationCode',
 	clientCredentials = 'clientCredentials',
 }
+export interface IOAuth2Credentials {
+	grantType: 'OAuth2GranType';
+	clientId: string;
+	clientSecret: string;
+	accessTokenUrl: string;
+	authUrl: string;
+	authQueryParameters: string;
+	authentication: 'body' | 'header';
+	scope: string;
+}

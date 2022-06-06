@@ -58,6 +58,7 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GranType,
+	IOAuth2Credentials,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -882,16 +883,21 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
-	const credentials = await this.getCredentials(credentialsType);
+	const credentials = (await this.getCredentials(credentialsType)) as unknown as IOAuth2Credentials;
 
-	if (credentials.oauthTokenData === undefined) {
+	// Only the authorization code grant type needs connection
+	if (
+		credentials.grantType === OAuth2GranType.authorizationCode &&
+		credentials.oauthTokenData === undefined
+	) {
 		throw new Error('OAuth credentials not connected!');
 	}
 
 	const oAuthClient = new clientOAuth2({
-		clientId: credentials.clientId as string,
-		clientSecret: credentials.clientSecret as string,
-		accessTokenUri: credentials.accessTokenUrl as string,
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		accessTokenUri: credentials.accessTokenUrl,
+		scopes: credentials.scope.split(' '),
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
@@ -915,7 +921,7 @@ export async function requestOAuth2(
 		await additionalData.credentialsHelper.updateCredentials(
 			nodeCredentials,
 			credentialsType,
-			credentials,
+			credentials as unknown as ICredentialDataDecryptedObject,
 		);
 
 		oauthTokenData = data;
