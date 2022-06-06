@@ -12,6 +12,8 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 				tablePrefix = schema + '.' + tablePrefix;
 			}
 
+			await queryRunner.query(`SET search_path TO ${schema};`);
+
 			// create tags table + relationship with workflow entity
 
 			await queryRunner.query(`CREATE TABLE ${tablePrefix}tag_entity ("id" SERIAL NOT NULL, "name" character varying(24) NOT NULL, "createdAt" TIMESTAMP NOT NULL, "updatedAt" TIMESTAMP NOT NULL, CONSTRAINT "PK_${tablePrefixPure}7a50a9b74ae6855c0dcaee25052" PRIMARY KEY ("id"))`);
@@ -46,6 +48,8 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 			if (schema) {
 				tablePrefix = schema + '.' + tablePrefix;
 			}
+
+			await queryRunner.query(`SET search_path TO ${schema};`);
 
 			// `createdAt` and `updatedAt`
 

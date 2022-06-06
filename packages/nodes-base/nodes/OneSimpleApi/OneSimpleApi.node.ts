@@ -37,6 +37,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Information',
@@ -63,6 +64,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -94,6 +96,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -120,6 +123,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -140,13 +144,13 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'exchangeRate',
-				description: 'The operation to perform.',
 			},
 			// Utility
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -158,7 +162,7 @@ export class OneSimpleApi implements INodeType {
 					{
 						name: 'Expand URL',
 						value: 'expandURL',
-						description: 'Expand a shortened url',
+						description: 'Expand a shortened URL',
 					},
 					{
 						name: 'Generate QR Code',
@@ -172,7 +176,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'validateEmail',
-				description: 'The operation to perform.',
 			},
 			// website: pdf
 			{
@@ -283,12 +286,12 @@ export class OneSimpleApi implements INodeType {
 								value: 'A6',
 							},
 							{
-								name: 'Legal',
-								value: 'Legal',
-							},
-							{
 								name: 'Ledger',
 								value: 'Ledger',
+							},
+							{
+								name: 'Legal',
+								value: 'Legal',
 							},
 							{
 								name: 'Letter',

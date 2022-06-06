@@ -45,6 +45,7 @@ export class Pushbullet implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Push',
@@ -52,12 +53,12 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -88,7 +89,6 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -274,7 +274,7 @@ export class Pushbullet implements INodeType {
 				description: 'The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.',
 			},
 			{
-				displayName: 'Value',
+				displayName: 'Value Name or ID',
 				name: 'value',
 				type: 'options',
 				typeOptions: {
@@ -295,7 +295,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
 				displayName: 'Push ID',

@@ -5,6 +5,7 @@ export const clientOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,7 +36,6 @@ export const clientOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -156,7 +156,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
 						typeOptions: {
@@ -275,7 +275,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
 						typeOptions: {

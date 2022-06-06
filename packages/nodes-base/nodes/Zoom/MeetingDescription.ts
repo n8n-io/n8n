@@ -7,6 +7,7 @@ export const meetingOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const meetingOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -225,14 +225,17 @@ export const meetingFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees register once and can attend any of the occurrences',
 								value: 1,
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees need to register for every occurrence',
 								value: 2,
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees register once and can choose one or more occurrences to attend',
 								value: 3,
 							},
@@ -257,14 +260,14 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -280,11 +283,11 @@ export const meetingFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Recurring Meeting with no fixed time',
+						name: 'Recurring Meeting with No Fixed Time',
 						value: 3,
 					},
 					{
-						name: 'Recurring Meeting with fixed time',
+						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
 
@@ -666,15 +669,15 @@ export const meetingFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Attendees register once and can attend any of the occurrences',
+								name: 'Attendees Register Once and Can Attend Any of the Occurrences',
 								value: 1,
 							},
 							{
-								name: 'Attendees need to register for every occurrence',
+								name: 'Attendees Need to Register for Every Occurrence',
 								value: 2,
 							},
 							{
-								name: 'Attendees register once and can choose one or more occurrences to attend',
+								name: 'Attendees Register Once and Can Choose One or More Occurrences to Attend',
 								value: 3,
 							},
 						],
@@ -698,14 +701,14 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Topic',
@@ -728,11 +731,11 @@ export const meetingFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Recurring Meeting with no fixed time',
+						name: 'Recurring Meeting with No Fixed Time',
 						value: 3,
 					},
 					{
-						name: 'Recurring Meeting with fixed time',
+						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
 

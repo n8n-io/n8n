@@ -7,8 +7,8 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getBalances',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Balances',
@@ -41,7 +41,7 @@ export const accountFields: INodeProperties[] = [
 	//      account: getBalances
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -49,7 +49,7 @@ export const accountFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve the balance of',
+		description: 'ID of the user profile to retrieve the balance of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -66,14 +66,14 @@ export const accountFields: INodeProperties[] = [
 	//      account: getStatement
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile whose account to retrieve the statement of',
+		description: 'ID of the user profile whose account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,7 +86,7 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Borderless Account ID',
+		displayName: 'Borderless Account Name or ID',
 		name: 'borderlessAccountId',
 		type: 'options',
 		default: [],
@@ -97,7 +97,7 @@ export const accountFields: INodeProperties[] = [
 				'profileId',
 			],
 		},
-		description: 'ID of the borderless account to retrieve the statement of',
+		description: 'ID of the borderless account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

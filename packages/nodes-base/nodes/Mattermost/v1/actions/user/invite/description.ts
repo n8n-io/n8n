@@ -4,7 +4,7 @@ import {
 
 export const userInviteDescription: UserProperties = [
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {

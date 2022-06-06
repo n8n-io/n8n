@@ -64,6 +64,7 @@ export class Twist implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -83,7 +84,6 @@ export class Twist implements INodeType {
 					},
 				],
 				default: 'messageConversation',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,

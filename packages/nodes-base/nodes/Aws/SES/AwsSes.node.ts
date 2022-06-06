@@ -48,6 +48,7 @@ export class AwsSes implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Custom Verification Email',
@@ -63,12 +64,12 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'email',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -109,7 +110,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
@@ -382,6 +382,9 @@ export class AwsSes implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
@@ -402,6 +405,7 @@ export class AwsSes implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -420,7 +424,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Is Body HTML',
@@ -519,7 +522,7 @@ export class AwsSes implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template Name or ID',
 				name: 'templateName',
 				type: 'options',
 				typeOptions: {
@@ -536,7 +539,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The ARN of the template to use when sending this email',
+				description: 'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -705,6 +708,7 @@ export class AwsSes implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -740,7 +744,6 @@ export class AwsSes implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Template Name',
@@ -884,6 +887,9 @@ export class AwsSes implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {

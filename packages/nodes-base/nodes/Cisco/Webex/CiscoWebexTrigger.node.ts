@@ -56,7 +56,12 @@ export class CiscoWebexTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: '[All]',
+						value: 'all',
+					},
 					{
 						name: 'Attachment Action',
 						value: 'attachmentAction',
@@ -84,10 +89,6 @@ export class CiscoWebexTrigger implements INodeType {
 					{
 						name: 'Room',
 						value: 'room',
-					},
-					{
-						name: '*',
-						value: 'all',
 					},
 				],
 				default: 'meeting',

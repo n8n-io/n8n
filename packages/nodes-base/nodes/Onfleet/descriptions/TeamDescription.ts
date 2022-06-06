@@ -7,6 +7,7 @@ export const teamOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,14 +87,14 @@ const managersField = {
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub Name/ID',
+	displayName: 'Hub Name or ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub',
+	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {

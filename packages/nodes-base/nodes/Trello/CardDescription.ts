@@ -10,6 +10,7 @@ export const cardOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const cardOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -169,7 +169,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The ID of a card to copy into the new card',
 			},
 			{
-				displayName: 'Keep from source',
+				displayName: 'Keep From Source',
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'all',
@@ -243,6 +243,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url.',
 			},
 			{
@@ -257,6 +258,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'board_fields',
 				type: 'string',
 				default: 'all',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs.',
 			},
 			{

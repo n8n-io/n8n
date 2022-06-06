@@ -127,7 +127,7 @@ export const searchResultFields: INodeProperties[] = [
 							{
 								displayName: 'Value',
 								name: 'value',
-								description: 'value to match against',
+								description: 'Value to match against',
 								type: 'string',
 								default: '',
 							},

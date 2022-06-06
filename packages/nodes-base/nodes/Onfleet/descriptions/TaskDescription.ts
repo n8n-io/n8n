@@ -15,6 +15,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,11 +24,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new Onfleet task',
-			},
 			{
 				name: 'Clone',
 				value: 'clone',
@@ -39,14 +35,14 @@ export const taskOperations: INodeProperties[] = [
 				description: 'Force-complete a started Onfleet task',
 			},
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new Onfleet task',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet task',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all Onfleet tasks',
 			},
 			{
 				name: 'Get',
@@ -54,11 +50,15 @@ export const taskOperations: INodeProperties[] = [
 				description: 'Get a specific Onfleet task',
 			},
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all Onfleet tasks',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet task',
 			},
-
 		],
 		default: 'get',
 	},

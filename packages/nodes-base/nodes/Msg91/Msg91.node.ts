@@ -37,6 +37,7 @@ export class Msg91 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -44,12 +45,12 @@ export class Msg91 implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -65,7 +66,6 @@ export class Msg91 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Sender ID',

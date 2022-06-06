@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -67,7 +68,7 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Gender',
+		displayName: 'Gender Name or ID',
 		name: 'genderId',
 		type: 'options',
 		required: true,
@@ -350,7 +351,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Gender',
+				displayName: 'Gender Name or ID',
 				name: 'gender_id',
 				type: 'options',
 				default: '',

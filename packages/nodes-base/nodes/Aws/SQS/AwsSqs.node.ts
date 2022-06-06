@@ -51,18 +51,18 @@ export class AwsSqs implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Send message',
+						name: 'Send Message',
 						value: 'sendMessage',
 						description: 'Send a message to a queue',
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Queue',
+				displayName: 'Queue Name or ID',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {
@@ -78,7 +78,7 @@ export class AwsSqs implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Queue to send a message to',
+				description: 'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -97,7 +97,6 @@ export class AwsSqs implements INodeType {
 					},
 				],
 				default: 'standard',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Send Input Data',

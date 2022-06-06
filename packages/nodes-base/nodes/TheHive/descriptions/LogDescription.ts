@@ -7,6 +7,7 @@ export const logOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
@@ -187,7 +188,7 @@ export const logFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,

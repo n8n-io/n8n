@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -36,7 +36,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -54,10 +54,10 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to',
+		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -78,7 +78,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to',
+		description: 'The slug of the project the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Full',
@@ -143,7 +143,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -161,10 +161,10 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to',
+		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -182,7 +182,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to',
+		description: 'The slug of the project the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Event ID',

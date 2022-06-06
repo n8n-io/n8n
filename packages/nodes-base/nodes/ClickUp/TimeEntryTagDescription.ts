@@ -7,6 +7,7 @@ export const timeEntryTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const timeEntryTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,7 +42,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -107,7 +107,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -194,7 +194,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:remove                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',

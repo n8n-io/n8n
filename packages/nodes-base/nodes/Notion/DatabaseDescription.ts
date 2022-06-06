@@ -7,6 +7,7 @@ export const databaseOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -31,7 +32,7 @@ export const databaseOperations = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'search databases using text search',
+				description: 'Search databases using text search',
 			},
 		],
 		default: 'get',
@@ -40,6 +41,7 @@ export const databaseOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -134,7 +136,7 @@ export const databaseFields = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -216,7 +218,7 @@ export const databaseFields = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

@@ -7,6 +7,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,7 +51,7 @@ export const activityFields: INodeProperties[] = [
 	//             activity: create
 	// ----------------------------------------
 	{
-		displayName: 'Activity Type',
+		displayName: 'Activity Type Name or ID',
 		name: 'activityTypeId',
 		type: 'options',
 		required: true,
@@ -280,7 +281,7 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activity_type_id',
 				type: 'options',
 				default: '',

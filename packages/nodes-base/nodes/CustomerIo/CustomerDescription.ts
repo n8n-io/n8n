@@ -5,6 +5,7 @@ export const customerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -14,9 +15,9 @@ export const customerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update a customer',
+				description: 'Create a new customer, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -25,7 +26,6 @@ export const customerOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -91,7 +91,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -177,7 +177,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'The email address of the user',
 			},
 			{
-				displayName: 'Created at',
+				displayName: 'Created At',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',

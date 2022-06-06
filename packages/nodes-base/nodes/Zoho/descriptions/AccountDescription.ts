@@ -15,6 +15,7 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -55,7 +56,6 @@ export const accountOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -138,7 +138,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type',
+				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
 					typeOptions: {
@@ -329,7 +329,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type',
+				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
 					typeOptions: {

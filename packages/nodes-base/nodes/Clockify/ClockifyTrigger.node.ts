@@ -41,7 +41,7 @@ export class ClockifyTrigger implements INodeType {
 		polling: true,
 		properties: [
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
 				typeOptions: {

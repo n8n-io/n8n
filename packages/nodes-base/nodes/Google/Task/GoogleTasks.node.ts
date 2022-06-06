@@ -46,6 +46,7 @@ export class GoogleTasks implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
@@ -53,7 +54,6 @@ export class GoogleTasks implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			...taskOperations,
 			...taskFields,

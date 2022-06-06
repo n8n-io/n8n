@@ -5,6 +5,7 @@ export const formOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -21,7 +22,6 @@ export const formOperations: INodeProperties[] = [
 
 		],
 		default: 'submit',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -44,7 +44,7 @@ export const formFields: INodeProperties[] = [
 
 	// Form:submit
 	{
-		displayName: 'JSON Data fields',
+		displayName: 'JSON Data Fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,

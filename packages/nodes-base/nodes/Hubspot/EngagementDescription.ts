@@ -7,6 +7,7 @@ export const engagementOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const engagementOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -129,24 +129,24 @@ export const engagementFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Not Started',
-						value: 'NOT_STARTED',
-					},
-					{
-						name: 'In Progress',
-						value: 'IN_PROGRESS',
-					},
-					{
-						name: 'Waiting',
-						value: 'WAITING',
-					},
-					{
 						name: 'Completed',
 						value: 'COMPLETED',
 					},
 					{
 						name: 'Deferred',
 						value: 'DEFERRED',
+					},
+					{
+						name: 'In Progress',
+						value: 'IN_PROGRESS',
+					},
+					{
+						name: 'Not Started',
+						value: 'NOT_STARTED',
+					},
+					{
+						name: 'Waiting',
+						value: 'WAITING',
 					},
 				],
 				default: '',
@@ -343,16 +343,12 @@ export const engagementFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Queued',
-						value: 'QUEUED',
+						name: 'Busy',
+						value: 'BUSY',
 					},
 					{
-						name: 'Ringing',
-						value: 'RINGING',
-					},
-					{
-						name: 'In Progress',
-						value: 'IN_PROGRESS',
+						name: 'Calling CRM User',
+						value: 'CALLING_CRM_USER',
 					},
 					{
 						name: 'Canceled',
@@ -363,24 +359,28 @@ export const engagementFields: INodeProperties[] = [
 						value: 'COMPLETED',
 					},
 					{
-						name: 'Busy',
-						value: 'BUSY',
+						name: 'Connecting',
+						value: 'CONNECTING',
 					},
 					{
 						name: 'Failed',
 						value: 'FAILED',
 					},
 					{
+						name: 'In Progress',
+						value: 'IN_PROGRESS',
+					},
+					{
 						name: 'No Answer',
 						value: 'NO_ANSWER',
 					},
 					{
-						name: 'Connecting',
-						value: 'CONNECTING',
+						name: 'Queued',
+						value: 'QUEUED',
 					},
 					{
-						name: 'Calling CRM User',
-						value: 'CALLING_CRM_USER',
+						name: 'Ringing',
+						value: 'RINGING',
 					},
 				],
 				default: 'QUEUED',

@@ -25,6 +25,9 @@ export const customerGetAllDescription: CustomerProperties = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,7 +105,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'firstname ASC',
-				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc',
+				description: 'Customer field to order by, eg: "firstname ASC", "city DESC" etc',
 			},
 		],
 	},

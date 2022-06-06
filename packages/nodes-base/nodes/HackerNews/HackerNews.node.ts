@@ -37,6 +37,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'All',
@@ -52,7 +53,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'article',
-				description: 'Resource to consume.',
 			},
 
 
@@ -63,6 +63,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -78,12 +79,12 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -99,12 +100,12 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -120,7 +121,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			// ----------------------------------
 			//         Fields
@@ -182,6 +182,9 @@ export class HackerNews implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: 100,
 				description: 'Max number of results to return',
 				displayOptions: {
@@ -216,7 +219,7 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include comments',
+						displayName: 'Include Comments',
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,

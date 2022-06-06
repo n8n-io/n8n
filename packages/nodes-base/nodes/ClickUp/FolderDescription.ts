@@ -7,6 +7,7 @@ export const folderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const folderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -72,7 +72,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -116,7 +116,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -136,7 +136,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -159,7 +159,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -186,7 +186,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -206,7 +206,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -229,7 +229,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -256,7 +256,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -276,7 +276,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -349,7 +349,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -369,7 +369,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -392,7 +392,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',

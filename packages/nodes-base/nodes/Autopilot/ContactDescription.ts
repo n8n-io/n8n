@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,9 +17,9 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update a contact',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -103,13 +103,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key',
+								displayName: 'Key Name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'User-specified key of user-defined data',
+								description: 'User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -160,14 +160,14 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'autopilotList',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},
 				default: '',
-				description: 'List to which this contact will be added on creation',
+				description: 'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Mailing Country',

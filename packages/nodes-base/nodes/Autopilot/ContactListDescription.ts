@@ -7,6 +7,7 @@ export const contactListOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const contactListOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -47,7 +47,7 @@ export const contactListFields: INodeProperties[] = [
 	/*                                 contactList:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		required: true,
 		typeOptions: {
@@ -68,7 +68,7 @@ export const contactListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the list to operate on',
+		description: 'ID of the list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',

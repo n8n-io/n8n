@@ -38,6 +38,7 @@ export class Twilio implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -45,13 +46,13 @@ export class Twilio implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -67,7 +68,6 @@ export class Twilio implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 
 

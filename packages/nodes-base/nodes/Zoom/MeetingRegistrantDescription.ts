@@ -7,6 +7,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -33,7 +34,6 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,7 +42,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -177,25 +177,26 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Within a month',
+						name: 'Within a Month',
 						value: 'Within a month',
 					},
 					{
-						name: '1-3 months',
+						name: '1-3 Months',
 						value: '1-3 months',
 					},
 					{
-						name: '4-6 months',
+						name: '4-6 Months',
 						value: '4-6 months',
 					},
 					{
-						name: 'More than 6 months',
+						name: 'More than 6 Months',
 						value: 'More than 6 months',
 					},
 					{
-						name: 'No timeframe',
+						name: 'No Timeframe',
 						value: 'No timeframe',
 					},
 				],

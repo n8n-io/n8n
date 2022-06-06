@@ -7,8 +7,8 @@ export const coorganizerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -42,7 +42,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//         coorganizer: create
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -50,7 +50,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar that the co-organizer is hosting',
+		description: 'Key of the webinar that the co-organizer is hosting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -145,7 +145,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//         coorganizer: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -153,7 +153,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to delete',
+		description: 'Key of the webinar to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -205,7 +205,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//        coorganizer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -213,7 +213,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to retrieve all co-organizers from',
+		description: 'Key of the webinar to retrieve all co-organizers from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

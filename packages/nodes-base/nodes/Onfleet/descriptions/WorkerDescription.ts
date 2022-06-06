@@ -7,6 +7,7 @@ export const workerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['worker'],
@@ -332,14 +333,14 @@ const scheduleDateField = {
 } as INodeProperties;
 
 const scheduleTimezoneField = {
-	displayName: 'Timezone',
+	displayName: 'Timezone Name or ID',
 	name: 'timezone',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getTimezones',
 	},
 	default: '',
-	description: 'A valid timezone',
+	description: 'A valid timezone. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const scheduleStartField = {

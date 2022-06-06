@@ -7,8 +7,8 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -504,12 +504,12 @@ export const postFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'Top',
-						value: 'top',
-					},
-					{
 						name: 'Relevance',
 						value: 'relevance',
+					},
+					{
+						name: 'Top',
+						value: 'top',
 					},
 				],
 			},

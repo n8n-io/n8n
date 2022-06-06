@@ -4,10 +4,11 @@ import {
 
 export const taskOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -181,7 +182,7 @@ export const taskFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,

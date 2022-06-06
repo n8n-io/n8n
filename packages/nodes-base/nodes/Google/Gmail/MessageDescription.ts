@@ -7,6 +7,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -15,11 +16,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an email',
-			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -40,9 +36,13 @@ export const messageOperations: INodeProperties[] = [
 				value: 'reply',
 				description: 'Reply to an email',
 			},
+			{
+				name: 'Send',
+				value: 'send',
+				description: 'Send an email',
+			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 

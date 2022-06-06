@@ -7,6 +7,7 @@ export const memberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -15,6 +16,11 @@ export const memberOperations: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new member, or update the current one if it already exists (upsert)',
+			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -40,14 +46,8 @@ export const memberOperations: INodeProperties[] = [
 				value: 'update',
 				description: 'Update a member',
 			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
-				description: 'Create/Update a member',
-			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -57,7 +57,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -99,7 +99,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -157,7 +157,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -281,7 +281,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -466,7 +466,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -606,7 +606,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {

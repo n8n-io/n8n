@@ -317,12 +317,14 @@ export class Markdown implements INodeType {
 							'Whether to open all links in new windows (by adding the attribute target="_blank" to <a> tags)',
 					},
 					{
-						displayName: 'Automatic Linking To URLs',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
+						displayName: 'Automatic Linking to URLs',
 						name: 'simplifiedAutoLink',
 						type: 'boolean',
 						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
-						description: 'Whether to enable automatic linking to urls',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
+						description: 'Whether to enable automatic linking to URLs',
 					},
 					{
 						displayName: 'Backslash Escapes HTML Tags',
@@ -366,8 +368,7 @@ export class Markdown implements INodeType {
 						name: 'excludeTrailingPunctuationFromURLs',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to exclude trailing punctuation from autolinking urls. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
+						description: 'Whether to exclude trailing punctuation from autolinking URLs. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
 					},
 					{
 						displayName: 'GitHub Code Blocks',
@@ -472,13 +473,14 @@ export class Markdown implements INodeType {
 						description: 'Whether to prevent showdown from modifying the prefix',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 						displayName: 'Simple Line Breaks',
 						name: 'simpleLineBreaks',
 						type: 'boolean',
 						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
-						description:
-							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
+						description: 'Whether to parse line breaks as &lt;br&gt;, like GitHub does, without needing 2 spaces at the end of the line',
 					},
 					{
 						displayName: 'Smart Indentation Fix',

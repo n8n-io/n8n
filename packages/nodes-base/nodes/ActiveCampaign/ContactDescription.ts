@@ -11,6 +11,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -46,7 +47,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -73,7 +73,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'The email of the contact to create',
 	},
 	{
-		displayName: 'Update if exists',
+		displayName: 'Update if Exists',
 		name: 'updateIfExists',
 		type: 'boolean',
 		displayOptions: {
@@ -122,14 +122,14 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -221,14 +221,14 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -406,24 +406,24 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Active',
+						value: 1,
+					},
+					{
 						name: 'Any',
 						value: -1,
+					},
+					{
+						name: 'Bounced',
+						value: 3,
 					},
 					{
 						name: 'Unconfirmed',
 						value: 0,
 					},
 					{
-						name: 'Active',
-						value: 1,
-					},
-					{
 						name: 'Unsubscribed',
 						value: 2,
-					},
-					{
-						name: 'Bounced',
-						value: 3,
 					},
 				],
 				default: '',

@@ -5,6 +5,7 @@ export const taskOpeations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,7 +36,6 @@ export const taskOpeations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -156,6 +156,7 @@ export const taskFields: INodeProperties[] = [
 				default: 'text/plain',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/plain',
 						value: 'text/plain',
 					},
@@ -164,6 +165,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'text/x-markdown',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/html',
 						value: 'text/html',
 					},
@@ -343,7 +345,7 @@ export const taskFields: INodeProperties[] = [
 				default: 'text/plain',
 				options: [
 					{
-						name: 'text/plain',
+						name: 'Text/plain',
 						value: 'text/plain',
 					},
 					{
@@ -351,7 +353,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'text/x-markdown',
 					},
 					{
-						name: 'text/html',
+						name: 'Text/html',
 						value: 'text/html',
 					},
 				],
@@ -445,15 +447,15 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 				options: [
 					{
-						name: 'schedule',
+						name: 'Schedule',
 						value: 'schedule',
 					},
 					{
-						name: 'files',
+						name: 'Files',
 						value: 'files',
 					},
 					{
-						name: 'file Associations',
+						name: 'File Associations',
 						value: 'file_associations',
 					},
 					{
@@ -532,15 +534,15 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 				options: [
 					{
-						name: 'schedule',
+						name: 'Schedule',
 						value: 'schedule',
 					},
 					{
-						name: 'files',
+						name: 'Files',
 						value: 'files',
 					},
 					{
-						name: 'file Associations',
+						name: 'File Associations',
 						value: 'file_associations',
 					},
 					{
@@ -556,44 +558,44 @@ export const taskFields: INodeProperties[] = [
 				default: 'created_at',
 				options: [
 					{
-						name: 'Due On',
-						value: 'due_on',
+						name: 'Account ID',
+						value: 'account_id',
 					},
 					{
-						name: 'Starts On',
-						value: 'starts_on',
+						name: 'Completed At',
+						value: 'completed_at',
 					},
 					{
 						name: 'Created At',
 						value: 'created_at',
 					},
 					{
-						name: 'Position',
-						value: 'position',
-					},
-					{
-						name: 'Account ID',
-						value: 'account_id',
+						name: 'Due On',
+						value: 'due_on',
 					},
 					{
 						name: 'List ID',
 						value: 'list_id',
 					},
 					{
-						name: 'Section ID',
-						value: 'section_id',
+						name: 'Name',
+						value: 'name',
 					},
 					{
 						name: 'Owner ID',
 						value: 'owner_id',
 					},
 					{
-						name: 'Name',
-						value: 'name',
+						name: 'Position',
+						value: 'position',
 					},
 					{
-						name: 'Completed At',
-						value: 'completed_at',
+						name: 'Section ID',
+						value: 'section_id',
+					},
+					{
+						name: 'Starts On',
+						value: 'starts_on',
 					},
 					{
 						name: 'Updated At',

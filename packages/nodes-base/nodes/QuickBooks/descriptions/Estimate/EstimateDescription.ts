@@ -11,8 +11,8 @@ export const estimateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -54,11 +54,11 @@ export const estimateFields: INodeProperties[] = [
 	//         estimate: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the estimate is for',
+		description: 'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -96,27 +96,6 @@ export const estimateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Detail Type',
-				name: 'DetailType',
-				type: 'options',
-				default: 'SalesItemLineDetail',
-				options: [
-					{
-						name: 'Sales Item Line Detail',
-						value: 'SalesItemLineDetail',
-					},
-				],
-			},
-			{
-				displayName: 'Item',
-				name: 'itemId',
-				type: 'options',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
 				displayName: 'Amount',
 				name: 'Amount',
 				description: 'Monetary amount of the line item',
@@ -134,11 +113,41 @@ export const estimateFields: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'SalesItemLineDetail',
+				options: [
+					{
+						name: 'Sales Item Line Detail',
+						value: 'SalesItemLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item Name or ID',
+				name: 'itemId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
+				},
+			},
+			{
 				displayName: 'Position',
 				name: 'LineNum',
 				description: 'Position of the line item relative to others',
 				type: 'number',
 				default: 1,
+			},
+			{
+				displayName: 'Tax Code Ref',
+				name: 'TaxCodeRef',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTaxCodeRefs',
+				},
 			},
 		],
 	},
@@ -210,7 +219,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the estimate as a PDF file',
+		description: 'Whether to download the estimate as a PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -290,7 +299,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 
@@ -57,7 +58,7 @@ export class Merge implements INodeType {
 						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
 					},
 					{
-						name: 'Pass-through',
+						name: 'Pass-Through',
 						value: 'passThrough',
 						description: 'Passes through data of one input. The output will contain only items of the defined input.',
 					},
@@ -261,6 +262,10 @@ export class Merge implements INodeType {
 
 				newItem = {
 					json: {},
+					pairedItem: [
+						dataInput1[i].pairedItem as IPairedItemData,
+						dataInput2[i].pairedItem as IPairedItemData,
+					],
 				};
 
 				if (dataInput1[i].binary !== undefined) {
@@ -305,7 +310,15 @@ export class Merge implements INodeType {
 
 			for (entry1 of dataInput1) {
 				for (entry2 of dataInput2) {
-					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
+					returnData.push({
+						json: {
+							...(entry1.json), ...(entry2.json),
+						},
+						pairedItem: [
+							entry1.pairedItem as IPairedItemData,
+							entry2.pairedItem as IPairedItemData,
+						],
+					});
 				}
 			}
 			return [returnData];

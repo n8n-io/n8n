@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,13 +43,12 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const taskFields: INodeProperties[] = [
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {

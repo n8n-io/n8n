@@ -69,6 +69,7 @@ export class Wise implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -83,12 +84,12 @@ export class Wise implements INodeType {
 						value: 'profile',
 					},
 					{
-						name: 'Recipient',
-						value: 'recipient',
-					},
-					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Recipient',
+						value: 'recipient',
 					},
 					{
 						name: 'Transfer',
@@ -96,7 +97,6 @@ export class Wise implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume',
 			},
 			...accountOperations,
 			...accountFields,

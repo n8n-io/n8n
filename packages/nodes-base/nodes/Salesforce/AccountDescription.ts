@@ -7,6 +7,7 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -31,6 +32,11 @@ export const accountOperations: INodeProperties[] = [
 				description: 'Create a new account, or update the current one if it already exists (upsert)',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an account',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
@@ -46,18 +52,12 @@ export const accountOperations: INodeProperties[] = [
 				description: 'Returns an overview of account\'s metadata',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an account',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an account',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,6 +67,7 @@ export const accountFields: INodeProperties[] = [
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
@@ -88,7 +89,7 @@ export const accountFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The field to check to see if the account already exists',
+		description: 'The field to check to see if the account already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Value to Match',
@@ -153,16 +154,6 @@ export const accountFields: INodeProperties[] = [
 				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Account Source',
-				name: 'accountSource',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountSources',
-				},
-				default: '',
-				description: 'The source of the account record',
-			},
-			{
 				displayName: 'Annual Revenue',
 				name: 'annualRevenue',
 				type: 'number',
@@ -171,6 +162,16 @@ export const accountFields: INodeProperties[] = [
 				},
 				default: '',
 				description: 'Estimated annual revenue of the account',
+			},
+			{
+				displayName: 'Account Source Name or ID',
+				name: 'accountSource',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountSources',
+				},
+				default: '',
+				description: 'The source of the account record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Billing City',
@@ -223,14 +224,14 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -281,14 +282,21 @@ export const accountFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the account',
+				description: 'The owner of the account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
+			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				description: 'ID of the parent object, if any',
 			},
 			{
 				displayName: 'Phone',
@@ -298,7 +306,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Phone number for the account',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				typeOptions: {
@@ -317,21 +325,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountTypes',
 				},
-				description: 'Type of account',
-			},
-			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
-				default: '',
-				description: 'ID of the parent object, if any',
+				description: 'Type of account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Shipping City',
@@ -424,14 +425,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Account Source',
+				displayName: 'Account Source Name or ID',
 				name: 'accountSource',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountSources',
 				},
 				default: '',
-				description: 'The source of the account record',
+				description: 'The source of the account record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Annual Revenue',
@@ -494,14 +495,14 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -546,42 +547,6 @@ export const accountFields: INodeProperties[] = [
 				description: 'References the ID of a company in Data.com',
 			},
 			{
-				displayName: 'Owner',
-				name: 'ownerId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				description: 'The owner of the account',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'Phone number for the account',
-			},
-			{
-				displayName: 'Record Type ID',
-				name: 'recordTypeId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getRecordTypes',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountTypes',
-				},
-				description: 'Type of account',
-			},
-			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -595,11 +560,37 @@ export const accountFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Owner Name or ID',
+				name: 'ownerId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'The owner of the account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
+			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
 				description: 'ID of the parent object, if any',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'Phone number for the account',
+			},
+			{
+				displayName: 'Record Type Name or ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'SicDesc',
@@ -645,6 +636,16 @@ export const accountFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The street address of the shipping address for this account. Maximum of 255 characters.',
+			},
+			{
+				displayName: 'Type Name or ID',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountTypes',
+				},
+				description: 'Type of account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website',
@@ -784,20 +785,29 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
 									{
 										name: '=',
 										value: 'equal',
@@ -807,16 +817,8 @@ export const accountFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',
@@ -905,17 +907,17 @@ export const accountFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'ownerId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note',
+				description: 'ID of the user who owns the note. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

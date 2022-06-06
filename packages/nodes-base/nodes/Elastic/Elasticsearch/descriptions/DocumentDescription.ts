@@ -9,6 +9,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -44,7 +45,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -129,7 +129,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -248,7 +248,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -526,7 +526,7 @@ export const documentFields: INodeProperties[] = [
 				description: 'Set the value for each destination column',
 			},
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -700,7 +700,7 @@ export const documentFields: INodeProperties[] = [
 				description: 'Set the value for each destination column',
 			},
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},

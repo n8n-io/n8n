@@ -4,6 +4,8 @@ import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
 import {
+	ExpressionError,
+	IExecuteData,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -21,10 +23,11 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 tmpl.brackets.set('{{ }}');
 
-// Make sure that it does not always print an error when it could not resolve
-// a variable
+// Make sure that error get forwarded
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-tmpl.tmpl.errorHandler = () => {};
+tmpl.tmpl.errorHandler = (error: Error) => {
+	throw error;
+};
 
 export class Expression {
 	workflow: Workflow;
@@ -71,6 +74,7 @@ export class Expression {
 		mode: WorkflowExecuteMode,
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
@@ -98,6 +102,7 @@ export class Expression {
 			mode,
 			timezone,
 			additionalKeys,
+			executeData,
 			-1,
 			selfData,
 		);
@@ -118,6 +123,26 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+		data.global = {};
+		data.window = {};
+		data.Window = {};
+		data.this = {};
+		data.self = {};
+
+		// Alerts
+		data.alert = {};
+		data.prompt = {};
+		data.confirm = {};
+
+		// Prevent Remote Code Execution
+		data.eval = {};
+		data.setTimeout = {};
+		data.setInterval = {};
+		data.Function = {};
+
+		// Prevent requests
+		data.fetch = {};
+		data.XMLHttpRequest = {};
 
 		// @ts-ignore
 		data.DateTime = DateTime;
@@ -128,22 +153,35 @@ export class Expression {
 		data.constructor = {};
 
 		// Execute the expression
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let returnValue;
 		try {
+			if (/([^a-zA-Z0-9"']window[^a-zA-Z0-9"'])/g.test(parameterValue)) {
+				throw new Error(`window is not allowed`);
+			}
+
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const returnValue = tmpl.tmpl(parameterValue, data);
-			if (typeof returnValue === 'function') {
-				throw new Error('Expression resolved to a function. Please add "()"');
-			} else if (returnValue !== null && typeof returnValue === 'object') {
-				if (returnObjectAsString) {
-					return this.convertObjectValueToString(returnValue);
+			returnValue = tmpl.tmpl(parameterValue, data);
+		} catch (error) {
+			if (error instanceof ExpressionError) {
+				// Ignore all errors except if they are ExpressionErrors and they are supposed
+				// to fail the execution
+				if (error.context.failExecution) {
+					throw error;
 				}
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return returnValue;
-		} catch (e) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			throw new Error(`Expression is not valid: ${e.message}`);
 		}
+
+		if (typeof returnValue === 'function') {
+			throw new Error('Expression resolved to a function. Please add "()"');
+		} else if (returnValue !== null && typeof returnValue === 'object') {
+			if (returnObjectAsString) {
+				return this.convertObjectValueToString(returnValue);
+			}
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return returnValue;
 	}
 
 	/**
@@ -161,6 +199,7 @@ export class Expression {
 		mode: WorkflowExecuteMode,
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultValue?: boolean | number | string,
 	): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
@@ -188,6 +227,7 @@ export class Expression {
 			mode,
 			timezone,
 			additionalKeys,
+			executeData,
 		) as boolean | number | string | undefined;
 	}
 
@@ -206,6 +246,7 @@ export class Expression {
 		mode: WorkflowExecuteMode,
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultValue:
 			| NodeParameterValue
 			| INodeParameters
@@ -240,6 +281,7 @@ export class Expression {
 			mode,
 			timezone,
 			additionalKeys,
+			executeData,
 			false,
 			selfData,
 		);
@@ -255,6 +297,7 @@ export class Expression {
 			mode,
 			timezone,
 			additionalKeys,
+			executeData,
 			false,
 			selfData,
 		);
@@ -285,6 +328,7 @@ export class Expression {
 		mode: WorkflowExecuteMode,
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
@@ -311,6 +355,7 @@ export class Expression {
 					mode,
 					timezone,
 					additionalKeys,
+					executeData,
 					returnObjectAsString,
 					selfData,
 				);
@@ -326,6 +371,7 @@ export class Expression {
 				mode,
 				timezone,
 				additionalKeys,
+				executeData,
 				returnObjectAsString,
 				selfData,
 			);
@@ -344,6 +390,7 @@ export class Expression {
 				mode,
 				timezone,
 				additionalKeys,
+				executeData,
 				returnObjectAsString,
 				selfData,
 			);
@@ -368,6 +415,7 @@ export class Expression {
 		if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		}
+
 		// Data is an object
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
@@ -381,6 +429,7 @@ export class Expression {
 		if (returnObjectAsString && typeof returnData === 'object') {
 			return this.convertObjectValueToString(returnData);
 		}
+
 		return returnData;
 	}
 }

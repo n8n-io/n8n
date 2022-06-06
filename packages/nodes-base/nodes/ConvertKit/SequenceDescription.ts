@@ -7,6 +7,7 @@ export const sequenceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,7 +39,7 @@ export const sequenceOperations: INodeProperties[] = [
 
 export const sequenceFields: INodeProperties[] = [
 	{
-		displayName: 'Sequence ID',
+		displayName: 'Sequence Name or ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {

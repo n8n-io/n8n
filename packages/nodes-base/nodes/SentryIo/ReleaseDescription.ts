@@ -7,6 +7,7 @@ export const releaseOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const releaseOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -51,7 +51,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -69,7 +69,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the releases belong to',
+		description: 'The slug of the organization the releases belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -143,7 +143,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:get/delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -162,7 +162,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -188,7 +188,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -206,7 +206,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -283,7 +283,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
@@ -445,7 +445,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -463,7 +463,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -609,11 +609,11 @@ export const releaseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
-				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed.',
+				description: 'An optional date that indicates when the release went live. If not provided the current time is assumed.',
 			},
 			{
 				displayName: 'Ref',

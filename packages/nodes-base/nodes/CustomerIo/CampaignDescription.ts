@@ -5,6 +5,7 @@ export const campaignOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const campaignOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -164,12 +164,12 @@ export const campaignFields: INodeProperties[] = [
 				description: 'Specify metric type',
 				options: [
 					{
-						name: 'Empty',
-						value: 'empty',
-					},
-					{
 						name: 'Email',
 						value: 'email',
+					},
+					{
+						name: 'Empty',
+						value: 'empty',
 					},
 					{
 						name: 'Push',
@@ -180,7 +180,7 @@ export const campaignFields: INodeProperties[] = [
 						value: 'slack',
 					},
 					{
-						name: 'twilio',
+						name: 'Twilio',
 						value: 'twilio',
 					},
 					{

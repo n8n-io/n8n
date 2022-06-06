@@ -5,6 +5,7 @@ export const quoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const quoteOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -66,7 +66,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
 				typeOptions: {

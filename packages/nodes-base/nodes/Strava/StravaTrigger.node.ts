@@ -59,7 +59,7 @@ export class StravaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 					},
 					{
@@ -79,11 +79,11 @@ export class StravaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 					},
 					{
-						name: 'created',
+						name: 'Created',
 						value: 'create',
 					},
 					{

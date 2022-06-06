@@ -11,8 +11,8 @@ export const billOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -50,11 +50,11 @@ export const billFields: INodeProperties[] = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor',
+		displayName: 'For Vendor Name or ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the vendor who the bill is for',
+		description: 'The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -92,31 +92,6 @@ export const billFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Detail Type',
-				name: 'DetailType',
-				type: 'options',
-				default: 'ItemBasedExpenseLineDetail',
-				options: [
-					{
-						name: 'Account-Based Expense Line Detail',
-						value: 'AccountBasedExpenseLineDetail',
-					},
-					{
-						name: 'Item-Based Expense Line Detail',
-						value: 'ItemBasedExpenseLineDetail',
-					},
-				],
-			},
-			{
-				displayName: 'Item',
-				name: 'itemId',
-				type: 'options',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
 				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'string',
@@ -137,6 +112,31 @@ export const billFields: INodeProperties[] = [
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'ItemBasedExpenseLineDetail',
+				options: [
+					{
+						name: 'Account-Based Expense Line Detail',
+						value: 'AccountBasedExpenseLineDetail',
+					},
+					{
+						name: 'Item-Based Expense Line Detail',
+						value: 'ItemBasedExpenseLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item Name or ID',
+				name: 'itemId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
 				},
 			},
 			{
@@ -235,7 +235,7 @@ export const billFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

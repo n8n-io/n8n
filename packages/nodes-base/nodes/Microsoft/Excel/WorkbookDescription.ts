@@ -5,6 +5,7 @@ export const workbookOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const workbookOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,7 +35,7 @@ export const workbookFields: INodeProperties[] = [
 /*                                 workbook:addWorksheet                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		required: true,
