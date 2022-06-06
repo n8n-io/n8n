@@ -9,6 +9,7 @@ import { URLSearchParams } from 'url';
 import { IDeferredPromise } from './DeferredPromise';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
+import { WorkflowActivationError } from './WorkflowActivationError';
 import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 
@@ -56,7 +57,11 @@ export interface IConnection {
 	index: number;
 }
 
-export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
+export type ExecutionError =
+	| WorkflowActivationError
+	| WorkflowOperationError
+	| NodeOperationError
+	| NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
