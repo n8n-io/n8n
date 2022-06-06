@@ -13,7 +13,7 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		await queryRunner.query(
 			'CREATE UNIQUE INDEX `UQ_' +
 				tablePrefix +
-				'ogeryrmjvtiycvlwecbiswoyqh` ON `' +
+				'ie0zomxves9w3p774drfrkxtj5` ON `' +
 				tablePrefix +
 				'user` (`apiKey`)',
 		);

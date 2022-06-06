@@ -313,11 +313,11 @@ export function getAllRoles() {
 // ----------------------------------
 
 export async function createManyExecutions(
-	counter: number,
+	amount: number,
 	workflow: WorkflowEntity,
 	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
 ) {
-	const executionsRequests = [...Array(counter)].map((_) => callback(workflow));
+	const executionsRequests = [...Array(amount)].map((_) => callback(workflow));
 	return Promise.all(executionsRequests);
 }
 
@@ -407,11 +407,11 @@ export async function createTag(attributes: Partial<TagEntity> = {}) {
 // ----------------------------------
 
 export async function createManyWorkflows(
-	counter: number,
+	amount: number,
 	attributes: Partial<WorkflowEntity> = {},
 	user?: User,
 ) {
-	const workflowRequests = [...Array(counter)].map((_) => createWorkflow(attributes, user));
+	const workflowRequests = [...Array(amount)].map((_) => createWorkflow(attributes, user));
 	return Promise.all(workflowRequests);
 }
 

@@ -12,7 +12,7 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		}
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}user ADD COLUMN "apiKey" VARCHAR(255)`);
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "UQ_${tablePrefix}ogeryrmjvtiycvlwecbiswoyqh" ON ${tablePrefix}user ("apiKey")`,
+			`CREATE UNIQUE INDEX "UQ_${tablePrefix}ie0zomxves9w3p774drfrkxtj5" ON ${tablePrefix}user ("apiKey")`,
 		);
 	}
 
@@ -22,7 +22,7 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
-		await queryRunner.query(`DROP INDEX "UQ_${tablePrefix}ogeryrmjvtiycvlwecbiswoyqh"`);
+		await queryRunner.query(`DROP INDEX "UQ_${tablePrefix}ie0zomxves9w3p774drfrkxtj5"`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN "apiKey"`);
 	}
 }

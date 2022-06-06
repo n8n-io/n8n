@@ -24,7 +24,7 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 			`CREATE UNIQUE INDEX "UQ_${tablePrefix}e12875dfb3b1d92d7d7c5377e2" ON "${tablePrefix}user" ("email")`,
 		);
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "UQ_${tablePrefix}ogeryrmjvtiycvlwecbiswoyqh" ON "${tablePrefix}user" ("apiKey")`,
+			`CREATE UNIQUE INDEX "UQ_${tablePrefix}ie0zomxves9w3p774drfrkxtj5" ON "${tablePrefix}user" ("apiKey")`,
 		);
 
 		await queryRunner.query('PRAGMA foreign_keys=ON');
