@@ -4,24 +4,8 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-const amqpOptions: Record<string, INodePropertyOptions | INodeProperties | INodePropertyCollection> = {
-	alternateExchange: {
-		displayName: 'Alternate Exchange',
-		name: 'alternateExchange',
-		type: 'string',
-		default: '',
-		description: 'An exchange to send messages to if this exchange can\'t route them to any queues',
-	},
-
-	autoDelete: {
-		displayName: 'Auto Delete',
-		name: 'autoDelete',
-		type: 'boolean',
-		default: false,
-		description: 'Whether the queue will be deleted when the number of consumers drops to zero',
-	},
-
-	arguments: {
+export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> = [
+	{
 		displayName: 'Arguments',
 		name: 'arguments',
 		placeholder: 'Add Argument',
@@ -52,42 +36,59 @@ const amqpOptions: Record<string, INodePropertyOptions | INodeProperties | INode
 			},
 		],
 	},
-
-	durable: {
+	{
+		displayName: 'Headers',
+		name: 'headers',
+		placeholder: 'Add Header',
+		description: 'Headers to add',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'header',
+				displayName: 'Header',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Auto Delete Queue',
+		name: 'autoDelete',
+		type: 'boolean',
+		default: false,
+		description: 'The queue will be deleted when the number of consumers drops to zero',
+	},
+	{
 		displayName: 'Durable',
 		name: 'durable',
 		type: 'boolean',
 		default: true,
-		description: 'Whether the queue will survive broker restarts',
+		description: 'The queue will survive broker restarts',
 	},
-
-	exclusive: {
+	{
 		displayName: 'Exclusive',
 		name: 'exclusive',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to scope the queue to the connection',
+		description: 'Scopes the queue to the connection',
 	},
-};
-
-// TODO add defaults to match best practices like queue expiration (currently old queues with subscriptions can pile up messages forever)
-export const queueOptions: INodeProperties = {
-	displayName: 'Queue Options',
-	name: 'queueOptions',
-	type: 'collection',
-	default: {},
-	placeholder: 'Add Queue Option',
-	options: ['arguments', 'autoDelete', 'durable', 'exclusive'  ].map(name => amqpOptions[name]),
-};
-
-export const exchangeOptions: INodeProperties = {
-	displayName: 'Exchange Options',
-	name: 'exchangeOptions',
-	type: 'collection',
-	default: {},
-	placeholder: 'Add Exchange Option',
-	options: [ 'alternateExchange', 'arguments', 'autoDelete', 'durable'].map(name => amqpOptions[name]),
-};
+];
 
 export const messageOptions: INodeProperties = {
 	displayName: 'Message Options',
@@ -143,39 +144,6 @@ export const messageOptions: INodeProperties = {
 			description: 'If supplied, the message will be discarded from a queue once it\'s been there longer than the given number of milliseconds',
 			default: '',
 		},
-
-		{
-			displayName: 'Headers',
-			name: 'headers',
-			placeholder: 'Add Message Header',
-			description: 'Headers to add to the message',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: true,
-			},
-			default: {},
-			options: [
-				{
-					name: 'header',
-					displayName: 'Header',
-					values: [
-						{
-							displayName: 'Key',
-							name: 'key',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'Value',
-							name: 'value',
-							type: 'string',
-							default: '',
-						},
-					],
-				},
-			],
-		},
-
 		{
 			displayName: 'Mandatory',
 			name: 'mandatory',
@@ -207,22 +175,6 @@ export const messageOptions: INodeProperties = {
 			description: 'A priority for the message; ignored by versions of RabbitMQ older than 3.5.0, or if the queue is not a priority queue',
 			default: 0,
 		},
-
-		// TODO implement RabbitMQ's RPC
-		//{
-		//	displayName: 'correlationId',
-		//	name: 'correlationId',
-		//	type: 'string',
-		//	description: 'Usually used to match replies to requests, or similar',
-		//	default: '',
-		//},
-		//{
-		//	displayName: 'replyTo',
-		//	name: 'replyTo',
-		//	type: 'string',
-		//	description: 'Often used to name a queue to which the receiving application must send replies, in an RPC scenario (many libraries assume this pattern)',
-		//	default: '',
-		//},
 
 		{
 			displayName: 'Timestamp',
