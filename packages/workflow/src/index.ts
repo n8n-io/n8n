@@ -11,6 +11,7 @@ export * from './NodeErrors';
 export * as TelemetryHelpers from './TelemetryHelpers';
 export * from './RoutingNode';
 export * from './Workflow';
+export * from './WorkflowActivationError';
 export * from './WorkflowDataProxy';
 export * from './WorkflowErrors';
 export * from './WorkflowHooks';
