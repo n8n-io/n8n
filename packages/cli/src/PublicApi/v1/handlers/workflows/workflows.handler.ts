@@ -22,8 +22,8 @@ import {
 	getSharedWorkflows,
 	getWorkflowsCount,
 	createWorkflow,
-	getWorkflowsIdsWithTags,
-	sanatizeTags,
+	getWorkflowIdsWithTags,
+	parseTagNames,
 } from './workflows.service';
 
 export = {
@@ -126,7 +126,7 @@ export = {
 
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
-					const workflowIds = await getWorkflowsIdsWithTags(sanatizeTags(tags));
+					const workflowIds = await getWorkflowIdsWithTags(parseTagNames(tags));
 					Object.assign(query.where, { id: In(workflowIds) });
 				}
 
@@ -137,8 +137,7 @@ export = {
 				const options: { workflowIds?: number[] } = {};
 
 				if (tags) {
-					const workflowIds = await getWorkflowsIdsWithTags(sanatizeTags(tags));
-					Object.assign(options, { workflowIds });
+					options.workflowIds = await getWorkflowIdsWithTags(parseTagNames(tags));
 				}
 
 				const sharedWorkflows = await getSharedWorkflows(req.user, options);

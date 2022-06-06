@@ -1,3 +1,4 @@
+import { intersection } from 'lodash';
 import type { INode } from 'n8n-workflow';
 import { FindManyOptions, In } from 'typeorm';
 import { User } from '../../../../databases/entities/User';
@@ -56,7 +57,7 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
 	return workflow;
 }
 
-export async function getWorkflowsIdsWithTags(tags: string[]): Promise<number[]> {
+export async function getWorkflowIdsWithTags(tags: string[]): Promise<number[]> {
 	const dbTags = await Db.collections.Tag.find({
 		where: {
 			name: In(tags),
@@ -64,13 +65,11 @@ export async function getWorkflowsIdsWithTags(tags: string[]): Promise<number[]>
 		relations: ['workflows'],
 	});
 
-	return Array.from(
-		dbTags.reduce((acc, tag) => {
-			tag.workflows.forEach((workflow) => {
-				acc.add(workflow.id);
-			});
+	return intersection(
+		...dbTags.reduce((acc, tag) => {
+			acc.push(tag.workflows.map((workflow) => workflow.id));
 			return acc;
-		}, new Set<number>()),
+		}, [] as number[][]),
 	);
 }
 
@@ -142,6 +141,6 @@ export function getStartNode(): INode {
 	};
 }
 
-export function sanatizeTags(tags: string): string[] {
+export function parseTagNames(tags: string): string[] {
 	return tags.split(',').map((tag) => tag.trim());
 }
