@@ -133,14 +133,14 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All',
-						value: '*',
-						description: 'Any change',
-					},
-					{
 						name: 'Added',
 						value: 'added',
 						description: 'Data got added',
+					},
+					{
+						name: 'All',
+						value: '*',
+						description: 'Any change',
 					},
 					{
 						name: 'Deleted',
@@ -167,16 +167,16 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All',
-						value: '*',
-					},
-					{
 						name: 'Activity',
 						value: 'activity',
 					},
 					{
 						name: 'Activity Type',
 						value: 'activityType',
+					},
+					{
+						name: 'All',
+						value: '*',
 					},
 					{
 						name: 'Deal',

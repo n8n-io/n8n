@@ -80,14 +80,14 @@ export class NocoDB implements INodeType {
 						description: 'Delete a row',
 					},
 					{
-						name: 'Get All',
-						value: 'getAll',
-						description: 'Retrieve all rows',
-					},
-					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a row',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve all rows',
 					},
 					{
 						name: 'Update',

@@ -52,7 +52,7 @@ export const contactNoteFields: INodeProperties[] = [
 /*                                 contactNote:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -69,7 +69,7 @@ export const contactNoteFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The infusionsoft user to create the note on behalf of',
+		description: 'The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -264,7 +264,7 @@ export const contactNoteFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
@@ -368,14 +368,14 @@ export const contactNoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The infusionsoft user to create the note on behalf of',
+				description: 'The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

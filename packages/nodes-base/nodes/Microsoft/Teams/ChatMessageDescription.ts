@@ -42,7 +42,7 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat ID',
+		displayName: 'Chat Name or ID',
 		name: 'chatId',
 		required: true,
 		type: 'options',
@@ -136,7 +136,7 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat ID',
+		displayName: 'Chat Name or ID',
 		name: 'chatId',
 		required: true,
 		type: 'options',

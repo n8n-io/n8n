@@ -133,7 +133,7 @@ export class User {
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {
-		this.email = this.email?.toLowerCase();
+		this.email = this.email?.toLowerCase() ?? null;
 		this.updatedAt = new Date();
 	}
 

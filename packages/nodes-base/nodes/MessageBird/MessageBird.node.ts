@@ -42,7 +42,6 @@ export class MessageBird implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -173,7 +172,7 @@ export class MessageBird implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Created Date-time',
+						displayName: 'Created Date-Time',
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
@@ -248,7 +247,7 @@ export class MessageBird implements INodeType {
 						description: 'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
-						displayName: 'Scheduled Date-time',
+						displayName: 'Scheduled Date-Time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',

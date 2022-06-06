@@ -134,7 +134,7 @@ export const lightFields: INodeProperties[] = [
 	/*                                 light:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Light ID',
+		displayName: 'Light Name or ID',
 		name: 'lightId',
 		type: 'options',
 		typeOptions: {
