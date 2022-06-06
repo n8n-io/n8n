@@ -92,7 +92,7 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 
 export const messageOptions: INodeProperties = {
 	displayName: 'Message Options',
-	name: 'options',
+	name: 'messageOptions',
 	type: 'collection',
 	default: {},
 	placeholder: 'Add Message Option',

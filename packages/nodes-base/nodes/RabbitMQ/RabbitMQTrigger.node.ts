@@ -13,14 +13,13 @@ import {
 
 import {
 	rabbitDefaultOptions,
-} from './DefaultOptions';
+} from './RabbitMQDescription';
 
 import {
 	MessageTracker,
+	queueArguments,
 	rabbitmqConnectQueue,
 } from './GenericFunctions';
-
-import * as amqplib from 'amqplib';
 
 export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +49,38 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'queue-name',
 				description: 'The name of the queue to read from',
 			},
-
+			{
+				displayName: 'Subscriptions',
+				name: 'subscriptions',
+				placeholder: 'Bind to Exchange',
+				description: 'Bind the queue to an exchange or subscribe to a topic',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'bindings',
+						displayName: 'Binding',
+						values: [
+							{
+								displayName: 'Exchange',
+								name: 'exchange',
+								type: 'string',
+								default: 'amq.topic',
+							},
+							{
+								displayName: 'Routing Pattern',
+								name: 'pattern',
+								placeholder: '*.orange.*',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -147,7 +177,17 @@ export class RabbitMQTrigger implements INodeType {
 		const queue = this.getNodeParameter('queue') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
+		if (options.arguments) {
+			options.arguments = queueArguments(options.arguments as IDataObject);
+		}
+
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
+
+		const bindings = this.getNodeParameter('subscriptions.bindings', []) as IDataObject[];
+
+		for (const { exchange, pattern } of bindings) {
+			await channel.bindQueue(queue, exchange as string, pattern as string);
+		}
 
 		const self = this;
 
@@ -271,6 +311,9 @@ export class RabbitMQTrigger implements INodeType {
 		async function closeFunction() {
 
 			try {
+				for (const { exchange, pattern } of bindings) {
+					await channel.unbindQueue(queue, exchange as string, pattern as string);
+				}
 				return messageTracker.closeChannel(channel, consumerTag);
 			} catch(error) {
 				const workflow = self.getWorkflow();

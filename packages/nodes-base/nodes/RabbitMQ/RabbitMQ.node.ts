@@ -11,8 +11,10 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { messageOptions } from './RabbitMQDescription';
 
 import {
+	queueArguments,
 	rabbitmqConnectExchange,
 	rabbitmqConnectQueue,
 } from './GenericFunctions';
@@ -285,6 +287,7 @@ export class RabbitMQ implements INodeType {
 					},
 				],
 			},
+			messageOptions,
 		],
 	};
 
@@ -300,6 +303,10 @@ export class RabbitMQ implements INodeType {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
 				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+				if (options.arguments) {
+					options.arguments = queueArguments(options.arguments as IDataObject);
+				}
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
@@ -325,7 +332,9 @@ export class RabbitMQ implements INodeType {
 						headers = additionalHeaders;
 					}
 
-					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
+					const messageOptions = this.getNodeParameter('messageOptions', i, {}) as IDataObject;
+
+					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers, ...messageOptions }));
 				}
 
 				// @ts-ignore

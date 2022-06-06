@@ -12,7 +12,7 @@ declare module 'amqplib' {
 	}
 }
 
-export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions): Promise<amqplib.Channel> {
 	const credentials = await this.getCredentials('rabbitmq');
 
 	const credentialKeys = [
@@ -52,14 +52,6 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 
 			const channel = await connection.createChannel().catch(console.warn) as amqplib.Channel;
 
-			if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
-				const additionalArguments: IDataObject = {};
-				((options.arguments as IDataObject).argument as IDataObject[]).forEach((argument: IDataObject) => {
-					additionalArguments[argument.key as string] = argument.value;
-				});
-				options.arguments = additionalArguments;
-			}
-
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -68,7 +60,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 }
 
 export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<amqplib.Channel> {
-	const channel = await rabbitmqConnect.call(this, options);
+	const channel = await rabbitmqConnect.call(this);
 
 	return new Promise(async (resolve, reject) => {
 		try {
@@ -81,7 +73,7 @@ export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFun
 }
 
 export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<amqplib.Channel> {
-	const channel = await rabbitmqConnect.call(this, options);
+	const channel = await rabbitmqConnect.call(this);
 
 	return new Promise(async (resolve, reject) => {
 		try {
@@ -141,4 +133,12 @@ export class MessageTracker {
 		await channel.close();
 		await channel.connection.close();
 	}
+}
+
+export function queueArguments(data: IDataObject) {
+	const args = data?.argument as IDataObject[] || [];
+	return args.reduce((acc, argument) => {
+		acc[argument.key as string] = argument.value;
+		return acc;
+	}, {});
 }
