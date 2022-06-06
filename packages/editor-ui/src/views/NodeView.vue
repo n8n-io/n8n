@@ -106,10 +106,10 @@
 				@click.stop="runWorkflow()"
 				:loading="workflowRunning"
 				:label="runButtonText"
+				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
 				size="large"
 				icon="play-circle"
-				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
-				:type="workflowRunning ? 'secondary' : 'primary'"
+				type="primary"
 			/>
 
 			<n8n-icon-button

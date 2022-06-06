@@ -3,7 +3,6 @@
 		:class="classes"
 		:disabled="disabled || loading"
 		:aria-disabled="ariaDisabled"
-		:aria-pressed="ariaPressed"
 		:aria-busy="ariaBusy"
 		aria-live="polite"
 		v-on="$listeners"
@@ -88,18 +87,15 @@ export default Vue.extend({
 		ariaDisabled(): string {
 			return this.disabled ? 'true' : 'false';
 		},
-		ariaPressed(): string {
-			return this.active ? 'true' : 'false';
-		},
 		classes(): string {
-			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+			return `button ${this.type}` +
+				` el-button el-button--${this.type}` +
+				`${this.size ? ` ${this.size} el-button--${this.size}` : ''}` +
 				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
 				`${this.loading ? ` ${this.$style['loading']}` : ''}` +
-				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
 				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
 				`${this.text ? ` ${this.$style['text']}` : ''}` +
 				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
-				`${this.active ? ` ${this.$style['active']}` : ''}` +
 				`${this.block ? ` ${this.$style['block']}` : ''}` +
 				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}`;
 		},
@@ -107,132 +103,74 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss" module>
+<style lang="scss">
 @import '../../../theme/src/mixins/utils';
 @import '../../../theme/src/common/var';
 
-$loading-overlay-background-color: rgba(255, 255, 255, 0.35);
+.button, .el-button {
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
 
-.button {
-	display: inline-block;
-	line-height: 1;
-	white-space: nowrap;
-	cursor: pointer;
+  border: var(--border-width-base) $button-border-color var(--border-style-base);
+  color: $button-font-color;
+  background-color: $button-background-color;
+  font-weight: var(--font-weight-bold);
+  border-radius: $button-border-radius;
+  padding: $button-padding-vertical $button-padding-horizontal;
+  font-size: $button-font-size;
 
-	border: var(--border-width-base) $button-border-color var(--border-style-base);
-	color: $button-font-color;
-	background-color: $button-background-color;
-	font-weight: var(--font-weight-bold);
-	border-radius: $button-border-radius;
-	padding: $button-padding-vertical $button-padding-horizontal;
-	font-size: $button-font-size;
+  -webkit-appearance: none;
+  text-align: center;
+  box-sizing: border-box;
+  outline: none;
+  margin: 0;
+  transition: 0.3s;
 
-	-webkit-appearance: none;
-	text-align: center;
-	box-sizing: border-box;
+  @include utils-user-select(none);
+
+  &:hover {
+	color: $button-hover-color;
+	border-color: $button-hover-border-color;
+	background-color: $button-hover-background-color;
+  }
+
+  &:focus {
+	border-color: $button-focus-outline-color;
+	outline: $focus-outline-width solid $button-focus-outline-color;
+  }
+
+  &:active {
+	color: $button-active-color;
+	border-color: $button-active-border-color;
+	background-color: $button-active-background-color;
 	outline: none;
-	margin: 0;
-	transition: 0.3s;
+  }
 
-	@include utils-user-select(none);
+  &::-moz-focus-inner {
+	border: 0;
+  }
 
-	&:hover {
-		color: $button-hover-color;
-		border-color: $button-hover-border-color;
-		background-color: $button-hover-background-color;
-	}
+  > i {
+	display: none;
+  }
 
-	&:focus {
-		border-color: $button-focus-outline-color;
-		outline: $focus-outline-width solid $button-focus-outline-color;
-	}
+  > span {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+  }
 
-	&:active {
-		color: $button-active-color;
-		border-color: $button-active-border-color;
-		background-color: $button-active-background-color;
-		outline: none;
-	}
+  span + span {
+	margin-left: var(--spacing-3xs);
+  }
 
-	&::-moz-focus-inner {
-		border: 0;
-	}
+  /**
+   * Colors
+   */
 
-	> i {
-		display: none;
-	}
-
-	> span {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	span + span {
-		margin-left: var(--spacing-3xs);
-	}
-}
-
-/**
- * Sizes
- */
-
-.mini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-2xs);
-	--button-font-size: var(--font-size-2xs);
-
-	&.icon-button {
-		height: 22px;
-		width: 22px;
-	}
-}
-
-.small {
-	--button-padding-vertical: var(--spacing-3xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
-
-	&.icon-button {
-		height: 26px;
-		width: 26px;
-	}
-}
-
-.medium {
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
-
-	&.icon-button {
-		height: 32px;
-		width: 32px;
-	}
-}
-
-.large {
-	&.icon-button {
-		height: 42px;
-		width: 42px;
-	}
-}
-
-.xlarge {
-	--button-padding-vertical: var(--spacing-xs);
-	--button-padding-horizontal: var(--spacing-s);
-	--button-font-size: var(--font-size-m);
-
-	&.icon-button {
-		height: 46px;
-		width: 46px;
-	}
-}
-
-/**
- * Colors
- */
-
-.secondary {
+  &.secondary {
 	--button-color: var(--color-primary);
 	--button-border-color: var(--color-primary);
 	--button-background-color: var(--color-background-xlight);
@@ -246,9 +184,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	--button-hover-border-color: var(--color-primary);
 
 	--button-focus-outline-color: var(--color-primary-tint-1);
-}
+  }
 
-.tertiary {
+  &.tertiary,
+  &.btn--cancel {
 	font-weight: var(--font-weight-regular) !important;
 
 	--button-background-color: var(--color-background-xlight);
@@ -264,9 +203,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	--button-hover-border-color: var(--color-neutral-800);
 
 	--button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
-}
+  }
 
-.success {
+  &.success {
 	--button-background-color: var(--color-success);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-success);
@@ -278,9 +217,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	--button-hover-border-color: var(--color-success-450);
 
 	--button-focus-outline-color: hsla(var(--color-success-h), var(--color-success-s), var(--color-success-l), 0.33);
-}
+  }
 
-.warning {
+  &.warning {
 	--button-background-color: var(--color-warning);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-warning);
@@ -292,9 +231,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	--button-hover-border-color: var(--color-warning-650);
 
 	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
-}
+  }
 
-.danger {
+  &.danger {
 	--button-background-color: var(--color-danger);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-danger);
@@ -307,7 +246,75 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	--button-hover-border-color: var(--color-danger-700);
 
 	--button-focus-outline-color: hsla(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l), 0.33);
+  }
+
+  /**
+   * Sizes
+   */
+
+  &.mini,
+  &.el-button--mini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-2xs);
+	--button-font-size: var(--font-size-2xs);
+
+	&.icon-button {
+	  height: 22px;
+	  width: 22px;
+	}
+  }
+
+  &.small,
+  &.el-button--small  {
+	--button-padding-vertical: var(--spacing-3xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	&.icon-button {
+	  height: 26px;
+	  width: 26px;
+	}
+  }
+
+  &.medium,
+  &.el-button--medium  {
+	--button-padding-vertical: var(--spacing-2xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	&.icon-button {
+	  height: 32px;
+	  width: 32px;
+	}
+  }
+
+  &.large,
+  &.el-button--large  {
+	&.icon-button {
+	  height: 42px;
+	  width: 42px;
+	}
+  }
+
+  &.xlarge,
+  &.el-button--xlarge  {
+	--button-padding-vertical: var(--spacing-xs);
+	--button-padding-horizontal: var(--spacing-s);
+	--button-font-size: var(--font-size-m);
+
+	&.icon-button {
+	  height: 46px;
+	  width: 46px;
+	}
+  }
 }
+</style>
+
+<style lang="scss" module>
+@import '../../../theme/src/mixins/utils';
+@import '../../../theme/src/common/var';
+
+$loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 /**
  * Modifiers

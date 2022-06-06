@@ -287,6 +287,13 @@ export default mixins(genericHelpers)
 </script>
 
 <style scoped lang="scss">
+::v-deep {
+	.button {
+		--button-background-color: var(--color-background-base);
+		--button-border-color: var(--color-foreground-base);
+	}
+}
+
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 }

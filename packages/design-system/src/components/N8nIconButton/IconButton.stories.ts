@@ -64,7 +64,7 @@ Outline.args = {
 	icon: 'plus',
 	title: 'my title',
 	type: 'primary',
-	outline: true
+	outline: true,
 };
 
 export const Light = ManyTemplate.bind({});
