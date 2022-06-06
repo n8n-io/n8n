@@ -4,7 +4,9 @@
 		:eventBus="modalBus"
 		width="50%"
 		:center="true"
+		:loading="loading"
 		maxWidth="460px"
+		minHeight="250px"
 	>
 		<template slot="header">
 			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
@@ -58,7 +60,13 @@ export default Vue.extend({
 	components: {
 		Modal,
 	},
-	mounted() {
+	async mounted() {
+		try {
+			await this.$store.dispatch('credentials/fetchCredentialTypes');
+		} catch (e) {
+		}
+		this.loading = false;
+
 		setTimeout(() => {
 			const element = this.$refs.select as HTMLSelectElement;
 			if (element) {
@@ -70,6 +78,7 @@ export default Vue.extend({
 		return {
 			modalBus: new Vue(),
 			selected: '',
+			loading: true,
 			CREDENTIAL_SELECT_MODAL_KEY,
 		};
 	},

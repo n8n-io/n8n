@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -39,7 +40,7 @@ import {
 	omit,
 } from 'lodash';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
 
@@ -68,6 +69,7 @@ export class Wise implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -82,12 +84,12 @@ export class Wise implements INodeType {
 						value: 'profile',
 					},
 					{
-						name: 'Recipient',
-						value: 'recipient',
-					},
-					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Recipient',
+						value: 'recipient',
 					},
 					{
 						name: 'Transfer',
@@ -95,7 +97,6 @@ export class Wise implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume',
 			},
 			...accountOperations,
 			...accountFields,
@@ -141,12 +142,25 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs);
+				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs) as Recipient[];
 
-				return recipients.map(({ id, accountHolderName }: Recipient) => ({
-					name: accountHolderName,
-					value: id,
-				}));
+				return recipients.reduce<INodePropertyOptions[]>((activeRecipients, {
+					active,
+					id,
+					accountHolderName,
+					currency,
+					country,
+					type,
+				}) => {
+					if (active) {
+						const recipient = {
+							name: `[${currency}] ${accountHolderName} - (${country !== null ? country + ' - ' : '' }${type})`,
+							value: id,
+						};
+						activeRecipients.push(recipient);
+					}
+					return activeRecipients;
+				}, []);
 			},
 		},
 	};
@@ -267,7 +281,7 @@ export class Wise implements INodeType {
 						if (range !== undefined && time === undefined) {
 							qs.from = moment.tz(range.rangeProperties.from, timezone).utc().format();
 							qs.to = moment.tz(range.rangeProperties.to, timezone).utc().format();
-						} else {
+						} else if (time === undefined) {
 							qs.from = moment().subtract(1, 'months').utc().format();
 							qs.to = moment().format();
 						}
@@ -425,7 +439,7 @@ export class Wise implements INodeType {
 
 						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
 
-						const { environment } = await this.getCredentials('wiseApi') as IDataObject;
+						const { environment } = await this.getCredentials('wiseApi');
 
 						if (environment === 'test') {
 							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {

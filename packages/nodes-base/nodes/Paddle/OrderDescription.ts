@@ -7,6 +7,7 @@ export const orderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const orderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,6 +47,6 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The identifier of the buyer’s checkout.',
+		description: 'The identifier of the buyer’s checkout',
 	},
 ];

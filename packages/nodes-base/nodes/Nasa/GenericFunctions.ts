@@ -13,7 +13,7 @@ import {
 
 export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject, option: IDataObject = {}, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('nasaApi') as IDataObject;
+	const credentials = await this.getCredentials('nasaApi');
 
 	qs.api_key = credentials['api_key'] as string;
 

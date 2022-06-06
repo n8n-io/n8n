@@ -11,6 +11,7 @@ export const signatureOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const signatureOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -48,7 +48,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition to sign.',
+		description: 'ID of the petition to sign',
 		type: 'string',
 		default: '',
 		required: true,
@@ -66,7 +66,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person whose signature to create.',
+		description: 'ID of the person whose signature to create',
 		type: 'string',
 		default: '',
 		required: true,
@@ -104,7 +104,7 @@ export const signatureFields: INodeProperties[] = [
 				name: 'comments',
 				type: 'string',
 				default: '',
-				description: 'Comments to leave when signing this petition.',
+				description: 'Comments to leave when signing this petition',
 			},
 		],
 	},
@@ -115,7 +115,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition whose signature to retrieve.',
+		description: 'ID of the petition whose signature to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -133,7 +133,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Signature ID',
 		name: 'signatureId',
-		description: 'ID of the signature to retrieve.',
+		description: 'ID of the signature to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -156,7 +156,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition whose signatures to retrieve.',
+		description: 'ID of the petition whose signatures to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -176,7 +176,7 @@ export const signatureFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -193,7 +193,7 @@ export const signatureFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -219,7 +219,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition whose signature to update.',
+		description: 'ID of the petition whose signature to update',
 		type: 'string',
 		default: '',
 		required: true,
@@ -237,7 +237,7 @@ export const signatureFields: INodeProperties[] = [
 	{
 		displayName: 'Signature ID',
 		name: 'signatureId',
-		description: 'ID of the signature to update.',
+		description: 'ID of the signature to update',
 		type: 'string',
 		default: '',
 		required: true,
@@ -275,7 +275,7 @@ export const signatureFields: INodeProperties[] = [
 				name: 'comments',
 				type: 'string',
 				default: '',
-				description: 'Comments to leave when signing this petition.',
+				description: 'Comments to leave when signing this petition',
 			},
 		],
 	},

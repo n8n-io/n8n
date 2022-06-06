@@ -53,7 +53,7 @@ export class WiseTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Profile',
+				displayName: 'Profile Name or ID',
 				name: 'profileId',
 				type: 'options',
 				required: true,
@@ -72,17 +72,17 @@ export class WiseTrigger implements INodeType {
 					{
 						name: 'Balance Credit',
 						value: 'balanceCredit',
-						description: 'Triggered every time a balance account is credited.',
+						description: 'Triggered every time a balance account is credited',
 					},
 					{
 						name: 'Transfer Active Case',
 						value: 'transferActiveCases',
-						description: `Triggered every time a transfer's list of active cases is updated.`,
+						description: 'Triggered every time a transfer\'s list of active cases is updated',
 					},
 					{
 						name: 'Transfer State Changed',
 						value: 'tranferStateChange',
-						description: `Triggered every time a transfer's status is updated.`,
+						description: 'Triggered every time a transfer\'s status is updated',
 					},
 				],
 			},
@@ -153,7 +153,7 @@ export class WiseTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const headers = this.getHeaderData() as IDataObject;
-		const credentials = await this.getCredentials('wiseApi') as IDataObject;
+		const credentials = await this.getCredentials('wiseApi');
 
 		if (headers['x-test-notification'] === 'true') {
 			const res = this.getResponseObject();

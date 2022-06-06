@@ -11,8 +11,8 @@ export const billOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -50,11 +50,11 @@ export const billFields: INodeProperties[] = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor',
+		displayName: 'For Vendor Name or ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the vendor who the bill is for.',
+		description: 'The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -75,7 +75,7 @@ export const billFields: INodeProperties[] = [
 		name: 'Line',
 		type: 'collection',
 		placeholder: 'Add Line Item Property',
-		description: 'Individual line item of a transaction.',
+		description: 'Individual line item of a transaction',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -91,6 +91,29 @@ export const billFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Amount',
+				name: 'Amount',
+				description: 'Monetary amount of the line item',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Description',
+				name: 'Description',
+				description: 'Textual description of the line item',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
 			{
 				displayName: 'Detail Type',
 				name: 'DetailType',
@@ -108,7 +131,7 @@ export const billFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item',
+				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
 				default: [],
@@ -117,32 +140,9 @@ export const billFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Account ID',
-				name: 'accountId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'Amount',
-				description: 'Monetary amount of the line item.',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Description',
-				name: 'Description',
-				description: 'Textual description of the line item.',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-			},
-			{
 				displayName: 'Position',
 				name: 'LineNum',
-				description: 'Position of the line item relative to others.',
+				description: 'Position of the line item relative to others',
 				type: 'number',
 				default: 1,
 			},
@@ -176,7 +176,7 @@ export const billFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to delete.',
+		description: 'The ID of the bill to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -198,7 +198,7 @@ export const billFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to retrieve.',
+		description: 'The ID of the bill to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -219,7 +219,7 @@ export const billFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -235,8 +235,8 @@ export const billFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -295,7 +295,7 @@ export const billFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to update.',
+		description: 'The ID of the bill to update',
 		displayOptions: {
 			show: {
 				resource: [

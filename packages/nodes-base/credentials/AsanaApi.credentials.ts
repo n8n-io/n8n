@@ -1,4 +1,5 @@
 import {
+	IAuthenticateBearer,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +16,10 @@ export class AsanaApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate = {
+		type: 'bearer',
+		properties: {},
+	} as IAuthenticateBearer;
+
 }

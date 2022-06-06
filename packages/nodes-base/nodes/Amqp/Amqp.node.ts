@@ -38,7 +38,7 @@ export class Amqp implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'name of the queue of topic to publish to',
+				description: 'Name of the queue of topic to publish to',
 			},
 			// Header Parameters
 			{
@@ -67,7 +67,7 @@ export class Amqp implements INodeType {
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data as an object.',
+						description: 'Send the data as an object',
 					},
 					{
 						displayName: 'Reconnect',
@@ -84,7 +84,7 @@ export class Amqp implements INodeType {
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Send property',
+						displayName: 'Send Property',
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',
@@ -98,9 +98,6 @@ export class Amqp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const credentials = await this.getCredentials('amqp');
-			if (!credentials) {
-				throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
-			}
 
 			const sink = this.getNodeParameter('sink', 0, '') as string;
 			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;

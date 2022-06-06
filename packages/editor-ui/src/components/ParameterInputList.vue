@@ -1,6 +1,8 @@
 <template>
-	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -14,11 +16,11 @@
 				/>
 			</div>
 
-			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
-				<n8n-text size="small">
-					<span v-html="$locale.nodeText().topParameterDisplayName(parameter)"></span>
-				</n8n-text>
-			</div>
+			<n8n-notice
+				v-else-if="parameter.type === 'notice'"
+				class="parameter-item"
+				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+			/>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -33,8 +35,8 @@
 					/>
 				</div>
 				<n8n-input-label
-					:label="$locale.nodeText().topParameterDisplayName(parameter)"
-					:tooltipText="$locale.nodeText().topParameterDescription(parameter)"
+					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
 					:labelHoverableOnly="true"
@@ -89,7 +91,7 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
-import { IUpdateInformation } from '@/Interface';
+import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -99,6 +101,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -123,6 +126,14 @@ export default mixins(
 			},
 			filteredParameterNames (): string[] {
 				return this.filteredParameters.map(parameter => parameter.name);
+			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
+			},
+			indexToShowSlotAt (): number {
+				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
+
+				return 0;
 			},
 		},
 		methods: {
@@ -159,8 +170,24 @@ export default mixins(
 
 				this.$emit('valueChanged', parameterData);
 			},
+
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
+					return false;
+				}
+
+				if (
+					this.isCustomApiCallSelected(this.nodeValues) &&
+					this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+				) {
 					return false;
 				}
 
@@ -213,13 +240,13 @@ export default mixins(
 					if (this.path) {
 						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
 						set(rawValues, this.path, nodeValues);
-						return this.displayParameter(rawValues, parameter, this.path);
+						return this.displayParameter(rawValues, parameter, this.path, this.node);
 					} else {
-						return this.displayParameter(nodeValues, parameter, '');
+						return this.displayParameter(nodeValues, parameter, '', this.node);
 					}
 				}
 
-				return this.displayParameter(this.nodeValues, parameter, this.path);
+				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
@@ -255,7 +282,7 @@ export default mixins(
 </script>
 
 <style lang="scss">
-.paramter-input-list-wrapper {
+.parameter-input-list-wrapper {
 	.delete-option {
 		display: none;
 		position: absolute;

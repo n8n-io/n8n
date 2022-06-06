@@ -12,7 +12,7 @@ import * as reaction from './reaction';
 import * as user from './user';
 import { Mattermost } from './Interfaces';
 
-export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const operationResult: INodeExecutionData[] = [];
 
@@ -44,10 +44,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			if (this.continueOnFail()) {
 				operationResult.push({json: this.getInputData(i)[0].json, error: err});
 			} else {
+				if (err.context) err.context.itemIndex = i;
 				throw err;
 			}
 		}
 	}
 
-	return operationResult;
+	return [operationResult];
 }

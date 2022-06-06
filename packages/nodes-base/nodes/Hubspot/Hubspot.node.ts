@@ -3,12 +3,17 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -71,6 +76,9 @@ import {
 	snakeCase,
 } from 'change-case';
 
+import {
+	validateCredentials
+} from './GenericFunctions';
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
@@ -89,10 +97,23 @@ export class Hubspot implements INodeType {
 			{
 				name: 'hubspotApi',
 				required: true,
+				testedBy: 'hubspotApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
 							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'hubspotAppToken',
+				required: true,
+				testedBy: 'hubspotApiTest',
+				displayOptions: {
+					show: {
+						authentication: [
+							'appToken',
 						],
 					},
 				},
@@ -120,18 +141,26 @@ export class Hubspot implements INodeType {
 						value: 'apiKey',
 					},
 					{
+						name: 'APP Token',
+						value: 'appToken',
+					},
+					{
 						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 				],
 				default: 'apiKey',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: 'Company',
+						value: 'company',
+					},
 					{
 						name: 'Contact',
 						value: 'contact',
@@ -139,10 +168,6 @@ export class Hubspot implements INodeType {
 					{
 						name: 'Contact List',
 						value: 'contactList',
-					},
-					{
-						name: 'Company',
-						value: 'company',
 					},
 					{
 						name: 'Deal',
@@ -162,7 +187,6 @@ export class Hubspot implements INodeType {
 					},
 				],
 				default: 'deal',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,
@@ -189,6 +213,26 @@ export class Hubspot implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async hubspotApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					const err = error as JsonObject;
+					if (err.statusCode === 401) {
+						return {
+							status: 'Error',
+							message: `Invalid credentials`,
+						};
+					}
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful',
+				};
+			},
+		},
+
 		loadOptions: {
 			/* -------------------------------------------------------------------------- */
 			/*                                 CONTACT                                    */
@@ -867,12 +911,16 @@ export class Hubspot implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/contacts/v1/lists/all/contacts/all';
 				const contacts = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint);
+
 				for (const contact of contacts) {
-					const contactName = `${contact.properties.firstname.value} ${contact.properties.lastname.value}`;
+					const firstName = contact.properties?.firstname?.value || '';
+					const lastName = contact.properties?.lastname?.value || '';
+					const contactName = `${firstName} ${lastName}`;
 					const contactId = contact.vid;
 					returnData.push({
 						name: contactName,
 						value: contactId,
+						description: `Contact VID: ${contactId}`,
 					});
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
@@ -884,7 +932,7 @@ export class Hubspot implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -923,7 +971,7 @@ export class Hubspot implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -2278,14 +2326,17 @@ export class Hubspot implements INodeType {
 							const ticketName = this.getNodeParameter('ticketName', i) as string;
 							const body: IDataObject[] = [
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline',
 									value: pipelineId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline_stage',
 									value: stageId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'subject',
 									value: ticketName,
 								},
@@ -2511,7 +2562,7 @@ export class Hubspot implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as JsonObject).message });
 						continue;
 					}
 					throw error;

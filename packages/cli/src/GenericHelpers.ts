@@ -1,21 +1,26 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as express from 'express';
+import express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
 import { IDataObject } from 'n8n-workflow';
-import * as config from '../config';
+import { validate } from 'class-validator';
+import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
-import { Db, ICredentialsDb, IPackageVersions } from '.';
+import { Db, ICredentialsDb, IPackageVersions, ResponseHelper } from '.';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import { TagEntity } from './databases/entities/TagEntity';
+import { User } from './databases/entities/User';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -26,10 +31,10 @@ let versionCache: IPackageVersions | undefined;
  * @returns {string}
  */
 export function getBaseUrl(): string {
-	const protocol = config.get('protocol');
-	const host = config.get('host');
-	const port = config.get('port');
-	const path = config.get('path');
+	const protocol = config.getEnv('protocol');
+	const host = config.getEnv('host');
+	const port = config.getEnv('port');
+	const path = config.getEnv('path');
 
 	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 		return `${protocol}://${host}${path}`;
@@ -112,14 +117,16 @@ export async function getConfigValue(
 	// Check if environment variable is defined for config key
 	if (currentSchema.env === undefined) {
 		// No environment variable defined, so return value from config
-		return config.get(configKey);
+		// @ts-ignore
+		return config.getEnv(configKey);
 	}
 
 	// Check if special file enviroment variable exists
 	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
 	if (fileEnvironmentVariable === undefined) {
 		// Does not exist, so return value from config
-		return config.get(configKey);
+		// @ts-ignore
+		return config.getEnv(configKey);
 	}
 
 	let data;
@@ -158,12 +165,12 @@ export async function generateUniqueName(
 
 	const found: Array<WorkflowEntity | ICredentialsDb> =
 		entityType === 'workflow'
-			? await Db.collections.Workflow!.find(findConditions)
-			: await Db.collections.Credentials!.find(findConditions);
+			? await Db.collections.Workflow.find(findConditions)
+			: await Db.collections.Credentials.find(findConditions);
 
 	// name is unique
 	if (found.length === 0) {
-		return { name: requestedName };
+		return requestedName;
 	}
 
 	const maxSuffix = found.reduce((acc, { name }) => {
@@ -183,8 +190,28 @@ export async function generateUniqueName(
 
 	// name is duplicate but no numeric suffixes exist yet
 	if (maxSuffix === 0) {
-		return { name: `${requestedName} 2` };
+		return `${requestedName} 2`;
 	}
 
-	return { name: `${requestedName} ${maxSuffix + 1}` };
+	return `${requestedName} ${maxSuffix + 1}`;
 }
+
+export async function validateEntity(
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
+): Promise<void> {
+	const errors = await validate(entity);
+
+	const errorMessages = errors
+		.reduce<string[]>((acc, cur) => {
+			if (!cur.constraints) return acc;
+			acc.push(...Object.values(cur.constraints));
+			return acc;
+		}, [])
+		.join(' | ');
+
+	if (errorMessages) {
+		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
+	}
+}
+
+export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

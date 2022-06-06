@@ -7,11 +7,11 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -85,6 +85,7 @@ export class HomeAssistant implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Camera Proxy',
@@ -120,7 +121,6 @@ export class HomeAssistant implements INodeType {
 					},
 				],
 				default: 'config',
-				description: 'Resource to consume.',
 			},
 			...cameraProxyOperations,
 			...cameraProxyFields,
@@ -142,7 +142,7 @@ export class HomeAssistant implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async homeAssistantApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async homeAssistantApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const options = {
 					method: 'GET',

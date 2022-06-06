@@ -7,7 +7,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeProperties,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -126,7 +125,11 @@ export async function quickBooksApiRequestAllItems(
 	const maxResults = 1000;
 	const returnData: IDataObject[] = [];
 
-	const maxCount = await getCount.call(this, method, endpoint, qs);
+	const maxCountQuery = {
+		query: `SELECT COUNT(*) FROM ${resource}`,
+	} as IDataObject;
+
+	const maxCount = await getCount.call(this, method, endpoint, maxCountQuery);
 
 	const originalQuery = qs.query as string;
 
@@ -135,7 +138,7 @@ export async function quickBooksApiRequestAllItems(
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
 		try {
 			const nonResource = originalQuery.split(' ')?.pop();
-			if (nonResource === 'CreditMemo' || nonResource === 'Term') {
+			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
 				returnData.push(...responseData.QueryResponse[nonResource]);
 			} else {
 				returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
@@ -331,9 +334,14 @@ export function processLines(
 					ItemRef: {
 						value: line.itemId,
 					},
+					TaxCodeRef : {
+						value: line.TaxCodeRef,
+					},
 				};
 				delete line.itemId;
+				delete line.TaxCodeRef;
 			}
+
 
 		} else if (resource === 'invoice') {
 			if (line.DetailType === 'SalesItemLineDetail') {
@@ -341,8 +349,12 @@ export function processLines(
 					ItemRef: {
 						value: line.itemId,
 					},
+					TaxCodeRef : {
+						value: line.TaxCodeRef,
+					},
 				};
 				delete line.itemId;
+				delete line.TaxCodeRef;
 			}
 		}
 

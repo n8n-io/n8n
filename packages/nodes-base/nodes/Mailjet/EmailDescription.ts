@@ -1,10 +1,13 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const emailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +28,6 @@ export const emailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -78,7 +80,7 @@ export const emailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'My subject line',
-		description: 'Subject line of the email.',
+		description: 'Subject line of the email',
 	},
 	{
 		displayName: 'Text',
@@ -98,7 +100,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Plain text message of email.',
+		description: 'Plain text message of email',
 	},
 	{
 		displayName: 'HTML',
@@ -118,7 +120,23 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'HTML text message of email.',
+		description: 'HTML text message of email',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -197,7 +215,7 @@ export const emailFields: INodeProperties[] = [
 						description: 'Enable tracking for this message',
 					},
 				],
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
 			{
@@ -221,10 +239,33 @@ export const emailFields: INodeProperties[] = [
 						description: 'Enable tracking for this message',
 					},
 				],
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
 		],
+	},
+	{
+		displayName: 'Variables (JSON)',
+		name: 'variablesJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'HTML text message of email',
 	},
 	{
 		displayName: 'Variables',
@@ -240,6 +281,9 @@ export const emailFields: INodeProperties[] = [
 				],
 				operation: [
 					'send',
+				],
+				jsonParameters: [
+					false,
 				],
 			},
 		},
@@ -308,7 +352,7 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {
@@ -316,6 +360,22 @@ export const emailFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -348,14 +408,14 @@ export const emailFields: INodeProperties[] = [
 				displayName: 'Bcc Email',
 				name: 'bccEmail',
 				type: 'string',
-				description: 'BCC Recipients of the email separated by ,.',
+				description: 'BCC Recipients of the email separated by ,',
 				default: '',
 			},
 			{
 				displayName: 'Cc Email',
 				name: 'ccEmail',
 				type: 'string',
-				description: 'Cc recipients of the email separated by ,.',
+				description: 'Cc recipients of the email separated by ,',
 				default: '',
 			},
 			{
@@ -384,24 +444,24 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Track Opens',
-				name: 'trackOpens',
-				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
-				default: '',
+				displayName: 'Template Language',
+				name: 'templateLanguage',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Track Clicks',
 				name: 'trackClicks',
 				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: '',
 			},
 			{
-				displayName: 'Template Language',
-				name: 'templateLanguage',
-				type: 'boolean',
-				default: false,
+				displayName: 'Track Opens',
+				name: 'trackOpens',
+				type: 'string',
+				description: 'Enable or disable open tracking on this message',
+				default: '',
 			},
 		],
 	},
@@ -419,6 +479,9 @@ export const emailFields: INodeProperties[] = [
 				],
 				operation: [
 					'sendTemplate',
+				],
+				jsonParameters: [
+					false,
 				],
 			},
 		},
@@ -444,5 +507,28 @@ export const emailFields: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Variables (JSON)',
+		name: 'variablesJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'HTML text message of email',
 	},
 ];

@@ -2,7 +2,7 @@ import { join, dirname } from 'path';
 import { readdir } from 'fs/promises';
 import { Dirent } from 'fs';
 
-const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // v1, v10
+const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // e.g. v1, v10
 
 function isVersionedDirname(dirent: Dirent) {
 	if (!dirent.isDirectory()) return false;
@@ -26,14 +26,39 @@ async function getMaxVersion(from: string) {
 	return Math.max(...dirnames.map((d) => parseInt(d.charAt(1), 10)));
 }
 
-export async function getNodeTranslationPath(
-	nodeSourcePath: string,
-	language: string,
-): Promise<string> {
+/**
+ * Get the full path to a node translation file in `/dist`.
+ */
+export async function getNodeTranslationPath({
+	nodeSourcePath,
+	longNodeType,
+	locale,
+}: {
+	nodeSourcePath: string;
+	longNodeType: string;
+	locale: string;
+}): Promise<string> {
 	const nodeDir = dirname(nodeSourcePath);
 	const maxVersion = await getMaxVersion(nodeDir);
+	const nodeType = longNodeType.replace('n8n-nodes-base.', '');
 
 	return maxVersion
-		? join(nodeDir, `v${maxVersion}`, 'translations', `${language}.json`)
-		: join(nodeDir, 'translations', `${language}.json`);
+		? join(nodeDir, `v${maxVersion}`, 'translations', locale, `${nodeType}.json`)
+		: join(nodeDir, 'translations', locale, `${nodeType}.json`);
+}
+
+/**
+ * Get the full path to a credential translation file in `/dist`.
+ */
+export function getCredentialTranslationPath({
+	locale,
+	credentialType,
+}: {
+	locale: string;
+	credentialType: string;
+}): string {
+	const packagesPath = join(__dirname, '..', '..', '..');
+	const credsPath = join(packagesPath, 'nodes-base', 'dist', 'credentials');
+
+	return join(credsPath, 'translations', locale, `${credentialType}.json`);
 }

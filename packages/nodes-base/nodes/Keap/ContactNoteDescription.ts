@@ -7,6 +7,7 @@ export const contactNoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const contactNoteOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const contactNoteFields: INodeProperties[] = [
 /*                                 contactNote:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -69,7 +69,7 @@ export const contactNoteFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The infusionsoft user to create the note on behalf of',
+		description: 'The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -211,7 +211,7 @@ export const contactNoteFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -235,7 +235,7 @@ export const contactNoteFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -264,7 +264,7 @@ export const contactNoteFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
@@ -368,14 +368,14 @@ export const contactNoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The infusionsoft user to create the note on behalf of',
+				description: 'The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
