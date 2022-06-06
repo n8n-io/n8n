@@ -44,7 +44,7 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
-}, 10000);
+});
 
 afterAll(async () => {
 	await testDb.terminate(testDbName);
