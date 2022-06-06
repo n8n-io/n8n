@@ -7,6 +7,7 @@ import { randomApiKey } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import { exec } from 'child_process';
 
 let app: express.Application;
 let testDbName = '';
@@ -376,4 +377,60 @@ test('GET /executions should return all waiting executions', async () => {
 	expect(stoppedAt).not.toBeNull();
 	expect(workflowId).toBe(waitingExecution.workflowId);
 	expect(new Date(waitTill).getTime()).toBeGreaterThan(Date.now() - 1000);
+});
+
+test('GET /executions should retrieve all executions of specific workflow', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
+
+	const [workflow, workflow2] = await testDb.createManyWorkflows(2, {}, owner);
+
+	const savedExecutions = await testDb.createManyExecutions(
+		2,
+		workflow,
+		// @ts-ignore
+		testDb.createSuccessfullExecution,
+	);
+	// @ts-ignore
+	await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfullExecution);
+
+	const response = await authOwnerAgent.get(`/executions`).query({
+		workflowId: workflow.id.toString(),
+	});
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(2);
+	expect(response.body.nextCursor).toBe(null);
+
+	for (const execution of response.body.data) {
+		const {
+			id,
+			data,
+			finished,
+			mode,
+			retryOf,
+			retrySuccessId,
+			startedAt,
+			stoppedAt,
+			workflowId,
+			waitTill,
+		} = execution;
+
+		expect(savedExecutions.some((exec) => exec.id === id)).toBe(true);
+		expect(data).toBeDefined();
+		expect(finished).toBe(true);
+		expect(mode).toBeDefined();
+		expect(retrySuccessId).toBeNull();
+		expect(retryOf).toBeNull();
+		expect(startedAt).not.toBeNull();
+		expect(stoppedAt).not.toBeNull();
+		expect(workflowId).toBe(workflow.id.toString());
+		expect(waitTill).toBeNull();
+	}
 });

@@ -312,6 +312,15 @@ export function getAllRoles() {
 //          Execution helpers
 // ----------------------------------
 
+export async function createManyExecutions(
+	counter: number,
+	workflow: WorkflowEntity,
+	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
+) {
+	const executionsRequests = [...Array(counter)].map((_) => callback(workflow));
+	return Promise.all(executionsRequests);
+}
+
 /**
  * Store a execution in the DB and assigns it to a workflow.
  * @param user user to assign the workflow to
@@ -396,6 +405,15 @@ export async function createTag(attributes: Partial<TagEntity> = {}) {
 // ----------------------------------
 //          Workflow helpers
 // ----------------------------------
+
+export async function createManyWorkflows(
+	counter: number,
+	attributes: Partial<WorkflowEntity> = {},
+	user?: User,
+) {
+	const workflowRequests = [...Array(counter)].map((_) => createWorkflow(attributes, user));
+	return Promise.all(workflowRequests);
+}
 
 /**
  * Store a workflow in the DB (without a trigger) and optionally assigns it to a user.
