@@ -1,30 +1,102 @@
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	ITriggerFunctions,
 } from 'n8n-workflow';
 
 import * as amqplib from 'amqplib';
+import amqp, { AmqpConnectionManager, ChannelWrapper } from 'amqp-connection-manager';
 
-declare module 'amqplib' {
-	interface Channel {
-		connection: amqplib.Connection;
+// maintain and auto-reconnect one connection per set of credentials
+const allConnections = new Map<string, AmqpConnectionManager>();
+
+export async function rabbitmqConnect(
+	self: IExecuteFunctions | ITriggerFunctions,
+	setup: (this: ChannelWrapper, channel: amqplib.Channel) => Promise<void>,
+): Promise<ChannelWrapper> {
+	const credentials = await self.getCredentials('rabbitmq');
+
+	return new Promise(async (resolve, reject) => {
+		try {
+			const connection = getConnection(credentials);
+			const channel = connection.createChannel({ setup });
+
+			const mode = 'getActivationMode' in self && self.getActivationMode();
+
+			// this is manual execution, so don't just silently retry
+			if (mode && ['manual', 'activate'].includes(mode)) {
+				await manualExecutionWaitOrFail(channel);
+			}
+
+			resolve(channel);
+		} catch (error) {
+			reject(error);
+		}
+	});
+}
+
+/** If the channel doesn't connect successfully, close the channel and error out. */
+async function manualExecutionWaitOrFail(channel: ChannelWrapper, timeout = 20000): Promise<void> {
+	const failPromise = new Promise((resolve, reject) => {
+		setTimeout(reject, 20000, new Error('Timeout while waiting for RabbitMQ channel'));
+		channel.once('error', reject);
+	});
+
+	try {
+		await Promise.race([channel.waitForConnect(), failPromise]);
+	} catch (error) {
+		channel.close();
+		throw error;
 	}
 }
 
-export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions): Promise<amqplib.Channel> {
-	const credentials = await this.getCredentials('rabbitmq');
+// Get or create a new managed connection that automatically reconnects
+function getConnection(credentials: ICredentialDataDecryptedObject | undefined): AmqpConnectionManager {
+	if (!credentials) {
+		throw new Error('RabbitMQ credentials required to connect');
+	}
 
-	const credentialKeys = [
-		'hostname',
-		'port',
-		'username',
-		'password',
-		'vhost',
-	];
+	const connectionKey = JSON.stringify(credentials);
+
+	let connection = allConnections.get(connectionKey);
+
+	if (!connection) {
+		connection = createConnection(credentials);
+		allConnections.set(connectionKey, connection);
+	}
+
+	return connection;
+}
+
+// Create connection manager with the default options (5-second heartbeat and retry)
+function createConnection(credentials: ICredentialDataDecryptedObject): AmqpConnectionManager {
+	const [credentialData, connectionOptions] = getConnectionArguments(credentials);
+	const name = `${credentialData.hostname}:${credentialData.port}`;
+
+	const connection = amqp
+		.connect(credentialData, { connectionOptions })
+		.on('error', (err) => {
+			console.warn(`RabbitMQ: Connection error for ${name}: ${err.message}`);
+		})
+		.on('blocked', ({ reason }) => {
+			console.warn(`RabbitMQ: Connection blocked for ${name}: ${reason}`);
+		})
+		.on('disconnect', ({ err }) => {
+			console.log(`RabbitMQ: Connection closed for ${name}: ${err.message}`);
+		});
+
+	console.log(`RabbitMQ: Created managed connection for ${name}`);
+
+	return connection;
+}
+
+function getConnectionArguments(credentials: IDataObject) {
+	const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
 
 	const credentialData: IDataObject = {};
-	credentialKeys.forEach(key => {
+
+	credentialKeys.forEach((key) => {
 		credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
 	});
 
@@ -40,49 +112,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 			optsData.credentials = amqplib.credentials.external();
 		}
 	}
-
-
-	return new Promise(async (resolve, reject) => {
-		try {
-			const connection = await amqplib.connect(credentialData, optsData);
-
-			connection.on('error', (error: Error) => {
-				reject(error);
-			});
-
-			const channel = await connection.createChannel().catch(console.warn) as amqplib.Channel;
-
-			resolve(channel);
-		} catch (error) {
-			reject(error);
-		}
-	});
-}
-
-export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<amqplib.Channel> {
-	const channel = await rabbitmqConnect.call(this);
-
-	return new Promise(async (resolve, reject) => {
-		try {
-			await channel.assertQueue(queue, options);
-			resolve(channel);
-		} catch (error) {
-			reject(error);
-		}
-	});
-}
-
-export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<amqplib.Channel> {
-	const channel = await rabbitmqConnect.call(this);
-
-	return new Promise(async (resolve, reject) => {
-		try {
-			await channel.assertExchange(exchange, type, options);
-			resolve(channel);
-		} catch (error) {
-			reject(error);
-		}
-	});
+	return [credentialData, optsData];
 }
 
 export class MessageTracker {
@@ -106,14 +136,14 @@ export class MessageTracker {
 		return this.messages.length;
 	}
 
-	async closeChannel(channel: amqplib.Channel, consumerTag: string) {
+	async closeChannel(channel: ChannelWrapper) {
 		if (this.isClosing) {
 			return;
 		}
 		this.isClosing = true;
 
 		// Do not accept any new messages
-		await channel.cancel(consumerTag);
+		await channel.cancelAll();
 
 		let count = 0;
 		let unansweredMessages = this.unansweredMessages();
@@ -131,14 +161,27 @@ export class MessageTracker {
 		}
 
 		await channel.close();
-		await channel.connection.close();
 	}
 }
 
-export function queueArguments(data: IDataObject) {
-	const args = data?.argument as IDataObject[] || [];
-	return args.reduce((acc, argument) => {
-		acc[argument.key as string] = argument.value;
-		return acc;
-	}, {});
+export function fixOptions(data: IDataObject) {
+	const options = data;
+
+	if (options.arguments) {
+		const args = (options?.arguments as IDataObject)?.argumet as IDataObject[] || [];
+		options.arguments = args.reduce((acc, argument) => {
+			acc[argument.key as string] = argument.value;
+			return acc;
+		}, {});
+	}
+
+	if (options.headers) {
+		const headers = (options?.headers as IDataObject)?.header as IDataObject[] || [];
+		options.headers = headers.reduce((acc, header) => {
+			acc[header.key as string] = header.value;
+			return acc;
+		}, {});
+	}
+
+	return options;
 }

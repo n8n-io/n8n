@@ -16,9 +16,9 @@ import {
 } from './RabbitMQDescription';
 
 import {
+	fixOptions,
 	MessageTracker,
-	queueArguments,
-	rabbitmqConnectQueue,
+	rabbitmqConnect,
 } from './GenericFunctions';
 
 export class RabbitMQTrigger implements INodeType {
@@ -175,23 +175,11 @@ export class RabbitMQTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-
-		if (options.arguments) {
-			options.arguments = queueArguments(options.arguments as IDataObject);
-		}
-
-		const channel = await rabbitmqConnectQueue.call(this, queue, options);
+		const options = fixOptions(this.getNodeParameter('options', {}) as IDataObject);
 
 		const bindings = this.getNodeParameter('subscriptions.bindings', []) as IDataObject[];
 
-		for (const { exchange, pattern } of bindings) {
-			await channel.bindQueue(queue, exchange as string, pattern as string);
-		}
-
-		const self = this;
-
-		let parallelMessages = (options.parallelMessages !== undefined && options.parallelMessages !== -1) ? parseInt(options.parallelMessages as string, 10) : -1;
+		let parallelMessages = (options.parallelMessages !== undefined && options.parallelMessages !== -1) ? parseInt(options.parallelMessages as string, 10) : 65535; //It must be >= 0 and <= 65535
 
 		if (parallelMessages === 0 || parallelMessages < -1) {
 			throw new Error('Parallel message processing limit must be greater than zero (or -1 for no limit)');
@@ -201,6 +189,16 @@ export class RabbitMQTrigger implements INodeType {
 			// Do only catch a single message when executing manually, else messages will leak
 			parallelMessages = 1;
 		}
+
+		const channel = await rabbitmqConnect(this, async (channel) => {
+			await channel.assertQueue(queue, options);
+			await channel.prefetch(parallelMessages);
+			for (const { exchange, pattern } of bindings) {
+				await channel.bindQueue(queue, exchange as string, pattern as string);
+			}
+		});
+
+		const self = this;
 
 		let acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
 
@@ -212,14 +210,9 @@ export class RabbitMQTrigger implements INodeType {
 		}
 
 		const messageTracker = new MessageTracker();
-		let consumerTag: string;
 
 		const startConsumer = async () => {
-			if (parallelMessages !== -1) {
-				channel.prefetch(parallelMessages);
-			}
-
-			const consumerInfo = await channel.consume(queue, async (message) => {
+			await channel.consume(queue, async (message) => {
 				if (message !== null) {
 
 					try {
@@ -301,7 +294,7 @@ export class RabbitMQTrigger implements INodeType {
 					}
 				}
 			});
-			consumerTag = consumerInfo.consumerTag;
+
 		};
 
 		startConsumer();
@@ -312,9 +305,10 @@ export class RabbitMQTrigger implements INodeType {
 
 			try {
 				for (const { exchange, pattern } of bindings) {
-					await channel.unbindQueue(queue, exchange as string, pattern as string);
+					await channel.unbindExchange(queue, exchange as string, pattern as string);
 				}
-				return messageTracker.closeChannel(channel, consumerTag);
+
+				return messageTracker.closeChannel(channel);
 			} catch(error) {
 				const workflow = self.getWorkflow();
 				const node = self.getNode();
@@ -331,5 +325,4 @@ export class RabbitMQTrigger implements INodeType {
 			closeFunction,
 		};
 	}
-
 }

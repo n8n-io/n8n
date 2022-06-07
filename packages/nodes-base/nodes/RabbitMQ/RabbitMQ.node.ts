@@ -7,17 +7,24 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { messageOptions } from './RabbitMQDescription';
 
 import {
-	queueArguments,
-	rabbitmqConnectExchange,
-	rabbitmqConnectQueue,
+	messageOptions,
+ } from './RabbitMQDescription';
+
+import {
+	fixOptions,
+	rabbitmqConnect,
 } from './GenericFunctions';
+
+import * as amqplib from 'amqplib';
+
+import {
+	ChannelWrapper,
+ } from 'amqp-connection-manager';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -292,158 +299,99 @@ export class RabbitMQ implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let channel, options: IDataObject;
+		const items = this.getInputData();
+
+		let setup: (channel: amqplib.Channel) => Promise<void>;
+
+		let sendMessage: (
+			channel: ChannelWrapper,
+			itemIndex: number,
+			message: [Buffer, amqplib.Options.Publish],
+		) => Promise<boolean>;
+
+		const mode = this.getNodeParameter('mode', 0);
+		const options = fixOptions(this.getNodeParameter('options', 0, {}) as IDataObject);
+
+		if (mode === 'queue') {
+			const queue = this.getNodeParameter('queue', 0) as string;
+
+			setup = async (channel) => {
+				await channel.assertQueue(queue, options);
+			};
+
+			sendMessage = async (channel, itemIndex, message) => {
+				return channel.sendToQueue(queue, ...message);
+			};
+
+		} else if (mode === 'exchange') {
+			const exchange = this.getNodeParameter('exchange', 0) as string;
+			const type = this.getNodeParameter('exchangeType', 0) as string;
+
+			setup = async (channel) => {
+				await channel.assertExchange(exchange, type, options);
+			};
+
+			sendMessage = async (channel, itemIndex, message) => {
+				const routingKey = this.getNodeParameter('routingKey', itemIndex) as string;
+				return channel.publish(exchange, routingKey, ...message);
+			};
+
+		} else {
+			throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
+		}
+
+		// open the channel and send all messages
+		const channel = await rabbitmqConnect(this, setup);
+
+		let responses: Array<{ status: 'fulfilled'; value: boolean } | { status: 'rejected'; reason: Error }>;
+
 		try {
-			const items = this.getInputData();
-			const mode = this.getNodeParameter('mode', 0) as string;
-
-			const returnItems: INodeExecutionData[] = [];
-
-			if (mode === 'queue') {
-				const queue = this.getNodeParameter('queue', 0) as string;
-
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
-				if (options.arguments) {
-					options.arguments = queueArguments(options.arguments as IDataObject);
-				}
-
-				channel = await rabbitmqConnectQueue.call(this, queue, options);
-
-				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
+			const sendPromises = items.map((item, itemIndex) => {
+				const messageOptions = fixOptions(this.getNodeParameter('messageOptions', itemIndex, {}) as IDataObject);
 
 				let message: string;
 
-				const queuePromises = [];
-				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
-						message = JSON.stringify(items[i].json);
-					} else {
-						message = this.getNodeParameter('message', i) as string;
-					}
-
-					let headers: IDataObject = {};
-					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
-						const additionalHeaders: IDataObject = {};
-						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-							additionalHeaders[header.key as string] = header.value;
-						});
-						headers = additionalHeaders;
-					}
-
-					const messageOptions = this.getNodeParameter('messageOptions', i, {}) as IDataObject;
-
-					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers, ...messageOptions }));
+				if (this.getNodeParameter('sendInputData', itemIndex)) {
+					message = JSON.stringify(item.json);
+					messageOptions.contentType = messageOptions.contentType || 'application/json';
+					messageOptions.contentEncoding = messageOptions.contentEncoding || 'utf-8';
+				} else {
+					message = String(this.getNodeParameter('message', itemIndex));
 				}
 
-				// @ts-ignore
-				const promisesResponses = await Promise.allSettled(queuePromises);
+				return sendMessage(channel, itemIndex, [Buffer.from(message), messageOptions]);
+			});
 
-				promisesResponses.forEach((response: JsonObject) => {
-					if (response!.status !== 'fulfilled') {
+			// @ts-ignore
+			responses = await Promise.allSettled(sendPromises);
+		} finally {
+			await channel.close();
+		}
 
-						if (this.continueOnFail() !== true) {
-							throw new NodeApiError(this.getNode(), response);
-						} else {
-							// Return the actual reason as error
-							returnItems.push(
-								{
-									json: {
-										error: response.reason,
-									},
-								},
-							);
-							return;
-						}
-					}
-
-					returnItems.push({
-						json: {
-							success: response.value,
-						},
+		// process the responses
+		const returnItems: INodeExecutionData[] = responses.map((response) => {
+			if (response!.status !== 'fulfilled') {
+				if (this.continueOnFail() !== true) {
+					throw new NodeApiError(this.getNode(), {
+						...response.reason,
 					});
-				});
-
-				await channel.close();
-				await channel.connection.close();
-			}
-			else if (mode === 'exchange') {
-				const exchange = this.getNodeParameter('exchange', 0) as string;
-				const type = this.getNodeParameter('exchangeType', 0) as string;
-				const routingKey = this.getNodeParameter('routingKey', 0) as string;
-
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
-				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
-
-				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
-
-				let message: string;
-
-				const exchangePromises = [];
-				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
-						message = JSON.stringify(items[i].json);
-					} else {
-						message = this.getNodeParameter('message', i) as string;
-					}
-
-					let headers: IDataObject = {};
-					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
-						const additionalHeaders: IDataObject = {};
-						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-							additionalHeaders[header.key as string] = header.value;
-						});
-						headers = additionalHeaders;
-					}
-
-					exchangePromises.push(channel.publish(exchange, routingKey, Buffer.from(message), { headers }));
+				} else {
+					// Return the actual reason as error
+					return {
+						json: {
+							error: response.reason,
+						},
+					};
 				}
-
-				// @ts-ignore
-				const promisesResponses = await Promise.allSettled(exchangePromises);
-
-				promisesResponses.forEach((response: JsonObject) => {
-					if (response!.status !== 'fulfilled') {
-
-						if (this.continueOnFail() !== true) {
-							throw new NodeApiError(this.getNode(), response);
-						} else {
-							// Return the actual reason as error
-							returnItems.push(
-								{
-									json: {
-										error: response.reason,
-									},
-								},
-							);
-							return;
-						}
-					}
-
-					returnItems.push({
-						json: {
-							success: response.value,
-						},
-					});
-				});
-
-				await channel.close();
-				await channel.connection.close();
-			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return this.prepareOutputData(returnItems);
-		}
-		catch (error) {
-			if (channel) {
-				await channel.close();
-				await channel.connection.close();
-			}
-			throw error;
-		}
+			return {
+				json: {
+					success: response.value,
+				},
+			};
+		});
+
+		return this.prepareOutputData(returnItems);
 	}
 }
