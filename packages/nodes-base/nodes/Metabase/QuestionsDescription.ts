@@ -1,4 +1,5 @@
 import {
+	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
@@ -112,7 +113,13 @@ export const questionsOperations: INodeProperties[] = [
 									Object.assign(newItem.binary, items[i].binary);
 								}
 								items[i] = newItem;
-								items[i].binary!['data'] = await this.helpers.prepareBinaryData(response.body as Buffer, 'data', response.headers['content-type']);
+								if(this.getNode().parameters.format === 'json') {
+									items[i].json = JSON.parse(items[i].json as unknown as string)[0] as unknown as IDataObject;
+									console.log(items[i].json);
+									delete items[i].binary;
+								}else{
+									items[i].binary!['data'] = await this.helpers.prepareBinaryData(response.body as Buffer, 'data', response.headers['content-type'])
+								}
 								result.push(items[i]);
 							}
 							return result;

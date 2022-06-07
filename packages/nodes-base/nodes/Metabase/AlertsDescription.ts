@@ -1,7 +1,4 @@
 import {
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
 
