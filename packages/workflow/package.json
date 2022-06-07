@@ -21,7 +21,8 @@
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/workflow",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/workflow --fix",
     "watch": "tsc --watch",
-    "test": "jest"
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "files": [
     "dist"

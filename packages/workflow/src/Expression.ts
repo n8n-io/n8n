@@ -137,6 +137,7 @@ export class Expression {
 
 		// Prevent Remote Code Execution
 		data.eval = {};
+		data.uneval = {};
 		data.setTimeout = {};
 		data.setInterval = {};
 		data.Function = {};
@@ -163,6 +164,10 @@ export class Expression {
 		// @ts-ignore
 		data.constructor = {};
 
+		// Deprecated
+		data.escape = {};
+		data.unescape = {};
+
 		/**
 		 * Allowlist
 		 */
@@ -178,6 +183,17 @@ export class Expression {
 
 		// Arrays
 		data.Array = Array;
+		data.Int8Array = Int8Array;
+		data.Uint8Array = Uint8Array;
+		data.Uint8ClampedArray = Uint8ClampedArray;
+		data.Int16Array = Int16Array;
+		data.Uint16Array = Uint16Array;
+		data.Int32Array = Int32Array;
+		data.Uint32Array = Uint32Array;
+		data.Float32Array = Float32Array;
+		data.Float64Array = Float64Array;
+		data.BigInt64Array = BigInt64Array;
+		data.BigUint64Array = BigUint64Array;
 
 		// Collections
 		data.Map = Map;
@@ -187,6 +203,12 @@ export class Expression {
 
 		// Errors
 		data.Error = Error;
+		data.TypeError = TypeError;
+		data.SyntaxError = SyntaxError;
+		data.EvalError = EvalError;
+		data.RangeError = RangeError;
+		data.ReferenceError = ReferenceError;
+		data.URIError = URIError;
 
 		// Internationalization
 		data.Intl = Intl;
@@ -208,6 +230,15 @@ export class Expression {
 
 		// Structured data
 		data.JSON = JSON;
+		data.ArrayBuffer = ArrayBuffer;
+		data.SharedArrayBuffer = SharedArrayBuffer;
+		data.Atomics = Atomics;
+		data.DataView = DataView;
+
+		data.encodeURI = encodeURI;
+		data.encodeURIComponent = encodeURIComponent;
+		data.decodeURI = decodeURI;
+		data.decodeURIComponent = decodeURIComponent;
 
 		// Other
 		data.Boolean = Boolean;
