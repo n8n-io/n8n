@@ -64,6 +64,7 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
+import { IWorkflowErrorData } from './Interfaces';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -91,20 +92,37 @@ export function executeErrorWorkflow(
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
-		const workflowErrorData = {
-			execution: {
-				id: executionId,
-				url: pastExecutionUrl,
-				error: fullRunData.data.resultData.error,
-				lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
-				mode,
-				retryOf,
-			},
-			workflow: {
-				id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
-				name: workflowData.name,
-			},
-		};
+		let workflowErrorData: IWorkflowErrorData;
+
+		if (executionId) {
+			// The error did happen in an execution
+			workflowErrorData = {
+				execution: {
+					id: executionId,
+					url: pastExecutionUrl,
+					error: fullRunData.data.resultData.error,
+					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
+					mode,
+					retryOf,
+				},
+				workflow: {
+					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					name: workflowData.name,
+				},
+			};
+		} else {
+			// The error did happen in a trigger
+			workflowErrorData = {
+				trigger: {
+					error: fullRunData.data.resultData.error,
+					mode,
+				},
+				workflow: {
+					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					name: workflowData.name,
+				},
+			};
+		}
 
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
