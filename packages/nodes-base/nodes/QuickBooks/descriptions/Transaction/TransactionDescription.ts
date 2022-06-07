@@ -44,7 +44,7 @@ export const transactionFields: INodeProperties[] = [
 	//       transaction: getReport
 	// ----------------------------------
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -265,13 +265,6 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Document Number',
-				name: 'docnum',
-				type: 'string',
-				default: '',
-				description: 'Transaction document number to filter results by',
-			},
-			{
 				displayName: 'Department',
 				name: 'department',
 				type: 'multiOptions',
@@ -280,6 +273,13 @@ export const transactionFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
+			},
+			{
+				displayName: 'Document Number',
+				name: 'docnum',
+				type: 'string',
+				default: '',
+				description: 'Transaction document number to filter results by',
 			},
 			{
 				displayName: 'Group By',
@@ -347,6 +347,14 @@ export const transactionFields: INodeProperties[] = [
 				options: ['Ascend', 'Descend'].map(toOptions),
 			},
 			{
+				displayName: 'Source Account Type',
+				name: 'source_account_type',
+				default: 'Bank',
+				type: 'options',
+				description: 'Account type to filter results by',
+				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
+			},
+			{
 				displayName: 'Term',
 				name: 'term',
 				type: 'multiOptions',
@@ -373,15 +381,6 @@ export const transactionFields: INodeProperties[] = [
 				default: 'CreditCardCharge',
 				description: 'Transaction type to filter results by',
 				options: TRANSACTION_TYPES.map(toOptions).map(toDisplayName),
-			},
-
-			{
-				displayName: 'Source Account Type',
-				name: 'source_account_type',
-				default: 'Bank',
-				type: 'options',
-				description: 'Account type to filter results by',
-				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
 				displayName: 'Vendor',

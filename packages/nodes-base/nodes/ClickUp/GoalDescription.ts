@@ -52,7 +52,7 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -187,7 +187,7 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',

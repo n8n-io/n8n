@@ -95,11 +95,11 @@ export class If implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred after',
+										name: 'Occurred After',
 										value: 'after',
 									},
 									{
-										name: 'Occurred before',
+										name: 'Occurred Before',
 										value: 'before',
 									},
 								],
@@ -131,6 +131,7 @@ export class If implements INodeType {
 								name: 'operation',
 								type: 'options',
 								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -201,6 +202,7 @@ export class If implements INodeType {
 								name: 'operation',
 								type: 'options',
 								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',

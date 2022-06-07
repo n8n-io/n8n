@@ -1232,7 +1232,7 @@ export default mixins(
 					workflow_id: this.$store.getters.workflowId,
 				});
 
-				return this.importWorkflowData(workflowData!);
+				return this.importWorkflowData(workflowData!, false);
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
@@ -1259,7 +1259,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1285,6 +1285,40 @@ export default mixins(
 							this.nodeSelectedByName(node.name);
 						});
 					});
+
+					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
+					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
+						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const tagNames = new Set(allTags.map((tag) => tag.name));
+
+						const workflowTags = workflowData.tags as ITag[];
+						const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
+
+						const creatingTagPromises: Array<Promise<ITag>> = [];
+						for (const tag of notFound) {
+							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+								.then((tag: ITag) => {
+									allTags.push(tag);
+									return tag;
+								});
+
+							creatingTagPromises.push(creationPromise);
+						}
+
+						await Promise.all(creatingTagPromises);
+
+						const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
+							const tag = allTags.find(tag => tag.name === imported.name);
+							if (tag) {
+								accu.push(tag.id);
+							}
+
+							return accu;
+						}, []);
+
+						this.$store.commit('addWorkflowTagIds', tagIds);
+					}
+
 				} catch (error) {
 					this.$showError(
 						error,

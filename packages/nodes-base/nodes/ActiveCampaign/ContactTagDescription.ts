@@ -36,7 +36,7 @@ export const contactTagFields: INodeProperties[] = [
 	//         contactTag:add
 	// ----------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
 		typeOptions: {

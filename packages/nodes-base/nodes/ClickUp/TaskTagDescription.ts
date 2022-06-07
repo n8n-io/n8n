@@ -97,14 +97,14 @@ export const taskTagFields: INodeProperties[] = [
 				description: 'If you want to reference a task by it\'s custom task ID, this value must be true',
 			},
 			{
-				displayName: 'Team ID',
+				displayName: 'Team Name or ID',
 				name: 'team_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},
 				default: '',
-				description: 'Only used when the parameter is set to custom_task_ids=true',
+				description: 'Only used when the parameter is set to custom_task_ids=true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
