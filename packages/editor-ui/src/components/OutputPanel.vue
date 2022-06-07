@@ -99,7 +99,7 @@ export default Vue.extend({
 		},
 		isNodeRunning(): boolean {
 			const executingNode = this.$store.getters.executingNode;
-			return executingNode === this.node.name;
+			return this.node && executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');

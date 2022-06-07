@@ -40,6 +40,7 @@
 						v-if="showTriggerPanel"
 						:nodeName="activeNode.name"
 						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
@@ -76,6 +77,7 @@
 						:sessionId="sessionId"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
 					/>
 					<a
 						v-if="featureRequestUrl"
@@ -123,10 +125,11 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { editor } from 'monaco-editor';
+import { workflowActivate } from './mixins/workflowActivate';
 
 const NODES_WITHOUT_TRIGGER_PANEL = [START_NODE_TYPE, ERROR_TRIGGER_NODE_TYPE];
 
-export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActivate).extend({
 	name: 'NodeDetailsView',
 	components: {
 		NodeSettings,
@@ -192,16 +195,13 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return null;
 		},
 		showTriggerPanel(): boolean {
-			const type = Boolean(
+			return Boolean(
 				this.isTriggerNode &&
 					this.activeNode &&
 					!NODES_WITHOUT_TRIGGER_PANEL.includes(this.activeNode.type) &&
 					this.activeNodeType &&
 					!this.activeNodeType.group.includes('schedule'),
 			);
-			console.log(this.activeNode.type, NODES_WITHOUT_TRIGGER_PANEL, type);
-
-			return type;
 		},
 		workflow(): Workflow {
 			return this.getWorkflow();
@@ -360,6 +360,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onWorkflowActivate() {
+			this.$store.commit('setActiveNode', null);
+			setTimeout(() => {
+				this.activateCurrentWorkflow();
+			}, 1000);
+		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
 			this.$telemetry.track('User clicked ndv link', {

@@ -20,6 +20,7 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				@action="onNoticeAction"
 			/>
 
 			<div
@@ -250,6 +251,12 @@ export default mixins(
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
+			},
+			onNoticeAction(action: string) {
+				console.log('notice', action);
+				if (action === 'activate') {
+					this.$emit('activate');
+				}
 			},
 		},
 		watch: {

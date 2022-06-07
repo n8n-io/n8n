@@ -30,15 +30,12 @@
 <script lang="ts">
 import { START_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { workflowActivate } from '@/components/mixins/workflowActivate';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from './helpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import Vue from 'vue';
 
-export default mixins(
-	workflowActivate,
-).extend({
+export default Vue.extend({
 	name: 'TriggerPanel',
 	components: {
 		NodeExecuteButton,
@@ -126,10 +123,7 @@ export default mixins(
 	},
 	methods: {
 		onActivate() {
-			this.$store.commit('setActiveNode', null);
-			setTimeout(() => {
-				this.activateCurrentWorkflow();
-			}, 1000);
+			this.$emit('activate');
 		},
 		onNodeExecute () {
 			this.$emit('execute');
