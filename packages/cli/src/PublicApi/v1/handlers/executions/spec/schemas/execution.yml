@@ -3,7 +3,7 @@ properties:
   id:
     type: number
     example: 1000
-  data:
+  details:
     type: string
   finished:
     type: boolean

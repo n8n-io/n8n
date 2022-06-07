@@ -178,7 +178,7 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
-export type ExecutionDataFormat = 'flat' | 'unflatted' | 'empty';
+export type ExecutionDetailsFieldFormat = 'empty' | 'flattened' | 'json';
 
 export interface IExecutionBase {
 	id?: number | string;
@@ -231,6 +231,20 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 }
 
+export interface IExecutionResponseApi {
+	id: number | string;
+	mode: WorkflowExecuteMode;
+	startedAt: Date;
+	stoppedAt?: Date;
+	workflowId?: string;
+	finished: boolean;
+	retryOf?: number | string;
+	retrySuccessId?: number | string;
+	data?: string; // Just that we can remove it
+	details: string | IRunExecutionData;
+	waitTill?: Date | null;
+	workflowData: IWorkflowBase;
+}
 export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];

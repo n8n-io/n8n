@@ -1,7 +1,7 @@
-name: dataFormat
+name: detailsFieldFormat
 in: query
-description: The format to return the execution data in.
+description: The format in which to return the data of the execution (in the 'details' field).
 required: false
 schema:
   type: string
-  enum: ['empty', 'flat', 'unflatted']
+  enum: ['empty', 'flattened', 'json']
