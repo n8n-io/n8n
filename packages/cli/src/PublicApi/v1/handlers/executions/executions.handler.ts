@@ -8,7 +8,7 @@ import {
 	getExecutionsCount,
 } from './executions.service';
 
-import { ActiveExecutions } from '../../../..';
+import { ActiveExecutions, ExecutionDataFormat } from '../../../..';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 
 import { ExecutionRequest } from '../../../types';
@@ -33,7 +33,7 @@ export = {
 			}
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds);
+			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, 'empty');
 
 			// execution was not found
 			if (!execution) {
@@ -56,7 +56,7 @@ export = {
 	getExecution: [
 		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { id } = req.params;
+			const { id, dataFormat } = req.params;
 
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -69,7 +69,7 @@ export = {
 			}
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds);
+			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, dataFormat);
 
 			// execution was not found
 			if (!execution) {
@@ -96,6 +96,7 @@ export = {
 				lastId = undefined,
 				limit = 100,
 				status = undefined,
+				dataFormat = 'unflatted' as ExecutionDataFormat,
 				workflowId = undefined,
 			} = req.query;
 
@@ -119,6 +120,7 @@ export = {
 				status,
 				limit,
 				lastId,
+				dataFormat,
 				...(workflowId && { workflowIds: [workflowId] }),
 				excludedExecutionsIds: runningExecutionsIds,
 			};

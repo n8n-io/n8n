@@ -1,0 +1,8 @@
+name: dataFormat
+in: query
+description: The format to return the execution data in.
+required: false
+default: unflatted
+schema:
+  type: string
+  enum: ['empty', 'flat', 'unflatted']

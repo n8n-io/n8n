@@ -7,6 +7,7 @@ get:
   description: Retrieve an execution from you instance.
   parameters:
     - $ref: '../schemas/parameters/executionId.yml'
+    - $ref: '../schemas/parameters/executionDataFormat.yml'
   responses:
     '200':
       description: Operation successful.

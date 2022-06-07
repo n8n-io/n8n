@@ -1,6 +1,36 @@
+import { parse } from 'flatted';
 import { In, Not, ObjectLiteral, LessThan, IsNull } from 'typeorm';
-import { Db, IExecutionFlattedDb } from '../../../..';
+import { Db, ExecutionDataFormat, IExecutionFlattedDb, IExecutionResponse } from '../../../..';
 import { ExecutionStatus } from '../../../types';
+
+function prepareExecutionData(
+	execution: IExecutionFlattedDb | undefined,
+	format: ExecutionDataFormat,
+): IExecutionResponse | IExecutionFlattedDb | undefined {
+	if (execution === undefined || format === 'flat') {
+		return execution;
+	}
+
+	if (format === 'empty') {
+		return {
+			id: execution.id,
+			data: '',
+			retryOf: execution.retryOf,
+			retrySuccessId: execution.retrySuccessId,
+			waitTill: execution.waitTill,
+			workflowData: execution.workflowData,
+		} as IExecutionFlattedDb;
+	}
+	return {
+		id: execution.id,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		data: parse(execution.data),
+		retryOf: execution.retryOf,
+		retrySuccessId: execution.retrySuccessId,
+		waitTill: execution.waitTill,
+		workflowData: execution.workflowData,
+	} as IExecutionResponse;
+}
 
 function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 	const condition: ObjectLiteral = {};
@@ -33,11 +63,12 @@ function getExecutionSelectableProperties(): Array<keyof IExecutionFlattedDb> {
 
 export async function getExecutions(data: {
 	limit: number;
+	dataFormat?: ExecutionDataFormat;
 	lastId?: number;
 	workflowIds?: number[];
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: number[];
-}): Promise<IExecutionFlattedDb[]> {
+}): Promise<IExecutionResponse[] | IExecutionFlattedDb[]> {
 	const executions = await Db.collections.Execution.find({
 		select: getExecutionSelectableProperties(),
 		where: {
@@ -49,7 +80,10 @@ export async function getExecutions(data: {
 		order: { id: 'DESC' },
 		take: data.limit,
 	});
-	return executions;
+
+	return executions.map((execution) =>
+		prepareExecutionData(execution, data.dataFormat ?? 'unflatted'),
+	) as IExecutionResponse[] | IExecutionFlattedDb[];
 }
 
 export async function getExecutionsCount(data: {
@@ -74,7 +108,8 @@ export async function getExecutionsCount(data: {
 export async function getExecutionInWorkflows(
 	id: number,
 	workflows: number[],
-): Promise<IExecutionFlattedDb | undefined> {
+	executionDataFormat: ExecutionDataFormat,
+): Promise<IExecutionResponse | IExecutionFlattedDb | undefined> {
 	const execution = await Db.collections.Execution.findOne({
 		select: getExecutionSelectableProperties(),
 		where: {
@@ -82,9 +117,11 @@ export async function getExecutionInWorkflows(
 			workflowId: In(workflows),
 		},
 	});
-	return execution;
+	return prepareExecutionData(execution, executionDataFormat);
 }
 
-export async function deleteExecution(execution: IExecutionFlattedDb): Promise<void> {
-	await Db.collections.Execution.remove(execution);
+export async function deleteExecution(
+	execution: IExecutionResponse | IExecutionFlattedDb | undefined,
+): Promise<void> {
+	await Db.collections.Execution.remove(execution as IExecutionFlattedDb);
 }

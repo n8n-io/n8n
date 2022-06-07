@@ -9,6 +9,7 @@ import type { Role } from '../databases/entities/Role';
 import type { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 
 import * as UserManagementMailer from '../UserManagement/email/UserManagementMailer';
+import { ExecutionDataFormat } from '../Interfaces';
 
 export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
@@ -51,12 +52,13 @@ export declare namespace ExecutionRequest {
 			limit?: number;
 			cursor?: string;
 			offset?: number;
+			dataFormat?: ExecutionDataFormat;
 			workflowId?: number;
 			lastId?: number;
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: number; dataFormat: ExecutionDataFormat }, {}, {}, {}>;
 	type Delete = Get;
 }
 

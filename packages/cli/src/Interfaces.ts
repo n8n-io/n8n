@@ -178,6 +178,8 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
+export type ExecutionDataFormat = 'flat' | 'unflatted' | 'empty';
+
 export interface IExecutionBase {
 	id?: number | string;
 	mode: WorkflowExecuteMode;
