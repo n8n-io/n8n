@@ -207,7 +207,7 @@ const getAllOperations: Array<INodeProperties> = [
 		routing: {
 			request: {
 				method: 'GET',
-				url: '={{$credentials.domain}}/v3/contacts?limit={{$parameter.limit}}&sort=desc',
+				url: '=/v3/contacts?limit={{$parameter.limit}}&sort=desc',
 			},
 			send: {
 				paginate: false,
@@ -264,28 +264,8 @@ const getOperations: Array<INodeProperties> = [
 		routing: {
 			request: {
 				method: 'GET',
-				url: '={{$credentials.domain}}/v3/contacts',
-			},
-			send: {
-				preSend: [
-					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-						requestOptions.url = (requestOptions.url || '') as string;
-						// if something special is required it is possible to write custom code and get from parameter
-						requestOptions.url = `${requestOptions.url}/${encodeURIComponent(this.getNodeParameter('identifier') as string)}`;
-						return requestOptions;
-					},
-				],
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'set',
-						properties: {
-							value: '={{ { "contacts": $response.body } }}', // Also possible to use the original response data
-						},
-					},
-				],
-			},
+				url: '=/v3/contacts/{{$value}}',
+			}
 		},
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
@@ -310,7 +290,7 @@ const deleteOperations: Array<INodeProperties> = [
 		routing: {
 			request: {
 				method: 'DELETE',
-				url: '={{$credentials.domain}}/v3/contacts',
+				url: '/v3/contacts',
 			},
 			send: {
 				preSend: [
