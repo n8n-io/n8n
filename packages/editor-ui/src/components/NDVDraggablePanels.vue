@@ -10,7 +10,7 @@
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
 					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-					v-if="!isTriggerNode"
+					v-if="isDraggable"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
 					@dragstart="onDragStart"
@@ -38,8 +38,11 @@ export default Vue.extend({
 		PanelDragButton,
 	},
 	props: {
-		isTriggerNode: {
+		isDraggable: {
 			type: Boolean,
+		},
+		position: {
+			type: Number,
 		},
 	},
 	data() {
@@ -58,7 +61,11 @@ export default Vue.extend({
 	},
 	computed: {
 		mainPanelPosition(): number {
-			if (this.isTriggerNode) {
+			if (typeof this.position === 'number') {
+				return this.position;
+			}
+
+			if (!this.isDraggable) {
 				return TRIGGER_PANEL_WIDTH + MAIN_PANEL_WIDTH / 2 + SIDE_MARGIN;
 			}
 
@@ -67,7 +74,7 @@ export default Vue.extend({
 			return relativePosition * this.windowWidth;
 		},
 		inputPanelMargin(): number {
-			return this.isTriggerNode ? 0 : 80;
+			return !this.isDraggable? 0 : 80;
 		},
 		minimumLeftPosition(): number {
 			return SIDE_MARGIN + this.inputPanelMargin;
@@ -95,7 +102,7 @@ export default Vue.extend({
 			};
 		},
 		inputPanelStyles(): { width: string } {
-			if (this.isTriggerNode) {
+			if (!this.isDraggable) {
 				return {
 					width: '320px',
 				};

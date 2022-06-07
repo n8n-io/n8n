@@ -27,11 +27,22 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @init="onPanelsInit" @dragstart="onDragStart" @dragend="onDragEnd">
+			<NDVDraggablePanels
+				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
+				:isDraggable="!isTriggerNode"
+				@close="close"
+				@init="onPanelsInit"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
 				<template #input>
-					<TriggerPanel v-if="isTriggerNode" :nodeName="activeNode.name" @execute="onNodeExecute" />
+					<TriggerPanel
+						v-if="showTriggerPanel"
+						:nodeName="activeNode.name"
+						@execute="onNodeExecute"
+					/>
 					<InputPanel
-						v-else
+						v-else-if="!isTriggerNode"
 						:workflow="workflow"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="inputRun"
@@ -104,8 +115,16 @@ import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
-import { BASE_NODE_SURVEY_URL, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import {
+	BASE_NODE_SURVEY_URL,
+	CRON_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/constants';
 import { editor } from 'monaco-editor';
+
+const NODES_WITHOUT_TRIGGER_PANEL = [START_NODE_TYPE, ERROR_TRIGGER_NODE_TYPE];
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'NodeDetailsView',
@@ -171,6 +190,18 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
+		},
+		showTriggerPanel(): boolean {
+			const type = Boolean(
+				this.isTriggerNode &&
+					this.activeNode &&
+					!NODES_WITHOUT_TRIGGER_PANEL.includes(this.activeNode.type) &&
+					this.activeNodeType &&
+					!this.activeNodeType.group.includes('schedule'),
+			);
+			console.log(this.activeNode.type, NODES_WITHOUT_TRIGGER_PANEL, type);
+
+			return type;
 		},
 		workflow(): Workflow {
 			return this.getWorkflow();
@@ -346,7 +377,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.isDragging = true;
 			this.mainPanelPosition = e.position;
 		},
-		onDragEnd(e: { windowWidth: number, position: number }) {
+		onDragEnd(e: { windowWidth: number; position: number }) {
 			this.isDragging = false;
 			this.$telemetry.track('User moved parameters pane', {
 				window_width: e.windowWidth,
@@ -477,7 +508,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	width: 100%;
 	display: flex;
 }
-
 </style>
 
 <style lang="scss" module>
