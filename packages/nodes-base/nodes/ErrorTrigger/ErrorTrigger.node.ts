@@ -22,7 +22,14 @@ export class ErrorTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		properties: [],
+		properties: [
+			{
+				displayName: 'This node will trigger when there is an error in another workflow, as long as that workflow is set up to do so. <a href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.errortrigger" target="_blank">More info<a>',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+		],
 	};
 
 

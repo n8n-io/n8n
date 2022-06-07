@@ -11,6 +11,7 @@
 </template>
 
 <script lang="ts">
+import { ERROR_TRIGGER_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
@@ -68,7 +69,7 @@ export default mixins(
 			if (this.label) {
 				return this.label;
 			}
-			if (this.isPollingTypeNode) {
+			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.name === ERROR_TRIGGER_NODE_TYPE)) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
