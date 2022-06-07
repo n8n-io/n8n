@@ -333,9 +333,9 @@ export class GoogleCalendar implements INodeType {
 									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
 								);
 							}
-							if (additionalFields.repeatFrecuency) {
+							if (additionalFields.repeatFrequency) {
 								body.recurrence?.push(
-									`FREQ=${(additionalFields.repeatFrecuency as string).toUpperCase()};`,
+									`FREQ=${(additionalFields.repeatFrequency as string).toUpperCase()};`,
 								);
 							}
 							if (additionalFields.repeatHowManyTimes) {
@@ -580,9 +580,9 @@ export class GoogleCalendar implements INodeType {
 									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
 								);
 							}
-							if (updateFields.repeatFrecuency) {
+							if (updateFields.repeatFrequency) {
 								body.recurrence?.push(
-									`FREQ=${(updateFields.repeatFrecuency as string).toUpperCase()};`,
+									`FREQ=${(updateFields.repeatFrequency as string).toUpperCase()};`,
 								);
 							}
 							if (updateFields.repeatHowManyTimes) {
