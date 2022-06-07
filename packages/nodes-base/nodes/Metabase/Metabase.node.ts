@@ -46,7 +46,7 @@ export class Metabase implements INodeType {
 		],
 		requestDefaults: {
 			returnFullResponse: true,
-			baseURL: '={{$credentials.url}}',
+			baseURL: '={{$credentials.url.replace(new RegExp("/$"), "")}}',
 			headers: {
 			},
 		},

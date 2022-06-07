@@ -1,5 +1,6 @@
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
@@ -22,6 +23,7 @@ export class MetabaseApi implements ICredentialType {
 							name: 'url',
 							type: 'string',
 							default: '',
+							placeholder: 'http://localhost:3000',
 					},
 					{
 							displayName: 'Username',
@@ -48,16 +50,20 @@ export class MetabaseApi implements ICredentialType {
 					}
 					const { id } = await this.helpers.httpRequest({
 							method: 'POST',
-							url: `${credentials.url}/api/session`,
+							url: '={{$credentials.url.replace(new RegExp("/$"), "") + "/api/session" }}',
 							body: {
 									username: credentials.username,
 									password: credentials.password,
-							}
+							},
 					}) as { id: string };
-
 					return { sessionToken: id};
 	}
-
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url.replace(new RegExp("/$"), "")}}',
+			url: '/api/user/current',
+		},
+	};
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 			requestOptions.headers!['X-Metabase-Session'] = credentials.sessionToken;
 			return requestOptions;
