@@ -88,6 +88,8 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -146,11 +148,15 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
-				for(const cred of nodeType.credentials) {
-					Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+				if(nodeType && nodeType.credentials) {
+					for(const cred of nodeType.credentials) {
+						if(cred.displayOptions && cred.displayOptions.show) {
+							Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+						}
+					}
 				}
 				return dependencies;
 			},
