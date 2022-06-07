@@ -5,7 +5,7 @@
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 				<n8n-button
 					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !isLoading"
-					label="Install"
+					:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 					size="large"
 					@click="openInstallModal"
 				/>
@@ -61,7 +61,7 @@ import SettingsView from './SettingsView.vue';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '../constants';
+import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../constants';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -93,12 +93,23 @@ export default mixins(
 		getEmptyStateDescription() {
 			const packageCount = this.$store.getters['communityNodes/availablePackageCount'];
 			return  packageCount < PACKAGE_COUNT_THRESHOLD ?
-				this.$locale.baseText('settings.communityNodes.empty.description.no-packages') :
-				this.$locale.baseText('settings.communityNodes.empty.description', { interpolate: { count: (Math.floor(packageCount / 10) * 10).toString() } });
+				this.$locale.baseText('settings.communityNodes.empty.description.no-packages', {
+					interpolate: {
+						docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+					},
+				}) :
+				this.$locale.baseText('settings.communityNodes.empty.description', {
+					interpolate: {
+						docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+						count: (Math.floor(packageCount / 10) * 10).toString(),
+					},
+				});
 		},
 		actionBoxConfig() {
 			return this.isQueueModeEnabled ? {
-				calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning'),
+				calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning', {
+					interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL },
+				}),
 				calloutTheme: 'warning',
 				hideButton: true,
 			} : {
