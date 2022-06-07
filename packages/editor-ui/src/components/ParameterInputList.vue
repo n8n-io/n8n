@@ -131,17 +131,29 @@ export default mixins(
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
-				// Make sure credentials slot always appears below the last authentication field
+				const credentialsDependencies = this.getCredentialsDependencies();
+
 				this.filteredParameters.forEach((prop, propIndex) => {
-					if (prop.name.toLowerCase().endsWith('authentication')) {
+					if (credentialsDependencies.has(prop.name)) {
 						index = propIndex + 1;
 					}
 				});
+
 				return index < this.filteredParameters.length ?
 					index : this.filteredParameters.length - 1;
 			},
 		},
 		methods: {
+			getCredentialsDependencies() {
+				const dependencies = new Set();
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+
+				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
+				for(const cred of nodeType.credentials) {
+					Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+				}
+				return dependencies;
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
