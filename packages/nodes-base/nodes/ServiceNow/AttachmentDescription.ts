@@ -48,7 +48,7 @@ export const attachmentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {

@@ -47,7 +47,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket Type',
+		displayName: 'Ticket Type Name or ID',
 		name: 'ticketType',
 		type: 'options',
 		default: '',
@@ -104,7 +104,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name/ID',
+				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -210,7 +210,7 @@ export const ticketFields: INodeProperties[] = [
 				default: 'all',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -220,7 +220,7 @@ export const ticketFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the responsee',
 					},
@@ -264,7 +264,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name/ID',
+				displayName: 'Assigned Agent Name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',

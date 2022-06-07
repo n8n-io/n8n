@@ -46,7 +46,7 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:add                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist ID',
+		displayName: 'Playlist Name or ID',
 		name: 'playlistId',
 		type: 'options',
 		typeOptions: {
@@ -275,7 +275,7 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:getAll                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist ID',
+		displayName: 'Playlist Name or ID',
 		name: 'playlistId',
 		type: 'options',
 		typeOptions: {

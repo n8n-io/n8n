@@ -112,8 +112,8 @@ export class GraphQL implements INodeType {
 						value: 'headerAuth',
 					},
 					{
-						name: 'Query Auth',
-						value: 'queryAuth',
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'OAuth1',
@@ -124,8 +124,8 @@ export class GraphQL implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'None',
-						value: 'none',
+						name: 'Query Auth',
+						value: 'queryAuth',
 					},
 				],
 				default: 'none',
@@ -172,7 +172,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'GraphQL (raw)',
+						name: 'GraphQL (Raw)',
 						value: 'graphql',
 					},
 					{

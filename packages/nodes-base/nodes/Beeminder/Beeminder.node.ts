@@ -92,7 +92,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Name',
+				displayName: 'Goal Name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {
@@ -106,7 +106,7 @@ export class Beeminder implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The name of the goal',
+				description: 'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				required: true,
 			},
 			{
