@@ -107,10 +107,6 @@ export default Vue.extend({
 			return '';
 		},
 		activationHint(): string {
-			if (this.node && this.node.type === START_NODE_TYPE) {
-				return this.$locale.baseText('triggerPanel.startNodeHint');
-			}
-
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {
 				return 'activate';
 			}
