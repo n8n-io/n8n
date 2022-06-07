@@ -357,6 +357,7 @@ export const objectFields: INodeProperties[] = [
 								displayName: 'Constrain',
 								name: 'constraint_type',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Equals',

@@ -85,14 +85,14 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -187,12 +187,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
 						name: 'Aside',
 						value: 'aside',
+					},
+					{
+						name: 'Audio',
+						value: 'audio',
 					},
 					{
 						name: 'Chat',
@@ -203,16 +203,20 @@ export const postFields: INodeProperties[] = [
 						value: 'gallery',
 					},
 					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
 						name: 'Image',
 						value: 'image',
 					},
 					{
+						name: 'Link',
+						value: 'link',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
 					},
 					{
 						name: 'Status',
@@ -221,10 +225,6 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Video',
 						value: 'video',
-					},
-					{
-						name: 'Audio',
-						value: 'audio',
 					},
 				],
 				default: 'standard',
@@ -298,14 +298,14 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',
@@ -344,16 +344,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Publish',
-						value: 'publish',
+						name: 'Draft',
+						value: 'draft',
 					},
 					{
 						name: 'Future',
 						value: 'future',
-					},
-					{
-						name: 'Draft',
-						value: 'draft',
 					},
 					{
 						name: 'Pending',
@@ -362,6 +358,10 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Private',
 						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
 					},
 				],
 				default: 'draft',
@@ -407,12 +407,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
 						name: 'Aside',
 						value: 'aside',
+					},
+					{
+						name: 'Audio',
+						value: 'audio',
 					},
 					{
 						name: 'Chat',
@@ -423,16 +423,20 @@ export const postFields: INodeProperties[] = [
 						value: 'gallery',
 					},
 					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
 						name: 'Image',
 						value: 'image',
 					},
 					{
+						name: 'Link',
+						value: 'link',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
 					},
 					{
 						name: 'Status',
@@ -441,10 +445,6 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Video',
 						value: 'video',
-					},
-					{
-						name: 'Audio',
-						value: 'audio',
 					},
 				],
 				default: 'standard',
@@ -722,6 +722,10 @@ export const postFields: INodeProperties[] = [
 						value: 'include',
 					},
 					{
+						name: 'Include Slugs',
+						value: 'include_slugs',
+					},
+					{
 						name: 'Modified',
 						value: 'modified',
 					},
@@ -736,10 +740,6 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Slug',
 						value: 'slug',
-					},
-					{
-						name: 'Include Slugs',
-						value: 'include_slugs',
 					},
 					{
 						name: 'Title',

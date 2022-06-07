@@ -7,23 +7,23 @@ export const operationFields: INodeProperties[] = [
 	//             shared
 	// ----------------------------------
 	{
-		displayName: 'Database',
+		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'Database to operate on',
+		description: 'Database to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getDatabaseIds',
 		},
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'Table to operate on',
+		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'databaseId',
@@ -79,7 +79,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -146,7 +146,7 @@ export const operationFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -255,11 +255,11 @@ export const operationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								default: '',
-								description: 'Field to compare',
+								description: 'Field to compare. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								typeOptions: {
 									loadOptionsDependsOn: [
 										'tableId',
@@ -274,16 +274,6 @@ export const operationFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Equal',
-										value: 'equal',
-										description: 'Field is equal to value',
-									},
-									{
-										name: 'Not Equal',
-										value: 'not_equal',
-										description: 'Field is not equal to value',
-									},
-									{
 										name: 'Contains',
 										value: 'contains',
 										description: 'Field contains value',
@@ -294,29 +284,9 @@ export const operationFields: INodeProperties[] = [
 										description: 'Field does not contain value',
 									},
 									{
-										name: 'Date Equal',
-										value: 'date_equal',
-										description: 'Field is date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date Not Equal',
-										value: 'date_not_equal',
-										description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
-									},
-									{
-										name: 'Date Equals Today',
-										value: 'date_equals_today',
-										description: 'Field is today. Format: string.',
-									},
-									{
-										name: 'Date Equals Month',
-										value: 'date_equals_month',
-										description: 'Field in this month. Format: string.',
-									},
-									{
-										name: 'Date Equals Year',
-										value: 'date_equals_year',
-										description: 'Field in this year. Format: string.',
+										name: 'Date After Date',
+										value: 'date_after',
+										description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
 										name: 'Date Before Date',
@@ -324,9 +294,34 @@ export const operationFields: INodeProperties[] = [
 										description: 'Field before this date. Format: \'YYYY-MM-DD\'.',
 									},
 									{
-										name: 'Date After Date',
-										value: 'date_after',
-										description: 'Field after this date. Format: \'YYYY-MM-DD\'.',
+										name: 'Date Equal',
+										value: 'date_equal',
+										description: 'Field is date. Format: \'YYYY-MM-DD\'.',
+									},
+									{
+										name: 'Date Equals Month',
+										value: 'date_equals_month',
+										description: 'Field in this month. Format: string.',
+									},
+									{
+										name: 'Date Equals Today',
+										value: 'date_equals_today',
+										description: 'Field is today. Format: string.',
+									},
+									{
+										name: 'Date Equals Year',
+										value: 'date_equals_year',
+										description: 'Field in this year. Format: string.',
+									},
+									{
+										name: 'Date Not Equal',
+										value: 'date_not_equal',
+										description: 'Field is not date. Format: \'YYYY-MM-DD\'.',
+									},
+									{
+										name: 'Equal',
+										value: 'equal',
+										description: 'Field is equal to value',
 									},
 									{
 										name: 'Filename Contains',
@@ -337,11 +332,6 @@ export const operationFields: INodeProperties[] = [
 										name: 'Higher Than',
 										value: 'higher_than',
 										description: 'Field is higher than value',
-									},
-									{
-										name: 'Lower Than',
-										value: 'lower_than',
-										description: 'Field is lower than value',
 									},
 									{
 										name: 'Is Empty',
@@ -359,14 +349,24 @@ export const operationFields: INodeProperties[] = [
 										description: 'Boolean field is true',
 									},
 									{
+										name: 'Link Row Does Not Have',
+										value: 'link_row_has_not',
+										description: 'Field does not have link ID',
+									},
+									{
 										name: 'Link Row Has',
 										value: 'link_row_has',
 										description: 'Field has link ID',
 									},
 									{
-										name: 'Link Row Does Not Have',
-										value: 'link_row_has_not',
-										description: 'Field does not have link ID',
+										name: 'Lower Than',
+										value: 'lower_than',
+										description: 'Field is lower than value',
+									},
+									{
+										name: 'Not Equal',
+										value: 'not_equal',
+										description: 'Field is not equal to value',
 									},
 									{
 										name: 'Single Select Equal',
@@ -434,11 +434,11 @@ export const operationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								default: '',
-								description: 'Field name to sort by',
+								description: 'Field name to sort by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								typeOptions: {
 									loadOptionsDependsOn: [
 										'tableId',

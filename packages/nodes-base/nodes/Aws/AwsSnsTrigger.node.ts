@@ -51,7 +51,7 @@ export class AwsSnsTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Topic',
+				displayName: 'Topic Name or ID',
 				name: 'topic',
 				type: 'options',
 				required: true,

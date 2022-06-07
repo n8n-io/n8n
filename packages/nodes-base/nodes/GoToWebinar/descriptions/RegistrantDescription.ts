@@ -42,7 +42,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: create
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -50,7 +50,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to create',
+		description: 'Key of the webinar of the registrant to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -205,7 +205,7 @@ export const registrantFields: INodeProperties[] = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Question Key',
+								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
 								typeOptions: {
@@ -289,7 +289,7 @@ export const registrantFields: INodeProperties[] = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Question Key',
+								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
 								typeOptions: {
@@ -325,7 +325,7 @@ export const registrantFields: INodeProperties[] = [
 	//        registrant: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -333,7 +333,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'The key of the webinar to retrieve registrants from',
+		description: 'The key of the webinar to retrieve registrants from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -391,7 +391,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -399,7 +399,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to delete',
+		description: 'Key of the webinar of the registrant to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -434,7 +434,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: get
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -442,7 +442,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to retrieve',
+		description: 'Key of the webinar of the registrant to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
