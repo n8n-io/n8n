@@ -46,7 +46,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: create
 	// ----------------------------------
 	{
-		displayName: 'Collection ID',
+		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
 		displayOptions: {
@@ -185,7 +185,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: getAll
 	// ----------------------------------
 	{
-		displayName: 'Collection ID',
+		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
 		typeOptions: {
@@ -193,7 +193,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the collection from which to retrieve all bookmarks',
+		description: 'The ID of the collection from which to retrieve all bookmarks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -286,7 +286,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
 				typeOptions: {

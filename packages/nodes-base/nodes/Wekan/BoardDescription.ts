@@ -69,7 +69,7 @@ export const boardFields: INodeProperties[] = [
 		description: 'The title of the board',
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
 		typeOptions: {
@@ -87,7 +87,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The user ID in Wekan',
+		description: 'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -130,6 +130,10 @@ export const boardFields: INodeProperties[] = [
 						value: 'belize',
 					},
 					{
+						name: 'Midnight',
+						value: 'midnight',
+					},
+					{
 						name: 'Nephritis',
 						value: 'nephritis',
 					},
@@ -145,23 +149,19 @@ export const boardFields: INodeProperties[] = [
 						name: 'Wisteria',
 						value: 'wisteria',
 					},
-					{
-						name: 'Midnight',
-						value: 'midnight',
-					},
 				],
 				default: '',
 				description: 'The color of the board',
 			},
 			{
-				displayName: 'Comment only',
+				displayName: 'Comment Only',
 				name: 'isCommentOnly',
 				type: 'boolean',
 				default: false,
 				description: 'Only enable comments',
 			},
 			{
-				displayName: 'No comments',
+				displayName: 'No Comments',
 				name: 'isNoComments',
 				type: 'boolean',
 				default: false,
@@ -242,7 +242,7 @@ export const boardFields: INodeProperties[] = [
 	//         board:getAll
 	// ----------------------------------
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'IdUser',
 		type: 'options',
 		typeOptions: {
@@ -260,7 +260,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the user that boards are attached',
+		description: 'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

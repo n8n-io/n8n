@@ -31,7 +31,7 @@ export const cameraProxyFields: INodeProperties[] = [
 	/*                       cameraProxy:getScreenshot                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Camera Entity ID',
+		displayName: 'Camera Entity Name or ID',
 		name: 'cameraEntityId',
 		type: 'options',
 		typeOptions: {

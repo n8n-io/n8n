@@ -140,7 +140,7 @@ export const operationFields: INodeProperties[] = [
 						name: 'filterProperties',
 						values: [
 							{
-								displayName: 'Column',
+								displayName: 'Column Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -151,7 +151,7 @@ export const operationFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTableColumns',
 								},
 								default: '',
-								description: 'Column to apply the filter in',
+								description: 'Column to apply the filter in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								required: true,
 							},
 							{
@@ -180,7 +180,7 @@ export const operationFields: INodeProperties[] = [
 						name: 'sortProperties',
 						values: [
 							{
-								displayName: 'Column',
+								displayName: 'Column Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -192,7 +192,7 @@ export const operationFields: INodeProperties[] = [
 								},
 								default: '',
 								required: true,
-								description: 'Column to sort on',
+								description: 'Column to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Direction',
@@ -313,7 +313,7 @@ export const operationFields: INodeProperties[] = [
 				name: 'properties',
 				values: [
 					{
-						displayName: 'Column Name/ID',
+						displayName: 'Column Name or ID',
 						name: 'fieldId',
 						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						type: 'options',

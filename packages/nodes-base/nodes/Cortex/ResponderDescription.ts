@@ -34,7 +34,7 @@ export const respondersOperations: INodeProperties[] = [
 
 export const responderFields: INodeProperties[] = [
 	{
-		displayName: 'Responder Type',
+		displayName: 'Responder Type Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -49,10 +49,10 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Choose the responder',
+		description: 'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Entity Type',
+		displayName: 'Entity Type Name or ID',
 		name: 'entityType',
 		type: 'options',
 		required: true,
@@ -70,7 +70,7 @@ export const responderFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Choose the Data type',
+		description: 'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',

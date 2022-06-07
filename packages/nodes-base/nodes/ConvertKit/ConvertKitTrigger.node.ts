@@ -100,7 +100,7 @@ export class ConvertKitTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Form ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -117,7 +117,7 @@ export class ConvertKitTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Sequence ID',
+				displayName: 'Sequence Name or ID',
 				name: 'courseId',
 				type: 'options',
 				typeOptions: {
@@ -164,7 +164,7 @@ export class ConvertKitTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Tag ID',
+				displayName: 'Tag Name or ID',
 				name: 'tagId',
 				type: 'options',
 				typeOptions: {

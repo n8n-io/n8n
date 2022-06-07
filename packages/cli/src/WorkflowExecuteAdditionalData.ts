@@ -27,7 +27,6 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
-	IWorkflowCredentials,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
@@ -57,7 +56,6 @@ import {
 	Push,
 	ResponseHelper,
 	WebhookHelpers,
-	WorkflowCredentials,
 	WorkflowHelpers,
 } from '.';
 import {
@@ -66,7 +64,6 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -79,7 +76,7 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
  * @param {WorkflowExecuteMode} mode The mode in which the workflow got started in
  * @param {string} [executionId] The id the execution got saved as
  */
-function executeErrorWorkflow(
+export function executeErrorWorkflow(
 	workflowData: IWorkflowBase,
 	fullRunData: IRun,
 	mode: WorkflowExecuteMode,
@@ -135,15 +132,26 @@ function executeErrorWorkflow(
 				// make sure there are no possible security gaps
 				return;
 			}
-
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			getWorkflowOwner(workflowData.id).then((user) => {
-				void WorkflowHelpers.executeErrorWorkflow(
-					workflowData.settings!.errorWorkflow as string,
-					workflowErrorData,
-					user,
-				);
-			});
+			getWorkflowOwner(workflowData.id)
+				.then((user) => {
+					void WorkflowHelpers.executeErrorWorkflow(
+						workflowData.settings!.errorWorkflow as string,
+						workflowErrorData,
+						user,
+					);
+				})
+				.catch((error) => {
+					Logger.error(
+						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
+						{
+							executionId,
+							errorWorkflowId: workflowData.settings!.errorWorkflow!.toString(),
+							workflowId: workflowData.id,
+							error,
+							workflowErrorData,
+						},
+					);
+				});
 		} else if (
 			mode !== 'error' &&
 			workflowData.id !== undefined &&
@@ -397,6 +405,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 								contextData: {},
 								nodeExecutionStack: [],
 								waitingExecution: {},
+								waitingExecutionSource: {},
 							},
 						};
 					}
@@ -752,6 +761,7 @@ export async function getRunData(
 		data: {
 			main: [inputData],
 		},
+		source: null,
 	});
 
 	const runExecutionData: IRunExecutionData = {
@@ -763,6 +773,7 @@ export async function getRunData(
 			contextData: {},
 			nodeExecutionStack,
 			waitingExecution: {},
+			waitingExecutionSource: {},
 		},
 	};
 
@@ -1014,7 +1025,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
  * Returns the base additional data without webhooks
  *
  * @export
- * @param {IWorkflowCredentials} credentials
+ * @param {userId} string
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */

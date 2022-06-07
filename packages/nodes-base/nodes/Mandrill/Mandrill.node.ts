@@ -146,7 +146,7 @@ export class Mandrill implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send template',
+						name: 'Send Template',
 						value: 'sendTemplate',
 						description: 'Send message based on template',
 					},
@@ -159,7 +159,7 @@ export class Mandrill implements INodeType {
 				default: 'sendTemplate',
 			},
 			{
-				displayName: 'Template',
+				displayName: 'Template Name or ID',
 				name: 'template',
 				type: 'options',
 				typeOptions: {
@@ -175,7 +175,7 @@ export class Mandrill implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'The template you want to send',
+				description: 'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -270,7 +270,7 @@ export class Mandrill implements INodeType {
 						description: 'An optional address to receive an exact copy of each recipient\'s email',
 					},
 					{
-						displayName: 'From name',
+						displayName: 'From Name',
 						name: 'fromName',
 						type: 'string',
 						default: '',
