@@ -156,10 +156,6 @@ export class Expression {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		try {
-			if (/([^a-zA-Z0-9"']window[^a-zA-Z0-9"'])/g.test(parameterValue)) {
-				throw new Error(`window is not allowed`);
-			}
-
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			returnValue = tmpl.tmpl(parameterValue, data);
 		} catch (error) {
