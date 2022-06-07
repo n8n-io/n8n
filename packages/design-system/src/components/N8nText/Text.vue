@@ -1,5 +1,5 @@
 <template functional>
-	<component :is="props.tag" :class="$options.methods.getClasses(props, $style)" :style="$options.methods.getStyles(props)">
+	<component :is="props.tag" :class="$options.methods.getClasses(props, $style)" :style="$options.methods.getStyles(props)" v-on="listeners">
 		<slot></slot>
 	</component>
 </template>

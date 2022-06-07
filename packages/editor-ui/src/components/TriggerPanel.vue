@@ -17,18 +17,14 @@
 			<NodeExecuteButton v-if="showExecuteButton" :nodeName="nodeName" @execute="onNodeExecute" size="medium" />
 		</div>
 
-		<n8n-text size="small" v-if="activationHint === 'activate'">
-			<a @click="onActivate">{{ $locale.baseText('triggerPanel.activateWorkflow.activate') }}</a>
-			{{ $locale.baseText('triggerPanel.activateWorkflow.message') }}
-		</n8n-text>
-		<n8n-text size="small" v-else-if="activationHint">
-			{{ activationHint }}
+		<n8n-text size="small" @click="onActivationHintClick">
+			<span v-html="activationHint"></span>
 		</n8n-text>
 	</div>
 </template>
 
 <script lang="ts">
-import { START_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from './helpers';
@@ -108,7 +104,14 @@ export default Vue.extend({
 		},
 		activationHint(): string {
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {
+				if (this.isWebhookNode) {
+					return this.$locale.baseText('triggerPanel.webhookNode.activeHint');
+				}
 				return 'activate';
+			}
+
+			if (this.isWebhookNode) {
+				return this.$locale.baseText('triggerPanel.webhookNode.inactiveHint');
 			}
 
 			return '';
@@ -118,8 +121,24 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onActivate() {
-			this.$emit('activate');
+		onActivationHintClick(e: MouseEvent) {
+			if (!e.target) {
+				return;
+			}
+			const target = e.target as HTMLElement;
+			if (target.localName !== 'a') return;
+
+			if (target.dataset && target.dataset.key === 'activate') {
+				e.stopPropagation();
+				e.preventDefault();
+
+				this.$emit('activate');
+			}
+		},
+		onAction(action: string) {
+			if (action === 'activate') {
+				this.$emit('activate');
+			}
 		},
 		onNodeExecute () {
 			this.$emit('execute');

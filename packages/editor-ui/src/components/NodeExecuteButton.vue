@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts">
-import { ERROR_TRIGGER_NODE_TYPE } from '@/constants';
+import { ERROR_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
@@ -65,10 +65,18 @@ export default mixins(
 		isScheduleTrigger (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
+		isWebhookNode (): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
+		},
 		buttonLabel(): string {
 			if (this.label) {
 				return this.label;
 			}
+
+			if (this.isWebhookNode) {
+				return this.$locale.baseText('ndv.execute.listenForTestEvent');
+			}
+
 			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.name === ERROR_TRIGGER_NODE_TYPE)) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
