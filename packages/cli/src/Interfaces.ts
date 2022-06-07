@@ -591,11 +591,18 @@ export interface ITransferNodeTypes {
 }
 
 export interface IWorkflowErrorData {
-	[key: string]: IDataObject | string | number | ExecutionError;
-	execution: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	[key: string]: any;
+	execution?: {
 		id?: string;
+		url?: string;
+		retryOf?: string;
 		error: ExecutionError;
 		lastNodeExecuted: string;
+		mode: WorkflowExecuteMode;
+	};
+	trigger?: {
+		error: ExecutionError;
 		mode: WorkflowExecuteMode;
 	};
 	workflow: {
