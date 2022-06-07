@@ -652,7 +652,7 @@ test('POST /workflows/:workflowId/activate should fail due to trying to activate
 	expect(response.statusCode).toBe(400);
 });
 
-test('POST /workflows/:workflowId/activate should set workflow as active', async () => {
+test.skip('POST /workflows/:workflowId/activate should set workflow as active', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	const authAgent = utils.createAgent(app, {
@@ -696,7 +696,7 @@ test('POST /workflows/:workflowId/activate should set workflow as active', async
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
 });
 
-test('POST /workflows/:workflowId/activate should set non-owned workflow as active when owner', async () => {
+test.skip('POST /workflows/:workflowId/activate should set non-owned workflow as active when owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
