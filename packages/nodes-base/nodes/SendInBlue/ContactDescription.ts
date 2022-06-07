@@ -23,7 +23,17 @@ export const contactOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v3/contacts',
 					},
-				}
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": true } }}',
+								},
+							},
+						],
+					}
+				},
 			},
 			{
 				name: 'Delete',
@@ -82,6 +92,28 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
+		displayName: 'Update Enabled',
+		name: 'updateEnabled',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		routing: {
+			send: {
+				type: 'body',
+				property: 'updateEnabled',
+			}
+		}
+	},
+	{
 		displayName: 'SMS',
 		name: 'sms',
 		type: 'string',
@@ -99,7 +131,7 @@ const createOperations: Array<INodeProperties> = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'sms',
+				property: 'attributes.SMS',
 			}
 		}
 	},
