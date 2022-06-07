@@ -14,7 +14,7 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}</n8n-text
 					>&nbsp;
-					<n8n-link :to="NPM_KEYWORD_SEARCH_URL">Read more</n8n-link>
+					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('_reusableDynamicText.readMore') }}</n8n-link>
 				</div>
 				<n8n-button
 					:label="$locale.baseText('settings.communityNodes.browseButton.label')"
@@ -26,7 +26,9 @@
 				<n8n-input-label
 					:class="$style.labelTooltip"
 					:label="$locale.baseText('settings.communityNodes.installModal.packageName.label')"
-					:tooltipText="$locale.baseText('settings.communityNodes.installModal.packageName.tooltip')"
+					:tooltipText="$locale.baseText('settings.communityNodes.installModal.packageName.tooltip',
+						{ interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL } }
+					)"
 				>
 					<n8n-input
 						name="packageNameInput"
@@ -34,6 +36,7 @@
 						type="text"
 						:placeholder="$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')"
 						:required="true"
+						:disabled="loading"
 						@input="checkOkToInstall"
 					/>
 				</n8n-input-label>
@@ -43,18 +46,18 @@
 						v-html="$locale.baseText('settings.communityNodes.installModal.packageName.infoText')"
 					></span>
 				</div>
-				<el-checkbox v-model="userAgreed" :class="$style.checkbox" @change="checkOkToInstall">
+				<el-checkbox v-model="userAgreed" :class="$style.checkbox" :disabled="loading" @change="checkOkToInstall">
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }}
 					</n8n-text><br />
-					<n8n-link to="https://www.npmjs.com/search?q=n8n-community-node-package">Learn more</n8n-link>
+					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL">{{ $locale.baseText('_reusableDynamicText.learnMore') }}</n8n-link>
 				</el-checkbox>
 			</div>
 		</template>
 		<template slot="footer">
 			<n8n-button
 				:loading="loading"
-				:disabled="!okToInstall"
+				:disabled="!okToInstall || loading"
 				:label="loading ?
 					$locale.baseText('settings.communityNodes.installModal.installButton.label.loading') :
 					$locale.baseText('settings.communityNodes.installModal.installButton.label')"
@@ -69,7 +72,12 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, NPM_KEYWORD_SEARCH_URL } from '../constants';
+import {
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+	NPM_KEYWORD_SEARCH_URL,
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	COMMUNITY_NODES_RISKS_DOCS_URL,
+} from '../constants';
 
 export default Vue.extend({
 	name: 'CommunityPackageInstallModal',
@@ -85,6 +93,8 @@ export default Vue.extend({
 			loading: false,
 			COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 			NPM_KEYWORD_SEARCH_URL,
+			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+			COMMUNITY_NODES_RISKS_DOCS_URL,
 		};
 	},
 	methods: {
