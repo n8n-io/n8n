@@ -42,12 +42,6 @@ export class Metabase implements INodeType {
 			{
 				name: 'metabaseApi',
 				required: true,
-				testedBy: {
-					request: {
-						method: 'GET',
-						url: '/api/user/current',
-					},
-				},
 			},
 		],
 		requestDefaults: {

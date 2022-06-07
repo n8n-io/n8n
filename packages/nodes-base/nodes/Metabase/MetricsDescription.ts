@@ -10,6 +10,7 @@ export const metricsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -43,13 +44,12 @@ export const metricsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const metricsFields: INodeProperties[] = [
 	{
-		displayName: 'Metric Id',
+		displayName: 'Metric ID',
 		name: 'metricId',
 		type: 'string',
 		required: true,

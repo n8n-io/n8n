@@ -11,6 +11,7 @@ export const databasesOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -94,13 +95,12 @@ export const databasesOperations: INodeProperties[] = [
 				},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const databasesFields: INodeProperties[] = [
 	{
-		displayName: 'Database Id',
+		displayName: 'Database ID',
 		name: 'databaseId',
 		type: 'string',
 		required: true,
@@ -150,7 +150,6 @@ export const databasesFields: INodeProperties[] = [
 			}
 		],
 		default: 'postgres',
-		description: 'The resource to operate on.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -316,7 +315,6 @@ export const databasesFields: INodeProperties[] = [
 		displayName: 'Database name',
 		name: 'dbName',
 		type: 'string',
-		required: false,
 		placeholder: 'Users',
 		displayOptions: {
 			show: {
@@ -394,9 +392,10 @@ export const databasesFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
 				resource: [

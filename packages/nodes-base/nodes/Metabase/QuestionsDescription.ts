@@ -10,6 +10,7 @@ export const questionsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -122,13 +123,12 @@ export const questionsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const questionsFields: INodeProperties[] = [
 	{
-		displayName: 'Question Id',
+		displayName: 'Question ID',
 		name: 'questionId',
 		type: 'string',
 		required: true,

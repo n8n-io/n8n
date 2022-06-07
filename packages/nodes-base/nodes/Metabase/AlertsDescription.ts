@@ -10,6 +10,7 @@ export const alertsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -30,8 +31,8 @@ export const alertsOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Alert',
-				value: 'getAlert',
+				name: 'Get',
+				value: 'get',
 				description: 'Get specific alert',
 				routing: {
 					request: {
@@ -42,13 +43,12 @@ export const alertsOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const alertsFields: INodeProperties[] = [
 	{
-		displayName: 'Alert Id',
+		displayName: 'Alert ID',
 		name: 'alertId',
 		type: 'string',
 		required: true,
@@ -59,7 +59,7 @@ export const alertsFields: INodeProperties[] = [
 					'alerts',
 				],
 								operation: [
-										'getAlert',
+										'get',
 								],
 			},
 		},
