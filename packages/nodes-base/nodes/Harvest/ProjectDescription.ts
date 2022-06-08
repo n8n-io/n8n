@@ -246,7 +246,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'none',
+				name: 'None',
 				value: 'none',
 			},
 			{
@@ -442,7 +442,7 @@ export const projectFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'none',
+						name: 'None',
 						value: 'none',
 					},
 					{

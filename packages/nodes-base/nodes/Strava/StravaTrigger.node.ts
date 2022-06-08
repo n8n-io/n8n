@@ -83,7 +83,7 @@ export class StravaTrigger implements INodeType {
 						value: '*',
 					},
 					{
-						name: 'created',
+						name: 'Created',
 						value: 'create',
 					},
 					{

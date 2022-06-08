@@ -118,6 +118,13 @@ export interface ITagDb {
 	updatedAt: Date;
 }
 
+export interface ITagToImport {
+	id: string | number;
+	name: string;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
 export type UsageCount = {
 	usageCount: number;
 };
@@ -136,6 +143,10 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
 	tags: ITagDb[];
+}
+
+export interface IWorkflowToImport extends IWorkflowBase {
+	tags: ITagToImport[];
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
@@ -617,11 +628,18 @@ export interface ITransferNodeTypes {
 }
 
 export interface IWorkflowErrorData {
-	[key: string]: IDataObject | string | number | ExecutionError;
-	execution: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	[key: string]: any;
+	execution?: {
 		id?: string;
+		url?: string;
+		retryOf?: string;
 		error: ExecutionError;
 		lastNodeExecuted: string;
+		mode: WorkflowExecuteMode;
+	};
+	trigger?: {
+		error: ExecutionError;
 		mode: WorkflowExecuteMode;
 	};
 	workflow: {

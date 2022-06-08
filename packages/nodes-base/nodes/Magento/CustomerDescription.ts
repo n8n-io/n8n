@@ -200,7 +200,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Website Name/ID',
+		displayName: 'Website Name or ID',
 		name: 'website_id',
 		type: 'options',
 		displayOptions: {

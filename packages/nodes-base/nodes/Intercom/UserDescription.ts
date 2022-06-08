@@ -361,7 +361,7 @@ export const userFields: INodeProperties[] = [
 				name: 'avatar',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
 				displayName: 'Companies',
@@ -483,7 +483,7 @@ export const userFields: INodeProperties[] = [
 				name: 'utmSource',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
 				displayName: 'UTM Term',

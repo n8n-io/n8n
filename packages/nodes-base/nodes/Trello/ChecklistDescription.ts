@@ -20,14 +20,14 @@ export const checklistOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Checklist Item',
-				value: 'createCheckItem',
-				description: 'Create a checklist item',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new checklist',
+			},
+			{
+				name: 'Create Checklist Item',
+				value: 'createCheckItem',
+				description: 'Create a checklist item',
 			},
 			{
 				name: 'Delete',
@@ -529,11 +529,11 @@ export const checklistFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'complete',
+						name: 'Complete',
 						value: 'complete',
 					},
 					{
-						name: 'incomplete',
+						name: 'Incomplete',
 						value: 'incomplete',
 					},
 				],

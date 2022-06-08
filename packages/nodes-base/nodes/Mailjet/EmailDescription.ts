@@ -352,7 +352,7 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {

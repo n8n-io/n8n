@@ -138,7 +138,7 @@ export function getFilters(
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Field Name',
+							displayName: 'Field Name or ID',
 							name: 'keyName',
 							type: 'options',
 							typeOptions: {
@@ -159,12 +159,26 @@ export function getFilters(
 									value: 'eq',
 								},
 								{
+									name: 'Full-Text',
+									value: 'fullText',
+								},
+								{
 									name: 'Greater Than',
 									value: 'gt',
 								},
 								{
 									name: 'Greater Than or Equal',
 									value: 'gte',
+								},
+								{
+									name: 'ILIKE operator',
+									value: 'ilike',
+									description: 'Use * in place of %',
+								},
+								{
+									name: 'Is',
+									value: 'is',
+									description: 'Checking for exact equality (null,true,false,unknown)',
 								},
 								{
 									name: 'Less Than',
@@ -175,27 +189,13 @@ export function getFilters(
 									value: 'lte',
 								},
 								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-								{
 									name: 'LIKE operator',
 									value: 'like',
-									description: 'use * in place of %',
+									description: 'Use * in place of %',
 								},
 								{
-									name: 'ILIKE operator',
-									value: 'ilike',
-									description: 'use * in place of %',
-								},
-								{
-									name: 'Is',
-									value: 'is',
-									description: 'Checking for exact equality (null,true,false,unknown)',
-								},
-								{
-									name: 'Full-Text',
-									value: 'fullText',
+									name: 'Not Equals',
+									value: 'neq',
 								},
 							],
 							default: '',

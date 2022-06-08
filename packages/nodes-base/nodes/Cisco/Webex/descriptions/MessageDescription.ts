@@ -77,7 +77,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -461,9 +461,9 @@ export const messageFields: INodeProperties[] = [
 	//             message: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
-		description: 'List messages in a room, by ID',
+		description: 'List messages in a room, by ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',

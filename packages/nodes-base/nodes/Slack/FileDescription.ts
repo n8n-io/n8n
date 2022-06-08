@@ -222,14 +222,14 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Channel',
+				displayName: 'Channel Name or ID',
 				name: 'channelId',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
-				description: 'Channel containing the file to be listed',
+				description: 'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Show Files Hidden By Limit',
@@ -278,11 +278,13 @@ export const fileFields: INodeProperties[] = [
 						value: 'spaces',
 					},
 					{
-						name: 'pdfs',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'PDFs',
 						value: 'pdfs',
 					},
 					{
-						name: 'Zips',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'zips',
 						value: 'zips',
 					},
 				],
@@ -290,14 +292,14 @@ export const fileFields: INodeProperties[] = [
 				description: 'Filter files by type',
 			},
 			{
-				displayName: 'User',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'Filter files created by a single user',
+				description: 'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
