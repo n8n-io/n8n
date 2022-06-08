@@ -6,7 +6,7 @@
 		:eventBus="modalBus"
 		:center="true"
 		:beforeClose="onModalClose"
-		:showClose="!loading"
+		:showClose="!isLoading"
 	>
 		<template slot="content">
 			<div :class="$style.descriptionContainer">
@@ -36,17 +36,23 @@
 						type="text"
 						:placeholder="$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')"
 						:required="true"
-						:disabled="loading"
-						@input="checkOkToInstall"
+						:disabled="isLoading"
+						@blur="onInputBlur"
 					/>
 				</n8n-input-label>
 				<div :class="$style.infoText">
 					<span
 						size="small"
-						v-html="$locale.baseText('settings.communityNodes.installModal.packageName.infoText')"
+						:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
+						v-html="infoTextErrorMessage || $locale.baseText('settings.communityNodes.installModal.packageName.infoText')"
 					></span>
 				</div>
-				<el-checkbox v-model="userAgreed" :class="$style.checkbox" :disabled="loading" @change="checkOkToInstall">
+				<el-checkbox
+					v-model="userAgreed"
+					:class="[$style.checkbox, checkboxWarning ? $style.error : '']"
+					:disabled="isLoading"
+					@change="onCheckboxChecked"
+				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }}
 					</n8n-text><br />
@@ -56,9 +62,9 @@
 		</template>
 		<template slot="footer">
 			<n8n-button
-				:loading="loading"
-				:disabled="!okToInstall || loading"
-				:label="loading ?
+				:loading="isLoading"
+				:disabled="packageName === '' || isLoading"
+				:label="isLoading ?
 					$locale.baseText('settings.communityNodes.installModal.installButton.label.loading') :
 					$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
@@ -78,8 +84,14 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
 } from '../constants';
+import { mapGetters } from 'vuex';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from './mixins/showMessage';
+import { json } from 'express';
 
-export default Vue.extend({
+export default mixins(
+	showMessage,
+).extend({
 	name: 'CommunityPackageInstallModal',
 	components: {
 		Modal,
@@ -89,26 +101,47 @@ export default Vue.extend({
 			packageName: '',
 			userAgreed: false,
 			modalBus: new Vue(),
-			okToInstall: false,
-			loading: false,
+			checkboxWarning: false,
+			infoTextErrorMessage: '',
 			COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 			NPM_KEYWORD_SEARCH_URL,
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			COMMUNITY_NODES_RISKS_DOCS_URL,
 		};
 	},
+	computed: {
+		...mapGetters('communityNodes', ['isLoading']),
+	},
 	methods: {
 		openNPMPage() {
 			window.open(NPM_KEYWORD_SEARCH_URL, '_blank');
 		},
-		checkOkToInstall() {
-			this.okToInstall = this.userAgreed && this.packageName !== '';
+		async onInstallClick() {
+			if(!this.userAgreed) {
+				this.checkboxWarning = true;
+			}else {
+				try {
+					this.infoTextErrorMessage = '';
+					await this.$store.dispatch('communityNodes/installPackage', this.packageName);
+					this.$showMessage({
+						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
+						type: 'success',
+					});
+					this.modalBus.$emit('close');
+					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+				} catch(error) {
+					this.infoTextErrorMessage = error.message;
+				}
+			}
 		},
-		onInstallClick() {
-			this.loading = true;
+		onCheckboxChecked() {
+			this.checkboxWarning = false;
 		},
 		onModalClose() {
-			return !this.loading;
+			return !this.isLoading;
+		},
+		onInputBlur() {
+			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');
 		},
 	},
 });
@@ -131,11 +164,23 @@ export default Vue.extend({
 	color: var(--color-text-base);
 }
 
+.infoText {
+	margin-top: var(--spacing-4xs);
+}
+
 .checkbox {
 	margin-top: var(--spacing-l);
 
 	span:nth-child(2) {
 		vertical-align: text-top;
+	}
+}
+
+.error {
+	color: var(--color-danger);
+
+	span {
+		border-color: var(--color-danger);
 	}
 }
 </style>
