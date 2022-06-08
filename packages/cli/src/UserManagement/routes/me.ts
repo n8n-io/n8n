@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
+import { randomBytes } from 'crypto';
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
@@ -147,6 +149,60 @@ export function meNamespace(this: N8nApp): void {
 			);
 
 			return { success: true };
+		}),
+	);
+
+	/**
+	 * Creates an API Key
+	 */
+	this.app.post(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
+
+			await Db.collections.User.update(req.user.id, {
+				apiKey,
+			});
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: false,
+			};
+
+			void InternalHooksManager.getInstance().onApiKeyCreated(telemetryData);
+
+			return { apiKey };
+		}),
+	);
+
+	/**
+	 * Deletes an API Key
+	 */
+	this.app.delete(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			await Db.collections.User.update(req.user.id, {
+				apiKey: null,
+			});
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: false,
+			};
+
+			void InternalHooksManager.getInstance().onApiKeyDeleted(telemetryData);
+
+			return { success: true };
+		}),
+	);
+
+	/**
+	 * Get an API Key
+	 */
+	this.app.get(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			return { apiKey: req.user.apiKey };
 		}),
 	);
 }
