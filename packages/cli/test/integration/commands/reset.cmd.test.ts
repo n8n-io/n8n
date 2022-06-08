@@ -14,7 +14,7 @@ let testDbName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
