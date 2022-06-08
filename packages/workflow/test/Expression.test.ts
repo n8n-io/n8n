@@ -41,7 +41,6 @@ describe('Expression', () => {
 
 		it('should not be able to use global built-ins from denylist', () => {
 			expect(evaluate('={{document}}')).toEqual({});
-			expect(evaluate('={{global}}')).toEqual({});
 			expect(evaluate('={{window}}')).toEqual({});
 
 			expect(evaluate('={{Window}}')).toEqual({});
