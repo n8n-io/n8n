@@ -2,7 +2,7 @@ import { parse } from 'flatted';
 import { In, Not, ObjectLiteral, LessThan, IsNull } from 'typeorm';
 import {
 	Db,
-	ExecutionDetailsFieldFormat,
+	ExecutionDataFieldFormat,
 	IExecutionFlattedDb,
 	IExecutionResponseApi,
 } from '../../../..';
@@ -10,7 +10,7 @@ import { ExecutionStatus } from '../../../types';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | undefined,
-	format: ExecutionDetailsFieldFormat,
+	format: ExecutionDataFieldFormat,
 ): IExecutionResponseApi | undefined {
 	if (execution === undefined) {
 		return undefined;
@@ -18,24 +18,21 @@ function prepareExecutionData(
 	if (format === 'flattened') {
 		return {
 			...execution,
-			data: undefined,
-			details: execution.data,
+			data: execution.data,
 		};
 	}
 
 	if (format === 'empty') {
 		return {
 			...execution,
-			data: undefined,
-			details: '',
+			data: '',
 		};
 	}
 
 	return {
 		...execution,
-		data: undefined,
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		details: parse(execution.data),
+		data: parse(execution.data),
 	};
 }
 
@@ -70,7 +67,7 @@ function getExecutionSelectableProperties(): Array<keyof IExecutionFlattedDb> {
 
 export async function getExecutions(data: {
 	limit: number;
-	detailsFieldFormat?: ExecutionDetailsFieldFormat;
+	dataFieldFormat?: ExecutionDataFieldFormat;
 	lastId?: number;
 	workflowIds?: number[];
 	status?: ExecutionStatus;
@@ -89,7 +86,7 @@ export async function getExecutions(data: {
 	});
 
 	return executions.map((execution) =>
-		prepareExecutionData(execution, data.detailsFieldFormat ?? 'empty'),
+		prepareExecutionData(execution, data.dataFieldFormat ?? 'empty'),
 	) as IExecutionResponseApi[];
 }
 
@@ -115,7 +112,7 @@ export async function getExecutionsCount(data: {
 export async function getExecutionInWorkflows(
 	id: number,
 	workflows: number[],
-	executionDetailsFieldFormat: ExecutionDetailsFieldFormat,
+	executionDataFieldFormat: ExecutionDataFieldFormat,
 ): Promise<IExecutionResponseApi | undefined> {
 	const execution = await Db.collections.Execution.findOne({
 		select: getExecutionSelectableProperties(),
@@ -124,7 +121,7 @@ export async function getExecutionInWorkflows(
 			workflowId: In(workflows),
 		},
 	});
-	return prepareExecutionData(execution, executionDetailsFieldFormat);
+	return prepareExecutionData(execution, executionDataFieldFormat);
 }
 
 export async function deleteExecution(execution: IExecutionResponseApi | undefined): Promise<void> {

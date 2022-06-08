@@ -8,7 +8,7 @@ import {
 	getExecutionsCount,
 } from './executions.service';
 
-import { ActiveExecutions, ExecutionDetailsFieldFormat } from '../../../..';
+import { ActiveExecutions, ExecutionDataFieldFormat } from '../../../..';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 
 import { ExecutionRequest } from '../../../types';
@@ -56,7 +56,7 @@ export = {
 	getExecution: [
 		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { id, detailsFieldFormat } = req.params;
+			const { id, dataFieldFormat } = req.params;
 
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
@@ -72,7 +72,7 @@ export = {
 			const execution = await getExecutionInWorkflows(
 				id,
 				sharedWorkflowsIds,
-				detailsFieldFormat ?? 'empty',
+				dataFieldFormat ?? 'empty',
 			);
 
 			// execution was not found
@@ -100,7 +100,7 @@ export = {
 				lastId = undefined,
 				limit = 100,
 				status = undefined,
-				detailsFieldFormat = 'empty' as ExecutionDetailsFieldFormat,
+				dataFieldFormat = 'empty' as ExecutionDataFieldFormat,
 				workflowId = undefined,
 			} = req.query;
 
@@ -124,7 +124,7 @@ export = {
 				status,
 				limit,
 				lastId,
-				detailsFieldFormat,
+				dataFieldFormat,
 				...(workflowId && { workflowIds: [workflowId] }),
 				excludedExecutionsIds: runningExecutionsIds,
 			};

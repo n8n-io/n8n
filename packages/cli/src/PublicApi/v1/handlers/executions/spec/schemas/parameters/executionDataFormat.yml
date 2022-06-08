@@ -1,6 +1,6 @@
-name: detailsFieldFormat
+name: dataFieldFormat
 in: query
-description: The format in which to return the data of the execution (in the 'details' field).
+description: The format in which to return the data of the execution (in the 'data' field).
 required: false
 schema:
   type: string
