@@ -424,10 +424,20 @@ export class WorkflowDataProxy {
 	 * @memberof WorkflowDataGetter
 	 */
 	private envGetter() {
+		const that = this;
 		return new Proxy(
 			{},
 			{
 				get(target, name, receiver) {
+					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
+						throw new ExpressionError('Environment variable access got disabled', {
+							causeDetailed:
+								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
 					return process.env[name.toString()];
 				},
 			},
