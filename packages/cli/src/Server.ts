@@ -320,6 +320,7 @@ class App {
 				host: config.getEnv('templates.host'),
 			},
 			executionMode: config.getEnv('executions.mode'),
+			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		};
 	}
 
@@ -691,7 +692,9 @@ class App {
 		// ----------------------------------------
 		// Packages and nodes management
 		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
+		}
 
 		// ----------------------------------------
 		// Healthcheck
