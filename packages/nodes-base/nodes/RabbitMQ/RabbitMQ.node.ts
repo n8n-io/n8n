@@ -18,6 +18,7 @@ import {
 
 import {
 	fixOptions,
+	getAllConnections,
 	rabbitmqConnect,
 } from './GenericFunctions';
 
@@ -366,6 +367,8 @@ export class RabbitMQ implements INodeType {
 			responses = await Promise.allSettled(sendPromises);
 		} finally {
 			await channel.close();
+			const connections = getAllConnections();
+			connections.forEach(connection => connection.close());
 		}
 
 		// process the responses

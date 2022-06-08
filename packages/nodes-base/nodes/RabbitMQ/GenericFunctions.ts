@@ -69,6 +69,10 @@ function getConnection(credentials: ICredentialDataDecryptedObject | undefined):
 	return connection;
 }
 
+export function getAllConnections() {
+	return allConnections;
+}
+
 // Create connection manager with the default options (5-second heartbeat and retry)
 function createConnection(credentials: ICredentialDataDecryptedObject): AmqpConnectionManager {
 	const [credentialData, connectionOptions] = getConnectionArguments(credentials);
@@ -164,6 +168,8 @@ export class MessageTracker {
 		}
 
 		await channel.close();
+		const connections = getAllConnections();
+		connections.forEach(connection => connection.close());
 	}
 }
 
