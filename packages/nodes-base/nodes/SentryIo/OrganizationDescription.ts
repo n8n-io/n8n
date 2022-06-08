@@ -124,7 +124,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +142,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for',
+		description: 'The slug of the organization the team should be created for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -214,7 +214,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:update                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Slug',
+		displayName: 'Slug Name or ID',
 		name: 'organization_slug',
 		type: 'options',
 		typeOptions: {
@@ -232,7 +232,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization to update',
+		description: 'The slug of the organization to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',

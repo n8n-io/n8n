@@ -95,7 +95,7 @@ export class KafkaTrigger implements INodeType {
 						description: 'Allow sending message to a previously non exisiting topic',
 					},
 					{
-						displayName: 'Read messages from beginning',
+						displayName: 'Read Messages From Beginning',
 						name: 'fromBeginning',
 						type: 'boolean',
 						default: true,
@@ -130,7 +130,7 @@ export class KafkaTrigger implements INodeType {
 						description: 'The time to await a response in ms',
 					},
 					{
-						displayName: 'Return headers',
+						displayName: 'Return Headers',
 						name: 'returnHeaders',
 						type: 'boolean',
 						default: false,

@@ -114,7 +114,7 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'HTML content',
+				displayName: 'HTML Content',
 				name: 'htmlContent',
 				type: 'string',
 				default: '',
@@ -306,7 +306,7 @@ export const emailFields: INodeProperties[] = [
 /*                                 email:send                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		required: true,
@@ -324,7 +324,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The infusionsoft user to send the email on behalf of',
+		description: 'The infusionsoft user to send the email on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Contact IDs',
@@ -378,7 +378,7 @@ export const emailFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Address field',
+				displayName: 'Address Field',
 				name: 'addressField',
 				type: 'string',
 				default: '',

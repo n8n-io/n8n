@@ -102,7 +102,7 @@ export const timeEntryFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -112,7 +112,7 @@ export const timeEntryFields: INodeProperties[] = [
 									loadOptionsMethod: 'loadCustomFieldsForWorkspace',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -141,7 +141,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {
@@ -305,7 +305,7 @@ export const timeEntryFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -315,7 +315,7 @@ export const timeEntryFields: INodeProperties[] = [
 									loadOptionsMethod: 'loadCustomFieldsForWorkspace',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -344,7 +344,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {

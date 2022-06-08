@@ -32,7 +32,7 @@ export const databaseOperations = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'search databases using text search',
+				description: 'Search databases using text search',
 			},
 		],
 		default: 'get',

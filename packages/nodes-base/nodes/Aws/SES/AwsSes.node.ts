@@ -522,7 +522,7 @@ export class AwsSes implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template Name or ID',
 				name: 'templateName',
 				type: 'options',
 				typeOptions: {
@@ -539,7 +539,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The ARN of the template to use when sending this email',
+				description: 'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'From Email',

@@ -37,7 +37,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -108,14 +108,14 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activityType',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',
 				},
 				default: '',
-				description: 'A user-defined way to group activities of the same nature',
+				description: 'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -159,7 +159,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {

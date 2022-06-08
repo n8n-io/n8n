@@ -123,6 +123,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'startsWith(id, \'AATP\')',
 			},
 		],

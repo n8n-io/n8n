@@ -31,7 +31,7 @@ export const segmentEmailFields: INodeProperties[] = [
 	/*                               segmentEmail:send                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Segment Email ID',
+		displayName: 'Segment Email Name or ID',
 		name: 'segmentEmailId',
 		type: 'options',
 		required: true,

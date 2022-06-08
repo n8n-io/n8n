@@ -54,8 +54,8 @@
 
 			</div>
 			<div v-show="openPanel === 'settings'">
-				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 			</div>
 		</div>
 	</div>
@@ -199,25 +199,6 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							rows: 5,
-						},
-						default: '',
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.notes.description'),
-					},
-					{
-						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
-						name: 'notesInFlow',
-						type: 'boolean',
-						default: false,
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
-					},
-					{
 						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
@@ -286,6 +267,25 @@ export default mixins(
 						default: false,
 						noDataExpression: true,
 						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notes.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
+						name: 'notesInFlow',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 				] as INodeProperties[],
 

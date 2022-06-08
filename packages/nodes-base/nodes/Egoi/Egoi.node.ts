@@ -90,7 +90,7 @@ export class Egoi implements INodeType {
 				default: 'create',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -107,7 +107,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'ID of list to operate on',
+				description: 'ID of list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -204,7 +204,7 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field ID',
+										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
 										typeOptions: {
@@ -332,7 +332,7 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field ID',
+										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
 										typeOptions: {

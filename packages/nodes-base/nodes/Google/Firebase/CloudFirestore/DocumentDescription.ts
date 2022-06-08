@@ -22,7 +22,7 @@ export const documentOperations: INodeProperties[] = [
 				description: 'Create a document',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new document, or update the current one if it already exists (upsert)',
 			},
@@ -61,7 +61,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -78,7 +78,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{
@@ -118,7 +118,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Columns / attributes',
+		displayName: 'Columns / Attributes',
 		name: 'columns',
 		type: 'string',
 		default: '',
@@ -158,7 +158,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -175,7 +175,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{
@@ -253,7 +253,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -270,7 +270,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{
@@ -373,7 +373,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -390,7 +390,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{
@@ -565,7 +565,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -582,7 +582,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{
@@ -663,7 +663,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:query                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -680,7 +680,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{

@@ -67,7 +67,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal Stage',
+		displayName: 'Deal Stage Name or ID',
 		name: 'stage',
 		type: 'options',
 		required: true,
@@ -86,7 +86,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		default: '',
 		options: [],
-		description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
+		description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -150,14 +150,14 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDealCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -183,7 +183,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Type',
+				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
 				typeOptions: {
@@ -265,14 +265,14 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDealCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -298,7 +298,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Stage',
+				displayName: 'Deal Stage Name or ID',
 				name: 'stage',
 				type: 'options',
 				required: true,
@@ -306,10 +306,10 @@ export const dealFields: INodeProperties[] = [
 					loadOptionsMethod: 'getDealStages',
 				},
 				default: '',
-				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
+				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Deal Type',
+				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
 				typeOptions: {
@@ -652,7 +652,7 @@ export const dealFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
 										typeOptions: {
@@ -666,20 +666,12 @@ export const dealFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
+												name: 'Contains Exactly',
+												value: 'CONSTAIN_TOKEN',
+											},
+											{
 												name: 'Equal',
 												value: 'EQ',
-											},
-											{
-												name: 'Not Equal',
-												value: 'NEQ',
-											},
-											{
-												name: 'Less Than',
-												value: 'LT',
-											},
-											{
-												name: 'Less Than Or Equal',
-												value: 'LTE',
 											},
 											{
 												name: 'Greater Than',
@@ -698,12 +690,16 @@ export const dealFields: INodeProperties[] = [
 												value: 'NOT_HAS_PROPERTY',
 											},
 											{
-												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
+												name: 'Less Than',
+												value: 'LT',
 											},
 											{
-												name: `Doesn't Contain Exactly`,
-												value: 'NOT_CONSTAIN_TOKEN',
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
 											},
 										],
 										default: 'EQ',
@@ -784,6 +780,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Perform a text search against all property values for an object type',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
