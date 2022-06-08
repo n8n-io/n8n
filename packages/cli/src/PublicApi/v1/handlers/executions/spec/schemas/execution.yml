@@ -3,8 +3,8 @@ properties:
   id:
     type: number
     example: 1000
-  details:
-    type: string
+  data:
+    type: object
   finished:
     type: boolean
     example: true
