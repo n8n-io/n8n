@@ -9,7 +9,6 @@ import type { Role } from '../databases/entities/Role';
 import type { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 
 import * as UserManagementMailer from '../UserManagement/email/UserManagementMailer';
-import { ExecutionDataFieldFormat } from '../Interfaces';
 
 export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
