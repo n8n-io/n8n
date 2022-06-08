@@ -1,32 +1,17 @@
 import { parse } from 'flatted';
 import { In, Not, ObjectLiteral, LessThan, IsNull } from 'typeorm';
-import {
-	Db,
-	ExecutionDataFieldFormat,
-	IExecutionFlattedDb,
-	IExecutionResponseApi,
-} from '../../../..';
+import { Db, IExecutionFlattedDb, IExecutionResponseApi } from '../../../..';
 import { ExecutionStatus } from '../../../types';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | undefined,
-	format: ExecutionDataFieldFormat,
 ): IExecutionResponseApi | undefined {
 	if (execution === undefined) {
 		return undefined;
 	}
-	if (format === 'flattened') {
-		return {
-			...execution,
-			data: execution.data,
-		};
-	}
 
-	if (format === 'empty') {
-		return {
-			...execution,
-			data: '',
-		};
+	if (!execution.data) {
+		return execution;
 	}
 
 	return {
@@ -50,10 +35,9 @@ function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 	return condition;
 }
 
-function getExecutionSelectableProperties(): Array<keyof IExecutionFlattedDb> {
-	return [
+function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IExecutionFlattedDb> {
+	const returnData: Array<keyof IExecutionFlattedDb> = [
 		'id',
-		'data',
 		'mode',
 		'retryOf',
 		'retrySuccessId',
@@ -63,18 +47,22 @@ function getExecutionSelectableProperties(): Array<keyof IExecutionFlattedDb> {
 		'waitTill',
 		'finished',
 	];
+	if (includeData) {
+		returnData.push('data');
+	}
+	return returnData;
 }
 
 export async function getExecutions(data: {
 	limit: number;
-	dataFieldFormat?: ExecutionDataFieldFormat;
+	includeData?: boolean;
 	lastId?: number;
 	workflowIds?: number[];
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: number[];
 }): Promise<IExecutionResponseApi[]> {
 	const executions = await Db.collections.Execution.find({
-		select: getExecutionSelectableProperties(),
+		select: getExecutionSelectableProperties(data.includeData),
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),
 			...(data.status && { ...getStatusCondition(data.status) }),
@@ -85,9 +73,7 @@ export async function getExecutions(data: {
 		take: data.limit,
 	});
 
-	return executions.map((execution) =>
-		prepareExecutionData(execution, data.dataFieldFormat ?? 'empty'),
-	) as IExecutionResponseApi[];
+	return executions.map((execution) => prepareExecutionData(execution)) as IExecutionResponseApi[];
 }
 
 export async function getExecutionsCount(data: {
@@ -112,16 +98,16 @@ export async function getExecutionsCount(data: {
 export async function getExecutionInWorkflows(
 	id: number,
 	workflows: number[],
-	executionDataFieldFormat: ExecutionDataFieldFormat,
+	includeData?: boolean,
 ): Promise<IExecutionResponseApi | undefined> {
 	const execution = await Db.collections.Execution.findOne({
-		select: getExecutionSelectableProperties(),
+		select: getExecutionSelectableProperties(includeData),
 		where: {
 			id,
 			workflowId: In(workflows),
 		},
 	});
-	return prepareExecutionData(execution, executionDataFieldFormat);
+	return prepareExecutionData(execution);
 }
 
 export async function deleteExecution(execution: IExecutionResponseApi | undefined): Promise<void> {

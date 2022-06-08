@@ -7,4 +7,4 @@ ExecutionId:
 WorkflowId:
   $ref: '../../../handlers/workflows/spec/schemas/parameters/workflowId.yml'
 ExecutionDataFormat:
-  $ref: '../../../handlers/executions/spec/schemas/parameters/executionDataFormat.yml'
+  $ref: '../../../handlers/executions/spec/schemas/parameters/includeData.yml'

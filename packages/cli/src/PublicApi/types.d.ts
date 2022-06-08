@@ -52,18 +52,13 @@ export declare namespace ExecutionRequest {
 			limit?: number;
 			cursor?: string;
 			offset?: number;
-			dataFieldFormat?: ExecutionDataFieldFormat;
+			includeData?: boolean;
 			workflowId?: number;
 			lastId?: number;
 		}
 	>;
 
-	type Get = AuthenticatedRequest<
-		{ id: number; dataFieldFormat?: ExecutionDataFieldFormat },
-		{},
-		{},
-		{}
-	>;
+	type Get = AuthenticatedRequest<{ id: number }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 }
 
