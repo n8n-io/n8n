@@ -141,14 +141,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owner',
+				displayName: 'Company Owner Name or ID',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The owner of the company',
+				description: 'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Country/Region',
@@ -172,14 +172,14 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -217,14 +217,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The URL of the Google Plus page for the company or organization',
 			},
 			{
-				displayName: 'Industry',
+				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs',
+				description: 'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Is Public',
@@ -234,24 +234,24 @@ export const companyFields: INodeProperties[] = [
 				description: 'Indicates that the company is publicly traded',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead Status Name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyleadStatuses',
 				},
 				default: '',
-				description: 'The company\'s sales, prospecting or outreach status',
+				description: 'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifecycleStatus',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanylifecycleStages',
 				},
 				default: '',
-				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization',
+				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn Bio',
@@ -278,14 +278,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The total number of employees who work for the company or organization',
 			},
 			{
-				displayName: 'Original Source Type',
+				displayName: 'Original Source Type Name or ID',
 				name: 'originalSourceType',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanySourceTypes',
 				},
 				default: '',
-				description: 'Original source for the contact with the earliest activity for this company or organization',
+				description: 'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
@@ -324,14 +324,14 @@ export const companyFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Target Account',
+				displayName: 'Target Account Name or ID',
 				name: 'targetAccount',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyTargetAccounts',
 				},
 				default: '',
-				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy',
+				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Timezone',
@@ -378,24 +378,24 @@ export const companyFields: INodeProperties[] = [
 				description: 'The main twitter account of the company or organization',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc',
+				description: 'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Web Technologies',
+				displayName: 'Web Technologies Name or ID',
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
-				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights.',
+				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website URL',
@@ -493,14 +493,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owmer',
+				displayName: 'Company Owmer Name or ID',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The owner of the company',
+				description: 'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Country/Region',
@@ -524,14 +524,14 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -569,14 +569,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The URL of the Google Plus page for the company or organization',
 			},
 			{
-				displayName: 'Industry',
+				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs',
+				description: 'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Is Public',
@@ -586,24 +586,24 @@ export const companyFields: INodeProperties[] = [
 				description: 'Indicates that the company is publicly traded',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead Status Name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyleadStatuses',
 				},
 				default: '',
-				description: 'The company\'s sales, prospecting or outreach status',
+				description: 'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifecycleStatus',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanylifecycleStages',
 				},
 				default: '',
-				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization',
+				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Linkedin Bio',
@@ -636,14 +636,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The total number of employees who work for the company or organization',
 			},
 			{
-				displayName: 'Original Source Type',
+				displayName: 'Original Source Type Name or ID',
 				name: 'originalSourceType',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanySourceTypes',
 				},
 				default: '',
-				description: 'Original source for the contact with the earliest activity for this company or organization',
+				description: 'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
@@ -682,14 +682,14 @@ export const companyFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Target Account',
+				displayName: 'Target Account Name or ID',
 				name: 'targetAccount',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyTargetAccounts',
 				},
 				default: '',
-				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy',
+				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Timezone',
@@ -736,24 +736,24 @@ export const companyFields: INodeProperties[] = [
 				description: 'The main twitter account of the company or organization',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc',
+				description: 'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Web Technologies',
+				displayName: 'Web Technologies Name or ID',
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
-				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights.',
+				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website URL',

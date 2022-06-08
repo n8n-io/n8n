@@ -52,7 +52,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -114,7 +114,7 @@ export const channelFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'channel\'s description',
+				description: 'Channel\'s description',
 			},
 			{
 				displayName: 'Type',
@@ -140,7 +140,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -160,7 +160,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -186,7 +186,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -206,7 +206,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -232,7 +232,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -297,7 +297,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -317,7 +317,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -370,7 +370,7 @@ export const channelFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'channel\'s description',
+				description: 'Channel\'s description',
 			},
 		],
 	},

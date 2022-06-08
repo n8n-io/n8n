@@ -96,7 +96,7 @@ export const nodeDescription: INodeTypeDescription = {
 		//         delete
 		// ----------------------------------
 		{
-			displayName: 'Delete Query (JSON format)',
+			displayName: 'Delete Query (JSON Format)',
 			name: 'query',
 			type: 'json',
 			typeOptions: {
@@ -150,7 +150,7 @@ export const nodeDescription: INodeTypeDescription = {
 					description: 'The number of documents to skip in the results set',
 				},
 				{
-					displayName: 'Sort (JSON format)',
+					displayName: 'Sort (JSON Format)',
 					name: 'sort',
 					type: 'json',
 					typeOptions: {
@@ -164,7 +164,7 @@ export const nodeDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Query (JSON format)',
+			displayName: 'Query (JSON Format)',
 			name: 'query',
 			type: 'json',
 			typeOptions: {

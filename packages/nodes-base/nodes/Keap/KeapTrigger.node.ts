@@ -50,7 +50,7 @@ export class KeapTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Event',
+				displayName: 'Event Name or ID',
 				name: 'eventId',
 				type: 'options',
 				typeOptions: {

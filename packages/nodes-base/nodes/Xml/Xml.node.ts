@@ -92,11 +92,11 @@ export class Xml implements INodeType {
 						description: 'Prefix that is used to access the attributes',
 					},
 					{
-						displayName: 'cdata',
+						displayName: 'Cdata',
 						name: 'cdata',
 						type: 'boolean',
 						default: false,
-						description: 'wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required.',
+						description: 'Wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required.',
 					},
 					{
 						displayName: 'Character Key',
@@ -262,13 +262,23 @@ export class Xml implements INodeType {
 						json: {
 							[dataPropertyName]: builder.buildObject(items[itemIndex].json),
 						},
+						pairedItem: {
+							item: itemIndex,
+						},
 					});
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					items[itemIndex] = ({json:{ error: error.message }});
+					items[itemIndex] = ({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

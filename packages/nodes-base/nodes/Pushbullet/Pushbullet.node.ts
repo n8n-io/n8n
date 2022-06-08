@@ -274,7 +274,7 @@ export class Pushbullet implements INodeType {
 				description: 'The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.',
 			},
 			{
-				displayName: 'Value',
+				displayName: 'Value Name or ID',
 				name: 'value',
 				type: 'options',
 				typeOptions: {
@@ -295,7 +295,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
 				displayName: 'Push ID',

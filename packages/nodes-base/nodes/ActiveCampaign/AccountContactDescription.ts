@@ -92,7 +92,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
@@ -162,7 +162,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',

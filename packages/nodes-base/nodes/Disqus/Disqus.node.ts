@@ -91,7 +91,7 @@ export class Disqus implements INodeType {
 			//         forum:get
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -131,7 +131,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'counters',
+								name: 'Counters',
 								value: 'counters',
 							},
 							{
@@ -189,7 +189,7 @@ export class Disqus implements INodeType {
 			//         forum:getPosts
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -323,7 +323,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'approved',
+								name: 'Approved',
 								value: 'approved',
 							},
 						],
@@ -360,7 +360,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'thread',
+								name: 'Thread',
 								value: 'thread',
 							},
 						],
@@ -381,7 +381,7 @@ export class Disqus implements INodeType {
 			//         forum:getCategories
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -480,7 +480,7 @@ export class Disqus implements INodeType {
 			//         forum:getThreads
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -565,7 +565,7 @@ export class Disqus implements INodeType {
 								value: 'author',
 							},
 							{
-								name: 'forum',
+								name: 'Forum',
 								value: 'forum',
 							},
 						],
@@ -578,15 +578,15 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'closed',
+								name: 'Closed',
 								value: 'closed',
 							},
 							{
-								name: 'open',
+								name: 'Open',
 								value: 'open',
 							},
 							{
-								name: 'killed',
+								name: 'Killed',
 								value: 'killed',
 							},
 						],

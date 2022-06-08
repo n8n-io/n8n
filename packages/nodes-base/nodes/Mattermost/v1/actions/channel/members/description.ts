@@ -4,7 +4,7 @@ import {
 
 export const channelMembersDescription: ChannelProperties = [
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -23,10 +23,10 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team',
+		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -48,7 +48,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team',
+		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Resolve Data',
