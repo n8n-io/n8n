@@ -662,6 +662,8 @@
 	"settings.communityNodes.installModal.checkbox.label": "I understand the risks of installing unverified code from a public source.",
 	"settings.communityNodes.installModal.installButton.label": "Install",
 	"settings.communityNodes.installModal.installButton.label.loading": "Installing",
+	"settings.communityNodes.messages.install.success": "Package installed",
+	"settings.communityNodes.messages.install.error": "Error installing new package",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",
