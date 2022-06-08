@@ -84,6 +84,9 @@ function createConnection(credentials: ICredentialDataDecryptedObject): AmqpConn
 		})
 		.on('disconnect', ({ err }) => {
 			console.log(`RabbitMQ: Connection closed for ${name}: ${err.message}`);
+			if (err.message.includes('PRECONDITION-FAILED')) {
+				connection.close();
+			}
 		});
 
 	console.log(`RabbitMQ: Created managed connection for ${name}`);

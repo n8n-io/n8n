@@ -304,9 +304,9 @@ export class RabbitMQTrigger implements INodeType {
 		async function closeFunction() {
 
 			try {
-				for (const { exchange, pattern } of bindings) {
-					await channel.unbindExchange(queue, exchange as string, pattern as string);
-				}
+				// for (const { exchange, pattern } of bindings) {
+				// 	await channel.unbindExchange(queue, exchange as string, pattern as string);
+				// }
 
 				return messageTracker.closeChannel(channel);
 			} catch(error) {

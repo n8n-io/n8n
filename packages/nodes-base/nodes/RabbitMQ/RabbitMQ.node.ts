@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -358,7 +359,6 @@ export class RabbitMQ implements INodeType {
 				} else {
 					message = String(this.getNodeParameter('message', itemIndex));
 				}
-
 				return sendMessage(channel, itemIndex, [Buffer.from(message), messageOptions]);
 			});
 
@@ -372,14 +372,12 @@ export class RabbitMQ implements INodeType {
 		const returnItems: INodeExecutionData[] = responses.map((response) => {
 			if (response!.status !== 'fulfilled') {
 				if (this.continueOnFail() !== true) {
-					throw new NodeApiError(this.getNode(), {
-						...response.reason,
-					});
+					throw new NodeApiError(this.getNode(), response?.reason as unknown as JsonObject);
 				} else {
 					// Return the actual reason as error
 					return {
 						json: {
-							error: response.reason,
+							error: response?.reason?.message,
 						},
 					};
 				}
