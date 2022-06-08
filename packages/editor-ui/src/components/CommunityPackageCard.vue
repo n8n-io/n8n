@@ -31,7 +31,7 @@
 					<div slot="content">
 						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 					</div>
-					<n8n-button type="outline" label="Update" />
+					<n8n-button type="outline" label="Update" @click="onUpdateClick"/>
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
 					<div slot="content">
@@ -49,15 +49,16 @@
 
 <script lang="ts">
 import { PublicInstalledPackage } from 'n8n-workflow';
-import Vue from 'vue';
-import { NPM_PACKAGE_DOCS_BASE_URL } from '../constants';
+import mixins from 'vue-typed-mixins';
+import {
+	NPM_PACKAGE_DOCS_BASE_URL,
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+} from '../constants';
+import { showMessage } from './mixins/showMessage';
 
-const PACKAGE_ACTIONS = {
-	VIEW_DOCS: 'view-docs',
-	UNINSTALL: 'uninstall-package',
-};
-
-export default Vue.extend({
+export default mixins(
+	showMessage,
+).extend({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {
@@ -73,28 +74,31 @@ export default Vue.extend({
 			packageActions: [
 				{
 					label: this.$locale.baseText('settings.communityNodes.viewDocsAction.label'),
-					value: PACKAGE_ACTIONS.VIEW_DOCS,
+					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
 					type: 'external-link',
 				},
 				{
 					label: this.$locale.baseText('settings.communityNodes.uninstallAction.label'),
-					value: PACKAGE_ACTIONS.UNINSTALL,
+					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
 				},
 			],
 		};
 	},
 	methods: {
-		onAction(value: string) {
+		async onAction(value: string) {
 			switch (value) {
-				case PACKAGE_ACTIONS.VIEW_DOCS:
+				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
 					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
 					break;
-				case PACKAGE_ACTIONS.UNINSTALL:
-					//TODO Will be implemented as part of N8N-3661
+				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
+					this.$store.dispatch('communityNodes/openUninstallConfirmModal', this.communityPackage.packageName);
 					break;
 				default:
 					break;
 			}
+		},
+		onUpdateClick() {
+			this.$store.dispatch('communityNodes/openUpdateConfirmModal');
 		},
 	},
 });

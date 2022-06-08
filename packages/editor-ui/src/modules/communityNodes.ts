@@ -1,8 +1,12 @@
-import { getInstalledCommunityNodes, installNewPackage } from '@/api/communityNodes';
+import { getInstalledCommunityNodes, installNewPackage, uninstallPackage } from '@/api/communityNodes';
 import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { ICommunityNodesState, IRootState } from '@/Interface';
 import { PublicInstalledPackage } from 'n8n-workflow';
 import { ActionContext, Module } from 'vuex';
+import {
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+} from '../constants';
 
 const LOADER_DELAY = 300;
 
@@ -13,6 +17,8 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		availablePackageCount: -1,
 		loading: true,
 		installedPackages: [],
+		currentModalAction: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
+		currentModalPackageName: '',
 	},
 	mutations: {
 		setAvailablePackageCount: (state: ICommunityNodesState, count: number) => {
@@ -24,6 +30,19 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		setLoading: (state: ICommunityNodesState, loading: boolean) => {
 			state.loading = loading;
 		},
+		setCurrentModalAction(state: ICommunityNodesState, action: string) {
+			state.currentModalAction = action;
+		},
+		setCurrentModalPackageName(state: ICommunityNodesState, name: string) {
+			state.currentModalPackageName = name;
+		},
+		removePackageByName(state: ICommunityNodesState, name: string) {
+			const packagesByName = state.installedPackages.filter(pack => pack.packageName === name);
+			if(packagesByName.length > 0) {
+				const index = state.installedPackages.indexOf(packagesByName[0]);
+				state.installedPackages.splice(index, 1);
+			}
+		},
 	},
 	getters: {
 		availablePackageCount(state: ICommunityNodesState): number {
@@ -34,6 +53,15 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		},
 		isLoading(state: ICommunityNodesState): boolean {
 			return state.loading;
+		},
+		getCurrentModalAction(state: ICommunityNodesState): string {
+			return state.currentModalAction;
+		},
+		getCurrentModalPackageName(state: ICommunityNodesState): string {
+			return state.currentModalPackageName;
+		},
+		getInstalledPackageByName(state: ICommunityNodesState, packageName: string): PublicInstalledPackage {
+			return state.installedPackages.filter(pack => pack.packageName === packageName)[0];
 		},
 	},
 	actions: {
@@ -62,6 +90,27 @@ const module: Module<ICommunityNodesState, IRootState> = {
 			} finally {
 				context.commit('setLoading', false);
 			}
+		},
+		async uninstallPackage(context: ActionContext<ICommunityNodesState, IRootState>) {
+			context.commit('setLoading', true);
+			try {
+				await uninstallPackage(context.rootGetters.getRestApiContext, context.getters.getCurrentModalPackageName);
+				context.commit('removePackageByName', context.getters.getCurrentModalPackageName);
+			} catch(error) {
+				throw(error);
+			} finally {
+				context.commit('setLoading', false);
+			}
+		},
+		async openUninstallConfirmModal(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+			context.commit('setCurrentModalAction', COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
+			context.commit('setCurrentModalPackageName', packageName);
+			await context.dispatch('ui/openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, {root: true});
+		},
+		async openUpdateConfirmModal(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+			context.commit('setCurrentModalAction', COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
+			context.commit('setCurrentModalPackageName', packageName);
+			await context.dispatch('ui/openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, {root: true});
 		},
 	},
 };

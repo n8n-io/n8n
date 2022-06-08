@@ -87,7 +87,6 @@ import {
 import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { json } from 'express';
 
 export default mixins(
 	showMessage,

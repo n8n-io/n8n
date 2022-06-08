@@ -650,32 +650,34 @@
 	"settings.communityNodes.viewDocsAction.label": "Documentation",
 	"settings.communityNodes.uninstallAction.label": "Uninstall package",
 	"settings.communityNodes.upToDate.tooltip": "You are up to date",
-<<<<<<< HEAD
 	"settings.communityNodes.fetchError.title": "Problem fetching installed packages",
 	"settings.communityNodes.fetchError.message": "There may be a problem with your internet connection or your n8n instance",
-=======
-	"settings.communityNodes.fetchError.title": "Error loading installed packages",
-	"settings.communityNodes.fetchError.message": "Please try again or contact our support",
->>>>>>> ef1b7f5fa (✨ Implemented community package installation modal dialog)
 	"settings.communityNodes.installModal.title": "Install Community Nodes",
 	"settings.communityNodes.installModal.description": "Find Community Nodes to add on the npm public registry.",
 	"settings.communityNodes.browseButton.label": "Browse",
 	"settings.communityNodes.installModal.packageName.label": "Enter npm Package Name",
-<<<<<<< HEAD
 	"settings.communityNodes.installModal.packageName.tooltip": "<img src='/static/community_package_tooltip_img.png'/><br/>Package name is also the title of<br/>any package on <a href='{npmURL}'>npmjs.com</a>",
-=======
-	"settings.communityNodes.installModal.packageName.tooltip": "<img src='/static/community_package_tooltip_img.png'/><br/>Package name is also the title of<br/>any package on <a href='https://www.npmjs.com/search?q=n8n-community-node-package'>npmjs.com</a>",
->>>>>>> ef1b7f5fa (✨ Implemented community package installation modal dialog)
 	"settings.communityNodes.installModal.packageName.placeholder": "e.g. n8n-nodes-chatwork",
 	"settings.communityNodes.installModal.packageName.infoText": "To install a specific version, use @ syntax like <code>package-name@0.15.0</code>",
 	"settings.communityNodes.installModal.checkbox.label": "I understand the risks of installing unverified code from a public source.",
 	"settings.communityNodes.installModal.installButton.label": "Install",
 	"settings.communityNodes.installModal.installButton.label.loading": "Installing",
-<<<<<<< HEAD
 	"settings.communityNodes.messages.install.success": "Package installed",
 	"settings.communityNodes.messages.install.error": "Error installing new package",
-=======
->>>>>>> ef1b7f5fa (✨ Implemented community package installation modal dialog)
+	"settings.communityNodes.messages.uninstall.error": "Problem uninstalling package",
+	"settings.communityNodes.messages.uninstall.success.title": "Package uninstalled",
+	"settings.communityNodes.messages.uninstall.success.message": "{packageName} was uninstalled from your instance",
+	"settings.communityNodes.messages.update.success.title": "Package updated",
+	"settings.communityNodes.messages.update.success.message": "{packageName} is now on version {version}",
+	"settings.communityNodes.confirmModal.uninstall.title": "Uninstall {packageName} Package?",
+	"settings.communityNodes.confirmModal.uninstall.message": "Any workflows that use these nodes won't be able to run. Are you sure?",
+	"settings.communityNodes.confirmModal.uninstall.buttonLabel": "Uninstall Package",
+	"settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel": "Uninstalling",
+	"settings.communityNodes.confirmModal.update.title": "Update Community Node Package?",
+	"settings.communityNodes.confirmModal.update.subtitle": "You are about to update {packageName} to {version}",
+	"settings.communityNodes.confirmModal.update.message": "We recommend you deactivate workflows that use any of the package's nodes and reactivate them once the update is completed",
+	"settings.communityNodes.confirmModal.update.buttonLabel": "Update Package",
+	"settings.communityNodes.confirmModal.update.buttonLoadingLabel": "Updating...",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",

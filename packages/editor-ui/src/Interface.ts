@@ -24,6 +24,11 @@ import {
 	PublicInstalledPackage,
 } from 'n8n-workflow';
 
+import {
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+} from './constants';
+
+
 export * from 'n8n-design-system/src/types';
 
 declare module 'jsplumb' {
@@ -946,6 +951,8 @@ export interface ICommunityNodesState {
 	availablePackageCount: number;
 	loading: boolean;
 	installedPackages: PublicInstalledPackage[];
+	currentModalAction: typeof COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL | typeof COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE;
+	currentModalPackageName: string;
 }
 
 export interface IRestApiContext {

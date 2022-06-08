@@ -1,6 +1,6 @@
 import { IRestApiContext } from '@/Interface';
 import { PublicInstalledPackage } from 'n8n-workflow';
-import { get, post } from './helpers';
+import { get, post, makeRestApiRequest } from './helpers';
 
 export async function getInstalledCommunityNodes(context: IRestApiContext): Promise<PublicInstalledPackage[]> {
 	const response = await get(context.baseUrl, '/nodes');
@@ -9,4 +9,8 @@ export async function getInstalledCommunityNodes(context: IRestApiContext): Prom
 
 export async function installNewPackage(context: IRestApiContext, name: string): Promise<PublicInstalledPackage> {
 	return await post(context.baseUrl, '/nodes', { name });
+}
+
+export async function uninstallPackage(context:IRestApiContext, name: string): Promise<void> {
+	return await makeRestApiRequest(context, 'DELETE', '/nodes', { name });
 }
