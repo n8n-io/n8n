@@ -209,12 +209,19 @@ const createOperations: Array<INodeProperties> = [
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=attributes.{{$parent.fieldName}}',
+										type: 'body',
+									},
+								},
 							},
-						],
+						]
 					},
 				],
 				default: {},
-				description: 'Array of supported attachments to add to the message',
+				description: 'Array of supported attachments to add to the message'
 			},
 		],
 	}
