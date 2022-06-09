@@ -155,6 +155,8 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
+import posthog from 'posthog-js';
+
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -333,6 +335,10 @@ export default mixins(
 				return this.$store.getters.allNodes;
 			},
 			runButtonText (): string {
+				if (posthog && posthog.isFeatureEnabled('test-1')) {
+					return 'Your Workflow is ugly';
+				}
+
 				if (this.workflowRunning === false) {
 					return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
 				}

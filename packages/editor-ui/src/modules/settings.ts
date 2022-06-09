@@ -83,6 +83,9 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
+		deploymentType: (state): string  => {
+			return state.settings.deployment.type;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {

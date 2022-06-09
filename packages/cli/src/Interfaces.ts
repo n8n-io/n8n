@@ -495,6 +495,9 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	deployment: {
+		type: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
