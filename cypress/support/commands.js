@@ -27,3 +27,36 @@
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
 })
+
+Cypress.Commands.add('signin', (email, password) => {
+	cy.session(['signin', email, password], () => {
+		cy.visit('/signin');
+
+		cy.getByTestId('signin-form').within(() => {
+			cy.getByTestId('email').type(email);
+			cy.getByTestId('password').type(password);
+
+			cy.get('button').click();
+		});
+
+		// we should be redirected to /dashboard
+		cy.url().should('include', '/workflow');
+
+		// our auth cookie should be present
+		cy.getCookie('n8n-auth').should('exist');
+	});
+});
+
+Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
+	cy.session(['signup', email, password], () => {
+		cy.visit('/setup');
+		cy.getByTestId('setup-form').within(() => {
+			cy.getByTestId('email').type(email);
+			cy.getByTestId('firstName').type(firstName);
+			cy.getByTestId('lastName').type(lastName);
+			cy.getByTestId('password').type(password);
+
+			cy.get('button').click();
+		});
+	});
+})

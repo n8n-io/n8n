@@ -8,6 +8,7 @@
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
 				:value="value"
+				data-test-id="search-nodes-input"
 				@input="onInput"
 			/>
 		</div>

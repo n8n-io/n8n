@@ -65,11 +65,13 @@
 			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div class="node-creator-button">
-				<n8n-icon-button
-					size="xlarge"
-					icon="plus"
-					@click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"
-				/>
+				<span data-test-id="add-node-button">
+					<n8n-icon-button
+						size="xlarge"
+						icon="plus"
+						@click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"
+					/>
+				</span>
 				<div
 					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
 					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
