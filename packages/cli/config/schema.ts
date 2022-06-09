@@ -3,6 +3,7 @@
 
 import path from 'path';
 import * as core from 'n8n-core';
+import { string } from '@oclif/command/lib/flags';
 
 export const schema = {
 	database: {
@@ -677,6 +678,16 @@ export const schema = {
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
 				},
+			},
+		},
+	},
+
+	activeDirectory: {
+		connection: {
+			url: {
+				format: String,
+				default: '',
+				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_URL',
 			},
 		},
 	},

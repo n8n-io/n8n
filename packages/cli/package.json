@@ -128,6 +128,7 @@
     "jsonschema": "^1.4.1",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "~1.12.1",
+    "ldapts": "^4.0.0",
     "localtunnel": "^2.0.0",
     "lodash": "^4.17.21",
     "mysql2": "~2.3.0",
