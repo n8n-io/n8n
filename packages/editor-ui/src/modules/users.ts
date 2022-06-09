@@ -31,6 +31,7 @@ import {
 	IUsersState,
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
+import posthog from 'posthog-js';
 
 const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
@@ -96,6 +97,9 @@ const module: Module<IUsersState, IRootState> = {
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
+		getGlobalRoleName(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return getters.currentUser.globalRole.name;
+		},
 		canUserDeleteTags(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			const currentUser = getters.currentUser;
 			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
@@ -153,6 +157,7 @@ const module: Module<IUsersState, IRootState> = {
 		async logout(context: ActionContext<IUsersState, IRootState>) {
 			await logout(context.rootGetters.getRestApiContext);
 			context.commit('clearCurrentUserId');
+			posthog.reset();
 		},
 		async createOwner(context: ActionContext<IUsersState, IRootState>, params: { firstName: string; lastName: string; email: string; password: string;}) {
 			const user = await setupOwner(context.rootGetters.getRestApiContext, params);
@@ -221,6 +226,15 @@ const module: Module<IUsersState, IRootState> = {
 				context.commit('settings/stopShowingSetupPage', null, { root: true });
 				await skipOwnerSetup(context.rootGetters.getRestApiContext);
 			} catch (error) {}
+		},
+		async posthogIdentify(context: ActionContext<IUsersState, IRootState>) {
+			const instanceId = context.rootGetters.instanceId;
+			const userId = context.getters.currentUserId;
+			posthog.identify(`${instanceId}#${userId}`, {
+				instanceId,
+				userId,
+				globalRole: context.getters.getGlobalRoleName,
+			});
 		},
 	},
 };

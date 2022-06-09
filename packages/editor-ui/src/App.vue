@@ -165,6 +165,10 @@ export default mixins(
 			disable_session_recording: !['desktop_mac', 'desktop_win', 'cloud'].includes(this.deploymentType),
 		});
 
+		posthog.debug();
+
+		this.$store.dispatch('users/posthogIdentify');
+
 		// TODO: REMOVE ME!
 		// export posthog to window
 		// @ts-ignore
