@@ -84,11 +84,18 @@ describe('Smoke test', () => {
 
 			cy.getByTestId('main-sidebar').within(() => {
 				cy.getByTestId('main-sidebar-collapse').click();
+			});
 
-				cy.get('.el-submenu').eq(0).click().within(() => {
+			cy.getByTestId('main-sidebar').within(() => {
+				cy.get('.el-submenu').eq(0).within(() => {
+					cy.get('.el-submenu__title').click();
+				});
+
+				cy.get('.el-submenu .el-menu').within(() => {
 					cy.get('.el-menu-item').eq(0).click();
 				});
 
+				cy.location('pathname').should('equal', '/workflow');
 			});
 
 			cy.get('.el-notification .el-icon-success').should('be.visible');
