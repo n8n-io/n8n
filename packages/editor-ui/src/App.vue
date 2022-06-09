@@ -165,6 +165,10 @@ export default mixins(
 			disable_session_recording: !['desktop_mac', 'desktop_win', 'cloud'].includes(this.deploymentType),
 		});
 
+		// TODO: REMOVE ME!
+		// export posthog to window
+		window.posthog = posthog;
+
 		if (this.defaultLocale !== 'en') {
 			const headers = await this.restApi().getNodeTranslationHeaders();
 			if (headers) addHeaders(headers, this.defaultLocale);
