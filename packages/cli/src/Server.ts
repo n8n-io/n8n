@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
@@ -66,6 +67,7 @@ import {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
+	INodeProperties,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -1481,12 +1483,34 @@ class App {
 
 					const { defaultLocale } = this.frontendSettings;
 
+					// fetch mock data
+					// return it if we receive any
+
 					if (defaultLocale === 'en') {
-						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
+						let acc: INodeTypeDescription[] = new Array<INodeTypeDescription>();
+
+						for (const { name, version } of nodeInfos) {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
+							const mockData = await handleMockDataRequest({
+								name,
+								version,
+							} as INodeTypeNameVersion);
+
+							Object.assign(description, {
+								properties: [
+									{
+										default: false,
+										displayName: 'Mock Data Mode',
+										type: 'boolean',
+										name: 'mockData',
+									},
+									...modifyExistingPropertiesWithHide(description, mockData.length),
+									...mockData,
+								],
+							});
 							acc.push(injectCustomApiCallOption(description));
 							return acc;
-						}, []);
+						}
 					}
 
 					async function populateTranslation(
@@ -1559,9 +1583,8 @@ class App {
 			],
 			async (req: express.Request, res: express.Response): Promise<void> => {
 				try {
-					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${
-						req.params.nodeType
-					}`;
+					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${req.params.nodeType
+						}`;
 
 					const nodeTypes = NodeTypes();
 					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
@@ -1772,9 +1795,8 @@ class App {
 				};
 
 				const oauthRequestData = {
-					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth1-credential/callback?cid=${credentialId}`,
+					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint
+						}/oauth1-credential/callback?cid=${credentialId}`,
 				};
 
 				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -1799,9 +1821,8 @@ class App {
 
 				const responseJson = querystring.parse(response);
 
-				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
-					responseJson.oauth_token
-				}`;
+				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${responseJson.oauth_token
+					}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
@@ -2023,9 +2044,8 @@ class App {
 					clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 					accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 					authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth2-credential/callback`,
+					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint
+						}/oauth2-credential/callback`,
 					scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 					state: stateEncodedStr,
 				};
@@ -2171,9 +2191,8 @@ class App {
 						clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
 						accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 						authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
-							this.restEndpoint
-						}/oauth2-credential/callback`,
+						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint
+							}/oauth2-credential/callback`,
 						scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 					};
 
@@ -3196,4 +3215,59 @@ function isOAuth(credType: ICredentialType) {
 			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
 		)
 	);
+}
+
+async function handleMockDataRequest(nodeTypeInfo: INodeTypeNameVersion) {
+	try {
+		const nodeName = nodeTypeInfo.name.split('.').pop();
+
+		if (nodeTypeInfo.name !== 'n8n-nodes-base.telegramTrigger') {
+			return [];
+		}
+
+		const response = await requestPromise.post('https://api-staging.n8n.io/api/nodes/mock', {
+			body: JSON.stringify({ nodeName, nodeVersion: nodeTypeInfo.version }),
+			headers: { 'Content-Type': 'application/json' },
+		});
+		const {
+			data: {
+				properties: { data: mockDataProperties },
+			},
+		} = JSON.parse(response);
+
+		return mockDataProperties;
+	} catch (error) {
+		console.log(error);
+		return [];
+	}
+}
+
+function modifyExistingPropertiesWithHide(
+	description: INodeTypeDescription,
+	mockDataExists: boolean,
+) {
+	if (!mockDataExists) return [];
+	return description.properties.map((property: INodeProperties) => {
+		// display options don't exist
+		if (!property.displayOptions) {
+			Object.assign(property, {
+				displayOptions: {
+					hide: {
+						mockData: [true],
+					},
+				},
+			});
+		} else if (!property.displayOptions.hide) {
+			Object.assign(property.displayOptions, {
+				hide: {
+					mockData: [true],
+				},
+			});
+		} else {
+			Object.assign(property.displayOptions.hide, {
+				mockData: [true],
+			});
+		}
+		return property;
+	});
 }
