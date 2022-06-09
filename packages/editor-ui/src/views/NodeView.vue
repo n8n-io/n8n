@@ -335,7 +335,7 @@ export default mixins(
 				return this.$store.getters.allNodes;
 			},
 			runButtonText (): string {
-				if (posthog && posthog.isFeatureEnabled('test-1')) {
+				if (posthog.get_config('api_host') && posthog.isFeatureEnabled('test-1')) {
 					return 'Your Workflow is ugly';
 				}
 
