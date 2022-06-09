@@ -885,7 +885,7 @@ export async function requestOAuth2(
 ) {
 	const credentials = (await this.getCredentials(credentialsType)) as unknown as IOAuth2Credentials;
 
-	// Only the authorization code grant type needs connection
+	// Only the OAuth2 with authorization code grant needs connection
 	if (
 		credentials.grantType === OAuth2GranType.authorizationCode &&
 		credentials.oauthTokenData === undefined
@@ -901,12 +901,9 @@ export async function requestOAuth2(
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
-
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (credentials.grantType === OAuth2GranType.clientCredentials && oauthTokenData === undefined) {
 		const { data } = await oAuthClient.credentials.getToken();
-
-		credentials.oauthTokenData = data;
 
 		// Find the credentials
 		if (!node.credentials || !node.credentials[credentialsType]) {

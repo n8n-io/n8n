@@ -1541,7 +1541,7 @@ export enum OAuth2GranType {
 	clientCredentials = 'clientCredentials',
 }
 export interface IOAuth2Credentials {
-	grantType: 'OAuth2GranType';
+	grantType: 'authorizationCode' | 'clientCredentials';
 	clientId: string;
 	clientSecret: string;
 	accessTokenUrl: string;
@@ -1549,4 +1549,5 @@ export interface IOAuth2Credentials {
 	authQueryParameters: string;
 	authentication: 'body' | 'header';
 	scope: string;
+	oauthTokenData?: IDataObject;
 }
