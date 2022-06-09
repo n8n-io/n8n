@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,21 +10,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	messageOptions,
- } from './RabbitMQDescription';
+import { messageOptions } from './RabbitMQDescription';
 
-import {
-	fixOptions,
-	getAllConnections,
-	rabbitmqConnect,
-} from './GenericFunctions';
+import { fixOptions, getAllConnections, rabbitmqConnect } from './GenericFunctions';
 
 import * as amqplib from 'amqplib';
 
-import {
-	ChannelWrapper,
- } from 'amqp-connection-manager';
+import { ChannelWrapper } from 'amqp-connection-manager';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,9 +67,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'queue',
-						],
+						mode: ['queue'],
 					},
 				},
 				default: '',
@@ -97,9 +85,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
@@ -112,9 +98,7 @@ export class RabbitMQ implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				options: [
@@ -148,9 +132,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
@@ -175,9 +157,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						sendInputData: [
-							false,
-						],
+						sendInputData: [false],
 					},
 				},
 				default: '',
@@ -196,13 +176,12 @@ export class RabbitMQ implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'exchange',
-								],
+								'/mode': ['exchange'],
 							},
 						},
 						default: '',
-						description: 'An exchange to send messages to if this exchange can’t route them to any queues',
+						description:
+							'An exchange to send messages to if this exchange can’t route them to any queues',
 					},
 					{
 						displayName: 'Arguments',
@@ -255,9 +234,7 @@ export class RabbitMQ implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'queue',
-								],
+								'/mode': ['queue'],
 							},
 						},
 						default: false,
@@ -324,7 +301,6 @@ export class RabbitMQ implements INodeType {
 			sendMessage = async (channel, itemIndex, message) => {
 				return channel.sendToQueue(queue, ...message);
 			};
-
 		} else if (mode === 'exchange') {
 			const exchange = this.getNodeParameter('exchange', 0) as string;
 			const type = this.getNodeParameter('exchangeType', 0) as string;
@@ -337,62 +313,83 @@ export class RabbitMQ implements INodeType {
 				const routingKey = this.getNodeParameter('routingKey', itemIndex) as string;
 				return channel.publish(exchange, routingKey, ...message);
 			};
-
 		} else {
 			throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 		}
 
-		// open the channel and send all messages
-		const channel = await rabbitmqConnect(this, setup);
+		const self = this;
+		const returnItems: INodeExecutionData[] = [];
+		const connections = getAllConnections();
 
-		let responses: Array<{ status: 'fulfilled'; value: boolean } | { status: 'rejected'; reason: Error }>;
+		async function publishMessages() {
+			await new Promise(async (resolve, reject) => {
+				try {
+					const channel = await rabbitmqConnect(self, setup);
 
-		try {
-			const sendPromises = items.map((item, itemIndex) => {
-				const messageOptions = fixOptions(this.getNodeParameter('messageOptions', itemIndex, {}) as IDataObject);
+					connections.forEach((connection) => {
+						connection.on('disconnect', ({ err }) => {
+							if (err.message.includes('PRECONDITION-FAILED')) {
+								reject(err);
+							}
+						});
+					});
 
-				let message: string;
+					const sendPromises = items.map((item, itemIndex) => {
+						const messageOptions = fixOptions(
+							self.getNodeParameter('messageOptions', itemIndex, {}) as IDataObject,
+						);
 
-				if (this.getNodeParameter('sendInputData', itemIndex)) {
-					message = JSON.stringify(item.json);
-					messageOptions.contentType = messageOptions.contentType || 'application/json';
-					messageOptions.contentEncoding = messageOptions.contentEncoding || 'utf-8';
-				} else {
-					message = String(this.getNodeParameter('message', itemIndex));
+						let message: string;
+
+						if (self.getNodeParameter('sendInputData', itemIndex)) {
+							message = JSON.stringify(item.json);
+							messageOptions.contentType = messageOptions.contentType || 'application/json';
+							messageOptions.contentEncoding = messageOptions.contentEncoding || 'utf-8';
+						} else {
+							message = String(self.getNodeParameter('message', itemIndex));
+						}
+						return sendMessage(channel, itemIndex, [Buffer.from(message), messageOptions]);
+					});
+
+					// @ts-ignore
+					const responses: RabbitmqResponse[] = await Promise.allSettled(sendPromises);
+
+					responses.map((response) => {
+						if (response!.status !== 'fulfilled') {
+							if (self.continueOnFail() !== true) {
+								throw new NodeApiError(self.getNode(), response.reason);
+							} else {
+								returnItems.push( {
+									json: {
+										error: response.reason?.message,
+									},
+								});
+							}
+						} else {
+							returnItems.push({
+								json: {
+									success: response.value,
+								},
+							});
+						}
+					});
+					await channel.close();
+					resolve(true);
+				} catch (error) {
+					reject(error);
+				} finally {
+					connections.forEach((connection) => connection.close());
 				}
-				return sendMessage(channel, itemIndex, [Buffer.from(message), messageOptions]);
 			});
-
-			// @ts-ignore
-			responses = await Promise.allSettled(sendPromises);
-		} finally {
-			await channel.close();
-			const connections = getAllConnections();
-			connections.forEach(connection => connection.close());
 		}
 
-		// process the responses
-		const returnItems: INodeExecutionData[] = responses.map((response) => {
-			if (response!.status !== 'fulfilled') {
-				if (this.continueOnFail() !== true) {
-					throw new NodeApiError(this.getNode(), response?.reason as unknown as JsonObject);
-				} else {
-					// Return the actual reason as error
-					return {
-						json: {
-							error: response?.reason?.message,
-						},
-					};
-				}
-			}
-
-			return {
-				json: {
-					success: response.value,
-				},
-			};
-		});
-
-		return this.prepareOutputData(returnItems);
+		try {
+			await publishMessages();
+			return this.prepareOutputData(returnItems);
+		} catch (error) {
+			throw new NodeApiError(self.getNode(), error);
+		}
 	}
 }
+
+type RabbitmqResponse = { status: 'fulfilled'; value: boolean } | { status: 'rejected'; reason: JsonObject };

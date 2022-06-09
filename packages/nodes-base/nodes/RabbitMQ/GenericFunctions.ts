@@ -86,11 +86,11 @@ function createConnection(credentials: ICredentialDataDecryptedObject): AmqpConn
 		.on('blocked', ({ reason }) => {
 			console.warn(`RabbitMQ: Connection blocked for ${name}: ${reason}`);
 		})
+		.on('connectFailed', ({err, url}) => {
+			console.warn(`RabbitMQ: Connection failed for ${name}: ${err.message}`);
+		})
 		.on('disconnect', ({ err }) => {
-			console.log(`RabbitMQ: Connection closed for ${name}: ${err.message}`);
-			if (err.message.includes('PRECONDITION-FAILED')) {
-				connection.close();
-			}
+			console.warn(`RabbitMQ: Connection closed for ${name}: ${err.message}`);
 		});
 
 	console.log(`RabbitMQ: Created managed connection for ${name}`);
