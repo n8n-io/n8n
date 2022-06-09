@@ -131,7 +131,7 @@
     "localtunnel": "^2.0.0",
     "lodash": "^4.17.21",
     "mysql2": "~2.3.0",
-    "n8n-core": "~0.121.2",
+    "n8n-core": "~0.121.3",
     "n8n-editor-ui": "~0.147.0",
     "n8n-nodes-base": "~0.179.0",
     "n8n-workflow": "~0.103.0",
