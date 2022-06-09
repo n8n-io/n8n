@@ -100,6 +100,7 @@ const module: Module<IUiState, IRootState> = {
 		isPageLoading: true,
 		currentView: '',
 		theme: INITIAL_THEME,
+		darkThemeEnabled: true,
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -122,6 +123,7 @@ const module: Module<IUiState, IRootState> = {
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 		editorTheme: (state: IUiState): string => state.theme,
+		darkThemeEnabled: (state: IUiState): boolean => state.darkThemeEnabled,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {

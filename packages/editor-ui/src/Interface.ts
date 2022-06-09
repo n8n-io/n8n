@@ -851,6 +851,7 @@ export interface IUiState {
 	isPageLoading: boolean;
 	currentView: string;
 	theme: EditorTheme;
+	darkThemeEnabled: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
