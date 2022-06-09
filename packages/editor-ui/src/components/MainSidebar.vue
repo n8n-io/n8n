@@ -1,5 +1,5 @@
 <template>
-	<div id="side-menu">
+	<div id="side-menu" data-test-id="main-sidebar">
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
