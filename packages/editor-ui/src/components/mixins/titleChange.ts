@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '@/constants';
 import Vue from 'vue';
 
 import {
@@ -20,11 +21,11 @@ export const titleChange = Vue.extend({
 				icon = '▶️';
 			}
 
-			window.document.title = `n8n - ${icon} ${workflow}`;
+			window.document.title = `${BRAND_NAME} - ${icon} ${workflow}`;
 		},
 
 		$titleReset() {
-			document.title = `n8n - Workflow Automation`;
+			document.title = `${BRAND_NAME} - Workflow Automation`;
 		},
 
 	},

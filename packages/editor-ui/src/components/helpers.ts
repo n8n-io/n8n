@@ -1,4 +1,4 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
+import { BRAND_NAME, CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
 
@@ -57,7 +57,7 @@ export function filterTemplateNodes(nodes: ITemplatesNode[]) {
 }
 
 export function setPageTitle(title: string) {
-	window.document.title = title;
+	window.document.title = `${BRAND_NAME} - ${title}`;
 }
 
 export function isString(value: unknown): value is string {

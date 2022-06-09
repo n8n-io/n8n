@@ -340,7 +340,7 @@ export default mixins(genericHelpers).extend({
 		next();
 	},
 	async mounted() {
-		setPageTitle('n8n - Templates');
+		setPageTitle('Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
 		this.$store.dispatch('users/showPersonalizationSurvey');
