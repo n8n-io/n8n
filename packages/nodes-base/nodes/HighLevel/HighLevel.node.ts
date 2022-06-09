@@ -1,6 +1,3 @@
-
-/* eslint-disable n8n-nodes-base/node-param-description-weak */
-/* eslint-disable n8n-nodes-base/node-param-resource-without-no-data-expression */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -12,7 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { contactFields, contactOperations } from './ContactDescription';
+import { contactFields, contactOperations } from './description/ContactDescription';
 
 import {
 	OptionsWithUri,
@@ -41,7 +38,6 @@ export class HighLevel implements INodeType {
 		],
 		requestDefaults: {
 			baseURL: 'https://rest.gohighlevel.com/v1',
-			url: '',
 			headers: {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json',
@@ -61,7 +57,6 @@ export class HighLevel implements INodeType {
 				],
 				default: 'contact',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...contactOperations,
 			...contactFields,

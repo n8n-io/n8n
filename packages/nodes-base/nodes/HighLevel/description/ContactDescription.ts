@@ -7,8 +7,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	transformBinReponse
-} from './GenericFunctions';
+	transformGetContactReponse
+} from '../GenericFunctions';
 
 
 export const contactOperations: INodeProperties[] = [
@@ -36,13 +36,13 @@ export const contactOperations: INodeProperties[] = [
 					output: {
 						postReceive: [
 							{
-								type: 'set',
+								type: 'rootProperty',
 								properties: {
-									value: '={{ { "success": true } }}',
+									property: 'contact',
 								},
 							},
 						],
-					}
+					},
 				},
 			},
 			{
@@ -83,6 +83,7 @@ const createOperations: Array<INodeProperties> = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		description: 'Email or Phone are required to create contact',
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,9 +103,10 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
-		displayName: 'Update Enabled',
-		name: 'updateEnabled',
-		type: 'boolean',
+		displayName: 'Phone',
+		name: 'phone',
+		type: 'string',
+		description: 'Email or Phone are required to create contact',
 		displayOptions: {
 			show: {
 				resource: [
@@ -115,97 +117,97 @@ const createOperations: Array<INodeProperties> = [
 				],
 			},
 		},
-		default: false,
+		default: '',
 		routing: {
 			send: {
 				type: 'body',
-				property: 'updateEnabled',
+				property: 'phone',
 			}
 		}
 	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Attributes',
-				name: 'attributesUi',
-				placeholder: 'Add Attribute',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'attributesValues',
-						displayName: 'Attribute',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'options',
-								typeOptions: {
-									loadOptions: {
-										routing: {
-											request: {
-												method: 'GET',
-												url: '/contacts/attributes',
-											},
-											output: {
-												postReceive: [
-													{
-														type: 'rootProperty',
-														properties: {
-															property: 'attributes',
-														},
-													},
-													{
-														type: 'setKeyValue',
-														properties: {
-															name: '={{$responseItem.name}} - ({{$responseItem.category}})',
-															value: '={{$responseItem.name}}',
-														},
-													},
-													{
-														type: 'sort',
-														properties: {
-															key: 'name',
-														},
-													},
-												],
-											},
-										},
-									},
-								},
-								default: '',
-							},
-							{
-								displayName: 'Field Value',
-								name: 'fieldValue',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-				default: {},
-				description: 'Array of supported attachments to add to the message',
-			},
-		],
-	}
+	// {
+	// 	displayName: 'Additional Fields',
+	// 	name: 'additionalFields',
+	// 	type: 'collection',
+	// 	placeholder: 'Add Field',
+	// 	default: {},
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'contact',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			displayName: 'Attributes',
+	// 			name: 'attributesUi',
+	// 			placeholder: 'Add Attribute',
+	// 			type: 'fixedCollection',
+	// 			typeOptions: {
+	// 				multipleValues: true,
+	// 			},
+	// 			options: [
+	// 				{
+	// 					name: 'attributesValues',
+	// 					displayName: 'Attribute',
+	// 					values: [
+	// 						{
+	// 							displayName: 'Field Name',
+	// 							name: 'fieldName',
+	// 							type: 'options',
+	// 							typeOptions: {
+	// 								loadOptions: {
+	// 									routing: {
+	// 										request: {
+	// 											method: 'GET',
+	// 											url: '/contacts/attributes',
+	// 										},
+	// 										output: {
+	// 											postReceive: [
+	// 												{
+	// 													type: 'rootProperty',
+	// 													properties: {
+	// 														property: 'attributes',
+	// 													},
+	// 												},
+	// 												{
+	// 													type: 'setKeyValue',
+	// 													properties: {
+	// 														name: '={{$responseItem.name}} - ({{$responseItem.category}})',
+	// 														value: '={{$responseItem.name}}',
+	// 													},
+	// 												},
+	// 												{
+	// 													type: 'sort',
+	// 													properties: {
+	// 														key: 'name',
+	// 													},
+	// 												},
+	// 											],
+	// 										},
+	// 									},
+	// 								},
+	// 							},
+	// 							default: '',
+	// 						},
+	// 						{
+	// 							displayName: 'Field Value',
+	// 							name: 'fieldValue',
+	// 							type: 'string',
+	// 							default: '',
+	// 						},
+	// 					],
+	// 				},
+	// 			],
+	// 			default: {},
+	// 			description: 'Array of supported attachments to add to the message',
+	// 		},
+	// 	],
+	// }
 ];
 
 const getAllOperations: Array<INodeProperties> = [
@@ -289,7 +291,13 @@ const getOperations: Array<INodeProperties> = [
 			},
 			output: {
 				postReceive: [
-					transformBinReponse,
+					{
+						type: 'rootProperty',
+						properties: {
+							property: 'contact',
+						},
+					},
+					// transformGetContactReponse,
 				],
 			},
 		},
