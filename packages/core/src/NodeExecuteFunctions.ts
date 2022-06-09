@@ -955,8 +955,8 @@ export async function requestOAuth2(
 
 			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 				const body: IDataObject = {
-					client_id: credentials.clientId as string,
-					client_secret: credentials.clientSecret as string,
+					client_id: credentials.clientId,
+					client_secret: credentials.clientSecret,
 				};
 				tokenRefreshOptions.body = body;
 				// Override authorization property so the credentails are not included in it
@@ -989,7 +989,7 @@ export async function requestOAuth2(
 			await additionalData.credentialsHelper.updateCredentials(
 				nodeCredentials,
 				credentialsType,
-				credentials,
+				credentials as unknown as ICredentialDataDecryptedObject,
 			);
 
 			Logger.debug(
