@@ -18,6 +18,7 @@
 </template>
 
 <script lang="ts">
+import posthog from 'posthog-js';
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
@@ -158,6 +159,8 @@ export default mixins(
 
 		this.trackPage();
 		this.$externalHooks().run('app.mount');
+
+		posthog.init("phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo", {api_host: 'https://app.posthog.com'});
 
 		if (this.defaultLocale !== 'en') {
 			const headers = await this.restApi().getNodeTranslationHeaders();
