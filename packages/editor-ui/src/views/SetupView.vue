@@ -2,6 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		data-test-id="setup-form"
 		@submit="onSubmit"
 		@secondaryClick="showSkipConfirmation"
 	/>

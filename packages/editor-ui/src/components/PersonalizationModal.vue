@@ -13,6 +13,7 @@
 		:closeOnClickModal="false"
 		:closeOnPressEscape="false"
 		width="460px"
+		data-test-id="personalization-form"
 		@enter="onSave"
 	>
 		<template v-slot:content>

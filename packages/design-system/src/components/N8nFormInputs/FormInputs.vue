@@ -15,6 +15,7 @@
 						v-else
 						v-bind="input.properties"
 						:value="values[input.name]"
+						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
 						@input="(value) => onInput(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
