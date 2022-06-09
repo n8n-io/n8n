@@ -137,6 +137,10 @@ export class User {
 		this.updatedAt = new Date();
 	}
 
+	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
+	apiKey?: string | null;
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */
