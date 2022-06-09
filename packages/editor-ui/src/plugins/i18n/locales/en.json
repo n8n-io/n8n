@@ -1,7 +1,7 @@
 {
-	"_brand.name": "n8n",
-	"_brand.domain": "n8n.io",
-	"_brand.url": "https://n8n.io",
+	"_brand.name": "n8n embed",
+	"_brand.domain": "n8n.embed",
+	"_brand.url": "https://staging.n8n-website-v2.pages.dev",
 	"_reusableBaseText.cancel": "Cancel",
 	"_reusableBaseText.name": "Name",
 	"_reusableBaseText.save": "Save",
