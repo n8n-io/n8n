@@ -10,7 +10,10 @@ export class WorkflowActivationError extends ExecutionBaseError {
 	constructor(message: string, error: Error, node?: INode) {
 		super(error);
 		this.node = node;
-		this.cause = error;
+		this.cause = {
+			message: error.message,
+			stack: error.stack as string,
+		};
 		this.message = message;
 	}
 }
