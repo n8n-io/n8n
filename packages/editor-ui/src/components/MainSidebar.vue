@@ -9,9 +9,9 @@
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 
 				<n8n-menu-item index="logo" class="logo-item">
-					<a href="https://n8n.io" target="_blank">
-						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
-						<span class="logo-text" slot="title">n8n.io</span>
+					<a :href="$locale.baseText('_brand.url')" target="_blank">
+						<img :src="basePath + 'n8n-icon-small.png'" class="icon" :alt="$locale.baseText('_brand.domain')"/>
+						<span class="logo-text" slot="title">{{ $locale.baseText('_brand.domain') }}</span>
 					</a>
 				</n8n-menu-item>
 
