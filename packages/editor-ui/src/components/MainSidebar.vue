@@ -3,7 +3,7 @@
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
-			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
+			<div id="collapse-change-button" data-test-id="main-sidebar-collapse" class="clickable" @click="toggleCollapse">
 				<font-awesome-icon icon="angle-right" class="icon" />
 			</div>
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">

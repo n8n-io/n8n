@@ -1,18 +1,18 @@
-describe('Smoke test', () => {
-	const username = 'test@n8n.io';
-	const password = 'CypressTest123';
+const username = 'test@n8n.io';
+const password = 'CypressTest123';
 
-	describe('Create user', () => {
-		it('should sign user up', () => {
-			cy.signup(username, 'John', 'Doe', password);
-		});
+describe('Create user', () => {
+	it('should sign user up', () => {
+		cy.signup(username, 'John', 'Doe', password);
+	});
+});
+
+describe('Smoke test', () => {
+	beforeEach(() => {
+		cy.signin(username, password);
 	});
 
 	describe('Onboarding', () => {
-		beforeEach(() => {
-			cy.signin(username, password);
-		});
-
 		it('should fill in the customize form and submit', () => {
 			cy.visit('/workflow');
 			cy.getByTestId('personalization-form').within(() => {
@@ -34,10 +34,6 @@ describe('Smoke test', () => {
 	});
 
 	describe('Create workflow', () => {
-		beforeEach(() => {
-			cy.signin(username, password);
-		});
-
 		it('should add a new Function node', () => {
 			cy.visit('/workflow');
 			cy.getByTestId('add-node-button').click();
@@ -77,6 +73,23 @@ describe('Smoke test', () => {
 			cy.visit('/workflow/1');
 
 			cy.getByTestId('execute-workflow').click();
+
+			cy.get('.el-notification .el-icon-success').should('be.visible');
+		});
+	});
+
+	describe('Create new workflow', () => {
+		it('should create a new workflow', () => {
+			cy.visit('/workflow/1');
+
+			cy.getByTestId('main-sidebar').within(() => {
+				cy.getByTestId('main-sidebar-collapse').click();
+
+				cy.get('.el-submenu').eq(0).click().within(() => {
+					cy.get('.el-menu-item').eq(0).click();
+				});
+
+			});
 
 			cy.get('.el-notification .el-icon-success').should('be.visible');
 		});
