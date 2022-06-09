@@ -2,17 +2,19 @@ describe('Smoke test', () => {
 	const username = 'test@n8n.io';
 	const password = 'CypressTest123';
 
-	it('should sign user up', () => {
-		cy.signup(username, 'John', 'Doe', password);
-		cy.clearCookies();
+	describe('Create user', () => {
+		it('should sign user up', () => {
+			cy.signup(username, 'John', 'Doe', password);
+		});
 	});
 
-	describe('Create user', () => {
+	describe('Onboarding', () => {
 		beforeEach(() => {
 			cy.signin(username, password);
 		});
 
 		it('should fill in the customize form and submit', () => {
+			cy.visit('/workflow');
 			cy.getByTestId('personalization-form').within(() => {
 				cy.get('[data-test-id="codingSkill"] .el-select').click();
 				cy.get('[data-test-id="codingSkill"] .el-select-dropdown__item').eq(0).click();
@@ -29,12 +31,54 @@ describe('Smoke test', () => {
 				cy.get('button').click();
 			});
 		});
+	});
+
+	describe('Create workflow', () => {
+		beforeEach(() => {
+			cy.signin(username, password);
+		});
 
 		it('should add a new Function node', () => {
+			cy.visit('/workflow');
 			cy.getByTestId('add-node-button').click();
 			cy.getByTestId('search-nodes-input').type('Function');
 
 			cy.get('[data-key="n8n-nodes-base.function"]').click();
+
+			cy.getByTestId('back-to-canvas').click();
+			cy.getByTestId('save-button').click();
+		});
+
+		it('should add a new Set node', () => {
+			cy.visit('/workflow/1');
+
+			cy.get('#node-2').click();
+			cy.getByTestId('add-node-button').click();
+			cy.getByTestId('search-nodes-input').type('Set');
+
+			cy.get('[data-key="n8n-nodes-base.set"]').click();
+
+			cy.getByTestId('node-parameters').within(() => {
+				cy.get('.multi-parameter .add-option').click(); // Click Add Value
+				cy.get('.el-select .el-select-dropdown__item').eq(2).click(); // Click String
+
+				cy.get('.parameter-value-container').eq(1).within(() => {
+					cy.get('input').type('={{$node["Function"].json["myNewField"]}}', {
+						parseSpecialCharSequences: false
+					});
+				});
+			});
+
+			cy.getByTestId('back-to-canvas').click();
+			cy.getByTestId('save-button').click();
+		});
+
+		it('should execute workflow', () => {
+			cy.visit('/workflow/1');
+
+			cy.getByTestId('execute-workflow').click();
+
+			cy.get('.el-notification .el-icon-success').should('be.visible');
 		});
 	});
 });

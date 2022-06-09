@@ -105,15 +105,17 @@
 			</button>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
-			<n8n-button
-				@click.stop="runWorkflow()"
-				:loading="workflowRunning"
-				:label="runButtonText"
-				size="large"
-				icon="play-circle"
-				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
-				:type="workflowRunning ? 'light' : 'primary'"
-			/>
+			<span data-test-id="execute-workflow">
+				<n8n-button
+					@click.stop="runWorkflow()"
+					:loading="workflowRunning"
+					:label="runButtonText"
+					size="large"
+					icon="play-circle"
+					:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
+					:type="workflowRunning ? 'light' : 'primary'"
+				/>
+			</span>
 
 			<n8n-icon-button
 				v-if="workflowRunning === true && !executionWaitingForWebhook"

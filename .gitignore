@@ -16,3 +16,4 @@ nodelinter.config.json
 packages/*/package-lock.json
 
 cypress/videos/*
+cypress/screenshots/*
