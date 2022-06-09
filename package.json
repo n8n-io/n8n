@@ -19,10 +19,12 @@
     "watch": "lerna run --parallel watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
-    "cypress": "cypress open",
-    "test:e2e": "start-server-and-test start http://localhost:5678 'cypress run'"
+    "test:e2e:dashboard": "cypress open",
+    "test:e2e:run": "cypress run",
+    "test:e2e": "cross-env DB_TABLE_PREFIX=cypress start-server-and-test start http://localhost:5678/favicon.ico test:e2e:run"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "cypress": "^10.0.3",
     "lerna": "^3.13.1",
     "rimraf": "^3.0.2",
