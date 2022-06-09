@@ -89,6 +89,7 @@ export const emailFields: Array<INodeProperties> = [
 						description: 'Email of the sender',
 					},
 				],
+				required: true
 			},
 		],
 	},
@@ -145,6 +146,7 @@ export const emailFields: Array<INodeProperties> = [
 				],
 			},
 		],
+		required: true
 	},
 	{
 		displayName: 'Subject',
@@ -193,6 +195,29 @@ export const emailFields: Array<INodeProperties> = [
 		description: 'Text content of the message',
 	},
 	{
+		displayName: 'HTML Content',
+		name: 'htmlContent',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+		routing: {
+			send: {
+				property: 'htmlContent',
+				type: 'body',
+			},
+		},
+		default: '',
+		description: 'HTML content of the message',
+	},
+	{
 		displayName: 'Additional Parameters',
 		name: 'additionalParameters',
 		placeholder: 'Add Parameter',
@@ -210,57 +235,57 @@ export const emailFields: Array<INodeProperties> = [
 			},
 		},
 		options: [
-			{
-				displayName: 'HTML Content',
-				name: 'htmlContent',
-				type: 'collection',
-				placeholder: 'HTML template',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'htmlTemplate',
-						displayName: 'HTML Template',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Template Parameters',
-						name: 'params',
-						type: 'collection',
-						default: {},
-						options: [
-							{
-								name: 'attributesValues',
-								displayName: 'Attribute',
-								values: [
-									{
-										displayName: 'Param Name',
-										name: 'paramName',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Param Value',
-										name: 'paramValue',
-										type: 'string',
-										default: '',
-									},
-								],
-							},
-						],
-						routing: {
-							send: {
-								property: 'parameters',
-								type: 'body',
-							},
-						},
-						description: 'Parameters to hydrate HTML Tempalate',
-					}
-				],
-			},
+			// {
+			// 	displayName: 'HTML Content',
+			// 	name: 'htmlContent',
+			// 	type: 'collection',
+			// 	placeholder: 'HTML template',
+			// 	typeOptions: {
+			// 		multipleValues: true,
+			// 	},
+			// 	default: {},
+			// 	options: [
+			// 		{
+			// 			name: 'htmlTemplate',
+			// 			displayName: 'HTML Template',
+			// 			type: 'string',
+			// 			default: '',
+			// 		},
+			// 		{
+			// 			displayName: 'Template Parameters',
+			// 			name: 'params',
+			// 			type: 'collection',
+			// 			default: {},
+			// 			options: [
+			// 				{
+			// 					name: 'attributesValues',
+			// 					displayName: 'Attribute',
+			// 					values: [
+			// 						{
+			// 							displayName: 'Param Name',
+			// 							name: 'paramName',
+			// 							type: 'string',
+			// 							default: '',
+			// 						},
+			// 						{
+			// 							displayName: 'Param Value',
+			// 							name: 'paramValue',
+			// 							type: 'string',
+			// 							default: '',
+			// 						},
+			// 					],
+			// 				},
+			// 			],
+			// 			routing: {
+			// 				send: {
+			// 					property: 'parameters',
+			// 					type: 'body',
+			// 				},
+			// 			},
+			// 			description: 'Parameters to hydrate HTML Tempalate',
+			// 		}
+			// 	],
+			// },
 			{
 				displayName: 'Receipients BCC',
 				name: 'receipientsBCC',

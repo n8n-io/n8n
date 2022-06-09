@@ -62,6 +62,18 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
+				routing: {
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": $response.body } }}', // Also possible to use the original response data
+								},
+							},
+						]
+					},
+				}
 			},
 		],
 		default: 'create',
@@ -137,24 +149,24 @@ const createOperations: Array<INodeProperties> = [
 	},
 	{
 		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		name: 'createAdditionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
 				resource: [
-					'contact',
+					'contact'
 				],
 				operation: [
-					'create',
+					'create'
 				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Attributes',
-				name: 'attributesUi',
+				displayName: 'Contact Attributes',
+				name: 'createContactAttributes',
 				placeholder: 'Add Attribute',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -221,7 +233,7 @@ const createOperations: Array<INodeProperties> = [
 					},
 				],
 				default: {},
-				description: 'Array of supported attachments to add to the message'
+				description: 'Array of attributes to be added'
 			},
 		],
 	}
@@ -357,6 +369,124 @@ const deleteOperations: Array<INodeProperties> = [
 	}
 ];
 
+const updateOperations: Array<INodeProperties> = [
+	{
+		default: '',
+		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
+		displayName: 'Identifier',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact'
+				],
+				operation: [
+					'update'
+				],
+			},
+		},
+		name: 'identifier',
+		type: 'string',
+		required: true,
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateAdditionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact'
+				],
+				operation: [
+					'update'
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Attributes',
+				name: 'updateAttributes',
+				placeholder: 'Add Attribute',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'updateAttributesValues',
+						displayName: 'Attribute',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'options',
+								typeOptions: {
+									loadOptions: {
+										routing: {
+											request: {
+												method: 'GET',
+												url: '/v3/contacts/attributes',
+											},
+											output: {
+												postReceive: [
+													{
+														type: 'rootProperty',
+														properties: {
+															property: 'attributes',
+														},
+													},
+													{
+														type: 'setKeyValue',
+														properties: {
+															name: '={{$responseItem.name}} - ({{$responseItem.category}})',
+															value: '={{$responseItem.name}}',
+														},
+													},
+													{
+														type: 'sort',
+														properties: {
+															key: 'name',
+														},
+													},
+												],
+											},
+										},
+									},
+								},
+								default: '',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=attributes.{{$parent.fieldName}}',
+										type: 'body',
+									},
+								},
+							},
+						]
+					},
+				],
+				default: {},
+				description: 'Array of attributes to be updated'
+			},
+		],
+		routing: {
+			request: {
+				method: 'PUT',
+				url: '=/v3/contacts/{{$parameter.identifier}}',
+			},
+		}
+	}
+];
+
 export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
@@ -376,4 +506,10 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:delete                              */
 	/* -------------------------------------------------------------------------- */
 	...deleteOperations,
+
+
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:update                              */
+	/* -------------------------------------------------------------------------- */
+	...updateOperations
 ];

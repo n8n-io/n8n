@@ -9,6 +9,7 @@ import {
 	INodeTypeDescription,
 	IRequestOptionsFromParameters,
 } from 'n8n-workflow';
+import { attributeOperations, attributeFields } from './AttributeDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';
@@ -74,10 +75,16 @@ export class Sendinblue implements INodeType {
 						name: 'Sender',
 						value: 'sender',
 					},
+					{
+						name: 'Attribute',
+						value: 'attribute'
+					}
 				],
 				default: 'email',
 			},
 
+			...attributeOperations,
+			...attributeFields,
 			...senderOperations,
 			...senderFields,
 			...contactOperations,
