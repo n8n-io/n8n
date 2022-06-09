@@ -160,7 +160,6 @@ export default mixins(
 		this.trackPage();
 		this.$externalHooks().run('app.mount');
 
-
 		posthog.init("phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo", {
 			api_host: 'https://app.posthog.com',
 			disable_session_recording: !['desktop_mac', 'desktop_win', 'cloud'].includes(this.deploymentType),
