@@ -961,6 +961,7 @@ describe('RoutingNode', () => {
 				input: {
 					node: {
 						parameters: {
+							value1: '={{"test"}}',
 							multipleFields: {
 								value1: 'v1',
 								value2: 'v2',
@@ -998,11 +999,25 @@ describe('RoutingNode', () => {
 										},
 									],
 								},
+								customPropertiesMultiExp: {
+									property0: [
+										{
+											name: '={{$parameter["value1"]}}N',
+											value: '={{$parameter["value1"]}}V',
+										},
+									],
+								},
 							},
 						},
 					},
 					nodeType: {
 						properties: [
+							{
+								displayName: 'Value 1',
+								name: 'value1',
+								type: 'string',
+								default: '',
+							},
 							{
 								displayName: 'Multiple Fields',
 								name: 'multipleFields',
@@ -1285,6 +1300,46 @@ describe('RoutingNode', () => {
 											},
 										],
 									},
+									// Test fixed collection: multipleValues=true with expression which references an expression
+									{
+										displayName: 'Custom Properties (multi)',
+										name: 'customPropertiesMultiExp',
+										placeholder: 'Add Custom Property',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: true,
+										},
+										default: {},
+										options: [
+											{
+												name: 'property0',
+												displayName: 'Property0',
+												values: [
+													// To set: { name0: 'value0', name1: 'value1' }
+													{
+														displayName: 'Property Name',
+														name: 'name',
+														type: 'string',
+														default: '',
+														description: 'Name of the property to set.',
+													},
+													{
+														displayName: 'Property Value',
+														name: 'value',
+														type: 'string',
+														default: '',
+														routing: {
+															send: {
+																property: '={{$parent.name}}',
+																type: 'body',
+															},
+														},
+														description: 'Value of the property to set.',
+													},
+												],
+											},
+										],
+									},
 								],
 							},
 						],
@@ -1324,6 +1379,7 @@ describe('RoutingNode', () => {
 											value: 'cM1Value2',
 										},
 									],
+									testN: 'testV',
 								},
 								method: 'POST',
 								headers: {
