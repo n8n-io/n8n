@@ -326,7 +326,7 @@ export class WorkflowExecute {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
-			if (this.runExecutionData.executionData!.waitingExecutionSource === null) {
+			if (!this.runExecutionData.executionData!.waitingExecutionSource) {
 				this.runExecutionData.executionData!.waitingExecutionSource = {};
 			}
 
