@@ -1,28 +1,28 @@
 @mixin theme {
-	--color-primary-h: 7;
-	--color-primary-s: 100%;
-	--color-primary-l: 68%;
+	--color-primary-h: 53;
+	--color-primary-s: 87%;
+	--color-primary-l: 54%;
 	--color-primary: hsl(
 		var(--color-primary-h),
 		var(--color-primary-s),
 		var(--color-primary-l)
 	);
 
-	--color-primary-tint-1-l: 18%;
+	--color-primary-tint-1-l: 66%;
 	--color-primary-tint-1: hsl(
 		var(--color-primary-h),
 		var(--color-primary-s),
 		var(--color-primary-tint-1-l)
 	);
 
-	--color-primary-tint-2-l: 9%;
+	--color-primary-tint-2-l: 78%;
 	--color-primary-tint-2: hsl(
 		var(--color-primary-h),
 		var(--color-primary-s),
 		var(--color-primary-tint-2-l)
 	);
 
-	--color-primary-tint-3-l: 3%;
+	--color-primary-tint-3-l: 90%;
 	--color-primary-tint-3: hsl(
 		var(--color-primary-h),
 		var(--color-primary-s),
@@ -36,18 +36,18 @@
 		var(--color-primary-shade-1-l)
 	);
 
-	--color-secondary-h: 247;
-	--color-secondary-s: 100%;
-	--color-secondary-l: 55%;
+	--color-secondary-h: 48;
+	--color-secondary-s: 5%;
+	--color-secondary-l: 21%;
 	--color-secondary: hsl(
 		var(--color-secondary-h),
 		var(--color-secondary-s),
 		var(--color-secondary-l)
 	);
 
-	--color-success-h: 150;
-	--color-success-s: 74%;
-	--color-success-l: 60%;
+	--color-success-h: 76;
+	--color-success-s: 89%;
+	--color-success-l: 64%;
 	--color-success: hsl(
 		var(--color-success-h),
 		var(--color-success-s),
@@ -68,9 +68,9 @@
 		var(--color-success-tint-2-l)
 	);
 
-	--color-warning-h: 36;
-	--color-warning-s: 77%;
-	--color-warning-l: 43%;
+	--color-warning-h: 30;
+	--color-warning-s: 53%;
+	--color-warning-l: 51%;
 	--color-warning: hsl(
 		var(--color-warning-h),
 		var(--color-warning-s),
@@ -91,9 +91,9 @@
 		var(--color-warning-tint-2-l)
 	);
 
-	--color-danger-h: 0;
-	--color-danger-s: 88%;
-	--color-danger-l: 35%;
+	--color-danger-h: 9;
+	--color-danger-s: 75%;
+	--color-danger-l: 68%;
 	--color-danger: hsl(
 		var(--color-danger-h),
 		var(--color-danger-s),
@@ -114,9 +114,9 @@
 		var(--color-danger-tint-2-l)
 	);
 
-	--color-info-h: 220;
-	--color-info-s: 4%;
-	--color-info-l: 82%;
+	--color-info-h: 64;
+	--color-info-s: 60%;
+	--color-info-l: 47%;
 	--color-info: hsl(
 		var(--color-info-h),
 		var(--color-info-s),
@@ -137,54 +137,63 @@
 		var(--color-info-tint-2-l)
 	);
 
-	--color-text-dark-h: 0;
-	--color-text-dark-s: 0%;
-	--color-text-dark-l: 100%;
+	--color-text-dark-h: 53;
+	--color-text-dark-s: 87%;
+	--color-text-dark-l: 60%;
 	--color-text-dark: hsl(
 		var(--color-text-dark-h),
 		var(--color-text-dark-s),
 		var(--color-text-dark-l)
 	);
 
-	--color-text-base-h: 240;
-	--color-text-base-s: 4%;
-	--color-text-base-l: 70%;
+	--color-text-base-h: 53;
+	--color-text-base-s: 87%;
+	--color-text-base-l: 54%;
 	--color-text-base: hsl(
 		var(--color-text-base-h),
 		var(--color-text-base-s),
 		var(--color-text-base-l)
 	);
 
-	--color-text-light-h: 220;
-	--color-text-light-s: 4%;
-	--color-text-light-l: 82%;
+	--color-text-light-h: 61;
+	--color-text-light-s: 77%;
+	--color-text-light-l: 72%;
 	--color-text-light: hsl(
 		var(--color-text-light-h),
 		var(--color-text-light-s),
 		var(--color-text-light-l)
 	);
 
-	--color-text-lighter-h: 222;
-	--color-text-lighter-s: 17%;
-	--color-text-lighter-l: 92%;
+	--color-text-lighter-h: 58;
+	--color-text-lighter-s: 90%;
+	--color-text-lighter-l: 83%;
 	--color-text-lighter: hsl(
 		var(--color-text-lighter-h),
 		var(--color-text-lighter-s),
 		var(--color-text-lighter-l)
 	);
 
-	--color-text-xlight-h: 0;
-	--color-text-xlight-s: 0%;
-	--color-text-xlight-l: 100%;
+	--color-text-xlight-h: 58;
+	--color-text-xlight-s: 90%;
+	--color-text-xlight-l: 92%;
 	--color-text-xlight: hsl(
 		var(--color-text-xlight-h),
 		var(--color-text-xlight-s),
 		var(--color-text-xlight-l)
 	);
 
-	--color-foreground-base-h: 220;
-	--color-foreground-base-s: 20%;
-	--color-foreground-base-l: 30%;
+	--color-foreground-xdark-h: 220;
+	--color-foreground-xdark-s: 7.4%;
+	--color-foreground-xdark-l: 52.5%;
+	--color-foreground-xdark: hsl(
+		var(--color-foreground-xdark-h),
+		var(--color-foreground-xdark-s),
+		var(--color-foreground-xdark-l)
+	);
+
+	--color-foreground-base-h: 43;
+	--color-foreground-base-s: 5%;
+	--color-foreground-base-l: 72%;
 	--color-foreground-base: hsl(
 		var(--color-foreground-base-h),
 		var(--color-foreground-base-s),
@@ -202,7 +211,7 @@
 
 	--color-foreground-xlight-h: 0;
 	--color-foreground-xlight-s: 0%;
-	--color-foreground-xlight-l: 0%;
+	--color-foreground-xlight-l: 100%;
 	--color-foreground-xlight: hsl(
 		var(--color-foreground-xlight-h),
 		var(--color-foreground-xlight-s),
@@ -218,9 +227,9 @@
 		var(--color-background-dark-l)
 	);
 
-	--color-background-base-h: 0;
-	--color-background-base-s: 0%;
-	--color-background-base-l: 10%;
+	--color-background-base-h: 220;
+	--color-background-base-s: 30%;
+	--color-background-base-l: 96.1%;
 	--color-background-base: hsl(
 		var(--color-background-base-h),
 		var(--color-background-base-s),
@@ -228,26 +237,26 @@
 	);
 
 	--color-background-light-h: 220;
-	--color-background-light-s: 27%;
-	--color-background-light-l: 0%;
+	--color-background-light-s: 60%;
+	--color-background-light-l: 99%;
 	--color-background-light: hsl(
 		var(--color-background-light-h),
 		var(--color-background-light-s),
 		var(--color-background-light-l)
 	);
 
-	--color-background-lighter-h: 0;
-	--color-background-lighter-s: 0%;
-	--color-background-lighter-l: 36%;
+	--color-background-lighter-h: 252;
+	--color-background-lighter-s: 71.4%;
+	--color-background-lighter-l: 98.6%;
 	--color-background-lighter: hsl(
 		var(--color-background-lighter-h),
 		var(--color-background-lighter-s),
 		var(--color-background-lighter-l)
 	);
 
-	--color-background-xlight-h: 240;
-	--color-background-xlight-s: 4%;
-	--color-background-xlight-l: 19%;
+	--color-background-xlight-h: 48;
+	--color-background-xlight-s: 5%;
+	--color-background-xlight-l: 21%;
 	--color-background-xlight: hsl(
 		var(--color-background-xlight-h),
 		var(--color-background-xlight-s),
@@ -263,9 +272,9 @@
 		var(--color-canvas-dot-l)
 	);
 
-	--color-canvas-background-h: 90;
-	--color-canvas-background-s: 10%;
-	--color-canvas-background-l: 0%;
+	--color-canvas-background-h: 260;
+	--color-canvas-background-s: 100%;
+	--color-canvas-background-l: 99.4%;
 	--color-canvas-background: hsl(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -304,4 +313,28 @@
 
 body.theme-dark {
 	@include theme;
+
+	#side-menu {
+		.el-menu-item.logo-item {
+			background-image: url('https://www.bvg.de/dam/jcr:ea2155cb-caeb-4e33-9ca2-3a6d85f4eedc/BVG_Herz_Gelb_RGB.svg');
+			background-size: 65%;
+			background-color: var(--color-background-xlight) !important;
+			background-repeat: no-repeat;
+			background-position: 14px 11px;
+			.logo-text {
+				color: var(--color-primary);
+			}
+			img {
+				visibility: hidden;
+			}
+		}
+
+		.expanded .el-menu-item.logo-item {
+			background-size: 25%;
+		}
+	}
+
+	.node-wrapper .node-default .node-box {
+		background-color: var(--color-primary-tint-3);
+	}
 }
