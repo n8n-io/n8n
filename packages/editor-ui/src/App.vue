@@ -167,6 +167,7 @@ export default mixins(
 
 		// TODO: REMOVE ME!
 		// export posthog to window
+		// @ts-ignore
 		window.posthog = posthog;
 
 		if (this.defaultLocale !== 'en') {
