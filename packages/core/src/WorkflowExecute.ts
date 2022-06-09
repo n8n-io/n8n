@@ -422,7 +422,10 @@ export class WorkflowExecute {
 						],
 				} as IExecuteData;
 
-				if (this.runExecutionData.executionData!.waitingExecutionSource !== null) {
+				if (
+					this.runExecutionData.executionData!.waitingExecutionSource !== null &&
+					this.runExecutionData.executionData!.waitingExecutionSource !== undefined
+				) {
 					executionStackItem.source =
 						this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
 							runIndex
