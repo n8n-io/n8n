@@ -6,18 +6,18 @@ import { ExecutionStatus } from '../../../types';
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | undefined,
 ): IExecutionResponseApi | undefined {
-	if (execution === undefined) {
+	if (!execution) {
 		return undefined;
 	}
 
 	if (!execution.data) {
+		// @ts-ignore
 		return execution;
 	}
 
 	return {
 		...execution,
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		data: parse(execution.data),
+		data: parse(execution.data) as object,
 	};
 }
 
@@ -36,7 +36,7 @@ function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 }
 
 function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IExecutionFlattedDb> {
-	const returnData: Array<keyof IExecutionFlattedDb> = [
+	const selectFields: Array<keyof IExecutionFlattedDb> = [
 		'id',
 		'mode',
 		'retryOf',
@@ -48,9 +48,9 @@ function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IE
 		'finished',
 	];
 	if (includeData) {
-		returnData.push('data');
+		selectFields.push('data');
 	}
-	return returnData;
+	return selectFields;
 }
 
 export async function getExecutions(data: {
@@ -110,6 +110,9 @@ export async function getExecutionInWorkflows(
 	return prepareExecutionData(execution);
 }
 
-export async function deleteExecution(execution: IExecutionResponseApi | undefined): Promise<void> {
-	await Db.collections.Execution.remove(execution as IExecutionFlattedDb);
+export async function deleteExecution(
+	execution: IExecutionResponseApi | undefined,
+): Promise<IExecutionFlattedDb> {
+	// @ts-ignore
+	return Db.collections.Execution.remove(execution);
 }
