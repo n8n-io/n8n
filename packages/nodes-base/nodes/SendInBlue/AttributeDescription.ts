@@ -17,6 +17,22 @@ export const attributeOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'createAttribute',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName.toLowerCase()}}'
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": $response.body } }}',
+								},
+							},
+						]
+					}
+				},
 			},
 			{
 				name: 'Update',
@@ -80,10 +96,9 @@ export const attributeOperations: INodeProperties[] = [
 
 const createAttributeOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Attribute Info',
-		name: 'attribute',
-		type: 'collection',
-		default: {},
+		default: 'normal',
+		description: 'Category of the attribute',
+		displayName: 'Category',
 		displayOptions: {
 			show: {
 				resource: [
@@ -94,62 +109,126 @@ const createAttributeOperations: Array<INodeProperties> = [
 				],
 			},
 		},
+		name: 'attributeCategory',
 		options: [
 			{
-				default: 'normal',
-				description: 'Category of the attribute',
-				displayName: 'Category',
-				name: 'attributeCategory',
-				options: [
-					{
-						name: 'Normal',
-						value: 'normal',
-					},
-					{
-						name: 'Transactional',
-						value: 'transactional',
-					},
-					{
-						name: 'Category',
-						value: 'category',
-					},
-					{
-						name: 'Calculated',
-						value: 'calculated',
-					},
-					{
-						name: 'Global',
-						value: 'global',
-					},
-				],
-				type: 'options',
+				name: 'Normal',
+				value: 'normal',
 			},
 			{
-				default: '',
-				description: 'Name of the attribute',
-				displayName: 'Name',
-				name: 'attributeName',
-				type: 'string',
-			}
-		],
-		routing: {
-			request: {
-				method: 'POST',
-				url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName}}'
+				name: 'Transactional',
+				value: 'transactional',
 			},
-			output: {
-				postReceive: [
-					{
-						type: 'set',
-						properties: {
-							value: '={{ { "success": $response.body } }}', // Also possible to use the original response data
-						},
-					},
+			{
+				name: 'Category',
+				value: 'category',
+			},
+			{
+				name: 'Calculated',
+				value: 'calculated',
+			},
+			{
+				name: 'Global',
+				value: 'global',
+			},
+		],
+		type: 'options',
+	},
+	{
+		default: '',
+		description: 'Name of the attribute',
+		displayName: 'Name',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'createAttribute',
+				],
+			},
+		},
+		name: 'attributeName',
+		type: 'string',
+	},
+	{
+		default: '',
+		description: 'Attribute Type',
+		displayName: 'Type',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'createAttribute',
+				],
+				attributeCategory: [
+					'normal',
+					'category',
+					'transactional'
+				]
+			},
+		},
+		name: 'attributeType',
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'Date',
+				value: 'date',
+			},
+			{
+				name: 'Float',
+				value: 'float',
+			},
+			{
+				name: 'Boolean',
+				value: 'boolean',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+			},
+			{
+				name: 'Category',
+				value: 'category',
+			},
+		],
+		type: 'options',
+		routing: {
+			send: {
+				type: "body",
+				property: 'type',
+				value: '={{$value}}'
+			}
+		}
+	},
+	{
+		default: '',
+		description: 'Value of the attribute',
+		displayName: 'Value',
+		displayOptions: {
+			show: {
+				attributeCategory: [
+					'global',
+					'calculated'
 				]
 			}
 		},
-		description: 'Name of the sender',
-	},
+		name: 'attributeValue',
+		type: 'string',
+		placeholder: 'COUNT[BLACKLISTED,BLACKLISTED,<,NOW()]',
+		routing: {
+			send: {
+				type: "body",
+				property: 'value',
+				value: '={{$value}}'
+			}
+		}
+	}
 ];
 
 export const attributeFields: INodeProperties[] = [
