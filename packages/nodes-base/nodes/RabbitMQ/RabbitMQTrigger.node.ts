@@ -93,7 +93,7 @@ export class RabbitMQTrigger implements INodeType {
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
-						description: 'Saves the content as binary',
+						description: 'Whether to save the content as binary',
 					},
 					{
 						displayName: 'Delete From Queue When',
@@ -131,7 +131,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Parse the body to an object',
+						description: 'Whether to parse the body to an object',
 					},
 					{
 						displayName: 'Only Content',
@@ -145,7 +145,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Returns only the content property',
+						description: 'Whether to return only the content property',
 					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
@@ -176,6 +176,7 @@ export class RabbitMQTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
 		const options = fixOptions(this.getNodeParameter('options', {}) as IDataObject);
+		const closeConnection = this.getNodeParameter('options.closeConnection', false) as boolean;
 
 		const bindings = this.getNodeParameter('subscriptions.bindings', []) as IDataObject[];
 
@@ -190,7 +191,7 @@ export class RabbitMQTrigger implements INodeType {
 			parallelMessages = 1;
 		}
 
-		const channel = await rabbitmqConnect(this, async (channel) => {
+		const [channel, connection] = await rabbitmqConnect(this, async (channel) => {
 			await channel.assertQueue(queue, options);
 			await channel.prefetch(parallelMessages);
 			for (const { exchange, pattern } of bindings) {
@@ -302,12 +303,10 @@ export class RabbitMQTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
-
 			try {
-				// for (const { exchange, pattern } of bindings) {
-				// 	await channel.unbindExchange(queue, exchange as string, pattern as string);
-				// }
-
+				if(closeConnection) {
+					connection.close();
+				}
 				return messageTracker.closeChannel(channel);
 			} catch(error) {
 				const workflow = self.getWorkflow();

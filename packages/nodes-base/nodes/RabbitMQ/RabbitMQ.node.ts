@@ -10,13 +10,20 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { messageOptions } from './RabbitMQDescription';
+import {
+	messageOptions,
+} from './RabbitMQDescription';
 
-import { fixOptions, getAllConnections, rabbitmqConnect } from './GenericFunctions';
+import {
+	fixOptions,
+	rabbitmqConnect,
+} from './GenericFunctions';
 
 import * as amqplib from 'amqplib';
 
-import { ChannelWrapper } from 'amqp-connection-manager';
+import {
+	ChannelWrapper,
+} from 'amqp-connection-manager';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,6 +32,7 @@ export class RabbitMQ implements INodeType {
 		icon: 'file:rabbitmq.svg',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["mode"] + ": " + ($parameter["queue"] || $parameter["exchange"])}}',
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
@@ -149,7 +157,7 @@ export class RabbitMQ implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON',
+				description: 'Whether to send the the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -181,7 +189,7 @@ export class RabbitMQ implements INodeType {
 						},
 						default: '',
 						description:
-							'An exchange to send messages to if this exchange can’t route them to any queues',
+							'An exchange to send messages to if this exchange can\'t route them to any queues',
 					},
 					{
 						displayName: 'Arguments',
@@ -219,14 +227,21 @@ export class RabbitMQ implements INodeType {
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,
-						description: 'The queue will be deleted when the number of consumers drops to zero',
+						description: 'Whether the queue will be deleted when the number of consumers drops to zero',
+					},
+					{
+						displayName: 'Close Connection',
+						name: 'closeConnection',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to close connection after execution',
 					},
 					{
 						displayName: 'Durable',
 						name: 'durable',
 						type: 'boolean',
 						default: true,
-						description: 'The queue will survive broker restarts',
+						description: 'Whether the queue will survive broker restarts',
 					},
 					{
 						displayName: 'Exclusive',
@@ -238,7 +253,7 @@ export class RabbitMQ implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Scopes the queue to the connection',
+						description: 'Whether to scope the queue to the connection',
 					},
 					{
 						displayName: 'Headers',
@@ -290,6 +305,7 @@ export class RabbitMQ implements INodeType {
 
 		const mode = this.getNodeParameter('mode', 0);
 		const options = fixOptions(this.getNodeParameter('options', 0, {}) as IDataObject);
+		const closeConnection = this.getNodeParameter('options.closeConnection', 0, false) as boolean;
 
 		if (mode === 'queue') {
 			const queue = this.getNodeParameter('queue', 0) as string;
@@ -319,19 +335,19 @@ export class RabbitMQ implements INodeType {
 
 		const self = this;
 		const returnItems: INodeExecutionData[] = [];
-		const connections = getAllConnections();
 
 		async function publishMessages() {
 			await new Promise(async (resolve, reject) => {
 				try {
-					const channel = await rabbitmqConnect(self, setup);
+					const [channel, connection] = await rabbitmqConnect(self, setup);
 
-					connections.forEach((connection) => {
-						connection.on('disconnect', ({ err }) => {
-							if (err.message.includes('PRECONDITION-FAILED')) {
-								reject(err);
-							}
-						});
+					connection.on('disconnect', ({ err }) => {
+						if (err.message.includes('PRECONDITION-FAILED')) {
+							reject(err);
+						}
+						if (err.message.includes('RESOURCE_LOCKED')) {
+							reject(err);
+						}
 					});
 
 					const sendPromises = items.map((item, itemIndex) => {
@@ -374,11 +390,14 @@ export class RabbitMQ implements INodeType {
 						}
 					});
 					await channel.close();
+
+					if(closeConnection) {
+						connection.close();
+					}
+
 					resolve(true);
 				} catch (error) {
 					reject(error);
-				} finally {
-					connections.forEach((connection) => connection.close());
 				}
 			});
 		}

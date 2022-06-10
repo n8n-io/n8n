@@ -14,7 +14,7 @@ const allConnections = new Map<string, AmqpConnectionManager>();
 export async function rabbitmqConnect(
 	self: IExecuteFunctions | ITriggerFunctions,
 	setup: (this: ChannelWrapper, channel: amqplib.Channel) => Promise<void>,
-): Promise<ChannelWrapper> {
+): Promise<[ChannelWrapper, AmqpConnectionManager]> {
 	const credentials = await self.getCredentials('rabbitmq');
 
 	return new Promise(async (resolve, reject) => {
@@ -29,7 +29,7 @@ export async function rabbitmqConnect(
 				await manualExecutionWaitOrFail(channel);
 			}
 
-			resolve(channel);
+			resolve([channel, connection]);
 		} catch (error) {
 			reject(error);
 		}
@@ -67,10 +67,6 @@ function getConnection(credentials: ICredentialDataDecryptedObject | undefined):
 	}
 
 	return connection;
-}
-
-export function getAllConnections() {
-	return allConnections;
 }
 
 // Create connection manager with the default options (5-second heartbeat and retry)
@@ -168,8 +164,6 @@ export class MessageTracker {
 		}
 
 		await channel.close();
-		const connections = getAllConnections();
-		connections.forEach(connection => connection.close());
 	}
 }
 
@@ -190,6 +184,10 @@ export function fixOptions(data: IDataObject) {
 			acc[header.key as string] = header.value;
 			return acc;
 		}, {});
+	}
+
+	if (options.closeConnection) {
+		delete options.closeConnection;
 	}
 
 	return options;

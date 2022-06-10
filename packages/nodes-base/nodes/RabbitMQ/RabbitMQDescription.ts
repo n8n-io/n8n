@@ -72,21 +72,14 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		name: 'autoDelete',
 		type: 'boolean',
 		default: false,
-		description: 'The queue will be deleted when the number of consumers drops to zero',
+		description: 'Whether the queue will be deleted when the number of consumers drops to zero',
 	},
 	{
 		displayName: 'Durable',
 		name: 'durable',
 		type: 'boolean',
 		default: true,
-		description: 'The queue will survive broker restarts',
-	},
-	{
-		displayName: 'Exclusive',
-		name: 'exclusive',
-		type: 'boolean',
-		default: false,
-		description: 'Scopes the queue to the connection',
+		description: 'Whether the queue will survive broker restarts',
 	},
 ];
 
@@ -104,15 +97,6 @@ export const messageOptions: INodeProperties = {
 			description: 'An arbitrary identifier for the originating application',
 			default: '',
 		},
-
-		{
-			displayName: 'CC',
-			name: 'CC',
-			type: 'string',
-			description: 'An array of routing keys as strings; messages will be routed to these routing keys in addition to that given as the routingKey parameter. A string will be implicitly treated as an array containing just that string. This will override any value given for CC in the headers parameter. NB The property names CC and BCC are case-sensitive.',
-			default: '',
-		},
-
 		{
 			displayName: 'BCC',
 			name: 'BCC',
@@ -120,7 +104,13 @@ export const messageOptions: INodeProperties = {
 			description: 'Like CC, except that the value will not be sent in the message headers to consumers',
 			default: '',
 		},
-
+		{
+			displayName: 'CC',
+			name: 'CC',
+			type: 'string',
+			description: 'An array of routing keys as strings; messages will be routed to these routing keys in addition to that given as the routingKey parameter. A string will be implicitly treated as an array containing just that string. This will override any value given for CC in the headers parameter. NB The property names CC and BCC are case-sensitive.',
+			default: '',
+		},
 		{
 			displayName: 'Content Encoding',
 			name: 'contentEncoding',
@@ -128,7 +118,6 @@ export const messageOptions: INodeProperties = {
 			description: 'A MIME encoding for the message content',
 			default: 'utf-8',
 		},
-
 		{
 			displayName: 'Content Type',
 			name: 'contentType',
@@ -136,7 +125,6 @@ export const messageOptions: INodeProperties = {
 			description: 'A MIME type for the message content',
 			default: 'application/json',
 		},
-
 		{
 			displayName: 'Expiration',
 			name: 'expiration',
@@ -151,7 +139,6 @@ export const messageOptions: INodeProperties = {
 			description: 'Whether the message will be returned if it is not routed to a queue (i.e., if there are no bindings that match its routing key)',
 			default: true,
 		},
-
 		{
 			displayName: 'Message ID',
 			name: 'messageId',
@@ -159,7 +146,6 @@ export const messageOptions: INodeProperties = {
 			description: 'Arbitrary application-specific identifier for the message',
 			default: '',
 		},
-
 		{
 			displayName: 'Persistent',
 			name: 'persistent',
@@ -167,7 +153,6 @@ export const messageOptions: INodeProperties = {
 			description: 'Whether is true, the message will survive broker restarts provided it\'s in a queue that also survives restarts',
 			default: true,
 		},
-
 		{
 			displayName: 'Priority',
 			name: 'priority',
@@ -175,7 +160,6 @@ export const messageOptions: INodeProperties = {
 			description: 'A priority for the message; ignored by versions of RabbitMQ older than 3.5.0, or if the queue is not a priority queue',
 			default: 0,
 		},
-
 		{
 			displayName: 'Timestamp',
 			name: 'timestamp',
@@ -183,7 +167,6 @@ export const messageOptions: INodeProperties = {
 			description: 'A timestamp for the message',
 			default: 0,
 		},
-
 		{
 			displayName: 'Type',
 			name: 'type',
@@ -191,7 +174,6 @@ export const messageOptions: INodeProperties = {
 			description: 'An arbitrary application-specific type for the message',
 			default: '',
 		},
-
 		{
 			displayName: 'User ID',
 			name: 'userId',
