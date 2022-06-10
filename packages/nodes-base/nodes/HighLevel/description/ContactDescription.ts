@@ -121,7 +121,6 @@ const createOperations: Array<INodeProperties> = [
 			}
 		}
 	},
-	/** Additional Fields */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -454,7 +453,7 @@ const getAllOperations: Array<INodeProperties> = [
 		routing: {
 			request: {
 				method: 'GET',
-				url: '=/contacts?limit={{$parameter.limit}}&order=desc',
+				url: '=/contacts',
 			},
 			send: {
 				paginate: false,
@@ -485,12 +484,111 @@ const getAllOperations: Array<INodeProperties> = [
 		},
 		default: 20,
 		routing: {
+			send: {
+				type: 'query',
+				property: 'limit',
+			},
 			output: {
 				maxResults: '={{$value}}', // Set maxResults to the value of current parameter
 			},
 		},
 		description: 'Max number of results to return',
-	}
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'query',
+					}
+				}
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				options: [
+					{
+						name: 'Date Added',
+						value: 'date_added',
+					},
+					{
+						name: 'Date Updated',
+						value: 'date_updated',
+					},
+				],
+				default: 'date_added',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'sortBy',
+					}
+				}
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'Descending',
+						value: 'desc',
+					},
+					{
+						name: 'Ascending',
+						value: 'asc',
+					},
+				],
+				default: 'desc',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'order',
+					}
+				}
+			},
+		],
+	},
 ];
 
 const lookupOperations: Array<INodeProperties> = [
