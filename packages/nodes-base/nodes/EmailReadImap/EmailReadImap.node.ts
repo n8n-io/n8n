@@ -433,16 +433,18 @@ export class EmailReadImap implements INodeType {
 				},
 			};
 
+			const tlsOptions: IDataObject = {};
+
 			if (options.allowUnauthorizedCerts === true) {
-				config.imap.tlsOptions = {
-					rejectUnauthorized: false,
-				};
+				tlsOptions.rejectUnauthorized = false;
 			}
 
 			if (credentials.secure) {
-				config.imap.tlsOptions = {
-					servername: credentials.host as string,
-				};
+				tlsOptions.servername = credentials.host as string;
+			}
+
+			if (!_.isEmpty(tlsOptions)) {
+				config.imap.tlsOptions = tlsOptions;
 			}
 
 			// Connect to the IMAP server and open the mailbox
@@ -462,9 +464,8 @@ export class EmailReadImap implements INodeType {
 						}
 					} else {
 						Logger.error('Email Read Imap node encountered a connection error', { error });
+						this.emitError(error);
 					}
-
-					this.emitError(error);
 				});
 				return conn;
 			});
