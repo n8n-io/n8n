@@ -1,15 +1,6 @@
 import {
-	GenericValue,
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
 	INodeProperties
 } from 'n8n-workflow';
-
-import {
-	transformGetContactReponse
-} from '../GenericFunctions';
-
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -24,6 +15,7 @@ export const contactOperations: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Create',
@@ -44,6 +36,10 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+			},
+			{
+				name: 'Update',
+				value: 'update',
 			},
 			{
 				name: 'Delete',
@@ -70,8 +66,8 @@ export const contactOperations: INodeProperties[] = [
 				}
 			},
 			{
-				name: 'Update',
-				value: 'update',
+				name: 'Lookup',
+				value: 'lookup',
 			},
 		],
 		default: 'create',
@@ -125,89 +121,318 @@ const createOperations: Array<INodeProperties> = [
 			}
 		}
 	},
-	// {
-	// 	displayName: 'Additional Fields',
-	// 	name: 'additionalFields',
-	// 	type: 'collection',
-	// 	placeholder: 'Add Field',
-	// 	default: {},
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'contact',
-	// 			],
-	// 			operation: [
-	// 				'create',
-	// 			],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			displayName: 'Attributes',
-	// 			name: 'attributesUi',
-	// 			placeholder: 'Add Attribute',
-	// 			type: 'fixedCollection',
-	// 			typeOptions: {
-	// 				multipleValues: true,
-	// 			},
-	// 			options: [
-	// 				{
-	// 					name: 'attributesValues',
-	// 					displayName: 'Attribute',
-	// 					values: [
-	// 						{
-	// 							displayName: 'Field Name',
-	// 							name: 'fieldName',
-	// 							type: 'options',
-	// 							typeOptions: {
-	// 								loadOptions: {
-	// 									routing: {
-	// 										request: {
-	// 											method: 'GET',
-	// 											url: '/contacts/attributes',
-	// 										},
-	// 										output: {
-	// 											postReceive: [
-	// 												{
-	// 													type: 'rootProperty',
-	// 													properties: {
-	// 														property: 'attributes',
-	// 													},
-	// 												},
-	// 												{
-	// 													type: 'setKeyValue',
-	// 													properties: {
-	// 														name: '={{$responseItem.name}} - ({{$responseItem.category}})',
-	// 														value: '={{$responseItem.name}}',
-	// 													},
-	// 												},
-	// 												{
-	// 													type: 'sort',
-	// 													properties: {
-	// 														key: 'name',
-	// 													},
-	// 												},
-	// 											],
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 							default: '',
-	// 						},
-	// 						{
-	// 							displayName: 'Field Value',
-	// 							name: 'fieldValue',
-	// 							type: 'string',
-	// 							default: '',
-	// 						},
-	// 					],
-	// 				},
-	// 			],
-	// 			default: {},
-	// 			description: 'Array of supported attachments to add to the message',
-	// 		},
-	// 	],
-	// }
+	/** Additional Fields */
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'firstName',
+					}
+				}
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'lastName',
+					}
+				}
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'name',
+					}
+				}
+			},
+			{
+				displayName: 'Address 1',
+				name: 'address1',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'address1',
+					}
+				}
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'city',
+					}
+				}
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'state',
+					}
+				}
+			},
+			{
+				displayName: 'Postal Code',
+				name: 'postalCode',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'postalCode',
+					}
+				}
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'website',
+					}
+				}
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timezone',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'timezone',
+					}
+				}
+			},
+			// {
+			// 	displayName: 'DND',
+			// 	name: 'dnd',
+			// 	type: 'boolean',
+			// 	default: false,
+			// 	routing: {
+			// 		send: {
+			// 			type: 'body',
+			// 			property: 'dnd',
+			// 		}
+			// 	}
+			// },
+			// {
+			// 	displayName: 'Tags',
+			// 	name: 'tags',
+			// 	type: 'string',
+			// 	typeOptions: {
+			// 		multipleValues: true,
+			// 		multipleValueButtonText: 'Add Tag',
+			// 	},
+			// 	default: [],
+			// 	routing: {
+			// 		send: {
+			// 			type: 'body',
+			// 			property: 'tags',
+			// 		}
+			// 	},
+			// },
+		],
+	}
+];
+
+const updateOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'update',
+				]
+			},
+		},
+		routing: {
+			request: {
+				method: 'PUT',
+				url: '=/contacts/{{$value}}',
+			},
+			output: {
+				postReceive: [
+					{
+						type: 'rootProperty',
+						properties: {
+							property: 'contact',
+						},
+					},
+				],
+			},
+		},
+		default: '',
+		description: 'Contact ID',
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		description: 'Update Email of Contact',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'email',
+			}
+		}
+	},
+	{
+		displayName: 'Phone',
+		name: 'phone',
+		type: 'string',
+		description: 'Update Phone of Contact',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'phone',
+			}
+		}
+	},
+];
+
+const deleteOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'delete',
+				]
+			},
+		},
+		routing: {
+			request: {
+				method: 'DELETE',
+				url: '=/contacts/{{$value}}',
+			},
+			output: {
+				postReceive: [
+					{
+						type: 'set',
+						properties: {
+							value: '={{ { "success": true } }}',
+						},
+					},
+				],
+			},
+		},
+		default: '',
+		description: 'Contact ID',
+	}
+];
+
+const getOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'get',
+				]
+			},
+		},
+		routing: {
+			request: {
+				method: 'GET',
+				url: '=/contacts/{{$value}}',
+			},
+			output: {
+				postReceive: [
+					{
+						type: 'rootProperty',
+						properties: {
+							property: 'contact',
+						},
+					},
+				],
+			},
+		},
+		default: '',
+		description: 'Contact ID',
+	},
 ];
 
 const getAllOperations: Array<INodeProperties> = [
@@ -268,124 +493,65 @@ const getAllOperations: Array<INodeProperties> = [
 	}
 ];
 
-const getOperations: Array<INodeProperties> = [
+const lookupOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Email',
+		name: 'email',
 		type: 'string',
-		required: true,
+		description: 'Lookup Contact by Email and/or Phone',
 		displayOptions: {
 			show: {
 				resource: [
 					'contact',
 				],
 				operation: [
-					'get',
-				]
+					'lookup',
+				],
 			},
 		},
 		routing: {
 			request: {
 				method: 'GET',
-				url: '=/contacts/{{$value}}',
+				url: '=/contacts/lookup?email={{$parameter.email}}&phone={{$parameter.phone}}',
 			},
 			output: {
 				postReceive: [
 					{
 						type: 'rootProperty',
 						properties: {
-							property: 'contact',
+							property: 'contacts',
 						},
 					},
-					// transformGetContactReponse,
 				],
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
-		displayName: 'Flatten',
-		name: 'flatten',
-		type: 'boolean',
+		displayName: 'Phone',
+		name: 'phone',
+		type: 'string',
+		description: 'Lookup Contact by Phone and/or Email',
 		displayOptions: {
 			show: {
 				resource: [
 					'contact',
 				],
 				operation: [
-					'get',
+					'lookup',
 				],
 			},
 		},
-		default: true,
-		description: 'Flatten output (remove root contact field)',
+		default: '',
 	},
 ];
 
-const deleteOperations: Array<INodeProperties> = [
-	{
-		displayName: 'Identifier',
-		name: 'identifier',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				]
-			},
-		},
-		routing: {
-			request: {
-				method: 'DELETE',
-				url: '/contacts',
-			},
-			send: {
-				preSend: [
-					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-						requestOptions.url = (requestOptions.url || '') as string;
-						// if something special is required it is possible to write custom code and get from parameter
-						requestOptions.url = `${requestOptions.url}/${encodeURIComponent(this.getNodeParameter('identifier') as string)}`;
-						return requestOptions;
-					},
-				],
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'set',
-						properties: {
-							value: '={{ { "success": true } }}', // Also possible to use the original response data
-						},
-					},
-				],
-			},
-		},
-		default: '',
-		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
-	}
-];
 
 export const contactFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                                contact:create                              */
-	/* -------------------------------------------------------------------------- */
 	...createOperations,
-	/* -------------------------------------------------------------------------- */
-	/*                                contact:getAll                              */
-	/* -------------------------------------------------------------------------- */
-	...getAllOperations,
-
-	/* -------------------------------------------------------------------------- */
-	/*                                contact:get                                 */
-	/* -------------------------------------------------------------------------- */
-	...getOperations,
-
-	/* -------------------------------------------------------------------------- */
-	/*                                contact:delete                              */
-	/* -------------------------------------------------------------------------- */
+	...updateOperations,
 	...deleteOperations,
+	...getOperations,
+	...getAllOperations,
+	...lookupOperations,
 ];

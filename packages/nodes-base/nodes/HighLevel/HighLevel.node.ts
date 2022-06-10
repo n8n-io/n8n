@@ -1,19 +1,9 @@
 import {
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './description/ContactDescription';
-
-import {
-	OptionsWithUri,
-} from 'request';
 
 export class HighLevel implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,12 +52,4 @@ export class HighLevel implements INodeType {
 			...contactFields,
 		],
 	};
-
-	// async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
-	// 	const credentials = await this.getCredentials('highLevelApi') as IDataObject;
-	// 	console.log(credentials);
-
-	// 	return [[]];
-	// }
 }
