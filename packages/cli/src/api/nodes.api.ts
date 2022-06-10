@@ -143,7 +143,8 @@ nodesController.get(
 		let hydratedPackages = matchPackagesWithUpdates(packages, pendingUpdates);
 		try {
 			if (config.get('nodes.packagesMissing')) {
-				hydratedPackages = matchMissingPackages(packages, config.get('nodes.packagesMissing'));
+				// eslint-disable-next-line prettier/prettier
+				hydratedPackages = matchMissingPackages(hydratedPackages, config.get('nodes.packagesMissing'));
 			}
 		} catch (error) {
 			// Do nothing if setting is missing
