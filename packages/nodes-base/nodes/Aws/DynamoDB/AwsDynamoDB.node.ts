@@ -320,11 +320,9 @@ export class AwsDynamoDB implements INodeType {
 						const {
 							indexName,
 							projectionExpression,
-							filterExpression,
 						} = this.getNodeParameter('options', i) as {
 							indexName: string;
 							projectionExpression: string;
-							filterExpression: string;
 						};
 
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
@@ -345,10 +343,6 @@ export class AwsDynamoDB implements INodeType {
 
 						if (projectionExpression && select !== 'COUNT') {
 							body.ProjectionExpression = projectionExpression;
-						}
-
-						if (filterExpression) {
-							body.FilterExpression = filterExpression;
 						}
 
 						if (select) {
