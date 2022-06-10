@@ -21,7 +21,7 @@
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
-									{{getValue(webhook, 'httpMethod')}}<br />
+									{{getWebhookExpressionValue(webhook, 'httpMethod')}}<br />
 								</div>
 							</div>
 							<div class="url-field">
@@ -79,7 +79,7 @@ export default mixins(
 		},
 		methods: {
 			copyWebhookUrl (webhookData: IWebhookDescription): void {
-				const webhookUrl = this.getWebhookUrl(webhookData);
+				const webhookUrl = this.getWebhookUrlDisplay(webhookData);
 				this.copyToClipboard(webhookUrl);
 
 				this.$showMessage({
@@ -87,33 +87,11 @@ export default mixins(
 					type: 'success',
 				});
 			},
-			getValue (webhookData: IWebhookDescription, key: string): string {
-				if (webhookData[key] === undefined) {
-					return 'empty';
-				}
-				try {
-					return this.resolveExpression(webhookData[key] as string) as string;
-				} catch (e) {
-					return this.$locale.baseText('nodeWebhooks.invalidExpression');
-				}
-			},
-			getWebhookUrl (webhookData: IWebhookDescription): string {
-				if (webhookData.restartWebhook === true) {
-					return '$resumeWebhookUrl';
-				}
-				let baseUrl = this.$store.getters.getWebhookUrl;
-				if (this.showUrlFor === 'test') {
-					baseUrl = this.$store.getters.getWebhookTestUrl;
-				}
-
-				const workflowId = this.$store.getters.workflowId;
-				const path = this.getValue(webhookData, 'path');
-				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
-
-				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
-			},
 			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
-				return this.getWebhookUrl(webhookData);
+				if (this.node) {
+					return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+				}
+				return '';
 			},
 		},
 		watch: {
