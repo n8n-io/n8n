@@ -9,7 +9,7 @@ import { PublicInstalledPackage } from 'n8n-workflow';
 import axios from 'axios';
 import {
 	NODE_PACKAGE_PREFIX,
-	NPM_PACKAGE_NOT_FOUND_ERROR,
+	NPM_COMMAND_TOKENS,
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '../constants';
@@ -67,10 +67,16 @@ export const executeCommand = async (command: string): Promise<string> => {
 		const commandResult = await execAsync(command, execOptions);
 		return commandResult.stdout;
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		if (error.message.includes(NPM_PACKAGE_NOT_FOUND_ERROR)) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const errorMessage = error.message as string;
+
+		if (errorMessage.includes(NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR)) {
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 		}
+		if (errorMessage.includes(NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR)) {
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND);
+		}
+
 		throw error;
 	}
 };

@@ -1,5 +1,5 @@
 import { checkPackageStatus, matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages, hasPackageLoadedSuccessfully, removePackageFromMissingList } from '../../src/CommunityNodes/helpers';
-import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_NOT_FOUND_ERROR, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
+import { NODE_PACKAGE_PREFIX, NPM_COMMAND_TOKENS, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 
 jest.mock('fs/promises');
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
@@ -126,7 +126,7 @@ describe('CommunityNodesHelper', () => {
 			// @ts-ignore
 			exec.mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
-				callbackFunction(new Error('Something went wrong - ' + NPM_PACKAGE_NOT_FOUND_ERROR + '. Aborting.'));
+				callbackFunction(new Error('Something went wrong - ' + NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR + '. Aborting.'));
 			});
 
 			await expect(async () => await executeCommand('ls')).rejects.toThrow(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
