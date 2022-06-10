@@ -690,7 +690,7 @@ export interface IN8nUISettings {
 		host: string;
 	};
 	executionMode: string;
-	communityNodesFeatureEnabled: boolean;
+	communityNodesEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
