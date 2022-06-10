@@ -1263,6 +1263,7 @@ export class HttpRequest implements INodeType {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
+					// @ts-ignore
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
