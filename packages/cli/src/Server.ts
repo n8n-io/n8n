@@ -1491,22 +1491,23 @@ class App {
 
 						for (const { name, version } of nodeInfos) {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							const mockData = await handleMockDataRequest({
+							const injectionData = await handleMockDataRequest({
 								name,
 								version,
 							} as INodeTypeNameVersion);
 
+							const injectionRequired = injectionData.length !== 0;
+
+							const firstProperty = !injectionRequired
+								? []
+								: conditionallyAddMockData(description.properties);
+
+							const existingProperties = !injectionRequired
+								? description.properties
+								: injectMockDataSupport(description);
+
 							Object.assign(description, {
-								properties: [
-									{
-										default: false,
-										displayName: 'Mock Data Mode',
-										type: 'boolean',
-										name: 'mockData',
-									},
-									...modifyExistingPropertiesWithHide(description, mockData.length),
-									...mockData,
-								],
+								properties: [...firstProperty, ...existingProperties, ...injectionData],
 							});
 							acc.push(injectCustomApiCallOption(description));
 							return acc;
@@ -1583,8 +1584,9 @@ class App {
 			],
 			async (req: express.Request, res: express.Response): Promise<void> => {
 				try {
-					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${req.params.nodeType
-						}`;
+					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${
+						req.params.nodeType
+					}`;
 
 					const nodeTypes = NodeTypes();
 					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
@@ -1795,8 +1797,9 @@ class App {
 				};
 
 				const oauthRequestData = {
-					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint
-						}/oauth1-credential/callback?cid=${credentialId}`,
+					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
+						this.restEndpoint
+					}/oauth1-credential/callback?cid=${credentialId}`,
 				};
 
 				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -1821,8 +1824,9 @@ class App {
 
 				const responseJson = querystring.parse(response);
 
-				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${responseJson.oauth_token
-					}`;
+				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
+					responseJson.oauth_token
+				}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
@@ -2044,8 +2048,9 @@ class App {
 					clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 					accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 					authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint
-						}/oauth2-credential/callback`,
+					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
+						this.restEndpoint
+					}/oauth2-credential/callback`,
 					scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 					state: stateEncodedStr,
 				};
@@ -2191,8 +2196,9 @@ class App {
 						clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
 						accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 						authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint
-							}/oauth2-credential/callback`,
+						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
+							this.restEndpoint
+						}/oauth2-credential/callback`,
 						scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 					};
 
@@ -3217,57 +3223,91 @@ function isOAuth(credType: ICredentialType) {
 	);
 }
 
-async function handleMockDataRequest(nodeTypeInfo: INodeTypeNameVersion) {
+async function handleMockDataRequest(
+	nodeTypeInfo: INodeTypeNameVersion,
+): Promise<INodeProperties[]> {
 	try {
-		const nodeName = nodeTypeInfo.name.split('.').pop();
-
-		if (nodeTypeInfo.name !== 'n8n-nodes-base.telegramTrigger') {
-			return [];
-		}
+		const { name, version: nodeVersion } = nodeTypeInfo;
+		const nodeName = name.split('.').pop();
+		const headers = { 'Content-Type': 'application/json' };
 
 		const response = await requestPromise.post('https://api-staging.n8n.io/api/nodes/mock', {
-			body: JSON.stringify({ nodeName, nodeVersion: nodeTypeInfo.version }),
-			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ nodeName, nodeVersion }),
+			headers,
 		});
+
 		const {
 			data: {
 				properties: { data: mockDataProperties },
 			},
 		} = JSON.parse(response);
 
-		return mockDataProperties;
+		return mockDataProperties as INodeProperties[];
 	} catch (error) {
-		console.log(error);
+		console.log(`Error when loading mock data for ${nodeTypeInfo.name}, ${error}`);
 		return [];
 	}
 }
 
-function modifyExistingPropertiesWithHide(
-	description: INodeTypeDescription,
-	mockDataExists: boolean,
-) {
-	if (!mockDataExists) return [];
+/**
+ *
+ * @param description
+ * @param mockDataExists
+ * @returns INodeProperties[]
+ */
+function injectMockDataSupport(description: INodeTypeDescription): INodeProperties[] {
+	const [firstProperty] = description.properties;
+
+	// check if we have already added mockData
+	if (firstProperty.type !== 'boolean' && firstProperty.name !== 'mockData') {
+		return description.properties;
+	}
+
 	return description.properties.map((property: INodeProperties) => {
-		// display options don't exist
+		let missingProperty = '';
+		let missingData = {};
+
 		if (!property.displayOptions) {
-			Object.assign(property, {
+			missingProperty = 'property';
+			missingData = {
 				displayOptions: {
 					hide: {
 						mockData: [true],
 					},
 				},
-			});
+			};
 		} else if (!property.displayOptions.hide) {
-			Object.assign(property.displayOptions, {
+			missingProperty = 'property.description';
+			missingData = {
 				hide: {
 					mockData: [true],
 				},
-			});
+			};
 		} else {
-			Object.assign(property.displayOptions.hide, {
+			missingProperty = 'property.description.hide';
+			missingData = {
 				mockData: [true],
-			});
+			};
 		}
+
+		Object.assign(_.get(property, missingProperty), { ...missingData });
+
 		return property;
 	});
+}
+
+function conditionallyAddMockData(properties: INodeProperties[] | undefined) {
+	if (properties) {
+		if (properties.shift()!.name !== 'mockData') {
+			return [
+				{
+					default: false,
+					displayName: 'Mock Data Mode',
+					type: 'boolean',
+					name: 'mockData',
+				},
+			];
+		}
+	}
+	return [];
 }
