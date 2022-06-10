@@ -12,10 +12,15 @@ import * as jmespath from 'jmespath';
 
 // eslint-disable-next-line import/no-cycle
 import {
+	ExpressionError,
 	IDataObject,
+	IExecuteData,
 	INodeExecutionData,
 	INodeParameters,
+	IPairedItemData,
 	IRunExecutionData,
+	ISourceData,
+	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeHelpers,
@@ -47,6 +52,8 @@ export class WorkflowDataProxy {
 
 	private additionalKeys: IWorkflowDataProxyAdditionalKeys;
 
+	private executeData: IExecuteData | undefined;
+
 	private defaultTimezone: string;
 
 	private timezone: string;
@@ -62,6 +69,7 @@ export class WorkflowDataProxy {
 		mode: WorkflowExecuteMode,
 		defaultTimezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
 		selfData = {},
 	) {
@@ -78,7 +86,7 @@ export class WorkflowDataProxy {
 		this.timezone = (this.workflow.settings.timezone as string) || this.defaultTimezone;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
-
+		this.executeData = executeData;
 		Settings.defaultZone = this.timezone;
 	}
 
@@ -202,6 +210,7 @@ export class WorkflowDataProxy {
 						that.mode,
 						that.timezone,
 						that.additionalKeys,
+						that.executeData,
 					);
 				}
 
@@ -234,17 +243,26 @@ export class WorkflowDataProxy {
 			// Long syntax got used to return data from node in path
 
 			if (that.runExecutionData === null) {
-				throw new Error(`Workflow did not run so do not have any execution-data.`);
+				throw new ExpressionError(`Workflow did not run so do not have any execution-data.`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
-					throw new Error(
+					throw new ExpressionError(
 						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
+						{
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						},
 					);
-				} else {
-					throw new Error(`No node called "${nodeName}" in this workflow`);
 				}
+				throw new ExpressionError(`No node called "${nodeName}" in this workflow`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
@@ -252,32 +270,42 @@ export class WorkflowDataProxy {
 				runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
 			if (that.runExecutionData.resultData.runData[nodeName].length <= runIndex) {
-				throw new Error(`Run ${runIndex} of node "${nodeName}" not found`);
+				throw new ExpressionError(`Run ${runIndex} of node "${nodeName}" not found`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
 			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
 				// throw new Error(`No data found for item-index: "${itemIndex}"`);
-				throw new Error(`No data found from "main" input.`);
+				throw new ExpressionError(`No data found from "main" input.`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			// Check from which output to read the data.
 			// Depends on how the nodes are connected.
 			// (example "IF" node. If node is connected to "true" or to "false" output)
 			if (outputIndex === undefined) {
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				const outputIndex = that.workflow.getNodeConnectionOutputIndex(
+				const nodeConnection = that.workflow.getNodeConnectionIndexes(
 					that.activeNodeName,
 					nodeName,
 					'main',
 				);
 
-				if (outputIndex === undefined) {
-					throw new Error(
+				if (nodeConnection === undefined) {
+					throw new ExpressionError(
 						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
+						{
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						},
 					);
 				}
+				outputIndex = nodeConnection.sourceIndex;
 			}
 
 			if (outputIndex === undefined) {
@@ -285,7 +313,10 @@ export class WorkflowDataProxy {
 			}
 
 			if (taskData.main.length <= outputIndex) {
-				throw new Error(`Node "${nodeName}" has no branch with index ${outputIndex}.`);
+				throw new ExpressionError(`Node "${nodeName}" has no branch with index ${outputIndex}.`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
@@ -328,9 +359,11 @@ export class WorkflowDataProxy {
 
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
-
 						if (executionData.length <= that.itemIndex) {
-							throw new Error(`No data found for item-index: "${that.itemIndex}"`);
+							throw new ExpressionError(`No data found for item-index: "${that.itemIndex}"`, {
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+							});
 						}
 
 						if (['data', 'json'].includes(name)) {
@@ -391,10 +424,20 @@ export class WorkflowDataProxy {
 	 * @memberof WorkflowDataGetter
 	 */
 	private envGetter() {
+		const that = this;
 		return new Proxy(
 			{},
 			{
 				get(target, name, receiver) {
+					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
+						throw new ExpressionError('Environment variable access got disabled', {
+							causeDetailed:
+								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
 					return process.env[name.toString()];
 				},
 			},
@@ -486,10 +529,177 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
+		const createExpressionError = (
+			message: string,
+			context?: {
+				messageTemplate?: string;
+				description?: string;
+				causeDetailed?: string;
+			},
+		) => {
+			return new ExpressionError(message, {
+				runIndex: that.runIndex,
+				itemIndex: that.itemIndex,
+				failExecution: true,
+				...context,
+			});
+		};
+
+		const getPairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			pairedItem: IPairedItemData,
+		): INodeExecutionData | null => {
+			let taskData: ITaskData;
+
+			let sourceData: ISourceData | null = incomingSourceData;
+
+			if (typeof pairedItem === 'number') {
+				pairedItem = {
+					item: pairedItem,
+				};
+			}
+
+			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
+				taskData =
+					that.runExecutionData!.resultData.runData[sourceData.previousNode][
+						sourceData?.previousNodeRun || 0
+					];
+
+				const previousNodeOutput = sourceData.previousNodeOutput || 0;
+				if (previousNodeOutput >= taskData.data!.main.length) {
+					// `Could not resolve as the defined node-output is not valid on node '${sourceData.previousNode}'.`
+					throw createExpressionError('Can’t get data for expression', {
+						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’',
+						description: `Apologies, this is an internal error. See details for more information`,
+						causeDetailed: 'Referencing a non-existent output on a node, problem with source data',
+					});
+				}
+
+				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+					// `Could not resolve as the defined item index is not valid on node '${sourceData.previousNode}'.
+					throw createExpressionError('Can’t get data for expression', {
+						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+						description: `Item points to an item which does not exist`,
+						causeDetailed: `The pairedItem data points to an item ‘${pairedItem.item}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
+					});
+				}
+
+				const itemPreviousNode: INodeExecutionData =
+					taskData.data!.main[previousNodeOutput]![pairedItem.item];
+
+				if (itemPreviousNode.pairedItem === undefined) {
+					// `Could not resolve, as pairedItem data is missing on node '${sourceData.previousNode}'.`,
+					throw createExpressionError('Can’t get data for expression', {
+						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${sourceData.previousNode}’`,
+						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ did probably not supply it)`,
+					});
+				}
+
+				if (Array.isArray(itemPreviousNode.pairedItem)) {
+					// Item is based on multiple items so check all of them
+					const results = itemPreviousNode.pairedItem
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
+						.map((item) => {
+							try {
+								const itemInput = item.input || 0;
+								if (itemInput >= taskData.source.length) {
+									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
+									// Actual error does not matter as it gets caught below and `null` will be returned
+									throw new Error('Not found');
+								}
+
+								return getPairedItem(destinationNodeName, taskData.source[itemInput], item);
+							} catch (error) {
+								// Means pairedItem could not be found
+								return null;
+							}
+						})
+						.filter((result) => result !== null);
+
+					if (results.length !== 1) {
+						throw createExpressionError('Invalid expression', {
+							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+							description: `The expression uses data in node ‘${destinationNodeName}’ but there is more than one matching item in that node`,
+						});
+					}
+
+					return results[0];
+				}
+
+				// pairedItem is not an array
+				if (typeof itemPreviousNode.pairedItem === 'number') {
+					pairedItem = {
+						item: itemPreviousNode.pairedItem,
+					};
+				} else {
+					pairedItem = itemPreviousNode.pairedItem;
+				}
+
+				const itemInput = pairedItem.input || 0;
+				if (itemInput >= taskData.source.length) {
+					if (taskData.source.length === 0) {
+						// A trigger node got reached, so looks like that that item can not be resolved
+						throw createExpressionError('Invalid expression', {
+							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+							description: `The expression uses data in node ‘${destinationNodeName}’ but there is no path back to it. Please check this node is connected to node ‘${that.activeNodeName}’ (there can be other nodes in between).`,
+						});
+					}
+					// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData.previousNode}'.`
+					throw createExpressionError('Can’t get data for expression', {
+						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+						description: `Item points to a node input which does not exist`,
+						causeDetailed: `The pairedItem data points to a node input ‘${itemInput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (node did probably supply a wrong one)`,
+					});
+				}
+
+				sourceData = taskData.source[pairedItem.input || 0] || null;
+			}
+
+			if (sourceData === null) {
+				// 'Could not resolve, proably no pairedItem exists.'
+				throw createExpressionError('Can’t get data for expression', {
+					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+					description: `Could not resolve, proably no pairedItem exists`,
+				});
+			}
+
+			taskData =
+				that.runExecutionData!.resultData.runData[sourceData.previousNode][
+					sourceData?.previousNodeRun || 0
+				];
+
+			const previousNodeOutput = sourceData.previousNodeOutput || 0;
+			if (previousNodeOutput >= taskData.data!.main.length) {
+				// `Could not resolve pairedItem as the node output '${previousNodeOutput}' does not exist on node '${sourceData.previousNode}'`
+				throw createExpressionError('Can’t get data for expression', {
+					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+					description: `Item points to a node output which does not exist`,
+					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
+				});
+			}
+
+			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+				// `Could not resolve pairedItem as the item with the index '${pairedItem.item}' does not exist on node '${sourceData.previousNode}'.`
+				throw createExpressionError('Can’t get data for expression', {
+					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+					description: `Item points to an item which does not exist`,
+					causeDetailed: `The pairedItem data points to an item ‘${pairedItem.item}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
+				});
+			}
+
+			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
+		};
+
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
-					throw new Error(`When calling $(), please specify a node`);
+					throw new ExpressionError('When calling $(), please specify a node', {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+						failExecution: true,
+					});
 				}
 
 				return new Proxy(
@@ -497,12 +707,58 @@ export class WorkflowDataProxy {
 					{
 						get(target, property, receiver) {
 							if (property === 'pairedItem') {
-								return () => {
-									const executionData = getNodeOutput(nodeName, 0, that.runIndex);
-									if (executionData[that.itemIndex]) {
-										return executionData[that.itemIndex];
+								return (itemIndex?: number) => {
+									if (itemIndex === undefined) {
+										itemIndex = that.itemIndex;
 									}
-									return undefined;
+
+									const executionData = that.connectionInputData;
+
+									// As we operate on the incoming item we can be sure that pairedItem is not an
+									// array. After all can it only come from exactly one previous node via a certain
+									// input. For that reason do we not have to consider the array case.
+									const pairedItem = executionData[itemIndex].pairedItem as IPairedItemData;
+
+									if (pairedItem === undefined) {
+										throw new ExpressionError('Can’t get data for expression', {
+											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+											description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${that.activeNodeName}‘`,
+											causeDetailed: `Missing pairedItem data (node ‘${that.activeNodeName}‘ did probably not supply it)`,
+											runIndex: that.runIndex,
+											itemIndex,
+											failExecution: true,
+										});
+									}
+
+									if (!that.executeData?.source) {
+										throw new ExpressionError('Can’t get data for expression', {
+											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’',
+											description: `Apologies, this is an internal error. See details for more information`,
+											causeDetailed: `Missing sourceData (probably an internal error)`,
+											runIndex: that.runIndex,
+											itemIndex,
+											failExecution: true,
+										});
+									}
+
+									// Before resolving the pairedItem make sure that the requested node comes in the
+									// graph before the current one
+									const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
+									if (!parentNodes.includes(nodeName)) {
+										throw new ExpressionError('Invalid expression', {
+											messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+											description: `The expression uses data in node ‘${nodeName}’ but there is no path back to it. Please check this node is connected to node ‘${that.activeNodeName}’ (there can be other nodes in between).`,
+											runIndex: that.runIndex,
+											itemIndex,
+											failExecution: true,
+										});
+									}
+
+									const sourceData: ISourceData = that.executeData?.source.main![
+										pairedItem.input || 0
+									] as ISourceData;
+
+									return getPairedItem(nodeName, sourceData, pairedItem);
 								};
 							}
 							if (property === 'item') {
@@ -513,6 +769,7 @@ export class WorkflowDataProxy {
 										runIndex = that.runIndex;
 									}
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+
 									if (executionData[itemIndex]) {
 										return executionData[itemIndex];
 									}
@@ -645,6 +902,7 @@ export class WorkflowDataProxy {
 					that.mode,
 					that.timezone,
 					that.additionalKeys,
+					that.executeData,
 				);
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
@@ -660,6 +918,7 @@ export class WorkflowDataProxy {
 					that.mode,
 					that.defaultTimezone,
 					that.additionalKeys,
+					that.executeData,
 					defaultReturnRunIndex,
 				);
 				return dataProxy.getDataProxy();

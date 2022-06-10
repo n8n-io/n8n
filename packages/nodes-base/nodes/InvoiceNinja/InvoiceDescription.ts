@@ -66,7 +66,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
 				typeOptions: {

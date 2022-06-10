@@ -44,7 +44,7 @@ export const formFields: INodeProperties[] = [
 
 	// Form:submit
 	{
-		displayName: 'JSON Data fields',
+		displayName: 'JSON Data Fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,

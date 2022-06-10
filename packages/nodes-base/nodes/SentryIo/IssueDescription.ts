@@ -70,7 +70,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -88,10 +88,10 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the issues belong to',
+		description: 'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -112,7 +112,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the issues belong to',
+		description: 'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -197,7 +197,7 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Short ID lookup',
+				displayName: 'Short ID Lookup',
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
@@ -246,7 +246,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned to',
+				displayName: 'Assigned To',
 				name: 'assignedTo',
 				type: 'string',
 				default: '',

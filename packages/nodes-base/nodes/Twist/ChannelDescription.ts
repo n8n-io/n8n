@@ -61,7 +61,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:create                             */
 	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -79,7 +79,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace',
+		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -240,7 +240,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -258,7 +258,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace',
+		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

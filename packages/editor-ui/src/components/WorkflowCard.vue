@@ -1,20 +1,19 @@
 <template>
-	<div
+	<n8n-card
 		:class="$style.card"
-		@click="(e) => $emit('click', e)"
+		v-on="$listeners"
 	>
-		<div :class="$style.container">
+		<template #header v-if="!loading">
 			<span
-				v-if="!loading"
 				v-text="title"
 				:class="$style.title"
 			/>
-			<n8n-loading :loading="loading" :rows="3" variant="p" />
-			<div :class="$style.footer">
-				<slot name="footer"></slot>
-			</div>
-		</div>
-	</div>
+		</template>
+		<n8n-loading :loading="loading" :rows="3" variant="p" />
+		<template #footer v-if="!loading">
+			<slot name="footer" />
+		</template>
+	</n8n-card>
 </template>
 
 <script lang="ts">
@@ -38,11 +37,7 @@ export default mixins(genericHelpers).extend({
 .card {
 	width: 240px !important;
 	height: 140px;
-	border-radius: var(--border-radius-large);
-	border: $--version-card-border;
 	margin-right: var(--spacing-2xs);
-	background-color: var(--color-background-xlight);
-	padding: var(--spacing-s);
 	cursor: pointer;
 
 	&:last-child {
@@ -63,18 +58,5 @@ export default mixins(genericHelpers).extend({
 	font-weight: var(--font-weight-bold);
 	overflow: hidden;
 	white-space: normal;
-}
-
-.container {
-	width: 100%;
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
 }
 </style>
