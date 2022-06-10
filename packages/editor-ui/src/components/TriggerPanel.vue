@@ -7,13 +7,13 @@
 						<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
 					</div>
 				</div>
-				<n8n-text tag="div" bold>{{ $locale.baseText('triggerPanel.webhookNode.listening') }}</n8n-text>
-				<n8n-text tag="div">
+				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{ $locale.baseText('triggerPanel.webhookNode.listening') }}</n8n-text>
+				<n8n-text tag="div" class="mb-xs">
 					{{
 						$locale.baseText('triggerPanel.webhookNode.requestHint', { interpolate: { type: this.webhookHttpMethod } })
 					}}
 				</n8n-text>
-				<CopyInput :value="webhookTestUrl"></CopyInput>
+				<CopyInput :value="webhookTestUrl" class="mb-2xl"></CopyInput>
 				<n8n-text tag="div" @click="onLinkClick">
 					<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
 				</n8n-text>
@@ -262,6 +262,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	justify-content: center;
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
 	text-align: center;
+	overflow: hidden;
 
 	> * {
 		max-width: 316px;
@@ -285,26 +286,18 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	width: 100%;
 }
 
-.pulse {
-  display: flex;
-	justify-content: center;
-	align-items: center;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 rgba(204,169,44, 0.4);
-  animation: pulse 2s infinite;
-}
-
-.pulse:hover {
-  animation: none;
-}
-
 $--light-pulse-color: hsla(
 		var(--color-primary-h),
 		var(--color-primary-s),
 		var(--color-primary-l),
 		0.4
+	);
+
+$--mid-pulse-color: hsla(
+		var(--color-primary-h),
+		var(--color-primary-s),
+		var(--color-primary-l),
+		0.2
 	);
 
 $--dark-pulse-color: hsla(
@@ -314,16 +307,15 @@ $--dark-pulse-color: hsla(
 		0
 	);
 
-@-webkit-keyframes pulse {
-  0% {
-    -webkit-box-shadow: 0 0 0 0 $--light-pulse-color;
-  }
-  70% {
-      -webkit-box-shadow: 0 0 0 60px $--dark-pulse-color;
-  }
-  100% {
-      -webkit-box-shadow: 0 0 0 0 $--dark-pulse-color;
-  }
+.pulse {
+  display: flex;
+	justify-content: center;
+	align-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 $--light-pulse-color;
+  animation: pulse 3s infinite;
 }
 
 @keyframes pulse {
@@ -331,11 +323,23 @@ $--dark-pulse-color: hsla(
     -moz-box-shadow: 0 0 0 0 $--light-pulse-color;
     box-shadow: 0 0 0 0 $--light-pulse-color;
   }
-  70% {
+
+  20% {
       -moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
       box-shadow: 0 0 0 60px $--dark-pulse-color;
   }
-  100% {
+
+	21% {
+    -moz-box-shadow: 0 0 0 0 $--mid-pulse-color;
+    box-shadow: 0 0 0 0 $--mid-pulse-color;
+	}
+
+  40% {
+      -moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
+      box-shadow: 0 0 0 60px $--dark-pulse-color;
+  }
+
+  41% {
       -moz-box-shadow: 0 0 0 0 $--dark-pulse-color;
       box-shadow: 0 0 0 0 $--dark-pulse-color;
   }
