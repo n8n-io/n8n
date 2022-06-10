@@ -253,7 +253,6 @@ export default mixins(
 				this.$emit('valueChanged', parameterData);
 			},
 			onNoticeAction(action: string) {
-				console.log('notice', action);
 				if (action === 'activate') {
 					this.$emit('activate');
 				}
