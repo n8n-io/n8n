@@ -456,7 +456,7 @@ const getAllOperations: Array<INodeProperties> = [
 				url: '=/contacts',
 			},
 			send: {
-				paginate: false,
+				paginate: true,
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
