@@ -47,6 +47,10 @@ export const workflowActivate = mixins(
 						return;
 					}
 
+					if (newActiveState) {
+						this.$telemetry.track('User set workflow active status');
+					}
+
 					await this.updateWorkflow({workflowId, active: newActiveState});
 				} catch (error) {
 					const newStateName = newActiveState === true ? 'activated' : 'deactivated';
