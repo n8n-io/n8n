@@ -952,7 +952,7 @@ export interface ICommunityNodesState {
 	loading: boolean;
 	installedPackages: PublicInstalledPackage[];
 	currentModalAction: typeof COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL | typeof COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE;
-	currentModalPackageName: string;
+	currentModalPackage: PublicInstalledPackage;
 }
 
 export interface IRestApiContext {

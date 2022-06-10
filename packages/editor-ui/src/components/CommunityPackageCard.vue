@@ -91,14 +91,14 @@ export default mixins(
 					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
 					break;
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-					this.$store.dispatch('communityNodes/openUninstallConfirmModal', this.communityPackage.packageName);
+					this.$store.dispatch('communityNodes/openUninstallConfirmModal', this.communityPackage);
 					break;
 				default:
 					break;
 			}
 		},
 		onUpdateClick() {
-			this.$store.dispatch('communityNodes/openUpdateConfirmModal');
+			this.$store.dispatch('communityNodes/openUpdateConfirmModal', this.communityPackage);
 		},
 	},
 });

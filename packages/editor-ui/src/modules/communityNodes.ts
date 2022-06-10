@@ -18,7 +18,7 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		loading: true,
 		installedPackages: [],
 		currentModalAction: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
-		currentModalPackageName: '',
+		currentModalPackage: {} as PublicInstalledPackage,
 	},
 	mutations: {
 		setAvailablePackageCount: (state: ICommunityNodesState, count: number) => {
@@ -33,8 +33,8 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		setCurrentModalAction(state: ICommunityNodesState, action: string) {
 			state.currentModalAction = action;
 		},
-		setCurrentModalPackageName(state: ICommunityNodesState, name: string) {
-			state.currentModalPackageName = name;
+		setCurrentModalPackage(state: ICommunityNodesState, pack: PublicInstalledPackage) {
+			state.currentModalPackage = pack;
 		},
 		removePackageByName(state: ICommunityNodesState, name: string) {
 			const packagesByName = state.installedPackages.filter(pack => pack.packageName === name);
@@ -57,8 +57,8 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		getCurrentModalAction(state: ICommunityNodesState): string {
 			return state.currentModalAction;
 		},
-		getCurrentModalPackageName(state: ICommunityNodesState): string {
-			return state.currentModalPackageName;
+		getCurrentModalPackage(state: ICommunityNodesState): PublicInstalledPackage {
+			return state.currentModalPackage;
 		},
 		getInstalledPackageByName(state: ICommunityNodesState, packageName: string): PublicInstalledPackage {
 			return state.installedPackages.filter(pack => pack.packageName === packageName)[0];
@@ -80,10 +80,10 @@ const module: Module<ICommunityNodesState, IRootState> = {
 				context.commit('setLoading', false);
 			}, timeout);
 		},
-		async installPackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+		async installPackage(context: ActionContext<ICommunityNodesState, IRootState>, pack: PublicInstalledPackage) {
 			context.commit('setLoading', true);
 			try {
-				await installNewPackage(context.rootGetters.getRestApiContext, packageName);
+				await installNewPackage(context.rootGetters.getRestApiContext, pack.packageName);
 				await context.dispatch('communityNodes/fetchInstalledPackages');
 			} catch(error) {
 				throw(error);
@@ -94,22 +94,22 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		async uninstallPackage(context: ActionContext<ICommunityNodesState, IRootState>) {
 			context.commit('setLoading', true);
 			try {
-				await uninstallPackage(context.rootGetters.getRestApiContext, context.getters.getCurrentModalPackageName);
-				context.commit('removePackageByName', context.getters.getCurrentModalPackageName);
+				await uninstallPackage(context.rootGetters.getRestApiContext, context.getters.getCurrentModalPackage.packageName);
+				context.commit('removePackageByName', context.getters.getCurrentModalPackage.packageName);
 			} catch(error) {
 				throw(error);
 			} finally {
 				context.commit('setLoading', false);
 			}
 		},
-		async openUninstallConfirmModal(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+		async openUninstallConfirmModal(context: ActionContext<ICommunityNodesState, IRootState>, pack: PublicInstalledPackage) {
 			context.commit('setCurrentModalAction', COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
-			context.commit('setCurrentModalPackageName', packageName);
+			context.commit('setCurrentModalPackage', pack);
 			await context.dispatch('ui/openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, {root: true});
 		},
-		async openUpdateConfirmModal(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+		async openUpdateConfirmModal(context: ActionContext<ICommunityNodesState, IRootState>, pack: PublicInstalledPackage) {
 			context.commit('setCurrentModalAction', COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
-			context.commit('setCurrentModalPackageName', packageName);
+			context.commit('setCurrentModalPackage', pack);
 			await context.dispatch('ui/openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, {root: true});
 		},
 	},
