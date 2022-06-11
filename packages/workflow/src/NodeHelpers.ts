@@ -823,7 +823,7 @@ export function getNodeParameters(
 				Object.keys(propertyValues || {}).forEach((value) => {
 					returnValue[value] = {};
 				});
-				return { [nodeProperties.name]: returnValue };
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
