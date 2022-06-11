@@ -341,17 +341,7 @@ const deleteOperations: Array<INodeProperties> = [
 		routing: {
 			request: {
 				method: 'DELETE',
-				url: '/v3/contacts',
-			},
-			send: {
-				preSend: [
-					async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-						requestOptions.url = (requestOptions.url || '') as string;
-						// if something special is required it is possible to write custom code and get from parameter
-						requestOptions.url = `${requestOptions.url}/${encodeURIComponent(this.getNodeParameter('identifier') as string)}`;
-						return requestOptions;
-					},
-				],
+				url: '=/v3/contacts{{encodeURIComponent($parameter.identifier)}}',
 			},
 			output: {
 				postReceive: [
