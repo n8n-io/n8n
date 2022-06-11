@@ -3010,9 +3010,15 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has a collection value added but nothing to the fixedCollection',
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having it as an empty object) in combination with another value',
 				input: {
 					nodePropertiesArray: [
+						{
+							name: 'mode',
+							displayName: 'mode',
+							type: 'string',
+							default: 'mode1',
+						},
 						{
 							displayName: 'Options',
 							name: 'options',
@@ -3065,33 +3071,54 @@ describe('Workflow', () => {
 						},
 					],
 					nodeValues: {
+						mode: 'changed',
 						options: {
-							sort: {},
+							sort: {
+								value: {},
+							},
 						},
 					},
 				},
 				output: {
 					noneDisplayedFalse: {
 						defaultsFalse: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {},
+								},
 							},
 						},
 						defaultsTrue: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
 							},
 						},
 					},
 					noneDisplayedTrue: {
 						defaultsFalse: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {},
+								},
 							},
 						},
 						defaultsTrue: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
 							},
 						},
 					},
