@@ -1,4 +1,5 @@
-import { INodeProperties } from "n8n-workflow";
+import { GenericValue, IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties, JsonObject } from "n8n-workflow";
+import { INTERCEPTORS } from "./GenericFunctions";
 
 export const attributeOperations: INodeProperties[] = [
 	{
@@ -22,6 +23,19 @@ export const attributeOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName.toLowerCase()}}'
 					},
+					send: {
+						preSend: [
+							async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+								const selectedCategory = this.getNodeParameter('attributeCategory') as string;
+								const override = INTERCEPTORS.get(selectedCategory);
+								if(override) {
+									override.call(this, requestOptions.body! as JsonObject);
+								}
+
+								return requestOptions;
+							}
+						]
+					},
 					output: {
 						postReceive: [
 							{
@@ -38,6 +52,10 @@ export const attributeOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'updateAttribute',
 				routing: {
+					request: {
+						method: 'PUT',
+						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{$parameter.updateAttributeName.toLowerCase()}}'
+					},
 					output: {
 						postReceive: [
 							{
@@ -54,12 +72,16 @@ export const attributeOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'deleteAttribute',
 				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/v3/contacts/attributes/{{$parameter.deleteAttributeCategory}}/{{$parameter.deleteAttributeName.toLowerCase()}}'
+					},
 					output: {
 						postReceive: [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": $response.body } }}', // Also possible to use the original response data
+									value: '={{ { "success": true } }}', // Also possible to use the original response data
 								},
 							},
 						]
@@ -165,8 +187,6 @@ const createAttributeOperations: Array<INodeProperties> = [
 				],
 				attributeCategory: [
 					'normal',
-					'category',
-					'transactional'
 				]
 			},
 		},
@@ -187,15 +207,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 			{
 				name: 'Boolean',
 				value: 'boolean',
-			},
-			{
-				name: 'ID',
-				value: 'id',
-			},
-			{
-				name: 'Category',
-				value: 'category',
-			},
+			}
 		],
 		type: 'options',
 		routing: {
@@ -203,7 +215,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 				type: "body",
 				property: 'type',
 				value: '={{$value}}'
-			}
+			},
 		}
 	},
 	{
@@ -212,6 +224,12 @@ const createAttributeOperations: Array<INodeProperties> = [
 		displayName: 'Value',
 		displayOptions: {
 			show: {
+				resource: [
+					'attribute'
+				],
+				operation: [
+					'createAttribute'
+				],
 				attributeCategory: [
 					'global',
 					'calculated'
@@ -220,7 +238,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 		},
 		name: 'attributeValue',
 		type: 'string',
-		placeholder: 'COUNT[BLACKLISTED,BLACKLISTED,<,NOW()]',
+		placeholder: '',
 		routing: {
 			send: {
 				type: "body",
@@ -228,9 +246,289 @@ const createAttributeOperations: Array<INodeProperties> = [
 				value: '={{$value}}'
 			}
 		}
+	},
+	{
+		displayName: 'List',
+		name: 'attributeCategoryList',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute'
+				],
+				operation: [
+					'createAttribute'
+				],
+				attributeCategory: [
+					'category'
+				]
+			},
+		},
+		options: [
+			{
+				displayName: 'Contact Attributes',
+				name: 'categoryEnumeration',
+				placeholder: 'Add Attribute',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'attributesValues',
+						displayName: 'Attribute',
+						values: [
+							{
+								displayName: 'Value',
+								name: 'attributeCategoryValue',
+								type: 'number',
+								default: 1,
+								description: 'ID of the value, must be numeric',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=enumeration[{{$index}}].value',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Label',
+								name: 'attributeCategoryLabel',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=enumeration[{{$index}}].label',
+										type: 'body',
+									},
+								},
+								description: 'Label of the value'
+							},
+						]
+					},
+				],
+				default: {},
+				description: 'List of values and labels that the attribute can take'
+			},
+		],
+	}
+];
+
+const updateAttributeOperations: Array<INodeProperties> = [
+	{
+		default: '',
+		description: 'Category of the attribute',
+		displayName: 'Category',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'updateAttribute',
+				],
+			},
+		},
+		name: 'updateAttributeCategory',
+		options: [
+			{
+				name: 'Category',
+				value: 'category',
+			},
+			{
+				name: 'Calculated',
+				value: 'calculated',
+			},
+			{
+				name: 'Global',
+				value: 'global',
+			},
+		],
+		type: 'options',
+	},
+	{
+		default: '',
+		description: 'Name of the existing attribute',
+		displayName: 'Name',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'updateAttribute',
+				],
+			},
+		},
+		name: 'updateAttributeName',
+		type: 'string',
+	},
+	{
+		default: '',
+		description: 'Value of the attribute to update',
+		displayName: 'Value',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute'
+				],
+				operation: [
+					'updateAttribute'
+				],
+				attributeCategory: [
+					'global',
+					'calculated'
+				]
+			}
+		},
+		name: 'updateAttributeValue',
+		type: 'string',
+		placeholder: '',
+		routing: {
+			send: {
+				type: "body",
+				property: 'value',
+				value: '={{$value}}'
+			}
+		}
+	},
+	{
+		displayName: 'Update Fields',
+		description: 'List of the values and labels that the attribute can take',
+		name: 'updateAttributeCategoryList',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute'
+				],
+				operation: [
+					'updateAttribute'
+				],
+				updateAttributeCategory: [
+					'category'
+				]
+			},
+		},
+		options: [
+			{
+				displayName: 'Contact Attributes',
+				name: 'updateCategoryEnumeration',
+				placeholder: 'Add Attribute',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'updateAttributesValues',
+						displayName: 'Attribute',
+						values: [
+							{
+								displayName: 'Value',
+								name: 'attributeCategoryValue',
+								type: 'number',
+								default: 1,
+								description: 'ID of the value, must be numeric',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=enumeration[{{$index}}].value',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Label',
+								name: 'attributeCategoryLabel',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=enumeration[{{$index}}].label',
+										type: 'body',
+									},
+								},
+								description: 'Label of the value'
+							},
+						]
+					},
+				],
+				default: {},
+				description: 'List of values and labels that the attribute can take'
+			},
+		],
+	}
+];
+
+const deleteAttribueOperations: Array<INodeProperties> = [
+	{
+		default: 'normal',
+		description: 'Category of the attribute',
+		displayName: 'Category',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'deleteAttribute',
+				],
+			},
+		},
+		name: 'deleteAttributeCategory',
+		options: [
+			{
+				name: 'Normal',
+				value: 'normal',
+			},
+			{
+				name: 'Transactional',
+				value: 'transactional',
+			},
+			{
+				name: 'Category',
+				value: 'category',
+			},
+			{
+				name: 'Calculated',
+				value: 'calculated',
+			},
+			{
+				name: 'Global',
+				value: 'global',
+			},
+		],
+		type: 'options',
+	},
+	{
+		default: '',
+		description: 'Name of the attribute',
+		displayName: 'Name',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'deleteAttribute',
+				],
+			},
+		},
+		name: 'deleteAttributeName',
+		type: 'string',
 	}
 ];
 
 export const attributeFields: INodeProperties[] = [
-	...createAttributeOperations
+	...createAttributeOperations,
+	...updateAttributeOperations,
+	...deleteAttribueOperations
 ];
