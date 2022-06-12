@@ -33,6 +33,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { ActiveDirectoryManager } from '../src/ActiveDirectory/ActiveDirectoryManager';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -350,6 +351,24 @@ export class Start extends Command {
 
 				if (saveManualExecutions) {
 					this.log('\nManual executions will be visible only for the owner');
+				}
+
+				const activeDirecory = ActiveDirectoryManager.getInstance();
+
+
+				console.log('aqui papa');
+
+
+				ActiveDirectoryManager.destroy();
+
+				try {
+					const data = await activeDirecory.searchWithAdminBinding(
+						'(mail=teresa.zeron1@gmail.com)',
+					);
+					console.log(data);
+				} catch (error) {
+					console.log('este es el error');
+					console.log(error);
 				}
 
 				// Allow to open n8n editor by pressing "o"

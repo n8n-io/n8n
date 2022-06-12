@@ -686,8 +686,23 @@ export const schema = {
 		connection: {
 			url: {
 				format: String,
-				default: '',
+				default: 'ldaps://ldap.jumpcloud.com',
 				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_URL',
+			},
+			baseDn: {
+				format: String,
+				default: 'o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
+				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_BASE_DN',
+			},
+			adminDn: {
+				format: String,
+				default: 'uid=robertocarrero,ou=Users,o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
+				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_ADMIN_DN',
+			},
+			adminPassword: {
+				format: String,
+				default: 'Ricardo_123',
+				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_ADMIN_PASSWORD',
 			},
 		},
 	},
