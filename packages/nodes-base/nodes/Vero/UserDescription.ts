@@ -5,6 +5,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -14,9 +15,9 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
-				value: 'create',
-				description: `Create or update a user profile`,
+				name: 'Add Tags',
+				value: 'addTags',
+				description: 'Adds a tag to a users profile',
 			},
 			{
 				name: 'Alias',
@@ -24,33 +25,32 @@ export const userOperations: INodeProperties[] = [
 				description: 'Change a users identifier',
 			},
 			{
-				name: 'Unsubscribe',
-				value: 'unsubscribe',
-				description: 'Unsubscribe a user.',
-			},
-			{
-				name: 'Re-subscribe',
-				value: 'resubscribe',
-				description: 'Resubscribe a user.',
+				name: 'Create/Update',
+				value: 'create',
+				description: 'Create or update a user profile',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a user.',
+				description: 'Delete a user',
 			},
 			{
-				name: 'Add Tags',
-				value: 'addTags',
-				description: 'Adds a tag to a users profile.',
+				name: 'Re-Subscribe',
+				value: 'resubscribe',
+				description: 'Resubscribe a user',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
-				description: 'Removes a tag from a users profile.',
+				description: 'Removes a tag from a users profile',
+			},
+			{
+				name: 'Unsubscribe',
+				value: 'unsubscribe',
+				description: 'Unsubscribe a user',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -83,7 +83,6 @@ export const userFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -117,7 +116,7 @@ export const userFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The table to create the row in.',
+				description: 'The table to create the row in',
 			},
 		],
 	},
@@ -125,7 +124,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'dataAttributesUi',
 		placeholder: 'Add Data',
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -154,14 +153,14 @@ export const userFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
 				],
 			},
@@ -172,11 +171,10 @@ export const userFields: INodeProperties[] = [
 		name: 'dataAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		displayOptions: {
 			show: {
 				resource: [

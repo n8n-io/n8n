@@ -24,6 +24,7 @@ export async function supabaseApiRequest(this: IExecuteFunctions | IExecuteSingl
 	const options: OptionsWithUri = {
 		headers: {
 			apikey: credentials.serviceRole,
+			Authorization: 'Bearer ' + credentials.serviceRole,
 			Prefer: 'return=representation',
 		},
 		method,
@@ -129,7 +130,7 @@ export function getFilters(
 					],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{
@@ -137,7 +138,7 @@ export function getFilters(
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Field Name',
+							displayName: 'Field Name or ID',
 							name: 'keyName',
 							type: 'options',
 							typeOptions: {
@@ -158,12 +159,26 @@ export function getFilters(
 									value: 'eq',
 								},
 								{
+									name: 'Full-Text',
+									value: 'fullText',
+								},
+								{
 									name: 'Greater Than',
 									value: 'gt',
 								},
 								{
 									name: 'Greater Than or Equal',
 									value: 'gte',
+								},
+								{
+									name: 'ILIKE operator',
+									value: 'ilike',
+									description: 'Use * in place of %',
+								},
+								{
+									name: 'Is',
+									value: 'is',
+									description: 'Checking for exact equality (null,true,false,unknown)',
 								},
 								{
 									name: 'Less Than',
@@ -174,27 +189,13 @@ export function getFilters(
 									value: 'lte',
 								},
 								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-								{
 									name: 'LIKE operator',
 									value: 'like',
-									description: 'use * in place of %',
+									description: 'Use * in place of %',
 								},
 								{
-									name: 'ILIKE operator',
-									value: 'ilike',
-									description: 'use * in place of %',
-								},
-								{
-									name: 'Is',
-									value: 'is',
-									description: 'Checking for exact equality (null,true,false,unknown)',
-								},
-								{
-									name: 'Full-Text',
-									value: 'fullText',
+									name: 'Not Equals',
+									value: 'neq',
 								},
 							],
 							default: '',
@@ -296,7 +297,7 @@ export const buildGetQuery = (obj: IDataObject, value: IDataObject) => {
 	return Object.assign(obj, { [`${value.keyName}`]: `eq.${value.keyValue}` });
 };
 
-export async function validateCrendentials(
+export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
 
@@ -309,6 +310,7 @@ export async function validateCrendentials(
 	const options: OptionsWithUri = {
 		headers: {
 			apikey: serviceRole,
+			Authorization: 'Bearer ' + serviceRole,
 		},
 		method: 'GET',
 		uri: `${credentials.host}/rest/v1/`,

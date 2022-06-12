@@ -17,10 +17,10 @@ export const fileUploadDescription: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG',
+		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 	},
 	{
-		displayName: 'Category Name/ID',
+		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
 		typeOptions: {

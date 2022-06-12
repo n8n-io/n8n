@@ -2,18 +2,20 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { Workflow } from 'n8n-workflow';
-import { In, IsNull, Not } from 'typeorm';
-import express = require('express');
+import { In } from 'typeorm';
+import express from 'express';
+import { compare, genSaltSync, hash } from 'bcryptjs';
+
 import { PublicUser } from './Interfaces';
-import { Db, GenericHelpers, ResponseHelper } from '..';
+import { Db, ResponseHelper } from '..';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
-import config = require('../../config');
+import * as config from '../../config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
-	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
 		where: { workflow: { id: workflowId } },
 		relations: ['user', 'user.globalRole'],
 	});
@@ -22,16 +24,30 @@ export async function getWorkflowOwner(workflowId: string | number): Promise<Use
 }
 
 export function isEmailSetUp(): boolean {
-	const smtp = config.get('userManagement.emails.mode') === 'smtp';
-	const host = !!config.get('userManagement.emails.smtp.host');
-	const user = !!config.get('userManagement.emails.smtp.auth.user');
-	const pass = !!config.get('userManagement.emails.smtp.auth.pass');
+	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
+	const host = !!config.getEnv('userManagement.emails.smtp.host');
+	const user = !!config.getEnv('userManagement.emails.smtp.auth.user');
+	const pass = !!config.getEnv('userManagement.emails.smtp.auth.pass');
 
 	return smtp && host && user && pass;
 }
 
+export function isUserManagementEnabled(): boolean {
+	return (
+		!config.getEnv('userManagement.disabled') ||
+		config.getEnv('userManagement.isInstanceOwnerSetUp')
+	);
+}
+
+export function isUserManagementDisabled(): boolean {
+	return (
+		config.getEnv('userManagement.disabled') &&
+		!config.getEnv('userManagement.isInstanceOwnerSetUp')
+	);
+}
+
 async function getInstanceOwnerRole(): Promise<Role> {
-	const ownerRole = await Db.collections.Role!.findOneOrFail({
+	const ownerRole = await Db.collections.Role.findOneOrFail({
 		where: {
 			name: 'owner',
 			scope: 'global',
@@ -43,7 +59,7 @@ async function getInstanceOwnerRole(): Promise<Role> {
 export async function getInstanceOwner(): Promise<User> {
 	const ownerRole = await getInstanceOwnerRole();
 
-	const owner = await Db.collections.User!.findOneOrFail({
+	const owner = await Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],
 		where: {
 			globalRole: ownerRole,
@@ -56,14 +72,9 @@ export async function getInstanceOwner(): Promise<User> {
  * Return the n8n instance base URL without trailing slash.
  */
 export function getInstanceBaseUrl(): string {
-	const n8nBaseUrl = config.get('editorBaseUrl') || getWebhookBaseUrl();
+	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
 
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
-}
-
-export async function isInstanceOwnerSetup(): Promise<boolean> {
-	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
-	return users.length !== 0;
 }
 
 // TODO: Enforce at model level
@@ -112,6 +123,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		resetPasswordTokenExpiration,
 		createdAt,
 		updatedAt,
+		apiKey,
 		...sanitizedUser
 	} = user;
 	if (withoutKeys) {
@@ -124,7 +136,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 }
 
 export async function getUserById(userId: string): Promise<User> {
-	const user = await Db.collections.User!.findOneOrFail(userId, {
+	const user = await Db.collections.User.findOneOrFail(userId, {
 		relations: ['globalRole'],
 	});
 	return user;
@@ -139,6 +151,10 @@ export async function checkPermissionsForExecution(
 	// Iterate over all nodes
 	nodeNames.forEach((nodeName) => {
 		const node = workflow.nodes[nodeName];
+		if (node.disabled === true) {
+			// If a node is disabled there is no need to check its credentials
+			return;
+		}
 		// And check if any of the nodes uses credentials.
 		if (node.credentials) {
 			const credentialNames = Object.keys(node.credentials);
@@ -149,9 +165,14 @@ export async function checkPermissionsForExecution(
 				// workflow. Nowaways it should not happen anymore.
 				// Migrations should handle the case where a credential does
 				// not have an id.
+				if (credentialDetail.id === null) {
+					throw new Error(
+						`The credential on node '${node.name}' is not valid. Please open the workflow and set it to a valid value.`,
+					);
+				}
 				if (!credentialDetail.id) {
 					throw new Error(
-						'Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error.',
+						`Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error. [Node: '${node.name}']`,
 					);
 				}
 				credentialIds.add(credentialDetail.id.toString());
@@ -177,7 +198,7 @@ export async function checkPermissionsForExecution(
 	}
 
 	// Check for the user's permission to all used credentials
-	const credentialCount = await Db.collections.SharedCredentials!.count({
+	const credentialCount = await Db.collections.SharedCredentials.count({
 		where: {
 			user: { id: userId },
 			credentials: In(ids),
@@ -188,7 +209,7 @@ export async function checkPermissionsForExecution(
 	// then both arrays (allowed credentials vs used credentials)
 	// must be the same length
 	if (ids.length !== credentialCount) {
-		throw new Error('One or more of the used credentials are not accessable.');
+		throw new Error('One or more of the used credentials are not accessible.');
 	}
 	return true;
 }
@@ -199,7 +220,7 @@ export async function checkPermissionsForExecution(
 export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
 	return !!ignoredEndpoints
 		.filter(Boolean) // skip empty paths
-		.find((ignoredEndpoint) => url.includes(ignoredEndpoint));
+		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
 }
 
 /**
@@ -215,4 +236,24 @@ export function isPostUsersId(req: express.Request, restEndpoint: string): boole
 
 export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
 	return request.user !== undefined;
+}
+
+// ----------------------------------
+//            hashing
+// ----------------------------------
+
+export const hashPassword = async (validPassword: string): Promise<string> =>
+	hash(validPassword, genSaltSync(10));
+
+export async function compareHash(plaintext: string, hashed: string): Promise<boolean | undefined> {
+	try {
+		return await compare(plaintext, hashed);
+	} catch (error) {
+		if (error instanceof Error && error.message.includes('Invalid salt version')) {
+			error.message +=
+				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
+		}
+
+		throw new Error(error);
+	}
 }

@@ -66,7 +66,7 @@ export class ExecuteCommand implements INodeType {
 				name: 'executeOnce',
 				type: 'boolean',
 				default: true,
-				description: 'If activated it executes only once instead of once for each entry.',
+				description: 'If activated it executes only once instead of once for each entry',
 			},
 			{
 				displayName: 'Command',
@@ -119,12 +119,22 @@ export class ExecuteCommand implements INodeType {
 							stderr,
 							stdout,
 						},
+						pairedItem: {
+							item: itemIndex,
+						},
 					},
 				);
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({json:{ error: error.message }});
+					returnItems.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

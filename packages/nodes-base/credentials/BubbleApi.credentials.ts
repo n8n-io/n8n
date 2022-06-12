@@ -43,11 +43,11 @@ export class BubbleApi implements ICredentialType {
 			default: 'bubbleHosted',
 			options: [
 				{
-					name: 'Bubble-hosted',
+					name: 'Bubble-Hosted',
 					value: 'bubbleHosted',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],

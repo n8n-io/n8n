@@ -7,6 +7,7 @@ export const itemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const itemOperations: INodeProperties[] = [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert/put)',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -45,9 +46,9 @@ export const itemFields: INodeProperties[] = [
 	//              all
 	// ----------------------------------
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
-		description: 'Table to operate on',
+		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
 		displayOptions: {
@@ -72,7 +73,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -107,7 +108,6 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -172,10 +172,10 @@ export const itemFields: INodeProperties[] = [
 			{
 				displayName: 'Expression Attribute Values',
 				name: 'eavUi',
-				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set',
+				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				required: true,
 				typeOptions: {
 					multipleValues: true,
@@ -223,14 +223,14 @@ export const itemFields: INodeProperties[] = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: 'A condition that must be satisfied in order for a conditional upsert to succeed. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
+				description: 'A condition that must be satisfied in order for a conditional upsert to succeed. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
 			},
 			{
 				displayName: 'Expression Attribute Names',
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -254,7 +254,7 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
 			},
 		],
 	},
@@ -353,7 +353,7 @@ export const itemFields: INodeProperties[] = [
 		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -401,7 +401,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -425,15 +425,15 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
 			},
 			{
 				displayName: 'Expression Attribute Values',
 				name: 'expressionAttributeUi',
-				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set',
+				description: 'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				required: true,
 				typeOptions: {
 					multipleValues: true,
@@ -514,7 +514,7 @@ export const itemFields: INodeProperties[] = [
 		default: 'ALL_ATTRIBUTES',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -616,6 +616,7 @@ export const itemFields: INodeProperties[] = [
 				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id, name',
 				default: '',
 			},
@@ -624,7 +625,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -648,7 +649,7 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>.',
 			},
 			{
 				displayName: 'Read Type',
@@ -656,16 +657,16 @@ export const itemFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Strongly consistent read',
+						name: 'Strongly Consistent Read',
 						value: 'stronglyConsistentRead',
 					},
 					{
-						name: 'Eventually consistent read',
+						name: 'Eventually Consistent Read',
 						value: 'eventuallyConsistentRead',
 					},
 				],
 				default: 'eventuallyConsistentRead',
-				description: 'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">View details</a>',
+				description: 'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">View details</a>.',
 			},
 		],
 	},
@@ -688,7 +689,7 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" >differences</a>',
+		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" >differences</a>.',
 	},
 	{
 		displayName: 'Filter Expression',
@@ -709,6 +710,7 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
 		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id = :id',
 		default: '',
 		type: 'string',
@@ -733,7 +735,7 @@ export const itemFields: INodeProperties[] = [
 		description: 'Substitution tokens for attribute names in an expression',
 		placeholder: 'Add Attribute Value',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		required: true,
 		typeOptions: {
 			multipleValues: true,
@@ -822,7 +824,7 @@ export const itemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Select',
@@ -860,7 +862,7 @@ export const itemFields: INodeProperties[] = [
 		default: 'ALL_ATTRIBUTES',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -924,14 +926,14 @@ export const itemFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Text that contains conditions that DynamoDB applies after the Query operation, but before the data is returned. Items that do not satisfy the FilterExpression criteria are not returned',
+				description: 'Text that contains conditions that DynamoDB applies after the Query operation, but before the data is returned. Items that do not satisfy the FilterExpression criteria are not returned.',
 			},
 			{
 				displayName: 'Expression Attribute Names',
 				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -955,7 +957,7 @@ export const itemFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
 			},
 		],
 	},

@@ -5,12 +5,14 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 		name = 'CreateTagEntity1617270242566';
 
 		async up(queryRunner: QueryRunner): Promise<void> {
-			let tablePrefix = config.get('database.tablePrefix');
+			let tablePrefix = config.getEnv('database.tablePrefix');
 			const tablePrefixPure = tablePrefix;
-			const schema = config.get('database.postgresdb.schema');
+			const schema = config.getEnv('database.postgresdb.schema');
 			if (schema) {
 				tablePrefix = schema + '.' + tablePrefix;
 			}
+
+			await queryRunner.query(`SET search_path TO ${schema};`);
 
 			// create tags table + relationship with workflow entity
 
@@ -40,12 +42,14 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 		}
 
 		async down(queryRunner: QueryRunner): Promise<void> {
-			let tablePrefix = config.get('database.tablePrefix');
+			let tablePrefix = config.getEnv('database.tablePrefix');
 			const tablePrefixPure = tablePrefix;
-			const schema = config.get('database.postgresdb.schema');
+			const schema = config.getEnv('database.postgresdb.schema');
 			if (schema) {
 				tablePrefix = schema + '.' + tablePrefix;
 			}
+
+			await queryRunner.query(`SET search_path TO ${schema};`);
 
 			// `createdAt` and `updatedAt`
 

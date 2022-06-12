@@ -1,16 +1,18 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config = require('../../../../config');
+import * as config from '../../../../config';
 
 export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 	name = 'UniqueWorkflowNames1620824779533';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		const workflowNames = await queryRunner.query(`
 				SELECT name
@@ -58,12 +60,14 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
 	}

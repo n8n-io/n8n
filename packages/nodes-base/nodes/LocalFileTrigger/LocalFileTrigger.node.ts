@@ -27,7 +27,7 @@ export class LocalFileTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Trigger on',
+				displayName: 'Trigger On',
 				name: 'triggerOn',
 				type: 'options',
 				options: [
@@ -136,38 +136,39 @@ export class LocalFileTrigger implements INodeType {
 						placeholder: '**/*.txt',
 						description: 'Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href="https://github.com/micromatch/anymatch">Anymatch</a>- syntax.',
 					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
 						displayName: 'Max Folder Depth',
 						name: 'depth',
 						type: 'options',
 						options: [
 							{
-								name: 'Unlimited',
-								value: -1,
-							},
-							{
-								name: '5 Levels Down',
-								value: 5,
-							},
-							{
-								name: '4 Levels Down',
-								value: 4,
-							},
-							{
-								name: '3 Levels Down',
-								value: 3,
+								name: '1 Levels Down',
+								value: 1,
 							},
 							{
 								name: '2 Levels Down',
 								value: 2,
 							},
 							{
-								name: '1 Levels Down',
-								value: 1,
+								name: '3 Levels Down',
+								value: 3,
+							},
+							{
+								name: '4 Levels Down',
+								value: 4,
+							},
+							{
+								name: '5 Levels Down',
+								value: 5,
 							},
 							{
 								name: 'Top Folder Only',
 								value: 0,
+							},
+							{
+								name: 'Unlimited',
+								value: -1,
 							},
 						],
 						default: -1,

@@ -72,12 +72,12 @@ export class Drift implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -85,7 +85,6 @@ export class Drift implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			...contactOperations,
 			...contactFields,
@@ -95,7 +94,7 @@ export class Drift implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

@@ -4,7 +4,7 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 // Get options for timezones
 const timezones: INodePropertyOptions[] = moment.tz.countries().reduce( (timezones: INodePropertyOptions[], country: string) => {
@@ -24,17 +24,17 @@ export class SeaTableApi implements ICredentialType {
 			default: 'cloudHosted',
 			options: [
 				{
-					name: 'Cloud-hosted',
+					name: 'Cloud-Hosted',
 					value: 'cloudHosted',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],
 		},
 		{
-			displayName: 'Self-hosted domain',
+			displayName: 'Self-Hosted Domain',
 			name: 'domain',
 			type: 'string',
 			default: '',
@@ -57,8 +57,8 @@ export class SeaTableApi implements ICredentialType {
 			displayName: 'Timezone',
 			name: 'timezone',
 			type: 'options',
-			default: 'Europe/Berlin',
-			description: `Seatable server's timezone`,
+			default: '',
+			description: 'Seatable server\'s timezone',
 			options: [
 				...timezones,
 			],

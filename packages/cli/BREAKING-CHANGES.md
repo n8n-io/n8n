@@ -2,13 +2,27 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.171.0
+
+### What changed?
+
+The GraphQL node now errors when the response includes an error.
+
+### When is action necessary?
+
+If you are using the GraphQL node.
+
+### How to upgrade:
+
+Go to the workflows that use the GraphQL node and adjust them to the new behavior. If you want to continue even on error, you can set "Continue on Fail" to true.
+
 ## 0.165.0
 
 ### What changed?
 
 The Hive node now correctly rejects invalid SSL certificates when the "Ignore SSL Issues" option is set to False.
 
-### When is action necassary?
+### When is action necessary?
 
 If you are using a self signed certificate with The Hive.
 
@@ -28,7 +42,7 @@ If you are using the Hubspot Trigger.
 
 ### How to upgrade:
 
-Create an app in HubSpot, use the Client ID, Client Secret, App ID, and the Developer Key, and complete the OAuth2 flow. 
+Create an app in HubSpot, use the Client ID, Client Secret, App ID, and the Developer Key, and complete the OAuth2 flow.
 
 ## 0.135.0
 
@@ -59,15 +73,14 @@ const credentials = await this.getCredentials(myNodeCredentials);
 Example:
 
 ```typescript
-
 const items = this.getInputData();
 
 for (const i = 0; i < items.length; i++) {
-  const item = items[i].binary as IBinaryKeyData;
-  const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-  const binaryData = item[binaryPropertyName] as IBinaryData;
+	const item = items[i].binary as IBinaryKeyData;
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+	const binaryData = item[binaryPropertyName] as IBinaryData;
 	// Before 0.135.0:
-  const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+	const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 	// From 0.135.0:
 	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 }
@@ -106,17 +119,21 @@ If you are using `lead:create` with "Company" or "Address", reset the parameters
 ## 0.118.0
 
 ### What changed?
+
 The minimum Node.js version required for n8n is now v14.
 
 ### When is action necessary?
+
 If you're using n8n via npm or PM2 or if you're contributing to n8n.
 
 ### How to upgrade:
+
 Update the Node.js version to v14 or above.
 
-----------------------------
+---
 
 ### What changed?
+
 In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` operation returns the result from all queries executed instead of just one of the results.
 
 ### When is action necessary?
@@ -126,6 +143,7 @@ If you use any of the above mentioned nodes with the `Execute Query` operation a
 ## 0.117.0
 
 ### What changed?
+
 Removed the "Activation Trigger" node. This node was replaced by two other nodes.
 
 The "Activation Trigger" node was added on version 0.113.0 but was not fully compliant to UX, so we decided to refactor and change it ASAP so it affects the least possible users.
@@ -140,7 +158,7 @@ If you use the "Activation Trigger" in any of your workflows, please replace it 
 
 Remove the previous node and add the new ones according to your workflows.
 
-----------------------------
+---
 
 Changed the behavior for nodes that use Postgres Wire Protocol: Postgres, QuestDB, CrateDB and TimescaleDB.
 
@@ -158,10 +176,10 @@ By default, all `insert` operations will have `Return fields: *` as the default,
 
 Previously, the node would return all information it received, without taking into account what actually happened in the database.
 
-
 ## 0.113.0
 
 ### What changed?
+
 In the Dropbox node, both credential types (Access Token & OAuth2) have a new parameter called "APP Access Type".
 
 ### When is action necessary?
@@ -175,6 +193,7 @@ Open your Dropbox node's credentials and set the "APP Access Type" parameter to 
 ## 0.111.0
 
 ### What changed?
+
 In the Dropbox node, now all operations are performed relative to the user's root directory.
 
 ### When is action necessary?
@@ -192,24 +211,29 @@ Also, if you are using the `folder:list` operation, make sure your logic is taki
 ## 0.105.0
 
 ### What changed?
+
 In the Hubspot Trigger, now multiple events can be provided and the field `App ID` was so moved to the credentials.
 
 ### When is action necessary?
+
 If you are using the Hubspot Trigger node.
 
 ### How to upgrade:
-Open the Hubspot Trigger and set the events again. Also open the credentials `Hubspot Developer API` and set your APP ID.
 
+Open the Hubspot Trigger and set the events again. Also open the credentials `Hubspot Developer API` and set your APP ID.
 
 ## 0.104.0
 
 ### What changed?
+
 Support for MongoDB as a database for n8n has been dropped as MongoDB had problems saving large amounts of data in a document, among other issues.
 
 ### When is action necessary?
+
 If you have been using MongoDB as a database for n8n. Please note that this is not related to the MongoDB node.
 
 ### How to upgrade:
+
 Before upgrading, you can [export](https://docs.n8n.io/reference/start-workflows-via-cli.html#export-workflows-and-credentials) all your credentials and workflows using the CLI.
 
 ```
@@ -227,21 +251,26 @@ n8n import:credentials --separate --input=backups/latest/
 ## 0.102.0
 
 ### What changed?
-- The `As User` property  and the `User Name` field got combined and renamed to `Send as User`. It also got moved under “Add Options”.
+
+- The `As User` property and the `User Name` field got combined and renamed to `Send as User`. It also got moved under “Add Options”.
 - The `Ephemeral` property got removed. To send an ephemeral message, you have to select the "Post (Ephemeral)" operation.
 
 ### When is action necessary?
+
 If you are using the following fields or properties in the Slack node:
+
 - As User
 - Ephemeral
 - User Name
 
 ### How to upgrade:
+
 Open the Slack node and set them again to the appropriate values.
 
-----------------------------
+---
 
 ### What changed?
+
 If you have a question in Typeform that uses a previously answered question as part of its text, the question text would look like this in the Typeform Trigger node:
 
 `You have chosen {{field:23234242}} as your answer. Is this correct?`
@@ -251,9 +280,11 @@ Those curly braces broke the expression editor. The change makes it now display 
 `You have chosen [field:23234242] as your answer. Is this correct?`
 
 ### When is action necessary?
+
 If you are using the Typeform Trigger node with questions using the [Recall information](https://help.typeform.com/hc/en-us/articles/360050447072-What-is-Recall-information-) feature.
 
 ### How to upgrade:
+
 In workflows using the Typeform Trigger node, nodes that reference such key names (questions that use a previously answered question as part of its text) will need to be updated.
 
 ## 0.95.0
@@ -281,11 +312,11 @@ In the Segment Node, we have changed how the properties 'traits' and 'properties
 When the properties 'traits' or 'properties' are set, and one of the following resources/operations is used:
 
 | Resource | Operation |
-|--|--|
-| Identify | Create |
-| Track | Event |
-| Track | Page |
-| Group | Add |
+| -------- | --------- |
+| Identify | Create    |
+| Track    | Event     |
+| Track    | Page      |
+| Group    | Add       |
 
 ### How to upgrade:
 
@@ -305,7 +336,6 @@ If you had set "Basic Auth" for the "Authentication" field in the node.
 
 The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
 
-
 ## 0.90.0
 
 ### What changed?
@@ -319,7 +349,6 @@ If you are running Node.js version older than 12.9.
 ### How to upgrade:
 
 You can find download and install the latest version of Node.js from [here](https://nodejs.org/en/download/).
-
 
 ## 0.87.0
 
@@ -335,7 +364,6 @@ If you are are actively using the link.fish node.
 
 Unfortunately, that's not possible. We'd recommend you to look for an alternative service.
 
-
 ## 0.83.0
 
 ### What changed?
@@ -346,13 +374,13 @@ In the Active Campaign Node, we have changed how the `getAll` operation works wi
 
 When one of the following resources/operations is used:
 
-| Resource | Operation |
-|--|--|
-| Deal | Get All |
-| Connector | Get All |
-|  E-commerce Order | Get All |
-|  E-commerce Customer | Get All |
-|  E-commerce Order Products | Get All |
+| Resource                  | Operation |
+| ------------------------- | --------- |
+| Deal                      | Get All   |
+| Connector                 | Get All   |
+| E-commerce Order          | Get All   |
+| E-commerce Customer       | Get All   |
+| E-commerce Order Products | Get All   |
 
 ### How to upgrade:
 
@@ -393,7 +421,6 @@ If you have used the Attachments option in your Twitter nodes.
 
 You'll need to re-create the attachments for the Twitter node.
 
-
 ## 0.68.0
 
 ### What changed?
@@ -413,36 +440,39 @@ All values that get referenced which were before under the property "channel" ar
 This means that these expressions have to get adjusted.
 
 Meaning if the expression used before was:
+
 ```
 {{ $node["Slack"].data["channel"]["id"] }}
 ```
+
 it has to get changed to:
+
 ```
 {{ $node["Slack"].data["id"] }}
 ```
-
 
 ## 0.67.0
 
 ### What changed?
 
 The names of the following nodes were not set correctly and got fixed:
-  - AMQP Sender
-  - Bitbucket-Trigger
-  - Coda
-  - Eventbrite-Trigger
-  - Flow
-  - Flow-Trigger
-  - Gumroad-Trigger
-  - Jira
-  - Mailchimp-Trigger
-  - PayPal Trigger
-  - Read PDF
-  - Rocketchat
-  - Shopify
-  - Shopify-Trigger
-  - Stripe-Trigger
-  - Toggl-Trigger
+
+- AMQP Sender
+- Bitbucket-Trigger
+- Coda
+- Eventbrite-Trigger
+- Flow
+- Flow-Trigger
+- Gumroad-Trigger
+- Jira
+- Mailchimp-Trigger
+- PayPal Trigger
+- Read PDF
+- Rocketchat
+- Shopify
+- Shopify-Trigger
+- Stripe-Trigger
+- Toggl-Trigger
 
 ### When is action necessary?
 
@@ -454,31 +484,31 @@ For the nodes mentioned above, you'll need to give them access to the credential
 
 **Simple**
 
-  - Note down the settings of the nodes before upgrading
-  - After upgrading, delete the nodes mentioned above from your workflow, and recreate them
+- Note down the settings of the nodes before upgrading
+- After upgrading, delete the nodes mentioned above from your workflow, and recreate them
 
 **Advanced**
 
 After upgrading, select the whole workflow in the editor, copy it, and paste it into a text editor. In the JSON, change the node types manually by replacing the values for "type" as follows:
-  - "n8n-nodes-base.amqpSender" -> "n8n-nodes-base.amqp"
-  - "n8n-nodes-base.bitbucket" -> "n8n-nodes-base.bitbucketTrigger"
-  - "n8n-nodes-base.Coda" -> "n8n-nodes-base.coda"
-  - "n8n-nodes-base.eventbrite" -> "n8n-nodes-base.eventbriteTrigger"
-  - "n8n-nodes-base.Flow" -> "n8n-nodes-base.flow"
-  - "n8n-nodes-base.flow" -> "n8n-nodes-base.flowTrigger"
-  - "n8n-nodes-base.gumroad" -> "n8n-nodes-base.gumroadTrigger"
-  - "n8n-nodes-base.Jira Software Cloud" -> "n8n-nodes-base.jira"
-  - "n8n-nodes-base.Mailchimp" -> "n8n-nodes-base.mailchimpTrigger"
-  - "n8n-nodes-base.PayPal" -> "n8n-nodes-base.payPalTrigger"
-  - "n8n-nodes-base.Read PDF" -> "n8n-nodes-base.readPDF"
-  - "n8n-nodes-base.Rocketchat" -> "n8n-nodes-base.rocketchat"
-  - "n8n-nodes-base.shopify" -> "n8n-nodes-base.shopifyTrigger"
-  - "n8n-nodes-base.shopifyNode" -> "n8n-nodes-base.shopify"
-  - "n8n-nodes-base.stripe" -> "n8n-nodes-base.stripeTrigger"
-  - "n8n-nodes-base.toggl" -> "n8n-nodes-base.togglTrigger"
+
+- "n8n-nodes-base.amqpSender" -> "n8n-nodes-base.amqp"
+- "n8n-nodes-base.bitbucket" -> "n8n-nodes-base.bitbucketTrigger"
+- "n8n-nodes-base.Coda" -> "n8n-nodes-base.coda"
+- "n8n-nodes-base.eventbrite" -> "n8n-nodes-base.eventbriteTrigger"
+- "n8n-nodes-base.Flow" -> "n8n-nodes-base.flow"
+- "n8n-nodes-base.flow" -> "n8n-nodes-base.flowTrigger"
+- "n8n-nodes-base.gumroad" -> "n8n-nodes-base.gumroadTrigger"
+- "n8n-nodes-base.Jira Software Cloud" -> "n8n-nodes-base.jira"
+- "n8n-nodes-base.Mailchimp" -> "n8n-nodes-base.mailchimpTrigger"
+- "n8n-nodes-base.PayPal" -> "n8n-nodes-base.payPalTrigger"
+- "n8n-nodes-base.Read PDF" -> "n8n-nodes-base.readPDF"
+- "n8n-nodes-base.Rocketchat" -> "n8n-nodes-base.rocketchat"
+- "n8n-nodes-base.shopify" -> "n8n-nodes-base.shopifyTrigger"
+- "n8n-nodes-base.shopifyNode" -> "n8n-nodes-base.shopify"
+- "n8n-nodes-base.stripe" -> "n8n-nodes-base.stripeTrigger"
+- "n8n-nodes-base.toggl" -> "n8n-nodes-base.togglTrigger"
 
 Then delete all existing nodes, and then paste the changed JSON directly into n8n. It should then recreate all the nodes and connections again, this time with working nodes.
-
 
 ## 0.62.0
 
@@ -495,7 +525,6 @@ If "evaluateExpression(...)" gets used in any Function or FunctionItem Node.
 ### How to upgrade:
 
 Simply replace the "evaluateExpression(...)" with "$evaluateExpression(...)".
-
 
 ## 0.52.0
 
@@ -517,7 +546,6 @@ Open the "Date & Time"-Nodes and reference the date that should be converted
 via an expression. Also, set the "Property Name" to the name of the property the
 converted date should be set on.
 
-
 ## 0.37.0
 
 ### What changed?
@@ -533,7 +561,6 @@ When you currently use the Rocketchat-Node.
 
 Open the Rocketchat credentials and fill the parameter `domain`. If you had previously the
 subdomain "example" set you have to set now "https://example.rocket.chat".
-
 
 ## 0.19.0
 
@@ -556,9 +583,7 @@ it and paste it in a text-editor, it will display all the data the node
 contained). Then set the "Response Format" to "File". Everything will then
 function again like before.
 
-
-----------------------------
-
+---
 
 ### What changed?
 
@@ -576,7 +601,6 @@ When "HTTP Request" nodes get used which have "Response Format" set to "String".
 After upgrading open all workflows which contain the concerning Nodes and set
 "Binary Property" to "response".
 
-
 ## 0.18.0
 
 ### What changed?
@@ -591,8 +615,7 @@ When Webhook-Nodes get used which have "Response Mode" set to "Last Node".
 
 After upgrading open all workflows which contain the concerning Webhook-Nodes and set "Response Mode" again manually to "Last Node".
 
-
-----------------------------
+---
 
 ### What changed?
 
@@ -603,6 +626,7 @@ packages with security vulnerabilities we had to switch to a different one.
 
 When you currently start n8n in your setup directly via its JavaScript file.
 For example like this:
+
 ```
 /usr/local/bin/node ./dist/index.js start
 ```
@@ -610,6 +634,7 @@ For example like this:
 ### How to upgrade:
 
 Change the path to its new location:
+
 ```
 /usr/local/bin/node bin/n8n start
 ```

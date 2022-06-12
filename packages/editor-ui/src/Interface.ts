@@ -23,6 +23,8 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+export * from 'n8n-design-system/src/types';
+
 declare module 'jsplumb' {
 	interface PaintStyle {
 		stroke?: string;
@@ -157,6 +159,9 @@ export interface IExternalHooks {
 	run(eventName: string, metadata?: IDataObject): Promise<void>;
 }
 
+/**
+ * @deprecated Do not add methods to this interface.
+ */
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
@@ -338,6 +343,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	id: string;
 	data: IRunExecutionData;
 	workflowData: IWorkflowDb;
+	executedNode?: string;
 }
 
 export interface IExecutionShortResponse {
@@ -477,12 +483,6 @@ export interface IPushDataConsoleMessage {
 	messages: string[];
 }
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
 export type IPersonalizationSurveyAnswersV1 = {
 	codingSkill?: string | null;
 	companyIndustry?: string[] | null;
@@ -504,6 +504,34 @@ export type IPersonalizationSurveyAnswersV2 = {
 	otherAutomationGoal?: string | null;
 	otherCompanyIndustryExtended?: string[] | null;
 };
+
+export type IRole = 'default' | 'owner' | 'member';
+
+export interface IUserResponse {
+	id: string;
+	firstName?: string;
+	lastName?: string;
+	email?: string;
+	globalRole?: {
+		name: IRole;
+		id: string;
+	};
+	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
+	isPending: boolean;
+}
+
+export interface IUser extends IUserResponse {
+	isDefaultUser: boolean;
+	isPendingUser: boolean;
+	isOwner: boolean;
+	fullName?: string;
+}
+
+export interface IVersionNotificationSettings {
+	enabled: boolean;
+	endpoint: string;
+	infoUrl: string;
+}
 
 export interface IN8nPrompts {
 	message: string;
@@ -530,6 +558,7 @@ export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
 	um?: boolean;
+	api?: boolean;
 }
 
 export interface IPermissions {
@@ -632,6 +661,11 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	publicApi: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -705,6 +739,8 @@ export interface ITag {
 	id: string;
 	name: string;
 	usageCount?: number;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface ITagRow {
@@ -746,6 +782,10 @@ export interface ITemplatesNode extends IVersionNode {
 	categories?: ITemplatesCategory[];
 }
 
+export interface INodeMetadata {
+	parametersLastUpdatedAt?: number;
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -783,6 +823,7 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
+	nodeMetadata: {[nodeName: string]: INodeMetadata};
 }
 
 export interface ICredentialTypeMap {
@@ -811,6 +852,8 @@ export interface IModalState {
 	activeId?: string | null;
 }
 
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -819,6 +862,16 @@ export interface IUiState {
 	};
 	isPageLoading: boolean;
 	currentView: string;
+	ndv: {
+		sessionId: string;
+		input: {
+			displayMode: IRunDataDisplayMode;
+		};
+		output: {
+			displayMode: IRunDataDisplayMode;
+		};
+	};
+	mainPanelPosition: number;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -828,6 +881,11 @@ export interface ISettingsState {
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementConfig;
 	templatesEndpointHealthy: boolean;
+	api: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
 }
 
 export interface ITemplateState {
@@ -883,21 +941,6 @@ export interface IBounds {
 
 export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
 
-export type IRole = 'default' | 'owner' | 'member';
-
-export interface IUserResponse {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email?: string;
-	globalRole?: {
-		name: IRole;
-		id: string;
-	};
-	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
-	isPending: boolean;
-}
-
 export interface IInviteResponse {
 	user: {
 		id: string;
@@ -906,55 +949,10 @@ export interface IInviteResponse {
 	error?: string;
 }
 
-export interface IUser extends IUserResponse {
-	isDefaultUser: boolean;
-	isPendingUser: boolean;
-	isOwner: boolean;
-	fullName?: string;
+export interface ITab {
+	value: string | number;
+	label?: string;
+	href?: string;
+	icon?: string;
+	align?: 'right';
 }
-
-export type Rule = { name: string; config?: any}; // tslint:disable-line:no-any
-
-export type RuleGroup = {
-	rules: Array<Rule | RuleGroup>;
-	defaultError?: {messageKey: string, options?: any}; // tslint:disable-line:no-any
-};
-
-export type IValidator = {
-	validate: (value: string | number | boolean | null | undefined, config: any) => false | {messageKey: string, options?: any}; // tslint:disable-line:no-any
-};
-
-export type IFormInput = {
-	name: string;
-	initialValue?: string | number | boolean | null;
-	properties: {
-		label?: string;
-		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info';
-		maxlength?: number;
-		required?: boolean;
-		showRequiredAsterisk?: boolean;
-		validators?: {
-			[name: string]: IValidator;
-		};
-		validationRules?: Array<Rule | RuleGroup>;
-		validateOnBlur?: boolean;
-		infoText?: string;
-		placeholder?: string;
-		options?: Array<{label: string; value: string}>;
-		autocomplete?: 'off' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
-		capitalize?: boolean;
-		focusInitially?: boolean;
-	};
-	shouldDisplay?: (values: {[key: string]: unknown}) => boolean;
-};
-
-export type IFormInputs = IFormInput[];
-
-export type IFormBoxConfig = {
-	title: string;
-	buttonText?: string;
-	secondaryButtonText?: string;
-	inputs: IFormInputs;
-	redirectLink?: string;
-	redirectText?: string;
-};

@@ -63,7 +63,7 @@ export class RabbitMQ implements ICredentialType {
 				},
 			},
 			default: true,
-			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
+			description: 'Whether to use passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
 			displayName: 'CA Certificates',
@@ -80,7 +80,7 @@ export class RabbitMQ implements ICredentialType {
 				},
 			},
 			default: '',
-			description: 'SSL CA Certificates to use.',
+			description: 'SSL CA Certificates to use',
 		},
 		{
 			displayName: 'Client Certificate',
@@ -100,7 +100,7 @@ export class RabbitMQ implements ICredentialType {
 				},
 			} as IDisplayOptions,
 			default: '',
-			description: 'SSL Client Certificate to use.',
+			description: 'SSL Client Certificate to use',
 		},
 		{
 			displayName: 'Client Key',
@@ -120,7 +120,7 @@ export class RabbitMQ implements ICredentialType {
 				},
 			},
 			default: '',
-			description: 'SSL Client Key to use.',
+			description: 'SSL Client Key to use',
 		},
 		{
 			displayName: 'Passphrase',
@@ -140,7 +140,7 @@ export class RabbitMQ implements ICredentialType {
 				},
 			},
 			default: '',
-			description: 'SSL passphrase to use.',
+			description: 'SSL passphrase to use',
 		},
 		// {
 		// 	displayName: 'Client ID',
