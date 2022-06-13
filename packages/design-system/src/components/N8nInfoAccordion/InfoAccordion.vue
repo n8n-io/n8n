@@ -1,5 +1,5 @@
 <template>
-	<div :class="['accordion', $style.accordion]" @click="onClick">
+	<div :class="['accordion', $style.container]" >
 		<div :class="{[$style.header]: true, [$style.expanded]: expanded}" @click="toggle">
 			<n8n-text color="text-base" size="small" align="left" bold>{{ title }}</n8n-text>
 
@@ -10,7 +10,7 @@
 			/>
 
 		</div>
-		<div v-if="expanded" :class="$style.description">
+		<div v-if="expanded" :class="{[$style.description]: true, [$style.collapsed]: !expanded}" @click="onClick">
 			<n8n-text color="text-base" size="small" align="left">
 				<span v-html="description"></span>
 			</n8n-text>
@@ -46,6 +46,9 @@ export default {
 </script>
 
 <style lang="scss" module>
+.container {
+	background-color: var(--color-foreground-base);
+}
 
 .header {
 	cursor: pointer;
@@ -58,11 +61,7 @@ export default {
 }
 
 .expanded {
-	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
-}
-
-.accordion {
-	background-color: var(--color-foreground-base);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
 }
 
 .chevron {
@@ -71,7 +70,7 @@ export default {
 
 .description {
 	display: flex;
-	padding: var(--spacing-2xs) var(--spacing-s) var(--spacing-s) var(--spacing-s);
+	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
 }
 
 </style>
