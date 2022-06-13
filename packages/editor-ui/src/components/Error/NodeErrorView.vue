@@ -9,7 +9,7 @@
 				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $locale.baseText('nodeErrorView.details') }}
 			</summary>
 			<div class="error-details__content">
-				<div v-if="error.context.causeDetailed">
+				<div v-if="error.context && error.context.causeDetailed">
 					<el-card class="box-card" shadow="never">
 						<div>
 							{{error.context.causeDetailed}}
@@ -140,7 +140,7 @@ export default mixins(
 	},
 	methods: {
 		getErrorMessage (): string {
-			if (!this.error.context.messageTemplate) {
+			if (!this.error.context || !this.error.context.messageTemplate) {
 				return this.error.message;
 			}
 
