@@ -1,5 +1,4 @@
-import { GenericValue, IDataObject, IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -47,6 +46,10 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				routing: {
+					request: {
+						method: 'GET',
+						url: '=/v3/contacts',
+					},
 					output: {
 						postReceive: [
 							{
@@ -57,6 +60,17 @@ export const contactOperations: INodeProperties[] = [
 							},
 						],
 					},
+					operations: {
+						pagination: {
+							type: 'offset',
+							properties: {
+								limitParameter: 'limit',
+								offsetParameter: 'offset',
+								pageSize: 1000,
+								type: 'query'
+							}
+						}
+					}
 				}
 			},
 			{
@@ -244,6 +258,11 @@ const getAllOperations: Array<INodeProperties> = [
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
+		routing: {
+			send: {
+				paginate: "={{$value}}"
+			}
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -255,15 +274,6 @@ const getAllOperations: Array<INodeProperties> = [
 			},
 		},
 		default: false,
-		routing: {
-			request: {
-				method: 'GET',
-				url: '=/v3/contacts?limit={{$parameter.limit}}&sort=desc',
-			},
-			send: {
-				paginate: false,
-			},
-		},
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
@@ -283,17 +293,46 @@ const getAllOperations: Array<INodeProperties> = [
 				],
 			},
 		},
+		routing: {
+			send: {
+				type: 'query',
+				property: 'limit'
+			}
+		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 1000,
 		},
 		default: 10,
-		routing: {
-			output: {
-				maxResults: '={{$value}}', // Set maxResults to the value of current parameter
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				]
 			},
 		},
-		description: 'Max number of results to return',
+		options: [
+			{name:'DESC', value: 'desc'},
+			{name:'ASC', value: 'asc'}
+		],
+		routing: {
+			send: {
+				type: 'query',
+				property: 'sort',
+				value: '={{$value}}'
+			}
+		},
+		default: 'desc',
+		description: 'Sort the results in the ascending/descending order of record creation',
 	}
 ];
 
@@ -318,6 +357,7 @@ const getOperations: Array<INodeProperties> = [
 				url: '=/v3/contacts/{{$value}}',
 			}
 		},
+		required: true,
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
 	}
