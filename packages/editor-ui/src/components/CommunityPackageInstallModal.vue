@@ -130,7 +130,15 @@ export default mixins(
 					this.modalBus.$emit('close');
 					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 				} catch(error) {
-					this.infoTextErrorMessage = error.message;
+					console.log(JSON.stringify(error)); // eslint-disable-line no-console
+					if(error.httpStatusCode && error.httpStatusCode === 400) {
+						this.infoTextErrorMessage = error.message;
+					} else {
+						this.$showError(
+							error,
+							this.$locale.baseText('settings.communityNodes.messages.install.error'),
+						);
+					}
 				}
 			}
 		},
