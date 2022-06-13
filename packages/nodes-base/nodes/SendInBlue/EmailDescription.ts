@@ -1,4 +1,5 @@
-import { INodeProperties } from "n8n-workflow";
+import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from "n8n-workflow";
+import { TransactionalEmail } from "./Model";
 
 export const emailOperations: Array<INodeProperties> = [
 	{
@@ -23,6 +24,22 @@ export const emailOperations: Array<INodeProperties> = [
 			request: {
 				method: 'POST',
 				url: '/v3/smtp/email'
+			},
+			send: {
+				preSend: [
+					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+						const presendData = requestOptions.body?.valueOf() as TransactionalEmail;
+
+						// Handle optional data fields, that if sent as empty break the request
+						for(let [key, value] of Object.entries(presendData)) {
+							if(value == "") {
+								delete presendData[key as keyof TransactionalEmail];
+							}
+						}
+
+						return requestOptions;
+					}
+				]
 			},
 			output: {
 				postReceive: [
