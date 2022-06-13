@@ -37,7 +37,7 @@
 			</div>
 		</div>
 		<div v-else>
-			<div v-if="isActivelyPolling">
+			<div class="mb-xl" v-if="isActivelyPolling">
 				<n8n-spinner type="ring" />
 			</div>
 
