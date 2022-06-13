@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import { IDataObject, IExecuteSingleFunctions, IN8nHttpFullResponse, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 export const senderOperations: Array<INodeProperties> = [
 	{
@@ -21,6 +21,22 @@ export const senderOperations: Array<INodeProperties> = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/v3/senders/{{$parameter.id}}',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": true } }}',
+								},
+							},
+						],
+					},
+				}
 			},
 			{
 				name: 'Get All',
@@ -40,6 +56,16 @@ export const senderOperations: Array<INodeProperties> = [
 								properties: {
 									property: 'senders',
 								},
+							},
+							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+								const returnAll = this.getNodeParameter("returnAll") as boolean;
+								if(returnAll === false) {
+									const limit = this.getNodeParameter("limit") as number;
+
+									items = items.slice(0, limit);
+								}
+
+								return items;
 							}
 						],
 					},
@@ -76,6 +102,7 @@ const senderCreateOperation: Array<INodeProperties> = [
 				type: 'body'
 			},
 		},
+		required: true,
 		description: 'Name of the sender',
 	},
 	{
@@ -99,13 +126,14 @@ const senderCreateOperation: Array<INodeProperties> = [
 				type: 'body',
 			},
 		},
+		required: true,
 		description: 'Email of the sender',
 	},
 ];
 
 const senderDeleteOperation: Array<INodeProperties> = [
 	{
-		displayName: 'ID',
+		displayName: 'Sender ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -119,24 +147,52 @@ const senderDeleteOperation: Array<INodeProperties> = [
 				],
 			},
 		},
-		routing: {
-			request: {
-				method: 'DELETE',
-				url: '=/v3/senders/{{$value}}',
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'set',
-						properties: {
-							value: '={{ { "success": true } }}',
-						},
-					},
+		description: 'ID of the sender to delete',
+	}
+];
+
+const senderGetAllOperation: Array<INodeProperties> = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'sender',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
-		description: 'ID of the sender to delete',
-	}
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'sender',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		default: 10,
+		description: 'Max number of results to return',
+	},
 ];
 
 export const senderFields: Array<INodeProperties> = [
@@ -148,5 +204,10 @@ export const senderFields: Array<INodeProperties> = [
 	/* -------------------------------------------------------------------------- */
 	/*                                sender:delete                               */
 	/* -------------------------------------------------------------------------- */
-		...senderDeleteOperation
+		...senderDeleteOperation,
+
+	/* -------------------------------------------------------------------------- */
+	/*                                sender:getAll                               */
+	/* -------------------------------------------------------------------------- */
+		...senderGetAllOperation
 ];
