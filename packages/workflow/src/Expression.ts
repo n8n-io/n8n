@@ -26,7 +26,11 @@ tmpl.brackets.set('{{ }}');
 // Make sure that error get forwarded
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 tmpl.tmpl.errorHandler = (error: Error) => {
-	throw error;
+	if (error instanceof ExpressionError) {
+		if (error.context.failExecution) {
+			throw error;
+		}
+	}
 };
 
 export class Expression {
