@@ -53,7 +53,7 @@ import clientOAuth2 from 'client-oauth2';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 import csrf from 'csrf';
 import requestPromise, { OptionsWithUrl } from 'request-promise-native';
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -103,6 +103,7 @@ import {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
+	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
@@ -111,7 +112,6 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
-	IDiagnosticInfo,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
@@ -147,11 +147,13 @@ import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
+	AuthenticatedRequest,
+	CredentialRequest,
 	ExecutionRequest,
-	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	TagsRequest,
+	WorkflowRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
@@ -164,6 +166,7 @@ import {
 	isEmailSetUp,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
+import { loadPublicApiVersions } from './PublicApi';
 
 require('body-parser-xml')(bodyParser);
 
@@ -212,6 +215,8 @@ class App {
 
 	restEndpoint: string;
 
+	publicApiEndpoint: string;
+
 	frontendSettings: IN8nUISettings;
 
 	protocol: string;
@@ -236,14 +241,15 @@ class App {
 		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
 		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
 
-		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
-		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
-		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-		this.executionTimeout = config.getEnv('executions.timeout');
-		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
-		this.payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-		this.timezone = config.getEnv('generic.timezone');
-		this.restEndpoint = config.getEnv('endpoints.rest');
+		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
+		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
+		this.executionTimeout = config.get('executions.timeout');
+		this.maxExecutionTimeout = config.get('executions.maxTimeout');
+		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
+		this.timezone = config.get('generic.timezone');
+		this.restEndpoint = config.get('endpoints.rest');
+		this.publicApiEndpoint = config.get('publicApi.path');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -311,6 +317,11 @@ class App {
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
+			},
+			publicApi: {
+				enabled: config.getEnv('publicApi.disabled') === false,
+				latestVersion: 1,
+				path: config.getEnv('publicApi.path'),
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
@@ -381,6 +392,9 @@ class App {
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
 		];
+		if (!config.getEnv('publicApi.disabled')) {
+			ignoredEndpoints.push(this.publicApiEndpoint);
+		}
 		// eslint-disable-next-line prefer-spread
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
 
@@ -492,8 +506,9 @@ class App {
 
 			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '')
+				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
 					return true;
+				}
 
 				for (const [k, v] of Object.entries(decodedToken)) {
 					if (k === jwtNamespace) {
@@ -551,6 +566,15 @@ class App {
 			});
 		}
 
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		if (!config.getEnv('publicApi.disabled')) {
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(this.publicApiEndpoint);
+			this.app.use(...apiRouters);
+			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
+		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
@@ -801,7 +825,7 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
 				const { id, ...rest } = savedWorkflow;
 
@@ -1091,7 +1115,11 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowSaved(
+					req.user.id,
+					updatedWorkflow,
+					false,
+				);
 
 				if (updatedWorkflow.active) {
 					// When the workflow is supposed to be active add it again
@@ -1159,7 +1187,7 @@ class App {
 
 				await Db.collections.Workflow.delete(workflowId);
 
-				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;

@@ -326,7 +326,7 @@ export class WorkflowExecute {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
-			if (this.runExecutionData.executionData!.waitingExecutionSource === null) {
+			if (!this.runExecutionData.executionData!.waitingExecutionSource) {
 				this.runExecutionData.executionData!.waitingExecutionSource = {};
 			}
 
@@ -422,7 +422,10 @@ export class WorkflowExecute {
 						],
 				} as IExecuteData;
 
-				if (this.runExecutionData.executionData!.waitingExecutionSource !== null) {
+				if (
+					this.runExecutionData.executionData!.waitingExecutionSource !== null &&
+					this.runExecutionData.executionData!.waitingExecutionSource !== undefined
+				) {
 					executionStackItem.source =
 						this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
 							runIndex
@@ -936,26 +939,28 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
-							// Check if the output data contains pairedItem data
-							checkOutputData: for (const outputData of nodeSuccessData as INodeExecutionData[][]) {
-								if (outputData === null) {
-									continue;
-								}
-								for (const item of outputData) {
-									if (!item.pairedItem) {
-										// The pairedItem is missing so check if it can get automatically fixed
-										if (
-											executionData.data.main.length !== 1 ||
-											executionData.data.main[0]?.length !== 1
-										) {
-											// Automatically fixing is only possible if there is only one
-											// input and one input item
-											break checkOutputData;
-										}
+							if (nodeSuccessData) {
+								// Check if the output data contains pairedItem data
+								checkOutputData: for (const outputData of nodeSuccessData) {
+									if (outputData === null) {
+										continue;
+									}
+									for (const item of outputData) {
+										if (!item.pairedItem) {
+											// The pairedItem is missing so check if it can get automatically fixed
+											if (
+												executionData.data.main.length !== 1 ||
+												executionData.data.main[0]?.length !== 1
+											) {
+												// Automatically fixing is only possible if there is only one
+												// input and one input item
+												break checkOutputData;
+											}
 
-										item.pairedItem = {
-											item: 0,
-										};
+											item.pairedItem = {
+												item: 0,
+											};
+										}
 									}
 								}
 							}
