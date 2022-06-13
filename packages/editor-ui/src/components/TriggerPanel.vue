@@ -62,7 +62,7 @@
 			<n8n-text size="small" @click="onLinkClick">
 				<span v-html="activationHint"></span>
 			</n8n-text>
-			<n8n-info-accordion :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsHint" @click="onLinkClick"></n8n-info-accordion>
+			<n8n-info-accordion v-if="executionsDescription" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsDescription" @click="onLinkClick"></n8n-info-accordion>
 		</div>
 	</div>
 </template>
@@ -216,6 +216,31 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			return '';
 		},
+		executionsActivationHint(): string {
+			if (!this.isWorkflowActive && !this.isActivelyPolling) {
+				if (this.isWebhookNode) {
+					return this.$locale.baseText('triggerPanel.executionsHint.webhookNode.inactive');
+				}
+				else if (this.isWebhookBasedNode) {
+					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.inactive', {
+						interpolate: { service: this.serviceName },
+					});
+				}
+			}
+
+			if (this.isWorkflowActive) {
+				if (this.isWebhookNode) {
+					return this.$locale.baseText('triggerPanel.executionsHint.webhookNode.active');
+				}
+				else if (this.isWebhookBasedNode) {
+					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.inactive', {
+						interpolate: { service: this.serviceName },
+					});
+				}
+			}
+
+			return '';
+		},
 		executionsHint(): string {
 			const saveDataErrorExecutionDefault = this.$store.getters.saveDataErrorExecution;
 			const saveDataSuccessExecutionDefault = this.$store.getters.saveDataSuccessExecution;
@@ -234,6 +259,13 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			return this.$locale.baseText('triggerPanel.executinosHint.disabled');
+		},
+		executionsDescription(): string {
+			const activationHint = this.executionsActivationHint;
+			if (activationHint) {
+				return `${this.executionsActivationHint}<br />${this.executionsHint}`;
+			}
+			return '';
 		},
 		activationHint(): string {
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {

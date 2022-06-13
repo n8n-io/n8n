@@ -29,7 +29,8 @@ import PanelDragButton from './PanelDragButton.vue';
 
 const MAIN_PANEL_WIDTH = 360;
 const SIDE_MARGIN = 24;
-const TRIGGER_PANEL_WIDTH = 320;
+const FIXED_PANEL_WIDTH = 320;
+const FIXED_PANEL_WIDTH_LARGE = 420;
 const MINIMUM_INPUT_PANEL_WIDTH = 320;
 
 export default Vue.extend({
@@ -60,13 +61,20 @@ export default Vue.extend({
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		fixedPanelWidth() {
+			if (this.windowWidth > 1700) {
+				return FIXED_PANEL_WIDTH_LARGE;
+			}
+
+			return FIXED_PANEL_WIDTH;
+		},
 		mainPanelPosition(): number {
 			if (typeof this.position === 'number') {
 				return this.position;
 			}
 
 			if (!this.isDraggable) {
-				return TRIGGER_PANEL_WIDTH + MAIN_PANEL_WIDTH / 2 + SIDE_MARGIN;
+				return this.fixedPanelWidth + MAIN_PANEL_WIDTH / 2 + SIDE_MARGIN;
 			}
 
 			const relativePosition = this.$store.getters['ui/mainPanelPosition'] as number;
@@ -104,7 +112,7 @@ export default Vue.extend({
 		inputPanelStyles(): { width: string } {
 			if (!this.isDraggable) {
 				return {
-					width: '320px',
+					width: `${this.fixedPanelWidth}px`,
 				};
 			}
 
