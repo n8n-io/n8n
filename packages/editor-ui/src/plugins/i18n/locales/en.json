@@ -339,7 +339,6 @@
 	"ndv.output.noOutputDataInBranch": "No output data in this branch",
 	"ndv.output.of": " of ",
 	"ndv.output.pageSize": "Page Size",
-	"ndv.output.pollEventNodeHint": "Fetch an event to output data",
 	"ndv.output.run": "Run",
 	"ndv.output.runNodeHint": "Execute this node to output data",
 	"ndv.output.staleDataWarning": "Node parameters have changed. <br /> Execute node again to refresh output.",

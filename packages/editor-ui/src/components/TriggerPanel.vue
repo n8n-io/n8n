@@ -221,7 +221,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				if (this.isWebhookNode) {
 					return this.$locale.baseText('triggerPanel.executionsHint.webhookNode.inactive');
 				}
-				else if (this.isWebhookBasedNode) {
+				else if (this.isWebhookBasedNode || this.isPollingNode) {
 					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.inactive', {
 						interpolate: { service: this.serviceName },
 					});
@@ -232,8 +232,8 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				if (this.isWebhookNode) {
 					return this.$locale.baseText('triggerPanel.executionsHint.webhookNode.active');
 				}
-				else if (this.isWebhookBasedNode) {
-					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.inactive', {
+				else if (this.isWebhookBasedNode || this.isPollingNode) {
+					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.active', {
 						interpolate: { service: this.serviceName },
 					});
 				}
