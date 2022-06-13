@@ -78,7 +78,7 @@ export default mixins(
 			);
 		},
 		hasIssues (): boolean {
-			return Boolean(this.node && this.node.issues !== undefined && Object.keys(this.node.issues).length);
+			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
 		},
 		disabled(): boolean {
 			if (this.workflowRunning && !this.nodeRunning) {

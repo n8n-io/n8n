@@ -104,7 +104,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return null;
 		},
 		hasIssues (): boolean {
-			return Boolean(this.node && this.node.issues !== undefined && Object.keys(this.node.issues).length);
+			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
 		},
 		serviceName(): string {
 			if (this.nodeType) {
