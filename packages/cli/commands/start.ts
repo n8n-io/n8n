@@ -34,6 +34,10 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { ActiveDirectoryManager } from '../src/ActiveDirectory/ActiveDirectoryManager';
+import { search } from 'superagent';
+import { string } from '@oclif/parser/lib/flags';
+import { ActiveDirectoryService } from '../src/ActiveDirectory/ActiveDirectoryService';
+import { getActiveDirectorySyncInstance } from '../src/ActiveDirectory/ActiveDirectorySync';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -215,6 +219,15 @@ export class Start extends Command {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
+				//si no existe in the database settings it's the first time;
+				if (databaseSettings['ACTIVE_DIRECTORY_DISABLED'] === undefined) {
+					//if config active directory enabled
+					// save it to setting table as enabled enabled
+					//set config object to enabled
+					// save all other feature settings to the other table
+					// with their initial values;
+				}
+
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
 					const redisPassword = config.getEnv('queue.bull.redis.password');
@@ -353,23 +366,57 @@ export class Start extends Command {
 					this.log('\nManual executions will be visible only for the owner');
 				}
 
-				const activeDirecory = ActiveDirectoryManager.getInstance();
+				// the attibute the user uses the sign in in mattermost;
+				// so whatever they type in in the email field it's going to be mapped to
+				// the login id attribute in mattermost;
+				// THIS IS ENV VARIABLE
+				// const loginId = 'mail';
+				// const userFilter = '';
 
+				// const usernameInputFromUi = 'ricardo@n8n.io';
+				// const passwordInputFromUi = 'Ricardo_123';
 
-				console.log('aqui papa');
+				// const activeDirectory = new ActiveDirectoryService();
 
+				// try {
+				// 	const searchResult = await activeDirectory.searchWithAdminBinding(
+				// 		`(${loginId}=${usernameInputFromUi})`,
+				// 	);
 
-				ActiveDirectoryManager.destroy();
+				// 	if (!searchResult.length) {
+				// 		return;
+				// 	}
 
-				try {
-					const data = await activeDirecory.searchWithAdminBinding(
-						'(mail=teresa.zeron1@gmail.com)',
-					);
-					console.log(data);
-				} catch (error) {
-					console.log('este es el error');
-					console.log(error);
-				}
+				// 	// get the last user in the results
+				// 	let user = searchResult.pop();
+
+				// 	if (user === undefined) {
+				// 		user = { dn: '' };
+				// 	}
+
+				// 	await activeDirectory.validUser(user.dn, passwordInputFromUi);
+
+				// const n8nUser: {
+				// 	email: string;
+				// 	firstname: string;
+				// 	lastname: string;
+				// };
+
+				// 	console.log('pase papa');
+				// } catch (error) {
+				// 	console.log('este es el error');
+				// 	console.log(error);
+				// }
+
+				// console.log('sali the la function');
+
+				const data = getActiveDirectorySyncInstance();
+
+				data.config = {
+					seconds: 3,
+				};
+
+				data.start();
 
 				// Allow to open n8n editor by pressing "o"
 				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {

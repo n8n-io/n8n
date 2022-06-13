@@ -689,6 +689,8 @@ export const schema = {
 				default: 'ldaps://ldap.jumpcloud.com',
 				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_URL',
 			},
+		},
+		binding: {
 			baseDn: {
 				format: String,
 				default: 'o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
@@ -703,6 +705,23 @@ export const schema = {
 				format: String,
 				default: 'Ricardo_123',
 				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_ADMIN_PASSWORD',
+			},
+		},
+		attributeMapping: {
+			email: {
+				format: String,
+				default: 'mail',
+				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_EMAIL',
+			},
+			firstName: {
+				format: String,
+				default: '',
+				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_FIRSTNAME',
+			},
+			lastName: {
+				format: String,
+				default: '',
+				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_LASTNAME',
 			},
 		},
 	},

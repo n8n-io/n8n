@@ -1,18 +1,18 @@
 /* eslint-disable import/no-cycle */
 
-import { ActiveDirectory } from './ActiveDirectory';
+import { ActiveDirectoryService } from './ActiveDirectoryService';
 
 export class ActiveDirectoryManager {
-	private static activeDirectory: ActiveDirectory | null;
+	private static activeDirectory: ActiveDirectoryService | undefined;
 
-	static getInstance(): ActiveDirectory {
+	static getInstance(): ActiveDirectoryService {
 		if (!this.activeDirectory) {
-			return new ActiveDirectory();
+			return new ActiveDirectoryService();
 		}
 		return this.activeDirectory;
 	}
 
 	static destroy(): void {
-		this.activeDirectory = null;
+		this.activeDirectory = undefined;
 	}
 }
