@@ -118,28 +118,6 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
-		displayName: 'Update Enabled',
-		name: 'updateEnabled',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: false,
-		routing: {
-			send: {
-				type: 'body',
-				property: 'updateEnabled',
-			}
-		}
-	},
-	{
 		displayName: 'SMS',
 		name: 'sms',
 		type: 'string',
@@ -160,6 +138,37 @@ const createOperations: Array<INodeProperties> = [
 				property: 'attributes.SMS',
 			}
 		}
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact'
+				],
+				operation: [
+					'create',
+				]
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Update Enabled',
+				name: 'updateEnabled',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'body',
+						property: 'updateEnabled',
+					}
+				}
+			}
+		],
 	},
 	{
 		displayName: 'Additional Fields',
