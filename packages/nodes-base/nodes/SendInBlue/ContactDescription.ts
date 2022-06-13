@@ -1,4 +1,5 @@
-import { INodeProperties } from 'n8n-workflow';
+import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties, JsonObject } from 'n8n-workflow';
+import moment from 'moment-timezone';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -48,7 +49,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/v3/contacts',
+						url: '/v3/contacts',
 					},
 					output: {
 						postReceive: [
@@ -316,9 +317,10 @@ const getAllOperations: Array<INodeProperties> = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Sort',
-		name: 'sort',
-		type: 'options',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: [
@@ -329,19 +331,73 @@ const getAllOperations: Array<INodeProperties> = [
 				]
 			},
 		},
+		default: {},
 		options: [
-			{name:'DESC', value: 'desc'},
-			{name:'ASC', value: 'asc'}
-		],
-		routing: {
-			send: {
-				type: 'query',
-				property: 'sort',
-				value: '={{$value}}'
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'options',
+				options: [
+					{name:'DESC', value: 'desc'},
+					{name:'ASC', value: 'asc'}
+				],
+				routing: {
+					send: {
+						type: 'query',
+						property: 'sort',
+						value: '={{$value}}'
+					}
+				},
+				default: 'desc',
+				description: 'Sort the results in the ascending/descending order of record creation',
 			}
+		],
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				]
+			},
 		},
-		default: 'desc',
-		description: 'Sort the results in the ascending/descending order of record creation',
+		default: {},
+		options: [
+			{
+				displayName: 'Modified Since',
+				name: 'modifiedSince',
+				type: 'string',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'modifiedSince',
+						propertyInDotNotation: true,
+						preSend: [
+							async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+								let modifiedSince = this.getNodeParameter("filters.modifiedSince", '') as string;
+
+								if(modifiedSince !== '') {
+									modifiedSince = moment.utc(modifiedSince).format('YYYY-MM-DDTHH:mm:ssZ');
+									modifiedSince = encodeURIComponent(modifiedSince);
+									(requestOptions.qs as JsonObject).modifiedSince = modifiedSince;
+								}
+
+								return requestOptions;
+							}
+						]
+					},
+				},
+				default: '',
+				description: 'Filter (urlencoded) the contacts modified after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)',
+			}
+		],
 	}
 ];
 
