@@ -27,13 +27,15 @@
 				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 					$locale.baseText('triggerPanel.webhookBasedNode.listening')
 				}}</n8n-text>
-				<n8n-text tag="div" class="mb-xs">
-					{{
-						$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', {
-							interpolate: { service: serviceName },
-						})
-					}}
-				</n8n-text>
+				<div :class="$style.shake">
+					<n8n-text class="mb-xs" tag="div">
+						{{
+							$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', {
+								interpolate: { service: serviceName },
+							})
+						}}
+					</n8n-text>
+				</div>
 			</div>
 		</div>
 		<div v-else>
@@ -439,6 +441,18 @@ $--dark-pulse-color: hsla(
 		-moz-box-shadow: 0 0 0 0 $--dark-pulse-color;
 		box-shadow: 0 0 0 0 $--dark-pulse-color;
 	}
+}
+
+.shake {
+	animation: shake 7s infinite;
+}
+
+@keyframes shake {
+	80% { transform: translateX(0) }
+	85% { transform: translateX(5px) }
+	90% { transform: translateX(-5px) }
+	95% { transform: translateX(5px) }
+	100% { transform: translateX(0) }
 }
 
 .accordion {
