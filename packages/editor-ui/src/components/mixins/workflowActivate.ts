@@ -22,18 +22,21 @@ export const workflowActivate = mixins(
 				const workflowId = this.$store.getters.workflowId;
 				return this.updateWorkflowActivation(workflowId, true);
 			},
-			async updateWorkflowActivation(workflowId: string, newActiveState: boolean) {
+			async updateWorkflowActivation(workflowId: string | undefined, newActiveState: boolean) {
 				this.updatingWorkflowActivation = true;
-				const isCurrentWorkflow = workflowId === this.$store.getters['workflowId'];
 				const nodesIssuesExist = this.$store.getters.nodesIssuesExist as boolean;
 
-				if (!workflowId) {
+				let currWorkflowId: string | undefined = workflowId;
+				if (!currWorkflowId) {
 					const saved = await this.saveCurrentWorkflow();
 					if (!saved) {
 						this.updatingWorkflowActivation = false;
 						return;
 					}
+					currWorkflowId = this.$store.getters.workflowId as string;
 				}
+
+				const isCurrentWorkflow = currWorkflowId === this.$store.getters['workflowId'];
 
 				try {
 					if (isCurrentWorkflow && nodesIssuesExist) {
@@ -51,7 +54,7 @@ export const workflowActivate = mixins(
 						this.$telemetry.track('User set workflow active status');
 					}
 
-					await this.updateWorkflow({workflowId, active: newActiveState});
+					await this.updateWorkflow({workflowId: currWorkflowId, active: newActiveState});
 				} catch (error) {
 					const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 					this.$showError(
@@ -66,10 +69,10 @@ export const workflowActivate = mixins(
 				}
 
 				const activationEventName = isCurrentWorkflow ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
-				this.$externalHooks().run(activationEventName, { workflowId, active: newActiveState });
-				this.$telemetry.track('User set workflow active status', { workflow_id: workflowId, is_active: newActiveState });
+				this.$externalHooks().run(activationEventName, { workflowId: currWorkflowId, active: newActiveState });
+				this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState });
 
-				this.$emit('workflowActiveChanged', { id: workflowId, active: newActiveState });
+				this.$emit('workflowActiveChanged', { id: currWorkflowId, active: newActiveState });
 				this.updatingWorkflowActivation = false;
 
 				if (isCurrentWorkflow) {
