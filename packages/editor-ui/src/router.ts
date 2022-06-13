@@ -376,7 +376,9 @@ const router = new Router({
 						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 					deny: {
-						api: false,
+						shouldDeny: () => {
+							return store.getters['settings/isPublicApiEnabled'] === false;
+						},
 					},
 				},
 			},
