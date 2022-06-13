@@ -262,7 +262,7 @@ export const eventFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Repeat Frequency',
-				name: 'repeatFrequency',
+				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
 					{
@@ -873,7 +873,7 @@ export const eventFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Repeat Frequency',
-				name: 'repeatFrequency',
+				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
 					{
