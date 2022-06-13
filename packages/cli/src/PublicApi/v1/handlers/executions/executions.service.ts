@@ -1,19 +1,16 @@
 import { parse } from 'flatted';
 import { In, Not, ObjectLiteral, LessThan, IsNull } from 'typeorm';
+
 import { Db, IExecutionFlattedDb, IExecutionResponseApi } from '../../../..';
 import { ExecutionStatus } from '../../../types';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | undefined,
 ): IExecutionResponseApi | undefined {
-	if (!execution) {
-		return undefined;
-	}
+	if (!execution) return undefined;
 
-	if (!execution.data) {
-		// @ts-ignore
-		return execution;
-	}
+  // @ts-ignore
+	if (!execution.data) return execution;
 
 	return {
 		...execution,
@@ -32,6 +29,7 @@ function getStatusCondition(status: ExecutionStatus): ObjectLiteral {
 		condition.stoppedAt = Not(IsNull());
 		condition.finished = false;
 	}
+
 	return condition;
 }
 
@@ -47,9 +45,9 @@ function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IE
 		'waitTill',
 		'finished',
 	];
-	if (includeData) {
-		selectFields.push('data');
-	}
+
+	if (includeData) selectFields.push('data');
+
 	return selectFields;
 }
 
@@ -92,6 +90,7 @@ export async function getExecutionsCount(data: {
 		},
 		take: data.limit,
 	});
+
 	return executions;
 }
 
@@ -107,6 +106,7 @@ export async function getExecutionInWorkflows(
 			workflowId: In(workflows),
 		},
 	});
+
 	return prepareExecutionData(execution);
 }
 
