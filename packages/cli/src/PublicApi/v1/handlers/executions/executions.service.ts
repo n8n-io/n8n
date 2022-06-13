@@ -9,11 +9,12 @@ function prepareExecutionData(
 ): IExecutionResponseApi | undefined {
 	if (!execution) return undefined;
 
+  // @ts-ignore
 	if (!execution.data) return execution;
 
 	return {
 		...execution,
-		data: parse(execution.data) as string,
+		data: parse(execution.data) as object,
 	};
 }
 
@@ -109,6 +110,9 @@ export async function getExecutionInWorkflows(
 	return prepareExecutionData(execution);
 }
 
-export async function deleteExecution(execution: IExecutionResponseApi | undefined): Promise<void> {
-	await Db.collections.Execution.remove(execution as IExecutionFlattedDb);
+export async function deleteExecution(
+	execution: IExecutionResponseApi | undefined,
+): Promise<IExecutionFlattedDb> {
+	// @ts-ignore
+	return Db.collections.Execution.remove(execution);
 }
