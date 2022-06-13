@@ -23,6 +23,16 @@ export const attributeOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName.toLowerCase()}}'
 					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": true } }}', // Also possible to use the original response data
+								},
+							},
+						]
+					},
 					send: {
 						preSend: [
 							async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
@@ -35,16 +45,6 @@ export const attributeOperations: INodeProperties[] = [
 								return requestOptions;
 							}
 						]
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "success": $response.body } }}',
-								},
-							},
-						]
 					}
 				},
 			},
@@ -55,17 +55,7 @@ export const attributeOperations: INodeProperties[] = [
 					request: {
 						method: 'PUT',
 						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{$parameter.updateAttributeName.toLowerCase()}}'
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "success": $response.body } }}', // Also possible to use the original response data
-								},
-							},
-						]
-					},
+					}
 				}
 			},
 			{
