@@ -7,10 +7,14 @@
 				</div>
 			</div>
 			<div v-if="isWebhookNode">
-				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{ $locale.baseText('triggerPanel.webhookNode.listening') }}</n8n-text>
+				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+					$locale.baseText('triggerPanel.webhookNode.listening')
+				}}</n8n-text>
 				<n8n-text tag="div" class="mb-xs">
 					{{
-						$locale.baseText('triggerPanel.webhookNode.requestHint', { interpolate: { type: this.webhookHttpMethod } })
+						$locale.baseText('triggerPanel.webhookNode.requestHint', {
+							interpolate: { type: this.webhookHttpMethod },
+						})
 					}}
 				</n8n-text>
 				<CopyInput :value="webhookTestUrl" class="mb-2xl"></CopyInput>
@@ -19,10 +23,14 @@
 				</n8n-text>
 			</div>
 			<div v-else>
-				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{ $locale.baseText('triggerPanel.webhookBasedNode.listening') }}</n8n-text>
+				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+					$locale.baseText('triggerPanel.webhookBasedNode.listening')
+				}}</n8n-text>
 				<n8n-text tag="div" class="mb-xs">
 					{{
-						$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', { interpolate: { service: serviceName } })
+						$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', {
+							interpolate: { service: serviceName },
+						})
 					}}
 				</n8n-text>
 			</div>
@@ -68,7 +76,7 @@ import mixins from 'vue-typed-mixins';
 import CopyInput from './CopyInput.vue';
 import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from '@/components/mixins/showMessage';
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -210,7 +218,9 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				}
 
 				if (this.isWebhookBasedNode) {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.activate', { interpolate: { service: this.serviceName }});
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.activate', {
+						interpolate: { service: this.serviceName },
+					});
 				}
 			}
 
@@ -246,8 +256,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 				if (target.dataset.key === 'activate') {
 					this.$emit('activate');
-				}
-				else if (target.dataset.key === 'copy') {
+				} else if (target.dataset.key === 'copy') {
 					if (this.webhookProdUrl) {
 						this.copyToClipboard(this.webhookProdUrl);
 						this.$showMessage({
@@ -255,8 +264,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 							type: 'success',
 						});
 					}
-				}
-				else if (target.dataset.key === 'executions') {
+				} else if (target.dataset.key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				}
 			}
@@ -307,7 +315,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 }
 
 .pulseContainer {
-  display: flex;
+	display: flex;
 	justify-content: center;
 	align-items: center;
 	height: 240px;
@@ -315,62 +323,60 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 }
 
 $--light-pulse-color: hsla(
-		var(--color-primary-h),
-		var(--color-primary-s),
-		var(--color-primary-l),
-		0.4
-	);
-
-$--mid-pulse-color: hsla(
-		var(--color-primary-h),
-		var(--color-primary-s),
-		var(--color-primary-l),
-		0.2
-	);
+	var(--color-primary-h),
+	var(--color-primary-s),
+	var(--color-primary-l),
+	0.4
+);
 
 $--dark-pulse-color: hsla(
-		var(--color-primary-h),
-		var(--color-primary-s),
-		var(--color-primary-l),
-		0
-	);
+	var(--color-primary-h),
+	var(--color-primary-s),
+	var(--color-primary-l),
+	0
+);
 
 .pulse {
-  display: flex;
+	display: flex;
 	justify-content: center;
 	align-items: center;
-  width: 74px;
-  height: 74px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 $--light-pulse-color;
-  animation: pulse 3s infinite;
+	width: 74px;
+	height: 74px;
+	border-radius: 50%;
+	box-shadow: 0 0 0 $--light-pulse-color;
+	animation: pulse 4s infinite ease-in;
 }
 
 @keyframes pulse {
-  0% {
-    -moz-box-shadow: 0 0 0 0 $--light-pulse-color;
-    box-shadow: 0 0 0 0 $--light-pulse-color;
-  }
-
-  20% {
-      -moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
-      box-shadow: 0 0 0 60px $--dark-pulse-color;
-  }
-
-	21% {
-    -moz-box-shadow: 0 0 0 0 $--mid-pulse-color;
-    box-shadow: 0 0 0 0 $--mid-pulse-color;
+	0% {
+		-moz-box-shadow: 0 0 0 0 $--light-pulse-color;
+		box-shadow: 0 0 0 0 $--light-pulse-color;
 	}
 
-  40% {
-      -moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
-      box-shadow: 0 0 0 60px $--dark-pulse-color;
-  }
+	20% {
+		-moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
+		box-shadow: 0 0 0 60px $--dark-pulse-color;
+	}
 
-  41% {
-      -moz-box-shadow: 0 0 0 0 $--dark-pulse-color;
-      box-shadow: 0 0 0 0 $--dark-pulse-color;
-  }
+	21% {
+		-moz-box-shadow: 0 0 0 0 transparent;
+		box-shadow: 0 0 0 0 transparent;
+	}
+
+	23% {
+		-moz-box-shadow: 0 0 0 0 $--light-pulse-color;
+		box-shadow: 0 0 0 0 $--light-pulse-color;
+	}
+
+
+	44% {
+		-moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
+		box-shadow: 0 0 0 60px $--dark-pulse-color;
+	}
+
+	45% {
+		-moz-box-shadow: 0 0 0 0 $--dark-pulse-color;
+		box-shadow: 0 0 0 0 $--dark-pulse-color;
+	}
 }
-
 </style>
