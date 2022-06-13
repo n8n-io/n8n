@@ -36,17 +36,6 @@ export class Sendinblue implements INodeType {
 				'Content-Type': 'application/json',
 			},
 		},
-		requestOperations: {
-			pagination: {
-				type: 'offset',
-				properties: {
-					limitParameter: 'limit',
-					offsetParameter: 'offset',
-					pageSize: 1,
-					type: 'query',
-				},
-			},
-		},
 		properties: [
 			{
 				displayName: 'Resource',
