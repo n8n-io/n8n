@@ -1,6 +1,6 @@
 <template>
 	<n8n-button
-		:loading="nodeRunning"
+		:loading="nodeRunning && !isListeningForEvents"
 		:disabled="disabled"
 		:label="buttonLabel"
 		:type="type"
@@ -68,6 +68,15 @@ export default mixins(
 		isWebhookNode (): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
 		},
+		isListeningForEvents(): boolean {
+			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
+			const executedNode = this.$store.getters.executedNode as string | undefined;
+			return (
+				this.isTriggerNode &&
+				waitingOnWebhook &&
+				(!executedNode || executedNode === this.nodeName)
+			);
+		},
 		hasIssues (): boolean {
 			return Boolean(this.node && this.node.issues !== undefined && Object.keys(this.node.issues).length);
 		},
@@ -83,6 +92,10 @@ export default mixins(
 			return false;
 		},
 		buttonLabel(): string {
+			if (this.isListeningForEvents) {
+				return this.$locale.baseText('ndv.trigger.stopListening');
+			}
+
 			if (this.label) {
 				return this.label;
 			}
@@ -103,9 +116,31 @@ export default mixins(
 		},
 	},
 	methods: {
+		async stopWaitingForWebhook () {
+			try {
+				await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'),
+				);
+				return;
+			}
+
+			this.$showMessage({
+				title: this.$locale.baseText('ndv.execute.stopWaitingForWebhook.success'),
+				type: 'success',
+			});
+		},
+
 		onClick() {
-			this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
-			this.$emit('execute');
+			if (this.isListeningForEvents) {
+				this.stopWaitingForWebhook();
+			}
+			else {
+				this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+				this.$emit('execute');
+			}
 		},
 	},
 });
