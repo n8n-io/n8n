@@ -61,13 +61,16 @@
 
 			<n8n-text size="small" @click="onLinkClick">
 				<span v-html="activationHint"></span>
+				<br />
+				<br />
+				<span v-html="executionsHint"></span>
 			</n8n-text>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE } from '@/constants';
+import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from './helpers';
@@ -215,14 +218,32 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			return '';
 		},
+		executionsHint(): string {
+			const saveDataErrorExecutionDefault = this.$store.getters.saveDataErrorExecution;
+			const saveDataSuccessExecutionDefault = this.$store.getters.saveDataSuccessExecution;
+
+			const settings = this.$store.getters.workflowSettings;
+
+			const saveDataSuccess = settings.hasOwnProperty('saveDataSuccessExecution') ? settings.saveDataSuccessExecution: saveDataSuccessExecutionDefault;
+			const saveDataError = settings.hasOwnProperty('saveDataErrorExecution') ? settings.saveDataErrorExecution: saveDataErrorExecutionDefault;
+
+			if (saveDataSuccess === 'all' && saveDataError === 'all') {
+				return this.$locale.baseText('triggerPanel.executinosHint.enabled');
+			}
+
+			if (saveDataSuccess === 'all' || saveDataError === 'all') {
+				return this.$locale.baseText('triggerPanel.executinosHint.limited');
+			}
+
+			return this.$locale.baseText('triggerPanel.executinosHint.disabled');
+		},
 		activationHint(): string {
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {
 				if (this.isWebhookNode) {
 					return this.$locale.baseText('triggerPanel.webhookNode.inactiveHint');
 				}
-
-				if (this.isWebhookBasedNode) {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.inactiveHint', {
+				else {
+					return this.$locale.baseText('triggerPanel.inactiveHint', {
 						interpolate: { service: this.serviceName },
 					});
 				}
@@ -232,9 +253,8 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				if (this.isWebhookNode) {
 					return this.$locale.baseText('triggerPanel.webhookNode.activeHint');
 				}
-
-				if (this.isWebhookBasedNode) {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.activeHint', {
+				else {
+					return this.$locale.baseText('triggerPanel.activeHint', {
 						interpolate: { service: this.serviceName },
 					});
 				}
@@ -274,6 +294,8 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					}
 				} else if (target.dataset.key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+				} else if (target.dataset.key === 'settings') {
+					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				}
 			}
 		},
