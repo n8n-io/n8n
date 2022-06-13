@@ -1,5 +1,4 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties, JsonObject } from 'n8n-workflow';
-import moment from 'moment-timezone';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -373,25 +372,11 @@ const getAllOperations: Array<INodeProperties> = [
 			{
 				displayName: 'Modified Since',
 				name: 'modifiedSince',
-				type: 'string',
+				type: 'dateTime',
 				routing: {
 					send: {
 						type: 'query',
 						property: 'modifiedSince',
-						propertyInDotNotation: true,
-						preSend: [
-							async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-								let modifiedSince = this.getNodeParameter("filters.modifiedSince", '') as string;
-
-								if(modifiedSince !== '') {
-									modifiedSince = moment.utc(modifiedSince).format('YYYY-MM-DDTHH:mm:ssZ');
-									modifiedSince = encodeURIComponent(modifiedSince);
-									(requestOptions.qs as JsonObject).modifiedSince = modifiedSince;
-								}
-
-								return requestOptions;
-							}
-						]
 					},
 				},
 				default: '',
