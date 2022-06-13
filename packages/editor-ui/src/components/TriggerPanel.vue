@@ -323,6 +323,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						});
 					}
 				} else if (target.dataset.key === 'executions') {
+					this.$store.commit('setActiveNode', null);
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
