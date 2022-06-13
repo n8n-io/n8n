@@ -68,7 +68,7 @@ export const contactOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": $response.body } }}', // Also possible to use the original response data
+									value: '={{ { "success": true } }}', // Also possible to use the original response data
 								},
 							},
 						]
@@ -341,7 +341,7 @@ const deleteOperations: Array<INodeProperties> = [
 		routing: {
 			request: {
 				method: 'DELETE',
-				url: '=/v3/contacts{{encodeURIComponent($parameter.identifier)}}',
+				url: '=/v3/contacts/{{encodeURIComponent($parameter.identifier)}}',
 			},
 			output: {
 				postReceive: [
