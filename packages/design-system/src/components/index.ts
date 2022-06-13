@@ -33,6 +33,7 @@ import Notification from 'element-ui/lib/notification';
 import Popover from 'element-ui/lib/popover';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 
+import N8nInfoAccordion from './N8nInfoAccordion';
 import N8nActionBox from './N8nActionBox';
 import N8nActionToggle from './N8nActionToggle';
 import N8nAvatar from './N8nAvatar';
@@ -72,6 +73,7 @@ import N8nUserSelect from './N8nUserSelect';
 import locale from '../locale';
 
 export {
+	N8nInfoAccordion,
 	N8nActionBox,
 	N8nActionToggle,
 	N8nAvatar,

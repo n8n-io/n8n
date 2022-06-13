@@ -44,6 +44,7 @@ import {
 	Pagination,
 	Popover,
 
+	N8nInfoAccordion,
 	N8nActionBox,
 	N8nAvatar,
 	N8nActionToggle,
@@ -81,6 +82,7 @@ import { ElMessageBoxOptions } from "element-ui/types/message-box";
 Vue.use(Fragment.Plugin);
 
 // n8n design system
+Vue.use(N8nInfoAccordion);
 Vue.use(N8nActionBox);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);

@@ -804,6 +804,7 @@
 	"triggerPanel.webhookBasedNode.serviceHint": "Go to {service} and create an event",
 	"triggerPanel.inactiveHint": "Your workflow is deactivated so this node will only run when you execute it from the UI. <br /> <a data-key=\"activate\">Activate</a> the workflow in order for this node to execute your workflow automatically on new {service} events.",
 	"triggerPanel.activeHint": "Your workflow is active so this node will also run automatically on new {service} events.",
+	"triggerPanel.executionsHint.question": "When will this node trigger my flow?",
 	"triggerPanel.executinosHint.enabled": "Automatically triggered executions will not show here. View them from <a data-key=\"executions\">Executions</a>.",
 	"triggerPanel.executinosHint.limited": "Automated executions will not appear in the UI. Your workflow is currently set up to only save certain types of executions. You can change this in the workflow's <a data-key=\"settings\">settings</a>",
 	"triggerPanel.executinosHint.disabled": "Automated executions will not appear in the UI. Your workflow is currently set up not to save them. You can change this in the workflow's <a data-key=\"settings\">settings</a>",

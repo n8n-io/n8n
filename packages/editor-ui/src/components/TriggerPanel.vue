@@ -61,10 +61,8 @@
 
 			<n8n-text size="small" @click="onLinkClick">
 				<span v-html="activationHint"></span>
-				<br />
-				<br />
-				<span v-html="executionsHint"></span>
 			</n8n-text>
+			<n8n-info-accordion :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsHint" @click="onLinkClick"></n8n-info-accordion>
 		</div>
 	</div>
 </template>
@@ -374,7 +372,7 @@ $--dark-pulse-color: hsla(
 	height: 74px;
 	border-radius: 50%;
 	box-shadow: 0 0 0 $--light-pulse-color;
-	animation: pulse 4.5s infinite;
+	animation: pulse 6s infinite ease-out;
 }
 
 @keyframes pulse {
@@ -408,5 +406,12 @@ $--dark-pulse-color: hsla(
 		-moz-box-shadow: 0 0 0 0 $--dark-pulse-color;
 		box-shadow: 0 0 0 0 $--dark-pulse-color;
 	}
+}
+
+.accordion {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100%;
 }
 </style>
