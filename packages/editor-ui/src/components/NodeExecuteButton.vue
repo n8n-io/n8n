@@ -76,7 +76,7 @@ export default mixins(
 				return true;
 			}
 
-			if (this.isTriggerNode && this.hasIssues) {
+			if (this.isTriggerNode && (this.hasIssues || this.node.disabled)) {
 				return true;
 			}
 
