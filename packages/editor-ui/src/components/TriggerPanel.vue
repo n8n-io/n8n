@@ -1,6 +1,7 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="isListeningForEvents">
+		<div v-if="hasIssues"></div>
+		<div v-else-if="isListeningForEvents">
 			<div :class="$style.pulseContainer">
 				<div :class="$style.pulse">
 					<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
@@ -100,6 +101,9 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			return null;
+		},
+		hasIssues (): boolean {
+			return Boolean(this.node && this.node.issues !== undefined && Object.keys(this.node.issues).length);
 		},
 		serviceName(): string {
 			if (this.nodeType) {
@@ -214,22 +218,26 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		activationHint(): string {
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {
 				if (this.isWebhookNode) {
-					return this.$locale.baseText('triggerPanel.webhookNode.activeHint');
+					return this.$locale.baseText('triggerPanel.webhookNode.inactiveHint');
 				}
 
 				if (this.isWebhookBasedNode) {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.activate', {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.inactiveHint', {
 						interpolate: { service: this.serviceName },
 					});
 				}
 			}
 
-			if (this.isWebhookNode) {
-				return this.$locale.baseText('triggerPanel.webhookNode.inactiveHint');
-			}
-
 			if (this.isWorkflowActive) {
-				return this.$locale.baseText('triggerPanel.activeWorkflowHint');
+				if (this.isWebhookNode) {
+					return this.$locale.baseText('triggerPanel.webhookNode.activeHint');
+				}
+
+				if (this.isWebhookBasedNode) {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.activeHint', {
+						interpolate: { service: this.serviceName },
+					});
+				}
 			}
 
 			return '';
@@ -344,7 +352,7 @@ $--dark-pulse-color: hsla(
 	height: 74px;
 	border-radius: 50%;
 	box-shadow: 0 0 0 $--light-pulse-color;
-	animation: pulse 4s infinite ease-in;
+	animation: pulse 4.5s infinite;
 }
 
 @keyframes pulse {
