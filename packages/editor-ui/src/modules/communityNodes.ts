@@ -1,4 +1,4 @@
-import { getInstalledCommunityNodes, installNewPackage, uninstallPackage } from '@/api/communityNodes';
+import { getInstalledCommunityNodes, installNewPackage, uninstallPackage, updatePackage } from '@/api/communityNodes';
 import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { ICommunityNodesState, IRootState } from '@/Interface';
 import { PublicInstalledPackage } from 'n8n-workflow';
@@ -97,6 +97,17 @@ const module: Module<ICommunityNodesState, IRootState> = {
 				await uninstallPackage(context.rootGetters.getRestApiContext, context.getters.getCurrentModalPackage.packageName);
 				context.commit('removePackageByName', context.getters.getCurrentModalPackage.packageName);
 			} catch(error) {
+				throw(error);
+			} finally {
+				context.commit('setLoading', false);
+			}
+		},
+		async updatePackage(context: ActionContext<ICommunityNodesState, IRootState>) {
+			context.commit('setLoading', true);
+			try {
+				await updatePackage(context.rootGetters.getRestApiContext, context.getters.getCurrentModalPackage.packageName);
+				await context.dispatch('communityNodes/fetchInstalledPackages');
+			} catch (error) {
 				throw(error);
 			} finally {
 				context.commit('setLoading', false);

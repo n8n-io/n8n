@@ -88,8 +88,8 @@ export default mixins(showMessage).extend({
 			return !this.isLoading;
 		},
 		async onConfirmButtonClick() {
-			try {
-				if (this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
+			if (this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
+				try {
 					await this.$store.dispatch('communityNodes/uninstallPackage');
 					this.$showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
@@ -100,14 +100,29 @@ export default mixins(showMessage).extend({
 						}),
 						type: 'success',
 					});
-				}else if (this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
-					await this.$store.dispatch('communityNodes/updatePackage');
-					// TODO: Show message
+				} catch (error) {
+					this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.uninstall.error'));
+				} finally {
+					this.modalBus.$emit('close');
 				}
-			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.uninstall.error'));
-			} finally {
-				this.modalBus.$emit('close');
+			}else if (this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
+				try {
+					await this.$store.dispatch('communityNodes/updatePackage');
+					this.$showMessage({
+						title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
+						message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {
+							interpolate: {
+								packageName: this.getCurrentModalPackage.packageName,
+								version: this.getCurrentModalPackage.updateAvailable,
+							},
+						}),
+						type: 'success',
+					});
+				} catch (error) {
+					this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error'));
+				} finally {
+					this.modalBus.$emit('close');
+				}
 			}
 		},
 	},

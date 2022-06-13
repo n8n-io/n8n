@@ -11,6 +11,10 @@ export async function installNewPackage(context: IRestApiContext, name: string):
 	return await post(context.baseUrl, '/nodes', { name });
 }
 
-export async function uninstallPackage(context:IRestApiContext, name: string): Promise<void> {
+export async function uninstallPackage(context: IRestApiContext, name: string): Promise<void> {
 	return await makeRestApiRequest(context, 'DELETE', '/nodes', { name });
+}
+
+export async function updatePackage(context: IRestApiContext, name: string): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', '/nodes', { name })
 }
