@@ -13,10 +13,14 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_NAME_NOT_VALID: `Package name is not valid - it must start with "${NODE_PACKAGE_PREFIX}"`,
 	PACKAGE_NOT_INSTALLED: 'This package is not installed - you must install it first',
 	PACKAGE_NOT_FOUND: 'Failed installing package: package was not found',
+	PACKAGE_VERSION_NOT_FOUND: 'The specified package version was not found',
 };
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
 
-export const NPM_PACKAGE_NOT_FOUND_ERROR = '404 Not Found';
+export const NPM_COMMAND_TOKENS = {
+	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
+	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR: 'No matching version found for',
+};
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';

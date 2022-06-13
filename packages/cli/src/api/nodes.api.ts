@@ -13,6 +13,7 @@ import {
 	checkPackageStatus,
 	hasPackageLoadedSuccessfully,
 	removePackageFromMissingList,
+	parsePackageName,
 } from '../CommunityNodes/helpers';
 import {
 	getAllInstalledPackages,
@@ -60,12 +61,12 @@ nodesController.post(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Post) => {
 		const { name } = req.body;
-		if (!name) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.PACKAGE_NAME_NOT_PROVIDED,
-				undefined,
-				400,
-			);
+		let parsedPackageName;
+		try {
+			parsedPackageName = parsePackageName(name);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			throw new ResponseHelper.ResponseError(error.message, undefined, 400);
 		}
 
 		// Only install packages that haven't been installed
@@ -90,7 +91,10 @@ nodesController.post(
 		}
 
 		try {
-			const nodes = await LoadNodesAndCredentials().loadNpmModule(name);
+			const nodes = await LoadNodesAndCredentials().loadNpmModule(
+				parsedPackageName.packageName,
+				parsedPackageName.version,
+			);
 
 			if (!loadedPackage) {
 				removePackageFromMissingList(name);
@@ -106,11 +110,16 @@ nodesController.post(
 				nodes,
 			};
 		} catch (error) {
+			let statusCode = 500;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			if (error.message.includes(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND)) {
+				statusCode = 400;
+			}
 			throw new ResponseHelper.ResponseError(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 				`Error loading package "${name}": ${error.message}`,
 				undefined,
-				500,
+				statusCode,
 			);
 		}
 	}),

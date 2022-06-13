@@ -37,7 +37,7 @@ import config from '../config';
 import { Db } from '.';
 import { InstalledPackages } from './databases/entities/InstalledPackages';
 import { InstalledNodes } from './databases/entities/InstalledNodes';
-import { executeCommand, parsePackageName } from './CommunityNodes/helpers';
+import { executeCommand } from './CommunityNodes/helpers';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
@@ -199,10 +199,9 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
-	async loadNpmModule(packageName: string): Promise<INodeTypeNameVersion[]> {
-		const parsedPackaeName = parsePackageName(packageName);
+	async loadNpmModule(packageName: string, version?: string): Promise<INodeTypeNameVersion[]> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
-		const command = `npm install ${packageName}`;
+		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
 
 		try {
 			await executeCommand(command);
@@ -213,11 +212,7 @@ class LoadNodesAndCredentialsClass {
 			throw error;
 		}
 
-		const finalNodeUnpackedPath = path.join(
-			downloadFolder,
-			'node_modules',
-			parsedPackaeName.packageName,
-		);
+		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
 		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
 
@@ -230,7 +225,7 @@ class LoadNodesAndCredentialsClass {
 					const promises = [];
 
 					const installedPackage = Object.assign(new InstalledPackages(), {
-						packageName: parsedPackaeName.packageName,
+						packageName,
 						installedVersion: packageFile.version,
 					});
 					await transactionManager.save<InstalledPackages>(installedPackage);
@@ -241,7 +236,7 @@ class LoadNodesAndCredentialsClass {
 								name: loadedNode.name,
 								type: loadedNode.name,
 								latestVersion: loadedNode.version,
-								package: parsedPackaeName.packageName,
+								package: packageName,
 							});
 							return transactionManager.save<InstalledNodes>(installedNode);
 						}),
