@@ -1,4 +1,3 @@
-import path from 'path';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -916,7 +915,8 @@ export class HttpRequest implements INodeType {
 				name: 'qs',
 				displayName: 'Query Paramters',
 			},
-		};let returnItems: INodeExecutionData[] = [];
+		};
+		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
