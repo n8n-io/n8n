@@ -1,12 +1,12 @@
 <template>
 	<div :class="$style.container">
 		<div v-if="isListeningForEvents">
-			<div v-if="isWebhookNode">
-				<div :class="$style.pulseContainer">
-					<div :class="$style.pulse">
-						<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
-					</div>
+			<div :class="$style.pulseContainer">
+				<div :class="$style.pulse">
+					<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
 				</div>
+			</div>
+			<div v-if="isWebhookNode">
 				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{ $locale.baseText('triggerPanel.webhookNode.listening') }}</n8n-text>
 				<n8n-text tag="div" class="mb-xs">
 					{{
@@ -16,6 +16,14 @@
 				<CopyInput :value="webhookTestUrl" class="mb-2xl"></CopyInput>
 				<n8n-text tag="div" @click="onLinkClick">
 					<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
+				</n8n-text>
+			</div>
+			<div v-else>
+				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{ $locale.baseText('triggerPanel.webhookBasedNode.listening') }}</n8n-text>
+				<n8n-text tag="div" class="mb-xs">
+					{{
+						$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', { interpolate: { service: serviceName } })
+					}}
 				</n8n-text>
 			</div>
 		</div>
@@ -50,7 +58,7 @@
 </template>
 
 <script lang="ts">
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from './helpers';
@@ -84,6 +92,13 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			return null;
+		},
+		serviceName(): string {
+			if (this.nodeType) {
+				return getTriggerNodeServiceName(this.nodeType.displayName);
+			}
+
+			return '';
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
@@ -193,11 +208,18 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				if (this.isWebhookNode) {
 					return this.$locale.baseText('triggerPanel.webhookNode.activeHint');
 				}
-				return 'activate';
+
+				if (this.isWebhookBasedNode) {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.activate', { interpolate: { service: this.serviceName }});
+				}
 			}
 
 			if (this.isWebhookNode) {
 				return this.$locale.baseText('triggerPanel.webhookNode.inactiveHint');
+			}
+
+			if (this.isWorkflowActive) {
+				return this.$locale.baseText('triggerPanel.activeWorkflowHint');
 			}
 
 			return '';
@@ -226,7 +248,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					this.$emit('activate');
 				}
 				else if (target.dataset.key === 'copy') {
-					console.log(this.webhookProdUrl);
 					if (this.webhookProdUrl) {
 						this.copyToClipboard(this.webhookProdUrl);
 						this.$showMessage({
@@ -234,6 +255,9 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 							type: 'success',
 						});
 					}
+				}
+				else if (target.dataset.key === 'executions') {
+					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				}
 			}
 		},
@@ -276,6 +300,10 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	> * {
 		margin-bottom: var(--spacing-2xs);
 	}
+}
+
+.action {
+	margin-bottom: var(--spacing-2xl);
 }
 
 .pulseContainer {
