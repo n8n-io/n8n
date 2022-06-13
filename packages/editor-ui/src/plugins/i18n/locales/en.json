@@ -617,6 +617,8 @@
 	"pushConnection.workflowExecutedSuccessfully": "Workflow executed successfully",
 	"pushConnectionTracker.cannotConnectToServer": "You have a connection issue or the server is down. <br />n8n should reconnect automatically once the issue is resolved.",
 	"pushConnectionTracker.connectionLost": "Connection lost",
+	"pushConnection.pollingNode.dataNotFound": "No {service} data found",
+	"pushConnection.pollingNode.dataNotFound.message": "We didn’t find any data in {service} to simulate an event. Please create one in {service} and try again.",
 	"runData.emptyItemHint": "This is an item, but it's empty.",
 	"runData.switchToBinary.info": "This item only has",
 	"runData.switchToBinary.binary": "binary data",
