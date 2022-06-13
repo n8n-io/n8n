@@ -80,10 +80,10 @@ const module: Module<ICommunityNodesState, IRootState> = {
 				context.commit('setLoading', false);
 			}, timeout);
 		},
-		async installPackage(context: ActionContext<ICommunityNodesState, IRootState>, pack: PublicInstalledPackage) {
+		async installPackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
 			context.commit('setLoading', true);
 			try {
-				await installNewPackage(context.rootGetters.getRestApiContext, pack.packageName);
+				await installNewPackage(context.rootGetters.getRestApiContext, packageName);
 				await context.dispatch('communityNodes/fetchInstalledPackages');
 			} catch(error) {
 				throw(error);
@@ -105,8 +105,10 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		async updatePackage(context: ActionContext<ICommunityNodesState, IRootState>) {
 			context.commit('setLoading', true);
 			try {
-				await updatePackage(context.rootGetters.getRestApiContext, context.getters.getCurrentModalPackage.packageName);
-				await context.dispatch('communityNodes/fetchInstalledPackages');
+				const packageToUpdate = context.getters.getCurrentModalPackage;
+				await updatePackage(context.rootGetters.getRestApiContext, packageToUpdate.packageName);
+				packageToUpdate.installedVersion = packageToUpdate.updateAvailable;
+				delete packageToUpdate.updateAvailable;
 			} catch (error) {
 				throw(error);
 			} finally {

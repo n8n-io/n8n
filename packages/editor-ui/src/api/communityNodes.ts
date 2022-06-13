@@ -16,5 +16,5 @@ export async function uninstallPackage(context: IRestApiContext, name: string): 
 }
 
 export async function updatePackage(context: IRestApiContext, name: string): Promise<void> {
-	return await makeRestApiRequest(context, 'PATCH', '/nodes', { name })
+	return await makeRestApiRequest(context, 'PATCH', '/nodes', { name });
 }
