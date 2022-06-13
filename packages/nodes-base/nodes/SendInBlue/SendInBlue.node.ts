@@ -1,12 +1,8 @@
-import {
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { attributeOperations, attributeFields } from './AttributeDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';
 import { senderOperations, senderFields } from './SenderDescrition';
-
 export class Sendinblue implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sendinblue',
