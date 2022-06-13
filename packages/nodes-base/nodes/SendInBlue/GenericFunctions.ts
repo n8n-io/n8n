@@ -1,10 +1,5 @@
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
 
 export enum OVERRIDE_MAP_TYPE {
