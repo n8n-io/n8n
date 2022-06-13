@@ -1055,8 +1055,8 @@ export class WorkflowExecute {
 						for (const lineResult of execution) {
 							if (
 								lineResult.json !== undefined &&
-								lineResult.json?.$error !== undefined &&
-								lineResult.json?.$json !== undefined
+								lineResult.json.$error !== undefined &&
+								lineResult.json.$json !== undefined
 							) {
 								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
 								lineResult.json = {

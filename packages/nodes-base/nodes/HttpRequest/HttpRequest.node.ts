@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import { replaceNullValues } from './GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -918,9 +919,7 @@ export class HttpRequest implements INodeType {
 				name: 'qs',
 				displayName: 'Query Paramters',
 			},
-		};
-
-		const returnItems: INodeExecutionData[] = [];
+		};let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
@@ -1367,6 +1366,8 @@ export class HttpRequest implements INodeType {
 				}
 			}
 		}
+
+		returnItems = returnItems.map(replaceNullValues);
 
 		return this.prepareOutputData(returnItems);
 	}
