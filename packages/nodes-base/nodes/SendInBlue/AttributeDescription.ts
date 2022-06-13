@@ -1,4 +1,4 @@
-import { GenericValue, IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties, JsonObject } from "n8n-workflow";
+import { IExecuteSingleFunctions, IHttpRequestOptions, INodeExecutionData, INodeProperties, JsonObject } from "n8n-workflow";
 import { INTERCEPTORS } from "./GenericFunctions";
 
 export const attributeOperations: INodeProperties[] = [
@@ -96,6 +96,16 @@ export const attributeOperations: INodeProperties[] = [
 								properties: {
 									property: 'attributes',
 								},
+							},
+							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+								const returnAll = this.getNodeParameter("returnAll") as boolean;
+								if(returnAll === false) {
+									const limit = this.getNodeParameter("limit") as number;
+
+									items = items.slice(0, limit);
+								}
+
+								return items;
 							}
 						],
 					},
@@ -517,8 +527,53 @@ const deleteAttribueOperations: Array<INodeProperties> = [
 	}
 ];
 
+const getAllAttributeOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'attribute',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		default: 10,
+		description: 'Max number of results to return',
+	},
+];
+
 export const attributeFields: INodeProperties[] = [
 	...createAttributeOperations,
 	...updateAttributeOperations,
-	...deleteAttribueOperations
+	...deleteAttribueOperations,
+	...getAllAttributeOperations
 ];
