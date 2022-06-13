@@ -3,12 +3,9 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
-	IAuthenticate,
 	IBinaryData,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
