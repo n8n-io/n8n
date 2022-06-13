@@ -4,7 +4,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 
 import mixins from 'vue-typed-mixins';
-import { LOCAL_STORAGE_ACTIVATION_FLAG, WORKFLOW_ACTIVE_MODAL_KEY } from '@/constants';
+import { LOCAL_STORAGE_ACTIVATION_FLAG, PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_ACTIVE_MODAL_KEY } from '@/constants';
 
 export const workflowActivate = mixins(
 	externalHooks,
@@ -27,7 +27,7 @@ export const workflowActivate = mixins(
 				const nodesIssuesExist = this.$store.getters.nodesIssuesExist as boolean;
 
 				let currWorkflowId: string | undefined = workflowId;
-				if (!currWorkflowId) {
+				if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					const saved = await this.saveCurrentWorkflow();
 					if (!saved) {
 						this.updatingWorkflowActivation = false;

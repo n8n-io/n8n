@@ -18,7 +18,7 @@
 						})
 					}}
 				</n8n-text>
-				<CopyInput :value="webhookTestUrl" class="mb-2xl"></CopyInput>
+				<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('generic.copied')" class="mb-2xl"></CopyInput>
 				<n8n-text tag="div" @click="onLinkClick">
 					<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
 				</n8n-text>
@@ -320,7 +320,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					if (this.webhookProdUrl) {
 						this.copyToClipboard(this.webhookProdUrl);
 						this.$showMessage({
-							title: this.$locale.baseText('generic.copiedToClipboard'),
+							title: this.$locale.baseText('triggerPanel.copiedProdUrl'),
 							type: 'success',
 						});
 					}
