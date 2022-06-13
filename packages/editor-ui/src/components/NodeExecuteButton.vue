@@ -1,7 +1,7 @@
 <template>
 	<n8n-button
 		:loading="nodeRunning"
-		:disabled="workflowRunning && !nodeRunning"
+		:disabled="disabled"
 		:label="buttonLabel"
 		:type="type"
 		:size="size"
@@ -67,6 +67,20 @@ export default mixins(
 		},
 		isWebhookNode (): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
+		},
+		hasIssues (): boolean {
+			return Boolean(this.node && this.node.issues !== undefined && Object.keys(this.node.issues).length);
+		},
+		disabled(): boolean {
+			if (this.workflowRunning && !this.nodeRunning) {
+				return true;
+			}
+
+			if (this.isTriggerNode && this.hasIssues) {
+				return true;
+			}
+
+			return false;
 		},
 		buttonLabel(): string {
 			if (this.label) {
