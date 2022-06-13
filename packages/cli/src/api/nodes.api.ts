@@ -110,11 +110,16 @@ nodesController.post(
 				nodes,
 			};
 		} catch (error) {
+			let statusCode = 500;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			if (error.message.includes(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND)) {
+				statusCode = 400;
+			}
 			throw new ResponseHelper.ResponseError(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 				`Error loading package "${name}": ${error.message}`,
 				undefined,
-				500,
+				statusCode,
 			);
 		}
 	}),
