@@ -15,7 +15,7 @@ export const contactOperations: INodeProperties[] = [
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 		options: [
 			{
 				name: 'Create',
@@ -36,10 +36,6 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
-			},
-			{
-				name: 'Update',
-				value: 'update',
 			},
 			{
 				name: 'Delete',
@@ -68,6 +64,10 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Lookup',
 				value: 'lookup',
+			},
+			{
+				name: 'Update',
+				value: 'update',
 			},
 		],
 		default: 'create',
