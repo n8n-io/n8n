@@ -226,9 +226,9 @@ nodesController.patch(
 				400,
 			);
 		}
-		const installedPackage = await searchInstalledPackage(name);
+		const packagePreviouslyInstalled = await searchInstalledPackage(name);
 
-		if (!installedPackage) {
+		if (!packagePreviouslyInstalled) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_INSTALLED,
 				undefined,
@@ -237,13 +237,13 @@ nodesController.patch(
 		}
 
 		try {
-			const installedNodes = await LoadNodesAndCredentials().updateNpmModule(
+			const newInstalledPackage = await LoadNodesAndCredentials().updateNpmModule(
 				name,
-				installedPackage.installedNodes,
+				packagePreviouslyInstalled.installedNodes,
 			);
 
 			// Inform the connected frontends that new nodes are available
-			installedPackage.installedNodes.forEach((installedNode) => {
+			packagePreviouslyInstalled.installedNodes.forEach((installedNode) => {
 				const pushInstance = Push.getInstance();
 				pushInstance.send('removeNodeType', {
 					name: installedNode.type,
@@ -251,12 +251,16 @@ nodesController.patch(
 				});
 			});
 
-			installedNodes.forEach((nodeData) => {
+			newInstalledPackage.installedNodes.forEach((nodeData) => {
 				const pushInstance = Push.getInstance();
-				pushInstance.send('reloadNodeType', nodeData);
+				pushInstance.send('reloadNodeType', {
+					name: nodeData.name,
+					version: nodeData.latestVersion,
+				});
 			});
+			return newInstalledPackage;
 		} catch (error) {
-			installedPackage.installedNodes.forEach((installedNode) => {
+			packagePreviouslyInstalled.installedNodes.forEach((installedNode) => {
 				const pushInstance = Push.getInstance();
 				pushInstance.send('removeNodeType', {
 					name: installedNode.type,
