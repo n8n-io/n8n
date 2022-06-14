@@ -10,8 +10,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	twilioApiRequest,
 	escapeXml,
+	twilioApiRequest,
 } from './GenericFunctions';
 
 export class Twilio implements INodeType {
@@ -42,13 +42,12 @@ export class Twilio implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'SMS',
-						value: 'sms',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'Call',
 						value: 'call',
+					},
+					{
+						name: 'SMS',
+						value: 'sms',
 					},
 				],
 				default: 'sms',
