@@ -120,6 +120,7 @@ export default mixins(
 					this.infoTextErrorMessage = '';
 					this.loading = true;
 					await this.$store.dispatch('communityNodes/installPackage', this.packageName);
+					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
 					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 					this.loading = false;
 					this.modalBus.$emit('close');
