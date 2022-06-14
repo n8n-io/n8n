@@ -154,9 +154,9 @@ import type {
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { workflowsController } from './api/workflows.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -729,74 +729,6 @@ class App {
 		// Workflow
 		// ----------------------------------------
 
-		// Creates a new workflow
-		this.app.post(
-			`/${this.restEndpoint}/workflows`,
-			ResponseHelper.send(async (req: WorkflowRequest.Create) => {
-				delete req.body.id; // delete if sent
-
-				const newWorkflow = new WorkflowEntity();
-
-				Object.assign(newWorkflow, req.body);
-
-				await validateEntity(newWorkflow);
-
-				await this.externalHooks.run('workflow.create', [newWorkflow]);
-
-				const { tags: tagIds } = req.body;
-
-				if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-					newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
-						select: ['id', 'name'],
-					});
-				}
-
-				await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
-
-				let savedWorkflow: undefined | WorkflowEntity;
-
-				await getConnection().transaction(async (transactionManager) => {
-					savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-					const role = await Db.collections.Role.findOneOrFail({
-						name: 'owner',
-						scope: 'workflow',
-					});
-
-					const newSharedWorkflow = new SharedWorkflow();
-
-					Object.assign(newSharedWorkflow, {
-						role,
-						user: req.user,
-						workflow: savedWorkflow,
-					});
-
-					await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-				});
-
-				if (!savedWorkflow) {
-					LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-					throw new ResponseHelper.ResponseError('Failed to save workflow');
-				}
-
-				if (tagIds && !config.getEnv('workflowTagsDisabled')) {
-					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
-						requestOrder: tagIds,
-					});
-				}
-
-				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
-
-				const { id, ...rest } = savedWorkflow;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
-			}),
-		);
-
 		// Reads and returns workflow data from an URL
 		this.app.get(
 			`/${this.restEndpoint}/workflows/from-url`,
@@ -919,50 +851,6 @@ class App {
 					(await isBelowOnboardingThreshold(req.user));
 
 				return { name, onboardingFlowEnabled };
-			}),
-		);
-
-		// Returns a specific workflow
-		this.app.get(
-			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
-				const { id: workflowId } = req.params;
-
-				let relations = ['workflow', 'workflow.tags'];
-
-				if (config.getEnv('workflowTagsDisabled')) {
-					relations = relations.filter((relation) => relation !== 'workflow.tags');
-				}
-
-				const shared = await Db.collections.SharedWorkflow.findOne({
-					relations,
-					where: whereClause({
-						user: req.user,
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
-
-				if (!shared) {
-					LoggerProxy.info('User attempted to access a workflow without permissions', {
-						workflowId,
-						userId: req.user.id,
-					});
-					throw new ResponseHelper.ResponseError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-						undefined,
-						404,
-					);
-				}
-
-				const {
-					workflow: { id, ...rest },
-				} = shared;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
 			}),
 		);
 
@@ -1226,6 +1114,8 @@ class App {
 				},
 			),
 		);
+
+		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// Retrieves all tags, with or without usage count
 		this.app.get(

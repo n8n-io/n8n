@@ -115,6 +115,12 @@ export class WorkflowEntity implements IWorkflowDb {
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
 
+	@Column({
+		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
+		nullable: true,
+	})
+	pinData: { [nodeName: string]: IDataObject };
+
 	@BeforeUpdate()
 	setUpdateDate() {
 		this.updatedAt = new Date();
