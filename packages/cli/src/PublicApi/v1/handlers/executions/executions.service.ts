@@ -9,7 +9,7 @@ function prepareExecutionData(
 ): IExecutionResponseApi | undefined {
 	if (!execution) return undefined;
 
-  // @ts-ignore
+	// @ts-ignore
 	if (!execution.data) return execution;
 
 	return {
