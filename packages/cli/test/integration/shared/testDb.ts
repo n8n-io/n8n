@@ -323,8 +323,7 @@ export async function createManyExecutions(
 }
 
 /**
- * Store a execution in the DB and assigns it to a workflow.
- * @param user user to assign the workflow to
+ * Store a execution in the DB and assign it to a workflow.
  */
 export async function createExecution(
 	attributes: Partial<ExecutionEntity> = {},
@@ -346,48 +345,41 @@ export async function createExecution(
 }
 
 /**
- * Store a execution in the DB and assigns it to a workflow.
- * @param user user to assign the workflow to
+ * Store a successful execution in the DB and assign it to a workflow.
  */
-export async function createSuccessfullExecution(workflow: WorkflowEntity) {
-	const execution = await createExecution(
+export async function createSuccessfulExecution(workflow: WorkflowEntity) {
+	return await createExecution(
 		{
 			finished: true,
 		},
 		workflow,
 	);
-
-	return execution;
 }
 
 /**
- * Store a execution in the DB and assigns it to a workflow.
- * @param user user to assign the workflow to
+ * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	const execution = await createExecution(
+	return await createExecution(
 		{
 			finished: false,
 			stoppedAt: new Date(),
 		},
 		workflow,
 	);
-	return execution;
 }
 
 /**
- * Store a execution in the DB and assigns it to a workflow.
- * @param user user to assign the workflow to
+ * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	const execution = await createExecution(
+	return await createExecution(
 		{
 			finished: false,
 			waitTill: new Date(),
 		},
 		workflow,
 	);
-	return execution;
 }
 
 // ----------------------------------
@@ -417,7 +409,7 @@ export async function createManyWorkflows(
 }
 
 /**
- * Store a workflow in the DB (without a trigger) and optionally assigns it to a user.
+ * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
  * @param user user to assign the workflow to
  */
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
@@ -450,7 +442,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 }
 
 /**
- * Store a workflow in the DB (with a trigger) and optionally assigns it to a user.
+ * Store a workflow in the DB (with a trigger) and optionally assign it to a user.
  * @param user user to assign the workflow to
  */
 export async function createWorkflowWithTrigger(
@@ -487,6 +479,7 @@ export async function createWorkflowWithTrigger(
 		},
 		user,
 	);
+
 	return workflow;
 }
 
