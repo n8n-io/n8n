@@ -1,5 +1,4 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from "n8n-workflow";
-import { TransactionalEmail } from "./Model";
+import { INodeProperties } from "n8n-workflow";
 
 export const emailOperations: Array<INodeProperties> = [
 	{
@@ -28,22 +27,6 @@ export const emailOperations: Array<INodeProperties> = [
 			request: {
 				method: 'POST',
 				url: '/v3/smtp/email'
-			},
-			send: {
-				preSend: [
-					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-						const presendData = requestOptions.body?.valueOf() as TransactionalEmail;
-
-						// Handle optional data fields, that if sent as empty break the request
-						for(let [key, value] of Object.entries(presendData)) {
-							if(value == "") {
-								delete presendData[key as keyof TransactionalEmail];
-							}
-						}
-
-						return requestOptions;
-					}
-				]
 			}
 		},
 		default: 'send',
@@ -360,8 +343,143 @@ const sendHtmlEmailFields: Array<INodeProperties> = [
 	}
 ];
 
+const sendHtmlTemplateEmailFields: Array<INodeProperties> = [
+	{
+		type: 'number',
+		name: 'templateId',
+		displayName: 'Template ID',
+		default: 0,
+		displayOptions: {
+			show: {
+				resource: [
+					'email'
+				],
+				operation: [
+					'sendTemplate'
+				]
+			}
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'templateId'
+			}
+		}
+	},
+	{
+		displayName: 'Receipients',
+		name: 'receipients',
+		placeholder: 'Add Receipient',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate'
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'receipient',
+				displayName: 'Receipient',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								property: '=to[{{$index}}].name',
+								type: 'body',
+							},
+						},
+						description: 'Name of the receipient',
+					},
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								property: '=to[{{$index}}].email',
+								type: 'body',
+							},
+						},
+						description: 'Email of the receipient',
+					},
+				],
+			},
+		],
+		required: true
+	},
+	{
+		type: 'collection',
+		name: 'templateParams',
+		displayName: 'Additional Fields',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'email'
+				],
+				operation: [
+					'sendTemplate'
+				]
+			}
+		},
+		options: [
+			{
+				displayName: 'Template Parameters',
+				name: 'templateParameters',
+				placeholder: 'Add Parameter',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'parameterValues',
+						displayName: 'Parameter',
+						values: [
+							{
+								displayName: 'Parameter Key',
+								name: 'parameterKey',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Parameter Value',
+								name: 'parameterValue',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=params.{{$parent.parameterKey}}',
+										type: 'body',
+									},
+								},
+							},
+						]
+					},
+				],
+				default: {},
+				description: 'Pass the set of attributes to customize the template'
+			},
+		]
+	}
+];
 
 export const emailFields: Array<INodeProperties> = [
 	...sendHtmlEmailFields,
-	// ...sendHtmlTemplateEmailFields
+	...sendHtmlTemplateEmailFields
 ];
