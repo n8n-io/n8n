@@ -50,7 +50,7 @@ export const propertyFields: INodeProperties[] = [
 	/*               property:create                                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -188,7 +188,7 @@ export const propertyFields: INodeProperties[] = [
 		description: 'Controls how the property appears in HubSpot',
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group Name or ID',
 		name: 'groupName',
 		type: 'options',
 		required: true,
@@ -203,7 +203,7 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description: 'The name of the property group the property belongs to',
+		description: 'The name of the property group the property belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Options as JSON',
@@ -297,7 +297,7 @@ export const propertyFields: INodeProperties[] = [
 	/*                  property:get                                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -313,7 +313,7 @@ export const propertyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property Name or ID',
 		name: 'propertyName',
 		type: 'options',
 		required: true,
@@ -331,8 +331,7 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
-		description:
-			'The internal property name, which must be used when referencing the property via the API',
+		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -360,7 +359,7 @@ export const propertyFields: INodeProperties[] = [
 	/*               property:getAll                                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -402,7 +401,7 @@ export const propertyFields: INodeProperties[] = [
 	/*                                         property:update                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -418,7 +417,7 @@ export const propertyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property Name or ID',
 		name: 'propertyName',
 		type: 'options',
 		required: true,
@@ -433,8 +432,7 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
-		description:
-			'The internal property name, which must be used when referencing the property via the API',
+		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -546,7 +544,7 @@ export const propertyFields: INodeProperties[] = [
 				description: 'Whether or not the property can be used in a HubSpot form',
 			},
 			{
-				displayName: 'Group Name',
+				displayName: 'Group Name or ID',
 				name: 'groupName',
 				type: 'options',
 				typeOptions: {
@@ -554,7 +552,7 @@ export const propertyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAvailablePropertyGroups',
 				},
 				default: '',
-				description: 'The name of the property group the property belongs to',
+				description: 'The name of the property group the property belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Hidden',
@@ -606,7 +604,7 @@ export const propertyFields: INodeProperties[] = [
 	/*               property:delete                                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -622,7 +620,7 @@ export const propertyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property Name or ID',
 		name: 'propertyName',
 		type: 'options',
 		required: true,
@@ -637,7 +635,6 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
-		description:
-			'The internal property name, which must be used when referencing the property via the API',
+		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 ];

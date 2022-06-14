@@ -42,7 +42,7 @@ export const associationFields: INodeProperties[] = [
 	/*               association:create & association:delete                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -72,7 +72,7 @@ export const associationFields: INodeProperties[] = [
 		description: 'The value of the ID Property of the object',
 	},
 	{
-		displayName: 'To Object Type',
+		displayName: 'To Object Type Name or ID',
 		name: 'toObjectType',
 		type: 'options',
 		displayOptions: {
@@ -86,7 +86,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object',
+		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Target Object ID',
@@ -103,7 +103,7 @@ export const associationFields: INodeProperties[] = [
 		description: 'The ID of the target object',
 	},
 	{
-		displayName: 'Association Type',
+		displayName: 'Association Type Name or ID',
 		name: 'associationType',
 		type: 'options',
 		required: true,
@@ -123,7 +123,7 @@ export const associationFields: INodeProperties[] = [
 	/*               association: define                                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -139,7 +139,7 @@ export const associationFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'To Object Type',
+		displayName: 'To Object Type Name or ID',
 		name: 'toObjectType',
 		type: 'options',
 		displayOptions: {
@@ -153,7 +153,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object',
+		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Association Name',
@@ -172,7 +172,7 @@ export const associationFields: INodeProperties[] = [
 	/*                                association:get                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -202,7 +202,7 @@ export const associationFields: INodeProperties[] = [
 		description: 'The value of the ID Property of the object',
 	},
 	{
-		displayName: 'To Object Type',
+		displayName: 'To Object Type Name or ID',
 		name: 'toObjectType',
 		type: 'options',
 		displayOptions: {
@@ -216,7 +216,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object',
+		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

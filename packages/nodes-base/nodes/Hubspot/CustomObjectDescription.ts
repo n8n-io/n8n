@@ -66,7 +66,7 @@ export const customObjectOperations: INodeProperties[] = [
 		default: 'create',
 	},
 	{
-		displayName: 'Custom Object Type',
+		displayName: 'Custom Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -116,7 +116,7 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -124,7 +124,7 @@ export const customObjectFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -380,7 +380,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                              customObject:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID Property',
+		displayName: 'ID Property Name or ID',
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
@@ -395,7 +395,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',
@@ -439,7 +439,7 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -447,7 +447,7 @@ export const customObjectFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -466,6 +466,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                              customObject:upsert                           */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
@@ -481,7 +482,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		hint: 'When "Hubspot object ID" is used and object with such ID does not exist, a new object will be created with ID assigned by system',
 	},
 	{
@@ -526,7 +527,7 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -534,7 +535,7 @@ export const customObjectFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomObjectProperties',
 								},
 								default: '',
-								description: 'Name of the property',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -553,6 +554,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                             customObject:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
@@ -568,7 +570,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',
@@ -643,6 +645,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                          customObject:batchGet                             */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
@@ -658,7 +661,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',
@@ -808,7 +811,7 @@ export const customObjectFields: INodeProperties[] = [
 										displayName: 'Filter',
 										values: [
 											{
-												displayName: 'Property Name',
+												displayName: 'Property Name or ID',
 												name: 'propertyName',
 												type: 'options',
 												typeOptions: {
@@ -823,20 +826,20 @@ export const customObjectFields: INodeProperties[] = [
 												type: 'options',
 												options: [
 													{
+														name: 'Between',
+														value: 'BETWEEN',
+													},
+													{
+														name: 'Contains Exactly',
+														value: 'CONTAINS_TOKEN',
+													},
+													{
+														name: 'Does Not Contain Exactly',
+														value: 'NOT_CONTAINS_TOKEN',
+													},
+													{
 														name: 'Equal',
 														value: 'EQ',
-													},
-													{
-														name: 'Not Equal',
-														value: 'NEQ',
-													},
-													{
-														name: 'Less Than',
-														value: 'LT',
-													},
-													{
-														name: 'Less Than Or Equal',
-														value: 'LTE',
 													},
 													{
 														name: 'Greater Than',
@@ -847,16 +850,8 @@ export const customObjectFields: INodeProperties[] = [
 														value: 'GTE',
 													},
 													{
-														name: 'Between',
-														value: 'BETWEEN',
-													},
-													{
 														name: 'In a Set',
 														value: 'IN',
-													},
-													{
-														name: 'Not In a Set',
-														value: 'NOT_IN',
 													},
 													{
 														name: 'Is Known',
@@ -867,14 +862,21 @@ export const customObjectFields: INodeProperties[] = [
 														value: 'NOT_HAS_PROPERTY',
 													},
 													{
-														name: 'Contains Exactly',
-														value: 'CONTAINS_TOKEN',
+														name: 'Less Than',
+														value: 'LT',
 													},
 													{
-														name: 'Does Not Contain Exactly',
-														value: 'NOT_CONTAINS_TOKEN',
+														name: 'Less Than Or Equal',
+														value: 'LTE',
 													},
-
+													{
+														name: 'Not Equal',
+														value: 'NEQ',
+													},
+													{
+														name: 'Not In a Set',
+														value: 'NOT_IN',
+													},
 												],
 												default: 'EQ',
 											},
@@ -951,7 +953,7 @@ export const customObjectFields: INodeProperties[] = [
 				description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 			},
 			{
-				displayName: 'Sort',
+				displayName: 'Sort by Name or ID',
 				name: 'sortBy',
 				type: 'options',
 				typeOptions: {
@@ -959,7 +961,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: '',
-				description: 'Sort the results ascending by this property',
+				description: 'Sort the results ascending by this property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -974,6 +976,7 @@ export const customObjectFields: INodeProperties[] = [
 	/*                              customObject:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'ID Property',
 		name: 'idProperty',
 		type: 'options',
@@ -989,7 +992,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',

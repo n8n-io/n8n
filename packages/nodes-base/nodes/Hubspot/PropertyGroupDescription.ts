@@ -49,7 +49,7 @@ export const propertyGroupFields: INodeProperties[] = [
 	/*               propertyGroup:create                                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -119,7 +119,7 @@ export const propertyGroupFields: INodeProperties[] = [
 	/*                  propertyGroup:get                                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -135,7 +135,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group Name',
+		displayName: 'Property Group Name or ID',
 		name: 'groupName',
 		type: 'options',
 		required: true,
@@ -150,13 +150,13 @@ export const propertyGroupFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description: 'The internal property group name, which must be used when referencing the property group via the API',
+		description: 'The internal property group name, which must be used when referencing the property group via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*               propertyGroup:getAll                                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -175,7 +175,7 @@ export const propertyGroupFields: INodeProperties[] = [
 	/*                propertyGroup:update                                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -191,7 +191,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group Name',
+		displayName: 'Property Group Name or ID',
 		name: 'groupName',
 		type: 'options',
 		required: true,
@@ -206,7 +206,7 @@ export const propertyGroupFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description: 'The internal property group name, which must be used when referencing the property group via the API',
+		description: 'The internal property group name, which must be used when referencing the property group via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -242,7 +242,7 @@ export const propertyGroupFields: INodeProperties[] = [
 	/*               property:delete                                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Object Type',
+		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
 		displayOptions: {
@@ -258,7 +258,7 @@ export const propertyGroupFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Group Name',
+		displayName: 'Property Group Name or ID',
 		name: 'groupName',
 		type: 'options',
 		required: true,
@@ -273,6 +273,6 @@ export const propertyGroupFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description: 'The internal property group name, which must be used when referencing the property group via the API',
+		description: 'The internal property group name, which must be used when referencing the property group via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 ];
