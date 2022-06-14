@@ -953,7 +953,6 @@ export interface IWorkflowsState {
 
 export interface ICommunityNodesState {
 	availablePackageCount: number;
-	loading: boolean;
 	installedPackages: ICommunityPackageMap;
 }
 

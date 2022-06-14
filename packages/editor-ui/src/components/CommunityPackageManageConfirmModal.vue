@@ -5,7 +5,7 @@
 		:title="getModalContent.title"
 		:eventBus="modalBus"
 		:center="true"
-		:showClose="!isLoading"
+		:showClose="!loading"
 		:beforeClose="onModalClose"
 	>
 		<template slot="content">
@@ -21,9 +21,9 @@
 		</template>
 		<template slot="footer">
 			<n8n-button
-				:loading="isLoading"
-				:disabled="isLoading"
-				:label="isLoading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
+				:loading="loading"
+				:disabled="loading"
+				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
 				size="large"
 				float="right"
 				@click="onConfirmButtonClick"
@@ -37,7 +37,6 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
-import { mapGetters } from 'vuex';
 import { showMessage } from './mixins/showMessage';
 
 export default mixins(showMessage).extend({
@@ -60,13 +59,13 @@ export default mixins(showMessage).extend({
 	},
 	data() {
 		return {
+			loading: false,
 			modalBus: new Vue(),
 			COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 			COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 		};
 	},
 	computed: {
-		...mapGetters('communityNodes', ['isLoading']),
 		activePackage() {
 			return this.$store.getters['communityNodes/getInstalledPackageByName'](this.activePackageName);
 		},
@@ -103,7 +102,7 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		onModalClose() {
-			return !this.isLoading;
+			return !this.loading;
 		},
 		async onConfirmButtonClick() {
 			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
@@ -114,6 +113,7 @@ export default mixins(showMessage).extend({
 		},
 		async onUninstall() {
 			try {
+				this.loading = true;
 				await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
@@ -127,11 +127,13 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.uninstall.error'));
 			} finally {
+				this.loading = false;
 				this.modalBus.$emit('close');
 			}
 		},
 		async onUpdate() {
 			try {
+				this.loading = true;
 				await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
@@ -146,6 +148,7 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error.title'));
 			} finally {
+				this.loading = false;
 				this.modalBus.$emit('close');
 			}
 		},

@@ -4,9 +4,6 @@ import { ICommunityNodesState, ICommunityPackageMap, IRootState } from '@/Interf
 import { PublicInstalledPackage } from 'n8n-workflow';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
-import {
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from '../constants';
 
 const LOADER_DELAY = 300;
 
@@ -15,7 +12,6 @@ const module: Module<ICommunityNodesState, IRootState> = {
 	state: {
 		// -1 means that package count has not been fetched yet
 		availablePackageCount: -1,
-		loading: true,
 		installedPackages: {},
 	},
 	mutations: {
@@ -28,9 +24,6 @@ const module: Module<ICommunityNodesState, IRootState> = {
 				return packageMap;
 			}, {});
 		},
-		setLoading: (state: ICommunityNodesState, loading: boolean) => {
-			state.loading = loading;
-		},
 		removePackageByName(state: ICommunityNodesState, name: string) {
 			Vue.delete(state.installedPackages, name);
 		},
@@ -41,9 +34,6 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		},
 		getInstalledPackages(state: ICommunityNodesState): PublicInstalledPackage[] {
 			return Object.values(state.installedPackages).sort((a, b) => a.packageName.localeCompare(b.packageName));
-		},
-		isLoading(state: ICommunityNodesState): boolean {
-			return state.loading;
 		},
 		getInstalledPackageByName(state: ICommunityNodesState) {
 			return (name: string) => state.installedPackages[name];
