@@ -45,9 +45,9 @@ export class NocoDB implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Version',
-				name: 'version',
-				type: 'number',
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
 				displayOptions: {
 					show: {
 						'@version': [
@@ -55,12 +55,23 @@ export class NocoDB implements INodeType {
 						],
 					},
 				},
-				default: 1,
+				isNodeSetting: true,
+				options: [
+					{
+						name: 'Before v0.90.0',
+						value: 'version1',
+					},
+					{
+						name: 'v0.90.0 onwards',
+						value: 'version2',
+					},
+				],
+				default: 'version1',
 			},
 			{
-				displayName: 'Version',
-				name: 'version',
-				type: 'number',
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
 				displayOptions: {
 					show: {
 						'@version': [
@@ -68,7 +79,18 @@ export class NocoDB implements INodeType {
 						],
 					},
 				},
-				default: 2,
+				isNodeSetting: true,
+				options: [
+					{
+						name: 'Before v0.90.0',
+						value: 'version1',
+					},
+					{
+						name: 'v0.90.0 onwards',
+						value: 'version2',
+					},
+				],
+				default: 'version2',
 			},
 			{
 				displayName: 'Resource',
