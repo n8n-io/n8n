@@ -2509,18 +2509,19 @@ export class Hubspot implements INodeType {
 							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 							const limit = returnAll ? undefined : this.getNodeParameter('limit', i) as number;
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const direction = additionalFields.direction || 'DESCENDING';
 
-							const filterGroups = (additionalFields.filterGroups as IDataObject)?.filterGroupsValues as IDataObject[] | undefined;
+							const filterGroups = this.getNodeParameter('filterGroups.filterGroupsValues', i, []) as IDataObject[];
 							const bodyFilterGroups = filterGroups?.map(filterGroup =>
-							({
-								filters: ((filterGroup?.filtersUi as IDataObject)?.filterValues as IDataObject[])?.map(filter => ({
-									...(filter.value !== undefined ? { value: filter.value } : {}),
-									...(filter.highValue !== undefined ? { highValue: filter.highValue } : {}),
-									...(filter.values !== undefined ? { values: filter.values } : {}),
-									propertyName: filter.propertyName,
-									operator: filter.operator,
-								})),
-							}),
+								({
+									filters: ((filterGroup?.filtersUi as IDataObject)?.filterValues as IDataObject[])?.map(filter => ({
+										...(filter.value !== undefined ? { value: filter.value } : {}),
+										...(filter.highValue !== undefined ? { highValue: filter.highValue } : {}),
+										...(filter.values !== undefined ? { values: filter.values } : {}),
+										propertyName: filter.propertyName,
+										operator: filter.operator,
+									})),
+								}),
 							);
 
 							const body = {
@@ -2528,7 +2529,12 @@ export class Hubspot implements INodeType {
 								...(bodyFilterGroups ? { filterGroups: bodyFilterGroups } : {}),
 								...(limit ? { limit } : {}),
 								...(additionalFields.query ? { query: additionalFields.query } : {}),
-								...(additionalFields.sortBy ? { sorts: [additionalFields.sortBy] } : {}),
+								...(additionalFields.sortBy ? { sorts: [
+										{
+											propertyName: additionalFields.sortBy,
+											direction,
+										},
+									],} : {}),
 							};
 
 							const endpoint = `/crm/v3/objects/${objectType}/search`;
@@ -2543,7 +2549,7 @@ export class Hubspot implements INodeType {
 						}
 						if (operation === 'define') {
 							const name = this.getNodeParameter('name', i) as string;
-							const labels = this.getNodeParameter('labels', i) as IDataObject;
+							const labels = this.getNodeParameter('objectLabels', i) as IDataObject;
 							const properties = (this.getNodeParameter('properties.values', i, []) as IDataObject[]).map(property => {
 								if (!property.options) return property;
 								return {

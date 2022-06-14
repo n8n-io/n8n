@@ -163,7 +163,7 @@ export const customObjectFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Labels',
-		name: 'labels',
+		name: 'objectLabels',
 		default: {},
 		type: 'fixedCollection',
 		placeholder: 'Add Labels',
@@ -714,6 +714,182 @@ export const customObjectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Filter Groups',
+		name: 'filterGroups',
+		type: 'fixedCollection',
+		default: [],
+		placeholder: 'Add Filter Group',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['search'],
+			},
+		},
+		options: [
+			{
+				name: 'filterGroupsValues',
+				displayName: 'Filter Group',
+				values: [
+					{
+						displayName: 'Filters',
+						name: 'filtersUi',
+						type: 'fixedCollection',
+						default: [],
+						placeholder: 'Add Filter',
+						typeOptions: {
+							multipleValues: true,
+						},
+						options: [
+							{
+								name: 'filterValues',
+								displayName: 'Filter',
+								values: [
+									{
+										displayName: 'Property Name or ID',
+										name: 'propertyName',
+										type: 'options',
+										typeOptions: {
+											loadOptionsDependsOn: ['objectType'],
+											loadOptionsMethod: 'getCustomObjectProperties',
+										},
+										default: '',
+									},
+									{
+										displayName: 'Operator',
+										name: 'operator',
+										type: 'options',
+										options: [
+											{
+												name: 'Between',
+												value: 'BETWEEN',
+											},
+											{
+												name: 'Contains Exactly',
+												value: 'CONTAINS_TOKEN',
+											},
+											{
+												name: 'Does Not Contain Exactly',
+												value: 'NOT_CONTAINS_TOKEN',
+											},
+											{
+												name: 'Equal',
+												value: 'EQ',
+											},
+											{
+												name: 'Greater Than',
+												value: 'GT',
+											},
+											{
+												name: 'Greater Than Or Equal',
+												value: 'GTE',
+											},
+											{
+												name: 'In a Set',
+												value: 'IN',
+											},
+											{
+												name: 'Is Known',
+												value: 'HAS_PROPERTY',
+											},
+											{
+												name: 'Is Unknown',
+												value: 'NOT_HAS_PROPERTY',
+											},
+											{
+												name: 'Less Than',
+												value: 'LT',
+											},
+											{
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+											{
+												name: 'Not In a Set',
+												value: 'NOT_IN',
+											},
+										],
+										default: 'EQ',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										displayOptions: {
+											hide: {
+												operator: [
+													'HAS_PROPERTY',
+													'NOT_HAS_PROPERTY',
+													'BETWEEN',
+													'IN',
+													'NOT_IN',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Low Value',
+										name: 'value',
+										displayOptions: {
+											show: {
+												operator: [
+													'BETWEEN',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+										description: 'The lower bound for a between filter',
+									},
+									{
+										displayName: 'High Value',
+										name: 'highValue',
+										displayOptions: {
+											show: {
+												operator: [
+													'BETWEEN',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+										description: 'The upper bound for a between filter',
+									},
+									{
+										displayName: 'Values',
+										name: 'values',
+										displayOptions: {
+											show: {
+												operator: [
+													'IN',
+													'NOT_IN',
+												],
+											},
+										},
+										type: 'string',
+										typeOptions: {
+											multipleValues: true,
+										},
+										default: '',
+									},
+								],
+							},
+						],
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
+					},
+				],
+			},
+		],
+		description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -727,7 +903,24 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
+				displayName: 'Direction',
+				name: 'direction',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'ASCENDING',
+					},
+					{
+						name: 'DESC',
+						value: 'DESCENDING',
+					},
+				],
+				default: 'DESCENDING',
+				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+			},
+			{
+				displayName: 'Fields',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -737,178 +930,10 @@ export const customObjectFields: INodeProperties[] = [
 				default: [],
 				description: 'A list of the properties to be returned in the response',
 			},
+
 			{
-				displayName: 'Filter Groups',
-				name: 'filterGroups',
-				type: 'fixedCollection',
-				default: [],
-				placeholder: 'Add Filter Group',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'filterGroupsValues',
-						displayName: 'Filter Group',
-						values: [
-							{
-								displayName: 'Filters',
-								name: 'filtersUi',
-								type: 'fixedCollection',
-								default: [],
-								placeholder: 'Add Filter',
-								typeOptions: {
-									multipleValues: true,
-								},
-								options: [
-									{
-										name: 'filterValues',
-										displayName: 'Filter',
-										values: [
-											{
-												displayName: 'Property Name or ID',
-												name: 'propertyName',
-												type: 'options',
-												typeOptions: {
-													loadOptionsDependsOn: ['objectType'],
-													loadOptionsMethod: 'getCustomObjectProperties',
-												},
-												default: '',
-											},
-											{
-												displayName: 'Operator',
-												name: 'operator',
-												type: 'options',
-												options: [
-													{
-														name: 'Between',
-														value: 'BETWEEN',
-													},
-													{
-														name: 'Contains Exactly',
-														value: 'CONTAINS_TOKEN',
-													},
-													{
-														name: 'Does Not Contain Exactly',
-														value: 'NOT_CONTAINS_TOKEN',
-													},
-													{
-														name: 'Equal',
-														value: 'EQ',
-													},
-													{
-														name: 'Greater Than',
-														value: 'GT',
-													},
-													{
-														name: 'Greater Than Or Equal',
-														value: 'GTE',
-													},
-													{
-														name: 'In a Set',
-														value: 'IN',
-													},
-													{
-														name: 'Is Known',
-														value: 'HAS_PROPERTY',
-													},
-													{
-														name: 'Is Unknown',
-														value: 'NOT_HAS_PROPERTY',
-													},
-													{
-														name: 'Less Than',
-														value: 'LT',
-													},
-													{
-														name: 'Less Than Or Equal',
-														value: 'LTE',
-													},
-													{
-														name: 'Not Equal',
-														value: 'NEQ',
-													},
-													{
-														name: 'Not In a Set',
-														value: 'NOT_IN',
-													},
-												],
-												default: 'EQ',
-											},
-											{
-												displayName: 'Value',
-												name: 'value',
-												displayOptions: {
-													hide: {
-														operator: [
-															'HAS_PROPERTY',
-															'NOT_HAS_PROPERTY',
-															'BETWEEN',
-															'IN',
-															'NOT_IN',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-											},
-											{
-												displayName: 'Low Value',
-												name: 'value',
-												displayOptions: {
-													show: {
-														operator: [
-															'BETWEEN',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-												description: 'The lower bound for a between filter',
-											},
-											{
-												displayName: 'High Value',
-												name: 'highValue',
-												displayOptions: {
-													show: {
-														operator: [
-															'BETWEEN',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-												description: 'The upper bound for a between filter',
-											},
-											{
-												displayName: 'Values',
-												name: 'values',
-												displayOptions: {
-													show: {
-														operator: [
-															'IN',
-															'NOT_IN',
-														],
-													},
-												},
-												type: 'string',
-												typeOptions: {
-													multipleValues: true,
-												},
-												default: '',
-											},
-										],
-									},
-								],
-								description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
-							},
-						],
-					},
-				],
-				description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
-			},
-			{
-				displayName: 'Sort by Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
 				typeOptions: {
@@ -916,7 +941,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: '',
-				description: 'Sort the results ascending by this property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Sort the results ascending by this property. . Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Query',
