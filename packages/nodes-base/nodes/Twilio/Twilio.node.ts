@@ -90,9 +90,8 @@ export class Twilio implements INodeType {
 				},
 				options: [
 					{
-						name: 'Make Phone Call',
+						name: 'Make',
 						value: 'make',
-						description: 'Uses text-to-speech to say a message',
 					},
 				],
 				default: 'make',
@@ -175,17 +174,48 @@ export class Twilio implements INodeType {
 					show: {
 						operation: [
 							'send',
-							'make',
 						],
 						resource: [
 							'sms',
-							'call',
 						],
 					},
 				},
 				description: 'The message to send',
 			},
-
+			{
+				displayName: 'Use TwiML',
+				name: 'twiml',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'make',
+						],
+						resource: [
+							'call',
+						],
+					},
+				},
+				description: 'Whether to use the <a href="https://www.twilio.com/docs/voice/twiml">Twilio Markup Language</a> in the message',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'make',
+						],
+						resource: [
+							'call',
+						],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -262,9 +292,17 @@ export class Twilio implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/Calls.json';
 
+						const message = this.getNodeParameter('message', i) as string;
+						const useTwiml = this.getNodeParameter('twiml', i) as boolean;
 						body.From = this.getNodeParameter('from', i) as string;
 						body.To = this.getNodeParameter('to', i) as string;
-						body.Twiml = `<Response><Say>${escapeXml(this.getNodeParameter('message', i) as string)}</Say></Response>`;
+
+						if (useTwiml) {
+							body.Twiml = message;
+						} else {
+							body.Twiml = `<Response><Say>${escapeXml(message)}</Say></Response>`;
+						}
+
 						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
