@@ -6,7 +6,7 @@
 		:eventBus="modalBus"
 		:center="true"
 		:beforeClose="onModalClose"
-		:showClose="!isLoading"
+		:showClose="!loading"
 	>
 		<template slot="content">
 			<div :class="[$style.descriptionContainer, 'p-s']">
@@ -36,7 +36,7 @@
 						type="text"
 						:placeholder="$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')"
 						:required="true"
-						:disabled="isLoading"
+						:disabled="loading"
 						@blur="onInputBlur"
 					/>
 				</n8n-input-label>
@@ -50,7 +50,7 @@
 				<el-checkbox
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
-					:disabled="isLoading"
+					:disabled="loading"
 					@change="onCheckboxChecked"
 				>
 					<n8n-text>
@@ -62,9 +62,9 @@
 		</template>
 		<template slot="footer">
 			<n8n-button
-				:loading="isLoading"
-				:disabled="packageName === '' || isLoading"
-				:label="isLoading ?
+				:loading="loading"
+				:disabled="packageName === '' || loading"
+				:label="loading ?
 					$locale.baseText('settings.communityNodes.installModal.installButton.label.loading') :
 					$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
@@ -84,7 +84,6 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
 } from '../constants';
-import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 
@@ -97,6 +96,7 @@ export default mixins(
 	},
 	data() {
 		return {
+			loading: false,
 			packageName: '',
 			userAgreed: false,
 			modalBus: new Vue(),
@@ -108,9 +108,6 @@ export default mixins(
 			COMMUNITY_NODES_RISKS_DOCS_URL,
 		};
 	},
-	computed: {
-		...mapGetters('communityNodes', ['isLoading']),
-	},
 	methods: {
 		openNPMPage() {
 			window.open(NPM_KEYWORD_SEARCH_URL, '_blank');
@@ -121,13 +118,16 @@ export default mixins(
 			} else {
 				try {
 					this.infoTextErrorMessage = '';
+					this.loading = true;
 					await this.$store.dispatch('communityNodes/installPackage', this.packageName);
+					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
+					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+					this.loading = false;
+					this.modalBus.$emit('close');
 					this.$showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
 					});
-					this.modalBus.$emit('close');
-					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 				} catch(error) {
 					if(error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
@@ -137,6 +137,8 @@ export default mixins(
 							this.$locale.baseText('settings.communityNodes.messages.install.error'),
 						);
 					}
+				} finally {
+					this.loading = false;
 				}
 			}
 		},
@@ -144,7 +146,7 @@ export default mixins(
 			this.checkboxWarning = false;
 		},
 		onModalClose() {
-			return !this.isLoading;
+			return !this.loading;
 		},
 		onInputBlur() {
 			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');

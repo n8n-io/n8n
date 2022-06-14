@@ -1,7 +1,8 @@
-import { getInstalledCommunityNodes, installNewPackage } from '@/api/communityNodes';
+import { getInstalledCommunityNodes, installNewPackage, uninstallPackage, updatePackage } from '@/api/communityNodes';
 import { getAvailableCommunityPackageCount } from '@/api/settings';
-import { ICommunityNodesState, IRootState } from '@/Interface';
+import { ICommunityNodesState, ICommunityPackageMap, IRootState } from '@/Interface';
 import { PublicInstalledPackage } from 'n8n-workflow';
+import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 
 const LOADER_DELAY = 300;
@@ -11,18 +12,20 @@ const module: Module<ICommunityNodesState, IRootState> = {
 	state: {
 		// -1 means that package count has not been fetched yet
 		availablePackageCount: -1,
-		loading: true,
-		installedPackages: [],
+		installedPackages: {},
 	},
 	mutations: {
 		setAvailablePackageCount: (state: ICommunityNodesState, count: number) => {
 			state.availablePackageCount = count;
 		},
 		setInstalledPackages: (state: ICommunityNodesState, packages: PublicInstalledPackage[]) => {
-			state.installedPackages = packages;
+			state.installedPackages = packages.reduce((packageMap: ICommunityPackageMap, pack: PublicInstalledPackage) => {
+				packageMap[pack.packageName] = pack;
+				return packageMap;
+			}, {});
 		},
-		setLoading: (state: ICommunityNodesState, loading: boolean) => {
-			state.loading = loading;
+		removePackageByName(state: ICommunityNodesState, name: string) {
+			Vue.delete(state.installedPackages, name);
 		},
 	},
 	getters: {
@@ -30,10 +33,10 @@ const module: Module<ICommunityNodesState, IRootState> = {
 			return state.availablePackageCount;
 		},
 		getInstalledPackages(state: ICommunityNodesState): PublicInstalledPackage[] {
-			return state.installedPackages;
+			return Object.values(state.installedPackages).sort((a, b) => a.packageName.localeCompare(b.packageName));
 		},
-		isLoading(state: ICommunityNodesState): boolean {
-			return state.loading;
+		getInstalledPackageByName(state: ICommunityNodesState) {
+			return (name: string) => state.installedPackages[name];
 		},
 	},
 	actions: {
@@ -58,6 +61,31 @@ const module: Module<ICommunityNodesState, IRootState> = {
 				await installNewPackage(context.rootGetters.getRestApiContext, packageName);
 				await context.dispatch('communityNodes/fetchInstalledPackages');
 			} catch(error) {
+				throw(error);
+			} finally {
+				context.commit('setLoading', false);
+			}
+		},
+		async uninstallPackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+			context.commit('setLoading', true);
+			try {
+				await uninstallPackage(context.rootGetters.getRestApiContext, packageName);
+				context.commit('removePackageByName', packageName);
+			} catch(error) {
+				throw(error);
+			} finally {
+				context.commit('setLoading', false);
+			}
+		},
+		async updatePackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
+			context.commit('setLoading', true);
+			try {
+				const packageToUpdate = context.getters.getInstalledPackageByName(packageName);
+				await updatePackage(context.rootGetters.getRestApiContext, packageToUpdate.packageName);
+				// TODO: Use new back-end response to substitute the existing object in the store
+				packageToUpdate.installedVersion = packageToUpdate.updateAvailable;
+				delete packageToUpdate.updateAvailable;
+			} catch (error) {
 				throw(error);
 			} finally {
 				context.commit('setLoading', false);

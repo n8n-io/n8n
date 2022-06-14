@@ -4,7 +4,7 @@
 			<div :class="$style.headingContainer">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 				<n8n-button
-					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !isLoading"
+					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !loading"
 					:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 					size="large"
 					@click="openInstallModal"
@@ -20,7 +20,7 @@
 			/>
 			<div
 				:class="$style.cardsContainer"
-				v-else-if="isLoading"
+				v-else-if="loading"
 			>
 				<community-package-card
 					v-for="n in 2"
@@ -73,8 +73,14 @@ export default mixins(
 		SettingsView,
 		CommunityPackageCard,
 	},
+	data () {
+		return {
+			loading: false,
+		};
+	},
 	async mounted() {
 		try {
+			this.$data.loading = true;
 			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 		} catch (error) {
 			this.$showError(
@@ -82,14 +88,18 @@ export default mixins(
 				this.$locale.baseText('settings.communityNodes.fetchError.title'),
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),
 			);
+		} finally {
+			this.$data.loading = false;
 		}
 		try {
 			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
-		} finally { }
+		} finally {
+			this.$data.loading = false;
+		}
 	},
 	computed: {
 		...mapGetters('settings', ['isQueueModeEnabled']),
-		...mapGetters('communityNodes', ['getInstalledPackages', 'isLoading']),
+		...mapGetters('communityNodes', ['getInstalledPackages']),
 		getEmptyStateDescription() {
 			const packageCount = this.$store.getters['communityNodes/availablePackageCount'];
 			return  packageCount < PACKAGE_COUNT_THRESHOLD ?
