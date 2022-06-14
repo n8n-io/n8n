@@ -1,6 +1,6 @@
 # n8n - Workflow Automation Tool
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
+![LinkedIn cover - 1](https://user-images.githubusercontent.com/65276001/173570730-b8e6f8d0-301d-44b1-96d9-f33ef2a2798f.png)
 
 n8n is an extendable workflow automation tool. With a [fair-code](http://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
 
