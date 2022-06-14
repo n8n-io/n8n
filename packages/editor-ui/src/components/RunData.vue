@@ -142,8 +142,16 @@
 				<div v-if="editMode.enabled" :class="$style['edit-mode']">
 					<code-editor v-model="editMode.value" />
 					<div>
-						<n8n-button type="tertiary" :label="$locale.baseText('runData.editor.save')" />
-						<n8n-button type="tertiary" :label="$locale.baseText('runData.editor.cancel')" />
+						<n8n-button
+							type="tertiary"
+							:label="$locale.baseText('runData.editor.cancel')"
+							@click="onClickCancelEdit"
+						/>
+						<n8n-button
+							type="tertiary"
+							:label="$locale.baseText('runData.editor.save')"
+							@click="onClickSaveEdit"
+						/>
 					</div>
 				</div>
 				<vue-json-pretty
@@ -519,6 +527,22 @@ export default mixins(
 			enterEditMode() {
 				this.editMode.enabled = true;
 				this.editMode.value = JSON.stringify(this.jsonData, null, 2);
+			},
+			onClickCancelEdit() {
+				this.editMode.enabled = false;
+				this.editMode.value = '';
+			},
+			onClickSaveEdit() {
+				this.editMode.enabled = false;
+				this.$store.dispatch('workflow/pinData', { node: this.node, data: this.editMode.value });
+			},
+			onClickPinData() {
+				// @TODO
+				this.$store.dispatch('workflow/pinData', { node: this.node, data: this.editMode.value });
+			},
+			onClickUnpinData() {
+				// @TODO
+				this.$store.commit('workflow/unpinData', { node: this.node });
 			},
 			switchToBinary() {
 				this.onDisplayModeChange('binary');
