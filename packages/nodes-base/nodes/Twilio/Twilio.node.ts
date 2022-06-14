@@ -11,6 +11,7 @@ import {
 
 import {
 	twilioApiRequest,
+	escapeXml,
 } from './GenericFunctions';
 
 export class Twilio implements INodeType {
@@ -44,6 +45,11 @@ export class Twilio implements INodeType {
 						name: 'SMS',
 						value: 'sms',
 					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
+						name: 'Call',
+						value: 'call',
+					},
 				],
 				default: 'sms',
 			},
@@ -70,13 +76,34 @@ export class Twilio implements INodeType {
 				default: 'send',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'call',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Make',
+						value: 'make',
+					},
+				],
+				default: 'make',
+			},
+
 
 			// ----------------------------------
-			//         sms
+			//         sms / call
 			// ----------------------------------
 
 			// ----------------------------------
-			//         sms:send
+			//         sms:send / call:make
 			// ----------------------------------
 			{
 				displayName: 'From',
@@ -89,9 +116,11 @@ export class Twilio implements INodeType {
 					show: {
 						operation: [
 							'send',
+							'make',
 						],
 						resource: [
 							'sms',
+							'call',
 						],
 					},
 				},
@@ -108,9 +137,11 @@ export class Twilio implements INodeType {
 					show: {
 						operation: [
 							'send',
+							'make',
 						],
 						resource: [
 							'sms',
+							'call',
 						],
 					},
 				},
@@ -150,6 +181,40 @@ export class Twilio implements INodeType {
 					},
 				},
 				description: 'The message to send',
+			},
+			{
+				displayName: 'Use TwiML',
+				name: 'twiml',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'make',
+						],
+						resource: [
+							'call',
+						],
+					},
+				},
+				description: 'Whether to use the <a href="https://www.twilio.com/docs/voice/twiml">Twilio Markup Language</a> in the message',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'make',
+						],
+						resource: [
+							'call',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -215,6 +280,30 @@ export class Twilio implements INodeType {
 							body.From = `whatsapp:${body.From}`;
 							body.To = `whatsapp:${body.To}`;
 						}
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
+				} else if (resource === 'call') {
+					if (operation === 'make') {
+						// ----------------------------------
+						//         call:make
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/Calls.json';
+
+						const message = this.getNodeParameter('message', i) as string;
+						const useTwiml = this.getNodeParameter('twiml', i) as boolean;
+						body.From = this.getNodeParameter('from', i) as string;
+						body.To = this.getNodeParameter('to', i) as string;
+
+						if (useTwiml) {
+							body.Twiml = message;
+						} else {
+							body.Twiml = `<Response><Say>${escapeXml(message)}</Say></Response>`;
+						}
+
+						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
