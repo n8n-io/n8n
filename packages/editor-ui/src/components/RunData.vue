@@ -454,7 +454,8 @@ export default mixins(
 					return [];
 				}
 
-				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
+				const binaryData = this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
+				return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
 			},
 			currentOutputIndex(): number {
 				if (this.overrideOutputs && this.overrideOutputs.length && !this.overrideOutputs.includes(this.outputIndex)) {
