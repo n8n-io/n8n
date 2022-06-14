@@ -1,6 +1,6 @@
 import {
+	IDataObject,
 	IExecutePaginationFunctions,
-	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -39,10 +39,34 @@ export class HighLevel implements INodeType {
 		},
 		requestOperations: {
 			async pagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
-				// console.log('PAGINATION')
-				// const respData = await this.helpers.httpRequest(requestData.options as IHttpRequestOptions);
-				const responseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
-				// console.log(requestData);
+
+				let rootProperty = '';
+				requestData.postReceive.forEach(pR => {
+					for (let i = 0; i < pR.actions.length; i++) {
+						const action: any = pR.actions[i];
+						if (action.type === 'rootProperty') {
+							rootProperty = action.properties.property
+							pR.actions.splice(i, 1);
+							break;
+						}
+					}
+				});
+
+				const responseData: INodeExecutionData[] = [];
+				const returnAll = this.getNodeParameter('returnAll')
+
+				do {
+
+					const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
+					const items = pageResponseData[0].json[rootProperty] as []
+					items.forEach(item => responseData.push({ json: item }))
+
+					const meta = pageResponseData[0].json.meta as IDataObject;
+					requestData.options.url = meta.nextPageUrl as string;
+					delete requestData.options.baseURL;
+
+				} while (returnAll && requestData.options.url)
+
 				return responseData;
 			},
 		},
