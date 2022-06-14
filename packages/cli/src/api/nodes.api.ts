@@ -167,7 +167,7 @@ nodesController.get(
 	}),
 );
 
-// Install new credentials/nodes from npm
+// Uninstall credentials/nodes from npm
 nodesController.delete(
 	'/',
 	ResponseHelper.send(async (req: NodeRequest.Delete) => {
