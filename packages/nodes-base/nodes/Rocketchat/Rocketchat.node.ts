@@ -183,7 +183,7 @@ export class Rocketchat implements INodeType {
 						name: 'avatar',
 						type: 'string',
 						default: '',
-						description: 'If provided, this will make the avatar use the provided image url',
+						description: 'If provided, this will make the avatar use the provided image URL',
 					},
 					{
 						displayName: 'Emoji',
@@ -320,7 +320,7 @@ export class Rocketchat implements INodeType {
 						description: 'Audio file to play, only supports what html audio does',
 					},
 					{
-						displayName: 'video URL',
+						displayName: 'Video URL',
 						name: 'videoUrl',
 						type: 'string',
 						default: '',

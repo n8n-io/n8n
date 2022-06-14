@@ -171,16 +171,16 @@ export class Hubspot implements INodeType {
 						value: 'association',
 					},
 					{
+						name: 'Company',
+						value: 'company',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 					},
 					{
 						name: 'Contact List',
 						value: 'contactList',
-					},
-					{
-						name: 'Company',
-						value: 'company',
 					},
 					{
 						name: 'Custom Object',
@@ -199,12 +199,12 @@ export class Hubspot implements INodeType {
 						value: 'form',
 					},
 					{
-						name: 'Property Group',
-						value: 'propertyGroup',
-					},
-					{
 						name: 'Property',
 						value: 'property',
+					},
+					{
+						name: 'Property Group',
+						value: 'propertyGroup',
 					},
 					{
 						name: 'Ticket',
@@ -948,12 +948,16 @@ export class Hubspot implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/contacts/v1/lists/all/contacts/all';
 				const contacts = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint);
+
 				for (const contact of contacts) {
-					const contactName = `${contact.properties.firstname.value} ${contact.properties.lastname.value}`;
+					const firstName = contact.properties?.firstname?.value || '';
+					const lastName = contact.properties?.lastname?.value || '';
+					const contactName = `${firstName} ${lastName}`;
 					const contactId = contact.vid;
 					returnData.push({
 						name: contactName,
 						value: contactId,
+						description: `Contact VID: ${contactId}`,
 					});
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
@@ -1017,7 +1021,7 @@ export class Hubspot implements INodeType {
 						value: '0-7',
 					},
 					{
-						name: 'Line item',
+						name: 'Line Item',
 						value: '0-8',
 					},
 					{
@@ -1025,7 +1029,7 @@ export class Hubspot implements INodeType {
 						value: '0-14',
 					},
 					{
-						name: 'Feedback submission',
+						name: 'Feedback Submission',
 						value: '0-19',
 					},
 					{
@@ -1049,7 +1053,7 @@ export class Hubspot implements INodeType {
 						value: '0-49',
 					},
 					{
-						name: 'Quote template',
+						name: 'Quote Template',
 						value: '0-64',
 					},
 					{
@@ -3202,14 +3206,17 @@ export class Hubspot implements INodeType {
 							const ticketName = this.getNodeParameter('ticketName', i) as string;
 							const body: IDataObject[] = [
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline',
 									value: pipelineId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline_stage',
 									value: stageId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'subject',
 									value: ticketName,
 								},

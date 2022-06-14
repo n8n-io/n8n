@@ -366,14 +366,18 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
-				const returnValues: string[] = [];
-				for (const parameterPath of loadOptionsDependsOn) {
-					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					const returnValues: string[] = [];
+					for (const parameterPath of loadOptionsDependsOn) {
+						returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					}
+
+					return returnValues.join('|');
+				} catch (error) {
+					return null;
 				}
-
-				return returnValues.join('|');
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -698,9 +702,9 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 

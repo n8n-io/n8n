@@ -37,7 +37,7 @@ export const formFields: INodeProperties[] = [
 	/*                                form:submit                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -55,7 +55,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form you\'re sending data to',
+		description: 'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -115,13 +115,6 @@ export const formFields: INodeProperties[] = [
 				name: 'contextValue',
 				values: [
 					{
-						displayName: 'Go to Webinar Webinar ID',
-						name: 'goToWebinarWebinarKey',
-						type: 'string',
-						default: '',
-						description: 'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form',
-					},
-					{
 						displayName: 'HubSpot Usertoken',
 						name: 'hutk',
 						type: 'string',
@@ -148,13 +141,6 @@ export const formFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description: 'The ID of a page created on the HubSpot CMS',
-					},
-					{
-						displayName: 'Page URI',
-						name: 'pageUri',
-						type: 'string',
-						default: '',
-						description: 'The URI of the page the submission happened on',
 					},
 					{
 						displayName: 'SFDC Campaign ID',
@@ -220,14 +206,14 @@ export const formFields: INodeProperties[] = [
 								name: 'communicationValues',
 								values: [
 									{
-										displayName: 'Subcription Type',
+										displayName: 'Subcription Type Name or ID',
 										name: 'subscriptionTypeId',
 										type: 'options',
 										typeOptions: {
 											loadOptionsMethod: 'getSubscriptionTypes',
 										},
 										default: '',
-										description: 'The ID of the specific subscription type',
+										description: 'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 									},
 									{
 										displayName: 'Value',
@@ -254,14 +240,14 @@ export const formFields: INodeProperties[] = [
 				name: 'legitimateInterestValues',
 				values: [
 					{
-						displayName: 'Subcription Type',
+						displayName: 'Subcription Type Name or ID',
 						name: 'subscriptionTypeId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getSubscriptionTypes',
 						},
 						default: '',
-						description: 'The ID of the specific subscription type that this forms indicates interest to',
+						description: 'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -303,7 +289,7 @@ export const formFields: INodeProperties[] = [
 	/*                                  form:getFields                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -321,6 +307,6 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form',
+		description: 'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 ];

@@ -10,8 +10,6 @@ import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
-// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import _ from 'lodash';
 
 import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies

@@ -263,14 +263,14 @@ export const orderFields: INodeProperties[] = [
 				description: 'The behaviour to use when updating inventory',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
 				},
 				default: '',
-				description: 'The ID of the physical location where the order was processed',
+				description: 'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Note',
@@ -308,7 +308,7 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'shipping Address',
+						displayName: 'Shipping Address',
 						values: [
 							{
 								displayName: 'First Name',
@@ -422,14 +422,14 @@ export const orderFields: INodeProperties[] = [
 				name: 'lineItemValues',
 				values: [
 					{
-						displayName: 'Product ID',
+						displayName: 'Product Name or ID',
 						name: 'productId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
 						default: '',
-						description: 'The ID of the product that the line item belongs to',
+						description: 'The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Variant ID',
@@ -661,14 +661,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Show only refunded orders',
 					},
 					{
-						name: 'Voided',
-						value: 'voided',
-						description: 'Show only voided orders',
-					},
-					{
 						name: 'Unpaid',
 						value: 'unpaid',
 						description: 'Show authorized and partially paid orders',
+					},
+					{
+						name: 'Voided',
+						value: 'voided',
+						description: 'Show only voided orders',
 					},
 				],
 				default: 'any',
@@ -695,14 +695,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Show orders that have been shipped. Returns orders with fulfillment_status of fulfilled.',
 					},
 					{
-						name: 'Unshipped',
-						value: 'unshipped',
-						description: 'Show orders that have not yet been shipped. Returns orders with fulfillment_status of null.',
-					},
-					{
 						name: 'Unfulfilled',
 						value: 'unfulfilled',
 						description: 'Returns orders with fulfillment_status of null or partial',
+					},
+					{
+						name: 'Unshipped',
+						value: 'unshipped',
+						description: 'Show orders that have not yet been shipped. Returns orders with fulfillment_status of null.',
 					},
 				],
 				default: 'any',
@@ -833,14 +833,14 @@ export const orderFields: INodeProperties[] = [
 				description: 'The customer\'s email address',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
 				},
 				default: '',
-				description: 'The ID of the physical location where the order was processed',
+				description: 'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Note',
@@ -864,7 +864,7 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'shipping Address',
+						displayName: 'Shipping Address',
 						values: [
 							{
 								displayName: 'First Name',

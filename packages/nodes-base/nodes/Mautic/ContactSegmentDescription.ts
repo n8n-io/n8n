@@ -56,7 +56,7 @@ export const contactSegmentFields: INodeProperties[] = [
 	},
 	{
 
-		displayName: 'Segment ID',
+		displayName: 'Segment Name or ID',
 		name: 'segmentId',
 		type: 'options',
 		required: true,

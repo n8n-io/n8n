@@ -67,7 +67,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project',
+		displayName: 'Project Name or ID',
 		name: 'project',
 		type: 'options',
 		default: '',
@@ -90,7 +90,7 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Type',
+		displayName: 'Issue Type Name or ID',
 		name: 'issueType',
 		type: 'options',
 		default: '',
@@ -111,7 +111,7 @@ export const issueFields: INodeProperties[] = [
 				'project',
 			],
 		},
-		description: 'Issue Types',
+		description: 'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Summary',
@@ -148,7 +148,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {
@@ -189,7 +189,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -198,7 +198,7 @@ export const issueFields: INodeProperties[] = [
 										'project',
 									],
 								},
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -251,7 +251,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -260,7 +260,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reporter',
+				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
 				typeOptions: {
@@ -316,7 +316,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {
@@ -345,7 +345,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -354,7 +354,7 @@ export const issueFields: INodeProperties[] = [
 										'issueKey',
 									],
 								},
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -414,7 +414,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -423,7 +423,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reporter',
+				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
 				typeOptions: {
@@ -438,14 +438,14 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTransitions',
 				},
 				default: '',
-				description: 'The ID of the issue status',
+				description: 'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

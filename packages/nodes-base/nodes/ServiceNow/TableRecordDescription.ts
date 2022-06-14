@@ -46,7 +46,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -146,7 +146,7 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'column',
 						type: 'options',
 						typeOptions: {
@@ -172,7 +172,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -305,7 +305,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -324,7 +324,7 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the table in which the record exists',
+		description: 'Name of the table in which the record exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table Record ID',
@@ -411,7 +411,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:update                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -529,7 +529,7 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'column',
 						type: 'options',
 						typeOptions: {

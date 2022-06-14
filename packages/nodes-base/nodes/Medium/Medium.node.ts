@@ -131,7 +131,7 @@ export class Medium implements INodeType {
 				description: 'Are you posting for a publication?',
 			},
 			{
-				displayName: 'Publication ID',
+				displayName: 'Publication Name or ID',
 				name: 'publicationId',
 				type: 'options',
 				displayOptions: {
@@ -151,7 +151,7 @@ export class Medium implements INodeType {
 					loadOptionsMethod: 'getPublications',
 				},
 				default: '',
-				description: 'Publication IDs',
+				description: 'Publication IDs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

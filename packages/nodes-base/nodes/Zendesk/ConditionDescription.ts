@@ -29,24 +29,24 @@ export const conditionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Status',
-				value: 'status',
-			},
-			{
-				name: 'Type',
-				value: 'type',
-			},
-			{
-				name: 'Priority',
-				value: 'priority',
+				name: 'Assignee',
+				value: 'assignee',
 			},
 			{
 				name: 'Group',
 				value: 'group',
 			},
 			{
-				name: 'Assignee',
-				value: 'assignee',
+				name: 'Priority',
+				value: 'priority',
+			},
+			{
+				name: 'Status',
+				value: 'status',
+			},
+			{
+				name: 'Type',
+				value: 'type',
 			},
 		],
 		default: 'status',
@@ -57,6 +57,22 @@ export const conditionFields: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		options: [
+			{
+				name: 'Changed',
+				value: 'changed',
+			},
+			{
+				name: 'Changed From',
+				value: 'value_previous',
+			},
+			{
+				name: 'Changed To',
+				value: 'value',
+			},
+			{
+				name: 'Greater Than',
+				value: 'greater_than',
+			},
 			{
 				name: 'Is',
 				value: 'is',
@@ -70,32 +86,16 @@ export const conditionFields: INodeProperties[] = [
 				value: 'less_than',
 			},
 			{
-				name: 'Greater Than',
-				value: 'greater_than',
-			},
-			{
-				name: 'Changed',
-				value: 'changed',
-			},
-			{
-				name: 'Changed To',
-				value: 'value',
-			},
-			{
-				name: 'Changed From',
-				value: 'value_previous',
-			},
-			{
 				name: 'Not Changed',
 				value: 'not_changed',
 			},
 			{
-				name: 'Not Changed To',
-				value: 'not_value',
-			},
-					{
 				name: 'Not Changed From',
 				value: 'not_value_previous',
+			},
+			{
+				name: 'Not Changed To',
+				value: 'not_value',
 			},
 		],
 		displayOptions: {
@@ -114,6 +114,18 @@ export const conditionFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
+				name: 'Changed',
+				value: 'changed',
+			},
+			{
+				name: 'Changed From',
+				value: 'value_previous',
+			},
+			{
+				name: 'Changed To',
+				value: 'value',
+			},
+			{
 				name: 'Is',
 				value: 'is',
 			},
@@ -122,28 +134,16 @@ export const conditionFields: INodeProperties[] = [
 				value: 'is_not',
 			},
 			{
-				name: 'Changed',
-				value: 'changed',
-			},
-			{
-				name: 'Changed To',
-				value: 'value',
-			},
-			{
-				name: 'Changed From',
-				value: 'value_previous',
-			},
-			{
 				name: 'Not Changed',
 				value: 'not_changed',
 			},
 			{
-				name: 'Not Changed To',
-				value: 'not_value',
-			},
-					{
 				name: 'Not Changed From',
 				value: 'not_value_previous',
+			},
+			{
+				name: 'Not Changed To',
+				value: 'not_value',
 			},
 		],
 		displayOptions: {
@@ -180,12 +180,16 @@ export const conditionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Open',
-				value: 'open',
+				name: 'Closed',
+				value: 'closed',
 			},
 			{
 				name: 'New',
 				value: 'new',
+			},
+			{
+				name: 'Open',
+				value: 'open',
 			},
 			{
 				name: 'Pending',
@@ -194,10 +198,6 @@ export const conditionFields: INodeProperties[] = [
 			{
 				name: 'Solved',
 				value: 'solved',
-			},
-			{
-				name: 'Closed',
-				value: 'closed',
 			},
 		],
 		default: 'open',
@@ -289,6 +289,7 @@ export const conditionFields: INodeProperties[] = [
 		default: 'low',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',
@@ -313,6 +314,7 @@ export const conditionFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',

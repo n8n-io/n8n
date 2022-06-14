@@ -157,7 +157,7 @@ export class FacebookTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Include values',
+						displayName: 'Include Values',
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,
