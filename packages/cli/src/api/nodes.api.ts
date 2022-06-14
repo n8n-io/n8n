@@ -71,11 +71,11 @@ nodesController.post(
 
 		// Only install packages that haven't been installed
 		// or that have failed loading
-		const installedPackageInstalled = await searchInstalledPackage(name);
+		const installedPackageInstalled = await searchInstalledPackage(parsedPackageName.packageName);
 		const loadedPackage = hasPackageLoadedSuccessfully(name);
 		if (installedPackageInstalled && loadedPackage) {
 			throw new ResponseHelper.ResponseError(
-				`Package "${name}" is already installed. For updating, click the corresponding button.`,
+				`Package "${parsedPackageName.packageName}" is already installed. For updating, click the corresponding button.`,
 				undefined,
 				400,
 			);
