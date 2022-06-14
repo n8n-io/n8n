@@ -1535,3 +1535,19 @@ export interface IConnectedNode {
 	indicies: number[];
 	depth: number;
 }
+
+export enum OAuth2GrantType {
+	authorizationCode = 'authorizationCode',
+	clientCredentials = 'clientCredentials',
+}
+export interface IOAuth2Credentials {
+	grantType: 'authorizationCode' | 'clientCredentials';
+	clientId: string;
+	clientSecret: string;
+	accessTokenUrl: string;
+	authUrl: string;
+	authQueryParameters: string;
+	authentication: 'body' | 'header';
+	scope: string;
+	oauthTokenData?: IDataObject;
+}
