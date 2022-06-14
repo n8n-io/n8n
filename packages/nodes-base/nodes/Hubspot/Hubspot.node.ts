@@ -2423,16 +2423,12 @@ export class Hubspot implements INodeType {
 						const objectType = this.getNodeParameter('objectType', i, '') as string;
 
 						if (operation === 'create') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-							const properties: Record<string, unknown> = {};
+							const customObjectProperties = this.getNodeParameter('customObjectProperties.values', i, []) as IDataObject[];
+							const properties: IDataObject = {};
 
-							if (additionalFields.customPropertiesUi) {
-								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
-
-								if (customProperties) {
-									for (const customProperty of customProperties) {
-										properties[customProperty.property as string] = customProperty.value;
-									}
+							if (customObjectProperties.length) {
+								for (const objectProperty of customObjectProperties) {
+									properties[objectProperty.property as string] = objectProperty.value;
 								}
 							}
 
@@ -2443,16 +2439,12 @@ export class Hubspot implements INodeType {
 						if (operation === 'update') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
+							const customObjectProperties = this.getNodeParameter('customObjectProperties.values', i, []) as IDataObject[];
 							const properties: IDataObject = {};
-							if (updateFields.customPropertiesUi) {
-								const customProperties = (updateFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
 
-								if (customProperties) {
-									for (const customProperty of customProperties) {
-										properties[customProperty.property as string] = customProperty.value;
-									}
+							if (customObjectProperties.length) {
+								for (const objectProperty of customObjectProperties) {
+									properties[objectProperty.property as string] = objectProperty.value;
 								}
 							}
 
@@ -2462,18 +2454,15 @@ export class Hubspot implements INodeType {
 						if (operation === 'upsert') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const customObjectProperties = this.getNodeParameter('customObjectProperties.values', i, []) as IDataObject[];
+							const properties: IDataObject = {};
 
-							const properties: Record<string, unknown> = {};
-							if (additionalFields.customPropertiesUi) {
-								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
-
-								if (customProperties) {
-									for (const customProperty of customProperties) {
-										properties[customProperty.property as string] = customProperty.value;
-									}
+							if (customObjectProperties.length) {
+								for (const objectProperty of customObjectProperties) {
+									properties[objectProperty.property as string] = objectProperty.value;
 								}
 							}
+
 							if (idProperty) {
 								properties[idProperty] = objectId;
 							}
@@ -2486,11 +2475,9 @@ export class Hubspot implements INodeType {
 								const endpoint = `/crm/v3/objects/${objectType}/${objectId}`;
 								responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
 							} catch (error) {
-								if ((error as NodeApiError).httpCode !== '404') {
-									throw error;
-								}
-								// if (!idProperty) {
-								// 	throw new NodeOperationError(this.getNode(), 'A custom id property needs to be used when creating a new object');
+								// TODO error.httpCode = null ???
+								// if ((error as NodeApiError).httpCode !== '404') {
+								// 	throw error;
 								// }
 								const endpoint = `/crm/v3/objects/${objectType}`;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties });
@@ -2511,9 +2498,6 @@ export class Hubspot implements INodeType {
 							}
 							if (additionalFields.propertiesWithHistory) {
 								qs.propertiesWithHistory = additionalFields.propertiesWithHistory as string[];
-							}
-							if (additionalFields.archived) {
-								qs.archived = additionalFields.archived as boolean;
 							}
 							if (idProperty) {
 								qs.idProperty = idProperty;

@@ -89,11 +89,14 @@ export const customObjectFields: INodeProperties[] = [
 	/*                              customObject:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Properties',
+		name: 'customObjectProperties',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: [],
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
@@ -102,38 +105,26 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
-				name: 'customPropertiesUi',
-				placeholder: 'Add Property',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				options: [
+				name: 'values',
+				displayName: 'Custom Property',
+				values: [
 					{
-						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
-						values: [
-							{
-								displayName: 'Property Name or ID',
-								name: 'property',
-								type: 'options',
-								typeOptions: {
-									loadOptionsDependsOn: ['objectType'],
-									loadOptionsMethod: 'getCustomObjectProperties',
-								},
-								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value of the property',
-							},
-						],
+						displayName: 'Property Name or ID',
+						name: 'property',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: ['objectType'],
+							loadOptionsMethod: 'getCustomObjectProperties',
+						},
+						default: '',
+						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the property',
 					},
 				],
 			},
@@ -412,11 +403,14 @@ export const customObjectFields: INodeProperties[] = [
 		description: 'The value of the ID Property of the object',
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Properties',
+		name: 'customObjectProperties',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: [],
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
@@ -425,38 +419,26 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
-				name: 'customPropertiesUi',
-				placeholder: 'Add Property',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				options: [
+				name: 'values',
+				displayName: 'Custom Property',
+				values: [
 					{
-						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
-						values: [
-							{
-								displayName: 'Property Name or ID',
-								name: 'property',
-								type: 'options',
-								typeOptions: {
-									loadOptionsDependsOn: ['objectType'],
-									loadOptionsMethod: 'getCustomObjectProperties',
-								},
-								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value of the property',
-							},
-						],
+						displayName: 'Property Name or ID',
+						name: 'property',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: ['objectType'],
+							loadOptionsMethod: 'getCustomObjectProperties',
+						},
+						default: '',
+						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the property',
 					},
 				],
 			},
@@ -500,51 +482,42 @@ export const customObjectFields: INodeProperties[] = [
 		description: 'The value of the ID Property of the object',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Properties',
+		name: 'customObjectProperties',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: [],
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert', 'batchUpsert'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Properties',
-				name: 'customPropertiesUi',
-				placeholder: 'Add Property',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				options: [
+				name: 'values',
+				displayName: 'Custom Property',
+				values: [
 					{
-						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
-						values: [
-							{
-								displayName: 'Property Name or ID',
-								name: 'property',
-								type: 'options',
-								typeOptions: {
-									loadOptionsDependsOn: ['objectType'],
-									loadOptionsMethod: 'getCustomObjectProperties',
-								},
-								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value of the property',
-							},
-						],
+						displayName: 'Property Name or ID',
+						name: 'property',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: ['objectType'],
+							loadOptionsMethod: 'getCustomObjectProperties',
+						},
+						default: '',
+						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the property',
 					},
 				],
 			},
@@ -620,24 +593,6 @@ export const customObjectFields: INodeProperties[] = [
 				},
 				default: [],
 				description: 'A list of the properties to be returned along with their history of previous values',
-			},
-			// {
-			//     displayName: 'Associations',
-			//     name: 'associations',
-			//     type: 'multiOptions',
-			//     typeOptions: {
-			//         loadOptionsMethod: 'getCustomObjectAssociations',
-			//		   loadOptionsDependsOn: ['objectType'],
-			//     },
-			//     default: '',
-			//     description: 'A list of object types to retrieve associated IDs for.',
-			// },
-			{
-				displayName: 'Archived',
-				name: 'archived',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to return only results that have been archived',
 			},
 		],
 	},
