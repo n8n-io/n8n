@@ -86,9 +86,25 @@ import {
 	validateCredentials
 } from './GenericFunctions';
 
-import { associationFields, associationOperations } from './AssociationDescription';
-import { propertyFields, propertyOperations } from './PropertyDescription';
-import { propertyGroupFields, propertyGroupOperations } from './PropertyGroupDescription';
+import {
+	associationFields,
+	associationOperations,
+} from './AssociationDescription';
+
+import {
+	propertyFields,
+	propertyOperations,
+} from './PropertyDescription';
+
+import {
+	propertyGroupFields,
+	propertyGroupOperations,
+} from './PropertyGroupDescription';
+
+import {
+	schemaFields,
+	schemaOperations,
+} from './SchemaDescription';
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
@@ -207,6 +223,10 @@ export class Hubspot implements INodeType {
 						value: 'propertyGroup',
 					},
 					{
+						name: 'Schema',
+						value: 'schema',
+					},
+					{
 						name: 'Ticket',
 						value: 'ticket',
 					},
@@ -246,6 +266,9 @@ export class Hubspot implements INodeType {
 			// TICKET
 			...ticketOperations,
 			...ticketFields,
+			// SCHEMA
+			...schemaOperations,
+			...schemaFields,
 		],
 	};
 
@@ -2547,32 +2570,6 @@ export class Hubspot implements INodeType {
 							}
 
 						}
-						if (operation === 'define') {
-							const name = this.getNodeParameter('name', i) as string;
-							const labels = this.getNodeParameter('objectLabels', i) as IDataObject;
-							const properties = (this.getNodeParameter('properties.values', i, []) as IDataObject[]).map(property => {
-								if (!property.options) return property;
-								return {
-									name: property.name,
-									label: property.label,
-									...property.options as IDataObject,
-								};
-							});
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-							const primaryDisplayProperty = this.getNodeParameter('primaryDisplayProperty', i) as string;
-
-							const body: IDataObject = {
-								name,
-								primaryDisplayProperty,
-								...labels,
-								properties,
-							};
-
-							Object.keys(additionalFields).forEach(key => body[key] = (additionalFields[key] as string).split(','));
-
-							const endpoint = `/crm/v3/schemas`;
-							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
-						}
 						if (operation === 'delete') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
@@ -2618,21 +2615,6 @@ export class Hubspot implements INodeType {
 							if (!responseData && operation === 'delete') {
 								responseData = [{ success: true }];
 							}
-						}
-						if (operation === 'define') {
-							const objectType = this.getNodeParameter('objectType', i) as string;
-							const toObjectType = this.getNodeParameter('toObjectType', i) as string;
-							const associationName = this.getNodeParameter('associationName', i) as string;
-
-							const endpoint = `/crm/v3/schemas/${objectType}/associations`;
-
-							const body = {
-								fromObjectTypeId: objectType,
-								toObjectTypeId: toObjectType,
-								name: associationName,
-							};
-
-							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 						}
 						if (operation === 'get') {
 							const objectType = this.getNodeParameter('objectType', i) as string;
@@ -3422,6 +3404,55 @@ export class Hubspot implements INodeType {
 									});
 								}
 								await hubspotApiRequest.call(this, 'PUT', '/crm-associations/v1/associations/create-batch', contactAssociations);
+							}
+						}
+					}
+					if ( resource === 'schema') {
+						const schemaType = this.getNodeParameter('schemaType', i) as string;
+						if ( schemaType === 'typeCustomObject') {
+							if (operation === 'create') {
+								const name = this.getNodeParameter('name', i) as string;
+								const labels = this.getNodeParameter('objectLabels', i) as IDataObject;
+								const properties = (this.getNodeParameter('properties.values', i, []) as IDataObject[]).map(property => {
+									if (!property.options) return property;
+									return {
+										name: property.name,
+										label: property.label,
+										...property.options as IDataObject,
+									};
+								});
+								const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+								const primaryDisplayProperty = this.getNodeParameter('primaryDisplayProperty', i) as string;
+
+								const body: IDataObject = {
+									name,
+									primaryDisplayProperty,
+									...labels,
+									properties,
+								};
+
+								Object.keys(additionalFields).forEach(key => body[key] = (additionalFields[key] as string).split(','));
+
+								const endpoint = `/crm/v3/schemas`;
+								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+							}
+						}
+
+						if ( schemaType === 'typeAssociation') {
+							if (operation === 'create') {
+								const objectType = this.getNodeParameter('objectType', i) as string;
+								const toObjectType = this.getNodeParameter('toObjectType', i) as string;
+								const associationName = this.getNodeParameter('associationName', i) as string;
+
+								const endpoint = `/crm/v3/schemas/${objectType}/associations`;
+
+								const body = {
+									fromObjectTypeId: objectType,
+									toObjectTypeId: toObjectType,
+									name: associationName,
+								};
+
+								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 							}
 						}
 					}

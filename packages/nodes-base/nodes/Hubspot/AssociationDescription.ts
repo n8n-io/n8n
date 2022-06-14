@@ -18,11 +18,6 @@ export const associationOperations: INodeProperties[] = [
 				description: 'Create an association between two objects',
 			},
 			{
-				name: 'Define',
-				value: 'define',
-				description: 'Define a new association',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an association between two objects',
@@ -118,55 +113,6 @@ export const associationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*               association: define                                          */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Object Type Name or ID',
-		name: 'objectType',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: ['association'],
-				operation: ['define'],
-			},
-		},
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getCustomObjectTypes',
-		},
-		default: '',
-	},
-	{
-		displayName: 'To Object Type Name or ID',
-		name: 'toObjectType',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: ['association'],
-				operation: ['define'],
-			},
-		},
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getCustomObjectTypes',
-		},
-		default: '',
-		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-	},
-	{
-		displayName: 'Association Name',
-		name: 'associationName',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['association'],
-				operation: ['define'],
-			},
-		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                association:get                             */
