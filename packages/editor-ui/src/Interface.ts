@@ -856,6 +856,10 @@ export interface IRootState {
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 }
 
+export interface ICommunityPackageMap {
+	[name: string]: PublicInstalledPackage;
+}
+
 export interface ICredentialTypeMap {
 	[name: string]: ICredentialType;
 }
@@ -950,9 +954,7 @@ export interface IWorkflowsState {
 export interface ICommunityNodesState {
 	availablePackageCount: number;
 	loading: boolean;
-	installedPackages: PublicInstalledPackage[];
-	currentModalAction: typeof COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL | typeof COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE;
-	currentModalPackage: PublicInstalledPackage;
+	installedPackages: ICommunityPackageMap;
 }
 
 export interface IRestApiContext {

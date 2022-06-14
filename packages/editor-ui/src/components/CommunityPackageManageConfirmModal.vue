@@ -10,12 +10,12 @@
 	>
 		<template slot="content">
 			<n8n-text>{{ getModalContent.message }}</n8n-text>
-			<div :class="$style.descriptionContainer" v-if="this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
+			<div :class="$style.descriptionContainer" v-if="this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
 				<div :class="$style.descriptionIcon">
 					<n8n-icon icon="info-circle" size="xlarge" />
 				</div>
 				<div :class="$style.descriptionText">
-					<n8n-text>{{ $locale.baseText("We recommend you deactivate workflows that use any of the package's nodes and reactivate them once the update is completed") }}</n8n-text>
+					<n8n-text>{{ getModalContent.description }}</n8n-text>
 				</div>
 			</div>
 		</template>
@@ -45,6 +45,19 @@ export default mixins(showMessage).extend({
 	components: {
 		Modal,
 	},
+	props: {
+		modalName: {
+			type: String,
+			required: true,
+		},
+		activePackageName: {
+			type: String,
+			required: true,
+		},
+		mode: {
+			type: String,
+		},
+	},
 	data() {
 		return {
 			modalBus: new Vue(),
@@ -53,34 +66,39 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapGetters('communityNodes', ['isLoading', `getCurrentModalAction`, `getCurrentModalPackage`]),
+		...mapGetters('communityNodes', ['isLoading']),
+		activePackage() {
+			return this.$store.getters['communityNodes/getInstalledPackageByName'](this.activePackageName);
+		},
 		getModalContent() {
-			return this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL ?
-				{
+			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
+				return {
 					title: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.title', {
 						interpolate: {
-							packageName: this.getCurrentModalPackage.packageName,
+							packageName: this.activePackageName,
 						},
 					}),
 					message: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.message'),
 					buttonLabel: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
 					buttonLoadingLabel: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel'),
-				} :
-				{
-					title: this.$locale.baseText('settings.communityNodes.confirmModal.update.title', {
-						interpolate: {
-							packageName: this.getCurrentModalPackage.packageName,
-						},
-					}),
-					message: this.$locale.baseText('settings.communityNodes.confirmModal.update.message', {
-						interpolate: {
-							packageName: this.getCurrentModalPackage.packageName,
-							version: this.getCurrentModalPackage.updateAvailable,
-						},
-					}),
-					buttonLabel: this.$locale.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
-					buttonLoadingLabel: this.$locale.baseText('settings.communityNodes.confirmModal.update.buttonLoadingLabel'),
 				};
+			}
+			return {
+				title: this.$locale.baseText('settings.communityNodes.confirmModal.update.title', {
+					interpolate: {
+						packageName: this.activePackageName,
+					},
+				}),
+				description: this.$locale.baseText('settings.communityNodes.confirmModal.update.description'),
+				message: this.$locale.baseText('settings.communityNodes.confirmModal.update.message', {
+					interpolate: {
+						packageName: this.activePackageName,
+						version: this.activePackage.updateAvailable,
+					},
+				}),
+				buttonLabel: this.$locale.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
+				buttonLoadingLabel: this.$locale.baseText('settings.communityNodes.confirmModal.update.buttonLoadingLabel'),
+			};
 		},
 	},
 	methods: {
@@ -88,14 +106,14 @@ export default mixins(showMessage).extend({
 			return !this.isLoading;
 		},
 		async onConfirmButtonClick() {
-			if (this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
+			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 				try {
-					await this.$store.dispatch('communityNodes/uninstallPackage');
+					await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
 					this.$showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
 						message: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.message', {
 							interpolate: {
-								packageName: this.getCurrentModalPackage.packageName,
+								packageName: this.activePackageName,
 							},
 						}),
 						type: 'success',
@@ -105,21 +123,21 @@ export default mixins(showMessage).extend({
 				} finally {
 					this.modalBus.$emit('close');
 				}
-			}else if (this.getCurrentModalAction === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
+			}else if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
 				try {
-					await this.$store.dispatch('communityNodes/updatePackage');
+					await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
 					this.$showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
 						message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {
 							interpolate: {
-								packageName: this.getCurrentModalPackage.packageName,
-								version: this.getCurrentModalPackage.updateAvailable,
+								packageName: this.activePackageName,
+								version: this.activePackage.updateAvailable,
 							},
 						}),
 						type: 'success',
 					});
 				} catch (error) {
-					this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error'));
+					this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error.title'));
 				} finally {
 					this.modalBus.$emit('close');
 				}

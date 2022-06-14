@@ -94,7 +94,13 @@
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
-			<CommunityPackageManageConfirmModal />
+			<template v-slot="{ modalName, activeId, mode }">
+				<CommunityPackageManageConfirmModal
+					:modalName="modalName"
+					:activePackageName="activeId"
+					:mode="mode"
+				/>
+			</template>
 		</ModalRoot>
 	</div>
 </template>

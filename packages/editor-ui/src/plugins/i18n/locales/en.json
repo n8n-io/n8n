@@ -669,6 +669,7 @@
 	"settings.communityNodes.messages.uninstall.success.message": "{packageName} was uninstalled from your instance",
 	"settings.communityNodes.messages.update.success.title": "Package updated",
 	"settings.communityNodes.messages.update.success.message": "{packageName} is now on version {version}",
+	"settings.communityNodes.messages.update.error.title": "Problem updating package",
 	"settings.communityNodes.confirmModal.uninstall.title": "Uninstall {packageName} Package?",
 	"settings.communityNodes.confirmModal.uninstall.message": "Any workflows that use these nodes won't be able to run. Are you sure?",
 	"settings.communityNodes.confirmModal.uninstall.buttonLabel": "Uninstall Package",
