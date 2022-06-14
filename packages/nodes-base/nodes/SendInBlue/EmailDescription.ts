@@ -19,6 +19,10 @@ export const emailOperations: Array<INodeProperties> = [
 				name: 'Send',
 				value: 'send',
 			},
+			{
+				name: 'Send Template',
+				value: 'sendTemplate',
+			}
 		],
 		routing: {
 			request: {
@@ -46,7 +50,98 @@ export const emailOperations: Array<INodeProperties> = [
 	}
 ];
 
-export const emailFields: Array<INodeProperties> = [
+const sendHtmlEmailFields: Array<INodeProperties> = [
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+		routing: {
+			send: {
+				property: 'subject',
+				type: 'body',
+			},
+		},
+		default: '',
+		description: 'Subject of the email',
+	},
+	{
+		displayName: 'Send HTML',
+		name: 'sendHTML',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+		default: false,
+	},
+	{
+		displayName: 'Text Content',
+		name: 'textContent',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+				sendHTML: [
+					false
+				]
+			},
+		},
+		routing: {
+			send: {
+				property: 'textContent',
+				type: 'body',
+			},
+		},
+		default: '',
+		description: 'Text content of the message',
+	},
+	{
+		displayName: 'HTML Content',
+		name: 'htmlContent',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+				sendHTML: [
+					true
+				]
+			},
+		},
+		routing: {
+			send: {
+				property: 'htmlContent',
+				type: 'body',
+			},
+		},
+		default: '',
+		description: 'HTML content of the message',
+	},
 	{
 		displayName: 'Sender',
 		name: 'sender',
@@ -156,75 +251,6 @@ export const emailFields: Array<INodeProperties> = [
 		required: true
 	},
 	{
-		displayName: 'Subject',
-		name: 'subject',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-			},
-		},
-		routing: {
-			send: {
-				property: 'subject',
-				type: 'body',
-			},
-		},
-		default: '',
-		description: 'Subject of the email',
-	},
-	{
-		displayName: 'Text Content',
-		name: 'textContent',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-			},
-		},
-		routing: {
-			send: {
-				property: 'textContent',
-				type: 'body',
-			},
-		},
-		default: '',
-		description: 'Text content of the message',
-	},
-	{
-		displayName: 'HTML Content',
-		name: 'htmlContent',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-			},
-		},
-		routing: {
-			send: {
-				property: 'htmlContent',
-				type: 'body',
-			},
-		},
-		default: '',
-		description: 'HTML content of the message',
-	},
-	{
 		displayName: 'Additional Parameters',
 		name: 'additionalParameters',
 		placeholder: 'Add Parameter',
@@ -331,5 +357,11 @@ export const emailFields: Array<INodeProperties> = [
 				],
 			},
 		],
-	},
+	}
+];
+
+
+export const emailFields: Array<INodeProperties> = [
+	...sendHtmlEmailFields,
+	// ...sendHtmlTemplateEmailFields
 ];
