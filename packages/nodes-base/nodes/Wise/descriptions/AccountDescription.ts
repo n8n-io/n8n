@@ -128,6 +128,82 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Format',
+		name: 'format',
+		type: 'options',
+		default: 'json',
+		description: 'File format to retrieve the statement in',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getStatement',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+			{
+				name: 'CSV',
+				value: 'csv',
+			},
+			{
+				name: 'PDF',
+				value: 'pdf',
+			},
+		],
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		default: 'data',
+		description: 'Name of the binary property to which to write to',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getStatement',
+				],
+				format: [
+					'csv',
+					'pdf',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'data.pdf',
+		description: 'Name of the file that will be downloaded',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getStatement',
+				],
+				format: [
+					'csv',
+					'pdf',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
