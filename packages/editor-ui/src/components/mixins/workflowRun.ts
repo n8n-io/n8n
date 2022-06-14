@@ -8,6 +8,7 @@ import {
 	IRunData,
 	IRunExecutionData,
 	NodeHelpers,
+	PinDataPayload,
 } from 'n8n-workflow';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -151,9 +152,16 @@ export const workflowRun = mixins(
 
 				const workflowData = await this.getWorkflowDataToSave();
 
+				const pinData = Object.values(workflow.nodes).reduce<PinDataPayload>((acc, node) => {
+					if (node.pinData) acc[node.name] = [node.pinData];
+
+					return acc;
+				}, {});
+
 				const startRunData: IStartRunData = {
 					workflowData,
 					runData: newRunData,
+					pinData,
 					startNodes,
 				};
 				if (nodeName) {
@@ -174,6 +182,7 @@ export const workflowRun = mixins(
 					data: {
 						resultData: {
 							runData: newRunData || {},
+							pinData,
 							startNodes,
 							workflowData,
 						},
