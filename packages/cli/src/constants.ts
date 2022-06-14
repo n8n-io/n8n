@@ -14,6 +14,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_NOT_INSTALLED: 'This package is not installed - you must install it first',
 	PACKAGE_NOT_FOUND: 'Failed installing package: package was not found',
 	PACKAGE_VERSION_NOT_FOUND: 'The specified package version was not found',
+	PACKAGE_DOES_NOT_CONTAIN_NODES: 'The specified package does not contain any nodes',
 };
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';

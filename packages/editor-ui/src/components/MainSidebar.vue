@@ -222,6 +222,7 @@ import { userHelpers } from './mixins/userHelpers';
 const settingsRoutes = [
 	VIEWS.PERSONAL_SETTINGS,
 	VIEWS.USERS_SETTINGS,
+	VIEWS.API_SETTINGS,
 	VIEWS.COMMUNITY_NODES,
 ];
 

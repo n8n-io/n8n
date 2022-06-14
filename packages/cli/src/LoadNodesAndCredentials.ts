@@ -199,7 +199,7 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
-	async loadNpmModule(packageName: string, version?: string): Promise<INodeTypeNameVersion[]> {
+	async loadNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
 
@@ -218,32 +218,39 @@ class LoadNodesAndCredentialsClass {
 
 		if (loadedNodes.length > 0) {
 			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
+			let installedPackage: InstalledPackages;
 
 			// Save info to DB
 			try {
 				await Db.transaction(async (transactionManager) => {
 					const promises = [];
 
-					const installedPackage = Object.assign(new InstalledPackages(), {
+					const installedPackagePayload = Object.assign(new InstalledPackages(), {
 						packageName,
 						installedVersion: packageFile.version,
 					});
-					await transactionManager.save<InstalledPackages>(installedPackage);
+					installedPackage = await transactionManager.save<InstalledPackages>(
+						installedPackagePayload,
+					);
+					installedPackage.installedNodes = [];
 
 					promises.push(
 						...loadedNodes.map(async (loadedNode) => {
-							const installedNode = Object.assign(new InstalledNodes(), {
+							const installedNodePayload = Object.assign(new InstalledNodes(), {
 								name: loadedNode.name,
 								type: loadedNode.name,
 								latestVersion: loadedNode.version,
 								package: packageName,
 							});
-							return transactionManager.save<InstalledNodes>(installedNode);
+							installedPackage.installedNodes.push(installedNodePayload);
+							return transactionManager.save<InstalledNodes>(installedNodePayload);
 						}),
 					);
 
 					return promises;
 				});
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				return installedPackage!;
 			} catch (error) {
 				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
 				throw error;
@@ -256,9 +263,9 @@ class LoadNodesAndCredentialsClass {
 			} catch (error) {
 				// Do nothing
 			}
-		}
 
-		return loadedNodes;
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+		}
 	}
 
 	async removeNpmModule(packageName: string, installedNodes: InstalledNodes[]): Promise<void> {
@@ -274,7 +281,7 @@ class LoadNodesAndCredentialsClass {
 	async updateNpmModule(
 		packageName: string,
 		installedNodes: InstalledNodes[],
-	): Promise<INodeTypeNameVersion[]> {
+	): Promise<InstalledPackages> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
 		const command = `npm update ${packageName}`;
@@ -303,6 +310,7 @@ class LoadNodesAndCredentialsClass {
 
 			// Save info to DB
 			try {
+				let returnedPackage: InstalledPackages;
 				await Db.transaction(async (transactionManager) => {
 					const promises = [];
 
@@ -316,7 +324,8 @@ class LoadNodesAndCredentialsClass {
 						packageName,
 						installedVersion: packageFile.version,
 					});
-					await transactionManager.save<InstalledPackages>(installedPackage);
+					returnedPackage = await transactionManager.save<InstalledPackages>(installedPackage);
+					returnedPackage.installedNodes = [];
 
 					promises.push(
 						...loadedNodes.map(async (loadedNode) => {
@@ -326,12 +335,15 @@ class LoadNodesAndCredentialsClass {
 								latestVersion: loadedNode.version,
 								package: packageName,
 							});
+							returnedPackage.installedNodes.push(installedNode);
 							return transactionManager.save<InstalledNodes>(installedNode);
 						}),
 					);
 
 					await Promise.all(promises);
 				});
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				return returnedPackage!;
 			} catch (error) {
 				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
 				throw error;
@@ -344,9 +356,8 @@ class LoadNodesAndCredentialsClass {
 			} catch (error) {
 				// Do nothing
 			}
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
-
-		return loadedNodes;
 	}
 
 	/**

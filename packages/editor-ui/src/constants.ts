@@ -254,6 +254,7 @@ export enum VIEWS {
 	CHANGE_PASSWORD = "ChangePasswordView",
 	USERS_SETTINGS = "UsersSettings",
 	PERSONAL_SETTINGS = "PersonalSettings",
+	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
 	COMMUNITY_NODES = "CommunityNodes",
 }

@@ -15,12 +15,14 @@ export type SmtpTestAccount = {
 	};
 };
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'nodes';
+export type ApiPath = 'internal' | 'public';
+
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'publicApi' | 'nodes';
 
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess: ICredentialNodeAccess[];
+	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 

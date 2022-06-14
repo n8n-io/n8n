@@ -23,10 +23,7 @@ let globalMemberRole: Role;
 let ownerShell: User;
 
 beforeAll(async () => {
-	app = utils.initTestServer({
-		endpointGroups: ['nodes'],
-		applyAuth: true,
-	});
+	app = await utils.initTestServer({ endpointGroups: ['nodes'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
