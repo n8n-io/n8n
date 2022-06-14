@@ -65,11 +65,11 @@ const XML_CHAR_MAP: { [key: string]: string } = {
 	'>': '&gt;',
 	'&': '&amp;',
 	'"': '&quot;',
-	"'": '&apos;'
+	'\'': '&apos;',
 };
 
 export function escapeXml(str: string) {
-	return str.replace(/[<>&"']/g, function (ch: string) {
+	return str.replace(/[<>&"']/g, (ch: string) => {
 		return XML_CHAR_MAP[ch];
 	});
 }
