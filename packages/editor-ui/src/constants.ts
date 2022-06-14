@@ -38,6 +38,7 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
+export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -49,6 +50,11 @@ export const BREAKPOINT_XL = 1920;
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
+export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=n8n-community-node-package`;
+export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
+export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
+export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';

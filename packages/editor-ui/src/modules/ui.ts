@@ -1,5 +1,6 @@
 import {
 	ABOUT_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -82,6 +83,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[WORKFLOW_ACTIVE_MODAL_KEY]: {
+				open: false,
+			},
+			[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
 				open: false,
 			},
 		},
