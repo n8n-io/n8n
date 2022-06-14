@@ -1,3 +1,4 @@
+import { exec } from 'child_process';
 import express from 'express';
 import * as utils from './shared/utils';
 import type { InstalledNodePayload, InstalledPackagePayload } from './shared/types';
@@ -7,9 +8,21 @@ import * as testDb from './shared/testDb';
 
 jest.mock('../../src/CommunityNodes/helpers',  () => ({
   matchPackagesWithUpdates: jest.requireActual('../../src/CommunityNodes/helpers').matchPackagesWithUpdates,
+	parsePackageName: jest.requireActual('../../src/CommunityNodes/helpers').parsePackageName,
+	hasPackageLoadedSuccessfully: jest.fn(),
+	searchInstalledPackage: jest.fn(),
   executeCommand: jest.fn(),
+	checkPackageStatus: jest.fn(),
 }));
-import { executeCommand } from '../../src/CommunityNodes/helpers';
+
+jest.mock('../../src/CommunityNodes/packageModel',  () => ({
+	getAllInstalledPackages: jest.requireActual('../../src/CommunityNodes/packageModel').getAllInstalledPackages,
+	removePackageFromDatabase: jest.requireActual('../../src/CommunityNodes/packageModel').removePackageFromDatabase,
+	searchInstalledPackage: jest.fn(),
+}));
+
+import { executeCommand, checkPackageStatus, hasPackageLoadedSuccessfully } from '../../src/CommunityNodes/helpers';
+import { searchInstalledPackage } from '../../src/CommunityNodes/packageModel';
 import { CURRENT_PACKAGE_VERSION, UPDATED_PACKAGE_VERSION } from './shared/constants';
 import { installedPackagePayload } from './shared/utils';
 
@@ -116,6 +129,69 @@ test('GET /nodes should mention updates when available', async () => {
 	expect(response.body.data[0].installedVersion).toBe(CURRENT_PACKAGE_VERSION);
 	expect(response.body.data[0].updateAvailable).toBe(UPDATED_PACKAGE_VERSION);
 });
+
+// TEST POST ENDPOINT
+
+test('POST /nodes package name should not be empty', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const response = await authOwnerAgent.post('/nodes').send();
+
+	expect(response.statusCode).toBe(400);
+});
+
+test('POST /nodes Should not install duplicate packages', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const requestBody = {
+		name: installedPackagePayload().packageName,
+	};
+	// @ts-ignore
+	searchInstalledPackage.mockImplementation(() => {
+		return true;
+	});
+	// @ts-ignore
+	hasPackageLoadedSuccessfully.mockImplementation(() => {
+		return true;
+	});
+
+	const response = await authOwnerAgent.post('/nodes').send(requestBody);
+	expect(response.status).toBe(400);
+	expect(response.body.message).toContain('already installed');
+});
+
+test('POST /nodes Should not install packages that could not be loaded', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const requestBody = {
+		name: installedPackagePayload().packageName,
+	};
+	// @ts-ignore
+	searchInstalledPackage.mockImplementation(() => {
+		return true;
+	});
+	// @ts-ignore
+	hasPackageLoadedSuccessfully.mockImplementation(() => {
+		return false;
+	});
+
+	const response = await authOwnerAgent.post('/nodes').send(requestBody);
+	expect(response.status).toBe(500);
+});
+
+test('POST /nodes package should not install banned package', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const installedPackage = installedPackagePayload();
+	const requestBody = {
+		name: installedPackage.packageName,
+	};
+
+	// @ts-ignore
+	checkPackageStatus.mockImplementation(() => {
+		return {status:'Banned'};
+	});
+	const response = await authOwnerAgent.post('/nodes').send(requestBody);
+	expect(response.statusCode).toBe(400);
+	expect(response.body.message).toContain('banned');
+});
+
 
 
 async function saveMockPackage(payload: InstalledPackagePayload) {
