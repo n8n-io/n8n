@@ -49,7 +49,7 @@
 				</div>
 				<el-checkbox
 					v-model="userAgreed"
-					:class="[$style.checkbox, checkboxWarning ? $style.error : '']"
+					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
 					@change="onCheckboxChecked"
 				>
