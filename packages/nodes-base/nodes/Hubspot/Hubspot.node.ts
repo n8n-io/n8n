@@ -1108,6 +1108,20 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+			async getUserDefinedCustomObjectTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/crm/v3/schemas';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const objectType of properties.results) {
+					const objectLabel = objectType.labels.singular;
+					const objectTypeId = objectType.objectTypeId;
+					returnData.push({
+						name: objectLabel,
+						value: objectTypeId,
+					});
+				}
+				return returnData;
+			},
 			// Get the properties of a custom object type
 			async getCustomObjectProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3436,6 +3450,33 @@ export class Hubspot implements INodeType {
 								const endpoint = `/crm/v3/schemas`;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 							}
+							if (operation === 'delete') {
+								const objectType = this.getNodeParameter('objectType', i) as string;
+
+								const endpoint = `/crm/v3/schemas/${objectType}`;
+
+								await hubspotApiRequest.call(this, 'DELETE', endpoint);
+								responseData = { success: true };
+							}
+							if (operation === 'get') {
+								const objectType = this.getNodeParameter('objectType', i) as string;
+
+								const endpoint = `/crm/v3/schemas/${objectType}`;
+
+								responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
+							}
+							if (operation === 'getAll') {
+								const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+								const endpoint = `/crm/v3/schemas`;
+								if (returnAll) {
+									responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+								} else {
+									qs.limit = this.getNodeParameter('limit', 0) as number;
+									responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+									responseData = responseData.splice(0, qs.limit);
+								}
+							}
 						}
 
 						if ( schemaType === 'typeAssociation') {
@@ -3453,6 +3494,15 @@ export class Hubspot implements INodeType {
 								};
 
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+							}
+							if (operation === 'delete') {
+								const objectType = this.getNodeParameter('objectType', i) as string;
+								const associationID = this.getNodeParameter('associationID', i) as string;
+
+								const endpoint = `/crm/v3/schemas/${objectType}/associations/${associationID}`;
+
+								await hubspotApiRequest.call(this, 'DELETE', endpoint);
+								responseData = { success: true };
 							}
 						}
 					}

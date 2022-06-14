@@ -9,12 +9,48 @@ export const schemaOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['schema'],
+				schemaType: ['typeCustomObject'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+			},
+		],
+		default: 'create',
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				schemaType: ['typeAssociation'],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
 			},
 		],
 		default: 'create',
@@ -50,6 +86,7 @@ export const schemaFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	//  customObject:create -------------------------------------------------------
+
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -267,7 +304,7 @@ export const schemaFields: INodeProperties[] = [
 				name: 'requiredProperties',
 				type: 'string',
 				default: '',
-				description: 'The names of properties that should be required when creating an object of this type',
+				description: 'Names of properties that should be required when creating an object of this type',
 				hint: 'Comma separeted values',
 			},
 			{
@@ -275,7 +312,7 @@ export const schemaFields: INodeProperties[] = [
 				name: 'searchableProperties',
 				type: 'string',
 				default: '',
-				description: 'TNames of properties that will be indexed for this object type in by HubSpot\'s product search',
+				description: 'Names of properties that will be indexed for this object type in by HubSpot\'s product search',
 				hint: 'Comma separeted values',
 			},
 			{
@@ -289,12 +326,7 @@ export const schemaFields: INodeProperties[] = [
 		],
 	},
 
-
-	/* -------------------------------------------------------------------------- */
-	/*               schema:Association                                           */
-	/* -------------------------------------------------------------------------- */
-
-	//  Association:create ---------------------------------------------------------
+	//  customObject:delete -------------------------------------------------------
 	{
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
@@ -302,7 +334,87 @@ export const schemaFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['schema'],
-				operation: ['create'],
+				operation: ['delete'],
+				schemaType: ['typeCustomObject'],
+			},
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getUserDefinedCustomObjectTypes',
+			loadOptionsDependsOn: ['schemaType'],
+		},
+		default: '',
+	},
+
+	//  customObject:get -------------------------------------------------------
+	{
+		displayName: 'Object Type Name or ID',
+		name: 'objectType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['get'],
+				schemaType: ['typeCustomObject'],
+			},
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectTypes',
+		},
+		default: '',
+	},
+
+	//  customObject:getAll -------------------------------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['getAll'],
+				schemaType: ['typeCustomObject'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['getAll'],
+				schemaType: ['typeCustomObject'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+
+
+
+
+
+	/* -------------------------------------------------------------------------- */
+	/*               schema:Association                                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Object Type Name or ID',
+		name: 'objectType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['create', 'delete'],
 				schemaType: ['typeAssociation'],
 			},
 		},
@@ -312,8 +424,11 @@ export const schemaFields: INodeProperties[] = [
 		},
 		default: '',
 	},
+
+	//  Association:create ---------------------------------------------------------
+
 	{
-		displayName: 'To Object Type Name or ID',
+		displayName: 'Target Object Type Name or ID',
 		name: 'toObjectType',
 		type: 'options',
 		displayOptions: {
@@ -340,6 +455,21 @@ export const schemaFields: INodeProperties[] = [
 			show: {
 				resource: ['schema'],
 				operation: ['create'],
+				schemaType: ['typeAssociation'],
+			},
+		},
+	},
+	//  Association:delete ---------------------------------------------------------
+	{
+		displayName: 'Association Name or ID',
+		name: 'associationID',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['delete'],
 				schemaType: ['typeAssociation'],
 			},
 		},
